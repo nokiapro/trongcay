@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1b7a3d" />
+  <title>Cây Xanh Hàng Ngày 🌱</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
+  <link rel="stylesheet" href="css/style.css?v=9" />
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-analytics-compat.js"></script>
+</head>
+<body>
+  <!-- LOGIN -->
+  <div id="loginScreen">
+    <div class="login-card">
+      <h1>🌱 Cây Xanh</h1>
+      <p>Đăng nhập bằng tài khoản được cấp</p>
+      <div id="loginForm">
+        <input type="email" id="emailInput" placeholder="Email" autocomplete="email" />
+        <input type="password" id="passInput" placeholder="Mật khẩu" autocomplete="current-password" />
+        <button class="login-btn" id="btnLogin" onclick="doLogin()">Đăng nhập</button>
+        <div class="login-error" id="loginError"></div>
+        <p style="font-size:0.8rem;color:#888;margin-top:16px;line-height:1.4">
+          Tài khoản do quản trị viên tạo trên Firebase.<br>
+          Không hỗ trợ tự đăng ký trên web.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME APP: sidebar + main -->
+  <div id="gameApp" class="app-layout" style="display:none">
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <button type="button" class="sidebar-close" onclick="toggleSidebar()" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
+      <div class="sidebar-brand">
+        <span class="sidebar-logo">🌱</span>
+        <div>
+          <div class="sidebar-title">Cây Xanh</div>
+          <div class="sidebar-sub" id="seasonText">Hàng ngày</div>
+        </div>
+      </div>
+
+      <div class="sidebar-user">
+        <span class="user-avatar" id="userAvatar">🌿</span>
+        <div class="sidebar-user-info">
+          <div class="user-name" id="userName">...</div>
+          <span class="user-role" id="userRole" style="display:none">ADMIN</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item" onclick="openModal('quests')"><span class="nav-icon"><i class="fa-solid fa-list-check"></i></span> Nhiệm vụ</button>
+        <button class="nav-item" onclick="openModal('achievements')"><span class="nav-icon"><i class="fa-solid fa-trophy"></i></span> Thành tích</button>
+        <button class="nav-item" onclick="openModal('history')"><span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span> Lịch sử</button>
+        <button class="nav-item" onclick="openModal('leaderboard')"><span class="nav-icon"><i class="fa-solid fa-ranking-star"></i></span> Xếp hạng</button>
+        <button class="nav-item" onclick="openModal('chat')"><span class="nav-icon"><i class="fa-solid fa-comments"></i></span> Chat</button>
+        <button class="nav-item" onclick="openModal('friends')"><span class="nav-icon"><i class="fa-solid fa-user-group"></i></span> Bạn bè</button>
+        <button class="nav-item" onclick="openModal('shop')"><span class="nav-icon"><i class="fa-solid fa-store"></i></span> Cửa hàng</button>
+        <button class="nav-item" onclick="openModal('inventory')"><span class="nav-icon"><i class="fa-solid fa-box-open"></i></span> Kho đồ</button>
+        <button class="nav-item" onclick="openModal('settings')"><span class="nav-icon"><i class="fa-solid fa-gear"></i></span> Cài đặt</button>
+        <button class="nav-item" id="btnAdmin" style="display:none" onclick="openModal('admin')"><span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span> Admin</button>
+        <button class="nav-item" onclick="copyUserUid()"><span class="nav-icon"><i class="fa-solid fa-fingerprint"></i></span> Copy UID</button>
+        <button class="nav-item" onclick="shareProgress()"><span class="nav-icon"><i class="fa-solid fa-share-nodes"></i></span> Chia sẻ</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="nav-item nav-logout" onclick="logout()"><span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span> Đăng xuất</button>
+      </div>
+    </aside>
+
+    <!-- Mobile menu toggle -->
+    <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <div class="card card-large">
+        <div id="dailyReward" class="reward-banner" style="display:none"></div>
+        <div id="eventBanner" class="event-banner" style="display:none"></div>
+
+        <div class="garden" id="garden"></div>
+
+        <div class="main-stats">
+          <div class="stat"><div class="stat-label">Chuỗi</div><div class="stat-value" id="streak">0</div></div>
+          <div class="stat"><div class="stat-label">Tổng tưới</div><div class="stat-value" id="total">0</div></div>
+          <div class="stat"><div class="stat-label">Quả</div><div class="stat-value" id="fruits">0</div></div>
+          <div class="stat"><div class="stat-label">Xu</div><div class="stat-value" id="coins">0</div></div>
+        </div>
+        <div class="main-stats main-stats-2">
+          <div class="stat"><div class="stat-label">Phân</div><div class="stat-value" id="fert">0</div></div>
+          <div class="stat"><div class="stat-label">Mini</div><div class="stat-value" id="miniLeft">3</div></div>
+        </div>
+
+        <div class="stage-name" id="stageName">Chọn ô để trồng</div>
+        <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="msg" id="msg">Chào mừng!</div>
+        <div class="sync-status" id="syncStatus">Chưa đồng bộ</div>
+        <div id="fertClaimBanner" class="fert-claim-banner" style="display:none"></div>
+
+        <div class="btn-row btn-row-actions">
+          <button class="btn-water" id="btnWater" onclick="water()"><i class="fa-solid fa-droplet"></i> Tưới nước</button>
+          <button class="btn-fert" id="btnFert" onclick="useFertilizer()" disabled><i class="fa-solid fa-seedling"></i> Bón phân</button>
+          <button class="btn-harvest" id="btnHarvest" onclick="harvest()" disabled><i class="fa-solid fa-apple-whole"></i> Thu hoạch</button>
+          <button class="btn-secondary" onclick="startMiniGame()"><i class="fa-solid fa-gamepad"></i> Mini-game</button>
+          <button class="btn-secondary" onclick="openModal('inventory')"><i class="fa-solid fa-box-open"></i> Kho</button>
+          <button class="btn-secondary" onclick="requestNotify()"><i class="fa-solid fa-bell"></i> Nhắc tưới</button>
+          <button class="btn-secondary" onclick="forceSync()"><i class="fa-solid fa-cloud"></i> Đồng bộ</button>
+        </div>
+        <div id="minigame-area"></div>
+      </div>
+
+      <p class="footer">
+        Chỉ thành viên có tài khoản mới được chơi.<br>
+        Tài khoản đầu tiên đăng nhập sẽ là Admin chính.
+      </p>
+    </main>
+  </div>
+
+  <div id="dialogOverlay"><div id="dialogBox"></div></div>
+  <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal" id="modalContent"></div>
+  </div>
+
+  <script src="js/dialog.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/firebase-app.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/admin.js"></script>
+  <script>
+    function toggleSidebar(forceClose) {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('sidebarBackdrop');
+      const mt = document.getElementById('menuToggle');
+      if (!sb) return;
+      const willOpen = forceClose === true ? false : (forceClose === false ? true : !sb.classList.contains('open'));
+      if (willOpen) {
+        sb.classList.add('open');
+        if (bd) bd.classList.add('show');
+        if (mt) mt.style.display = 'none';
+        document.body.classList.add('sidebar-open');
+      } else {
+        sb.classList.remove('open');
+        if (bd) bd.classList.remove('show');
+        if (mt) mt.style.display = '';
+        document.body.classList.remove('sidebar-open');
+      }
+    }
+  </script>
+</body>
+</html>
