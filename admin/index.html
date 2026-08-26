@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin - Vườn Xanh</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
+</head>
+<body class="admin-body">
+  <!-- Loading / Access denied -->
+  <div id="admin-loading" class="admin-login">
+    <div class="login-card">
+      <h1>🔐 Admin Panel</h1>
+      <p id="admin-status">Đang kiểm tra quyền...</p>
+      <a href="../" class="back-link">← Quay lại vườn</a>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="admin-dashboard" class="admin-dashboard hidden">
+    <div id="admin-backdrop" class="admin-backdrop"></div>
+    <button id="admin-menu-btn" class="admin-menu-btn" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+    <aside class="sidebar" id="admin-sidebar">
+      <div class="sidebar-logo">
+        <span><i class="fa-duotone fa-seedling"></i></span> Admin
+      </div>
+      <nav class="sidebar-nav">
+        <button class="side-btn active" data-section="dashboard"><i class="fa-solid fa-chart-pie"></i> Tổng quan</button>
+        <button class="side-btn" data-section="plants"><i class="fa-solid fa-seedling"></i> Quản lý cây</button>
+        <button class="side-btn" data-section="users"><i class="fa-solid fa-users"></i> Người chơi</button>
+        <button class="side-btn" data-section="settings"><i class="fa-solid fa-gear"></i> Cài đặt</button>
+        <button class="side-btn" data-section="announce"><i class="fa-solid fa-bullhorn"></i> Thông báo</button>
+        <button class="side-btn" data-section="reset"><i class="fa-solid fa-rotate"></i> Reset dữ liệu</button>
+      </nav>
+      <a href="../" class="btn-logout" style="text-align:center;text-decoration:none;display:block"><i class="fa-solid fa-arrow-left"></i> Về vườn</a>
+    </aside>
+
+    <main class="admin-main">
+      <section id="sec-dashboard" class="admin-section active">
+        <h1>📊 Tổng quan hệ thống</h1>
+        <div class="admin-stats" id="admin-stats"></div>
+        <div class="admin-card">
+          <h3><i class="fa-solid fa-clock-rotate-left"></i> Hoạt động gần đây</h3>
+          <ul id="activity-log" class="activity-log"></ul>
+          <div id="activity-pager" class="activity-pager"></div>
+        </div>
+      </section>
+
+      <section id="sec-plants" class="admin-section">
+        <div class="section-header">
+          <h1>🌿 Quản lý cây / hoa / quả</h1>
+          <button id="btn-add-plant" class="btn btn-primary">+ Thêm cây mới</button>
+        </div>
+        <div class="table-wrap">
+          <table class="admin-table" id="plants-table">
+            <thead>
+              <tr>
+                <th>Icon</th>
+                <th>Tên</th>
+                <th>Loại</th>
+                <th>Giá hạt</th>
+                <th>Thời gian (s)</th>
+                <th>Sản lượng</th>
+                <th>Giá bán</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="plants-pager" class="admin-pager"></div>
+      </section>
+
+      <section id="sec-users" class="admin-section">
+        <h1>👤 Người chơi</h1>
+        <div class="table-wrap">
+          <table class="admin-table" id="users-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Tiền</th>
+                <th>Đã trồng</th>
+                <th>Thu hoạch</th>
+                <th>Thao tác</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p style="margin-top:16px;color:#52796f;font-size:0.9rem">
+          💡 Tạo tài khoản mới tại Firebase Console → Authentication → Users → Add user.
+          Tài khoản đầu tiên đăng nhập sẽ tự động là <strong>admin</strong>.
+        </p>
+      </section>
+
+      <section id="sec-settings" class="admin-section">
+        <h1>⚙️ Cài đặt hệ thống</h1>
+        <div class="admin-card settings-form">
+          <label>Số ô đất mặc định (cho user mới)</label>
+          <input type="number" id="set-plots" min="4" max="36" />
+          <label>Tiền khởi đầu (cho user mới)</label>
+          <input type="number" id="set-coins" min="0" />
+          <label>Tỉ lệ mưa ngẫu nhiên (%) — mỗi ~45 giây kiểm tra một lần</label>
+          <input type="number" id="set-rain" min="0" max="100" />
+          <p style="font-size:0.85rem;color:#52796f;margin-top:4px">Mưa kéo dài ~15s, rút ngắn ~12% thời gian còn lại của cây đang lớn.</p>
+          <button id="btn-save-settings" class="btn btn-primary" style="margin-top:16px"><i class="fa-solid fa-floppy-disk"></i> Lưu cài đặt</button>
+        </div>
+      </section>
+
+      <section id="sec-announce" class="admin-section">
+        <h1>📢 Thông báo toàn server</h1>
+        <div class="admin-card settings-form">
+          <p style="font-size:0.9rem;color:#52796f;margin-bottom:10px">Tin nhắn hiện banner trên mọi client đang online (và lần mở app sau).</p>
+          <label>Nội dung thông báo</label>
+          <textarea id="announce-text" rows="3" placeholder="VD: Bảo trì 22h tối nay..."></textarea>
+          <button id="btn-send-announce" class="btn btn-primary" style="margin-top:12px"><i class="fa-solid fa-paper-plane"></i> Gửi thông báo</button>
+          <button id="btn-clear-announce" class="btn btn-secondary" style="margin-top:12px;margin-left:8px">Xóa banner</button>
+          <div id="announce-current" style="margin-top:16px;font-size:0.9rem;color:#52796f"></div>
+        </div>
+      </section>
+
+      <section id="sec-reset" class="admin-section">
+        <h1>🔄 Reset dữ liệu</h1>
+        <div class="admin-card danger-zone">
+          <p>⚠️ Reset danh sách cây về mặc định (không xóa user).</p>
+          <button id="btn-reset-plants" class="btn btn-danger">Reset danh sách cây</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal thêm/sửa cây -->
+  <div id="modal-plant-form" class="modal">
+    <div class="modal-content">
+      <h2 id="form-title">Thêm cây mới</h2>
+      <form id="plant-form">
+        <input type="hidden" id="plant-id" />
+        <label>Icon (emoji)</label>
+        <input type="text" id="p-icon" maxlength="4" required placeholder="🌹" />
+        <label>Tên cây</label>
+        <input type="text" id="p-name" required placeholder="Hoa hồng" />
+        <label>Loại</label>
+        <select id="p-type">
+          <option value="hoa">Hoa</option>
+          <option value="qua">Quả</option>
+          <option value="rau">Rau</option>
+          <option value="cay">Cây cảnh</option>
+          <option value="la">Lá</option>
+          <option value="kytu">Ký tự</option>
+          <option value="so">Số</option>
+        </select>
+        <label>Giá hạt giống</label>
+        <input type="number" id="p-seed-price" min="1" required />
+        <label>Thời gian phát triển (giây)</label>
+        <input type="number" id="p-grow-time" min="5" required />
+        <label>Sản lượng thu hoạch</label>
+        <input type="number" id="p-yield" min="1" required />
+        <label>Giá bán mỗi sản phẩm</label>
+        <input type="number" id="p-sell-price" min="1" required />
+        <label>Mô tả</label>
+        <textarea id="p-desc" rows="2"></textarea>
+        <label class="checkbox-row"><input type="checkbox" id="p-limited" /> Limited (sự kiện)</label>
+        <label>Tháng bán (1–12, cách nhau bởi dấu phẩy — để trống = luôn bán nếu Limited)</label>
+        <input type="text" id="p-months" placeholder="vd: 1,2,12" />
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary">Lưu</button>
+          <button type="button" class="btn btn-secondary modal-close">Hủy</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="../js/firebase-config.js"></script>
+  <script src="../js/data.js"></script>
+  <script src="../js/admin.js"></script>
+</body>
+</html>
