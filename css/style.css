@@ -5253,3 +5253,30 @@ html, body, button, input, select, textarea {
 }
 .update-banner-dismiss:hover { background: rgba(255,255,255,0.32); }
 .update-banner.force .update-banner-dismiss { display: none; }
+
+
+/* Chi tiết ô: 10 giây cuối / hết hiệu lực */
+.plot-boost-off {
+  color: #e9c46a !important;
+  font-weight: 600;
+}
+
+/* Dropdown: mở bằng position fixed (JS); drop-up chỉ đánh dấu */
+.pill-dd.drop-up .pill-dd-arrow {
+  transform: none;
+}
+.pill-dd-menu {
+  /* z-index cao hơn modal (200) khi fixed */
+  z-index: 400;
+}
+/* Trong modal: cho phép menu thoát overflow */
+.modal-content {
+  overflow-x: hidden;
+}
+#modal-plot .plot-upgrade-row {
+  position: relative;
+  z-index: 5;
+}
+#modal-plot .plot-upgrade-row .pill-dd.open {
+  z-index: 50;
+}
