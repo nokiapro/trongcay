@@ -150,6 +150,10 @@
               <button type="button" id="btn-nyc-config" class="btn-nyc-cfg" title="Cấu hình hạt trồng"><i class="fa-solid fa-gear"></i></button>
             </div>
           </div>
+            <div id="helper-badge" class="helper-badge" style="display:none" title="Người giúp việc tự mua">
+              <i class="fa-solid fa-user-tie"></i> <span id="helper-badge-text">—</span>
+              <button type="button" id="btn-helper-config" class="btn-nyc-cfg" title="Cấu hình giúp việc"><i class="fa-solid fa-gear"></i></button>
+            </div>
         </div>
         <div class="garden-stage" id="garden-stage">
           <div class="garden-world" id="garden-world">
@@ -175,6 +179,7 @@
           <button class="shop-tab" data-shop="baoho"><i class="fa-solid fa-shield-halved"></i> Bảo hộ ghép</button>
           <button class="shop-tab" data-shop="tien"><i class="fa-solid fa-wand-magic-sparkles"></i> Tiên chăm</button>
           <button class="shop-tab" data-shop="nyc"><i class="fa-solid fa-heart-crack"></i> Người Yêu Cũ</button>
+          <button class="shop-tab" data-shop="helper"><i class="fa-solid fa-user-tie"></i> Giúp việc</button>
           <button class="shop-tab" data-shop="odat"><i class="fa-solid fa-border-all"></i> Ô đất</button>
           <button class="shop-tab" data-shop="tangtoc"><i class="fa-solid fa-gauge-high"></i> Tăng tốc ô</button>
           <button class="shop-tab" data-shop="phan"><i class="fa-solid fa-flask"></i> Phân bón</button>
@@ -621,12 +626,57 @@
     </div>
   </div>
 
+  
+  <!-- Modal cấu hình Người giúp việc -->
+  <div id="modal-helper-config" class="modal">
+    <div class="modal-content" style="max-width:520px">
+      <h2><i class="fa-solid fa-user-tie"></i> Cấu hình Người giúp việc</h2>
+      <p class="bulk-hint">Khi kho vật phẩm <strong>dưới mốc</strong> bạn đặt, giúp việc tự mua thêm <strong>số lượng</strong> tương ứng (trừ tiền). Chỉ mua khi còn hạn gói.</p>
+      <label>Tên gọi</label>
+      <input type="text" id="helper-custom-name" maxlength="20" placeholder="VD: Chị Tư" style="width:100%;margin:6px 0 8px" />
+      <div class="gender-row" style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap">
+        <label class="checkbox-row"><input type="radio" name="helper-gender" value="female" checked /> Nữ 💁</label>
+        <label class="checkbox-row"><input type="radio" name="helper-gender" value="male" /> Nam 🤵</label>
+      </div>
+      <label>Danh sách mua tự động</label>
+      <div id="helper-rules-list" class="helper-rules-list"></div>
+      <div class="helper-add-row" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+        <div style="flex:1;min-width:100px">
+          <label style="font-size:0.8rem">Loại</label>
+          <select id="helper-add-kind" class="ux-select">
+            <option value="seed">Hạt giống</option>
+            <option value="fert">Phân bón</option>
+            <option value="protect">Bảo hộ ghép</option>
+          </select>
+        </div>
+        <div style="flex:2;min-width:140px">
+          <label style="font-size:0.8rem">Vật phẩm</label>
+          <select id="helper-add-id" class="ux-select"></select>
+        </div>
+        <div style="width:72px">
+          <label style="font-size:0.8rem">Mốc kho</label>
+          <input type="number" id="helper-add-min" min="0" max="9999" value="5" />
+        </div>
+        <div style="width:72px">
+          <label style="font-size:0.8rem">Mua thêm</label>
+          <input type="number" id="helper-add-qty" min="1" max="99" value="10" />
+        </div>
+        <button type="button" id="btn-helper-add-rule" class="btn btn-secondary btn-sm"><i class="fa-solid fa-plus"></i></button>
+      </div>
+      <p class="bulk-hint" style="margin-top:8px">VD: Mốc 5, mua thêm 10 → khi còn &lt; 5 hạt thì mua 10 hạt.</p>
+      <div class="modal-actions" style="margin-top:14px">
+        <button id="btn-save-helper-config" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu</button>
+        <button class="btn btn-secondary modal-close">Đóng</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.3.1"></script>
-  <script src="js/data.js?v=1.3.1"></script>
-  <script src="js/game.js?v=1.3.1"></script>
-  <script src="js/features.js?v=1.3.1"></script>
-  <script src="js/app.js?v=1.3.1"></script>
+  <script src="js/firebase-config.js?v=1.4.0"></script>
+  <script src="js/data.js?v=1.4.0"></script>
+  <script src="js/game.js?v=1.4.0"></script>
+  <script src="js/features.js?v=1.4.0"></script>
+  <script src="js/app.js?v=1.4.0"></script>
 </body>
 </html>
