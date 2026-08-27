@@ -135,6 +135,26 @@
                   <button type="button" id="btn-harvest-all" role="menuitem"><i class="fa-solid fa-basket-shopping"></i> Thu hoạch</button>
                 </div>
               </div>
+              <div class="garden-tools-dd garden-support-dd" id="garden-support-dd">
+                <button type="button" id="btn-support-menu" class="btn btn-primary" aria-haspopup="true" aria-expanded="false">
+                  <i class="fa-solid fa-hands-helping"></i> Hỗ trợ
+                  <i class="fa-solid fa-chevron-down" style="font-size:0.65rem;opacity:0.9"></i>
+                </button>
+                <div class="garden-tools-menu" id="garden-support-menu" role="menu">
+                  <button type="button" id="btn-support-fairy" role="menuitem">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Tiên chăm
+                    <span class="support-menu-status" id="support-status-fairy">—</span>
+                  </button>
+                  <button type="button" id="btn-support-nyc" role="menuitem">
+                    <i class="fa-solid fa-heart-crack"></i> NYC
+                    <span class="support-menu-status" id="support-status-nyc">—</span>
+                  </button>
+                  <button type="button" id="btn-support-helper" role="menuitem">
+                    <i class="fa-solid fa-user-tie"></i> Giúp việc
+                    <span class="support-menu-status" id="support-status-helper">—</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           <div class="garden-controls-timers">
@@ -149,11 +169,11 @@
               <i class="fa-solid fa-heart-crack"></i> <span id="nyc-badge-text">—</span>
               <button type="button" id="btn-nyc-config" class="btn-nyc-cfg" title="Cấu hình hạt trồng"><i class="fa-solid fa-gear"></i></button>
             </div>
-          </div>
             <div id="helper-badge" class="helper-badge" style="display:none" title="Người giúp việc tự mua">
               <i class="fa-solid fa-user-tie"></i> <span id="helper-badge-text">—</span>
               <button type="button" id="btn-helper-config" class="btn-nyc-cfg" title="Cấu hình giúp việc"><i class="fa-solid fa-gear"></i></button>
             </div>
+          </div>
         </div>
         <div class="garden-stage" id="garden-stage">
           <div class="garden-world" id="garden-world">
@@ -673,10 +693,10 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.4.0"></script>
-  <script src="js/data.js?v=1.4.0"></script>
-  <script src="js/game.js?v=1.4.0"></script>
-  <script src="js/features.js?v=1.4.0"></script>
-  <script src="js/app.js?v=1.4.0"></script>
+  <script src="js/firebase-config.js?v=1.4.1"></script>
+  <script src="js/data.js?v=1.4.1"></script>
+  <script src="js/game.js?v=1.4.1"></script>
+  <script src="js/features.js?v=1.4.1"></script>
+  <script src="js/app.js?v=1.4.1"></script>
 </body>
 </html>
