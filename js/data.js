@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.3.1';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13105,7 +13105,7 @@ const DEFAULT_SETTINGS = {
   rainDurationMinutes: 0.25, // phút mưa liên tục (0.25 = 15 giây mặc định)
   plotPrice: 500,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.3.0',
+  appVersion: '1.3.1',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13388,110 +13388,38 @@ async function savePlayer() {
  */
 let _timerSyncBusy = false;
 let _timerSyncQueued = false;
+/**
+ * ĐÃ TẮT đồng bộ timer/plots từng phần lên Firebase.
+ * Trước đây update() plots chỉ còn vài field → ghi đè mất specialMult,
+ * multi-garden, và listener đè ngược tưới/bón của Tiên → trông như không chăm.
+ * Tiên/NYC chỉ giữ state local; savePlayer() full khi cần lưu.
+ */
 async function syncTimersToFirebase() {
-  if (!currentUser || !currentPlayer || !db) return;
-  if (_timerSyncBusy) {
-    _timerSyncQueued = true;
-    return;
-  }
-  _timerSyncBusy = true;
-  try {
-    const plots = Array.isArray(currentPlayer.plots)
-      ? currentPlayer.plots
-      : Object.values(currentPlayer.plots || {});
-    // Chỉ gửi field cần cho đếm ngược
-    const plotTimers = plots.map((p, i) => ({
-      id: i,
-      plantId: p && p.plantId ? p.plantId : null,
-      plantedAt: p && p.plantedAt ? p.plantedAt : null,
-      waterCount: p ? (p.waterCount || 0) : 0,
-      watered: !!(p && p.watered),
-      lastWatered: p && p.lastWatered ? p.lastWatered : null,
-      fertilizerId: p && p.fertilizerId ? p.fertilizerId : null,
-      fertilizedAt: p && p.fertilizedAt ? p.fertilizedAt : null,
-      seedStar: !!(p && p.seedStar)
-    }));
-    const payload = {
-      fairyUntil: currentPlayer.fairyUntil || 0,
-      lastFairyCare: currentPlayer.lastFairyCare || 0,
-      nycUntil: currentPlayer.nycUntil || 0,
-      lastNycCare: currentPlayer.lastNycCare || 0,
-      timersSyncedAt: Date.now(),
-      // Merge plots: giữ cấu trúc mảng theo index
-      plots: plotTimers
-    };
-    // Đánh dấu đang ghi local để listener không đè ngược
-    currentPlayer._localTimerWriteAt = Date.now();
-    await db.ref('users/' + currentUser.uid).update(payload);
-  } catch (e) {
-    console.warn('syncTimersToFirebase', e);
-  } finally {
-    _timerSyncBusy = false;
-    if (_timerSyncQueued) {
-      _timerSyncQueued = false;
-      syncTimersToFirebase().catch(() => {});
-    }
-  }
+  return;
 }
 
-/** Lắng nghe Firebase → cập nhật mốc thời gian Tiên / NYC / ô đất khi đổi từ nơi khác */
+/** Lưu player có debounce — dùng sau khi Tiên/NYC thay đổi ô */
+let _savePlayerDebounceTimer = null;
+function scheduleSavePlayer(delayMs = 2500) {
+  if (!currentUser || !currentPlayer) return;
+  if (_savePlayerDebounceTimer) clearTimeout(_savePlayerDebounceTimer);
+  _savePlayerDebounceTimer = setTimeout(() => {
+    _savePlayerDebounceTimer = null;
+    savePlayer().catch(e => console.warn('scheduleSavePlayer', e));
+  }, delayMs);
+}
+
+/**
+ * ĐÃ TẮT listener đè plots từ Firebase (gây mất tưới/bón Tiên).
+ * Giữ stub để app.js gọi không lỗi.
+ */
 let _playerTimerUnsub = null;
 function listenPlayerTimers() {
-  if (!currentUser || !db) return;
-  if (_playerTimerUnsub) {
+  // no-op — không đồng bộ ngược plots/timer từ Firebase
+  if (_playerTimerUnsub && currentUser && db) {
     try { db.ref('users/' + currentUser.uid).off('value', _playerTimerUnsub); } catch (_) {}
-    _playerTimerUnsub = null;
   }
-  const handler = (snap) => {
-    if (!snap.exists() || !currentPlayer) return;
-    const remote = snap.val();
-    // Bỏ qua nếu vừa ghi local (< 2s) để tránh vòng lặp
-    if (currentPlayer._localTimerWriteAt && Date.now() - currentPlayer._localTimerWriteAt < 2000) return;
-
-    let changed = false;
-    ['fairyUntil', 'lastFairyCare', 'nycUntil', 'lastNycCare'].forEach(k => {
-      if (typeof remote[k] === 'number' && remote[k] !== currentPlayer[k]) {
-        currentPlayer[k] = remote[k];
-        changed = true;
-      }
-    });
-    if (remote.plots) {
-      const remotePlots = Array.isArray(remote.plots)
-        ? remote.plots
-        : Object.values(remote.plots || {});
-      if (!Array.isArray(currentPlayer.plots)) {
-        currentPlayer.plots = Object.values(currentPlayer.plots || {});
-      }
-      remotePlots.forEach((rp, i) => {
-        if (!rp) return;
-        if (!currentPlayer.plots[i]) {
-          currentPlayer.plots[i] = { id: i, plantId: null };
-          changed = true;
-        }
-        const lp = currentPlayer.plots[i];
-        ['plantId', 'plantedAt', 'waterCount', 'watered', 'lastWatered', 'fertilizerId', 'fertilizedAt', 'seedStar'].forEach(f => {
-          if (rp[f] !== undefined && rp[f] !== lp[f]) {
-            lp[f] = rp[f];
-            changed = true;
-          }
-        });
-      });
-    }
-    if (changed) {
-      if (typeof updateFairyBadge === 'function') updateFairyBadge();
-      if (typeof updateNycBadge === 'function') updateNycBadge();
-      if (typeof updateGlobalTimer === 'function') updateGlobalTimer();
-      if (typeof softUpdatePlotModal === 'function') softUpdatePlotModal();
-      // Refresh garden soft nếu đang ở trang vườn
-      const gardenPage = document.getElementById('page-garden');
-      if (gardenPage && gardenPage.classList.contains('active') && typeof softUpdateGarden === 'function') {
-        // không gọi full reset để tránh ghi đè — chỉ UI
-        if (typeof updateGlobalTimer === 'function') updateGlobalTimer();
-      }
-    }
-  };
-  db.ref('users/' + currentUser.uid).on('value', handler);
-  _playerTimerUnsub = handler;
+  _playerTimerUnsub = null;
 }
 
 function stopListenPlayerTimers() {

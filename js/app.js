@@ -484,8 +484,14 @@ auth.onAuthStateChanged(async (user) => {
         }
       }
       if (typeof Features !== 'undefined') Features.ensureQuests();
-      if (typeof listenPlayerTimers === 'function') listenPlayerTimers();
-      if (typeof syncTimersToFirebase === 'function') syncTimersToFirebase().catch(() => {});
+      if (typeof listenPlayerTimers === 'function') listenPlayerTimers(); // no-op
+      // Chăm ngay 1 lần sau login (Tiên tưới/bón, không chờ mở trang vườn)
+      setTimeout(() => {
+        if (typeof tickGardenCare === 'function') tickGardenCare({ render: true });
+        else if (typeof Game !== 'undefined' && Game.resetExpiredBoosts) {
+          if (Game.resetExpiredBoosts() && typeof scheduleSavePlayer === 'function') scheduleSavePlayer(1000);
+        }
+      }, 600);
       showApp();
       if (typeof loadPlayerMailbox === 'function') loadPlayerMailbox().catch(() => {});
     } catch (e) {
@@ -1481,7 +1487,7 @@ function renderGarden() {
   if (typeof Game.resetExpiredBoosts === 'function') {
     const changed = Game.resetExpiredBoosts();
     if (changed) {
-      if (typeof syncTimersToFirebase === 'function') syncTimersToFirebase().catch(() => {});
+      if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(2000);
       else if (typeof savePlayer === 'function') savePlayer().catch(() => {});
     }
   }
@@ -2818,26 +2824,47 @@ document.getElementById('btn-theme')?.addEventListener('click', () => {
   applyTheme(cur === 'dark' ? 'light' : 'dark');
 });
 
-// Cập nhật tiến độ/timer tại chỗ (tránh re-render → hết nhấp nháy khi hover)
-function softUpdateGarden() {
-  if (!currentPlayer) return;
+/** Chăm Tiên + NYC — luôn chạy kể cả khi không ở trang vườn. Trả về true nếu Tiên vừa thay đổi ô. */
+function tickGardenCare(opts) {
+  if (!currentPlayer || typeof Game === 'undefined') return false;
+  const doRender = !!(opts && opts.render);
+  let fairyChanged = false;
   if (typeof Game.resetExpiredBoosts === 'function') {
-    const changed = Game.resetExpiredBoosts();
-    if (changed) {
-      if (typeof syncTimersToFirebase === 'function') syncTimersToFirebase().catch(() => {});
+    fairyChanged = !!Game.resetExpiredBoosts();
+    if (fairyChanged) {
+      if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(2000);
       else if (typeof savePlayer === 'function') savePlayer().catch(() => {});
+      // Luôn refresh UI vườn khi Tiên vừa tưới/bón (badge nước)
+      const gardenPage = document.getElementById('page-garden');
+      if (gardenPage && gardenPage.classList.contains('active') && typeof renderGarden === 'function') {
+        renderGarden();
+      } else if (doRender && typeof renderGarden === 'function') {
+        // không ở trang vườn — bỏ qua DOM
+      }
+      if (typeof softUpdatePlotModal === 'function') softUpdatePlotModal();
     }
   }
   if (typeof Game.tickNycCare === 'function' && Game.isNycActive()) {
     Game.tickNycCare().then(did => {
-      if (did) {
-        if (typeof savePlayer === 'function') savePlayer().catch(() => {});
-        else if (typeof syncTimersToFirebase === 'function') syncTimersToFirebase().catch(() => {});
-        // NYC đã thu/trồng → cần full render
+      if (!did) return;
+      if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(1500);
+      else if (typeof savePlayer === 'function') savePlayer().catch(() => {});
+      const gardenPage = document.getElementById('page-garden');
+      if (gardenPage && gardenPage.classList.contains('active') && typeof renderGarden === 'function') {
         renderGarden();
       }
     }).catch(() => {});
   }
+  if (typeof updateFairyBadge === 'function') updateFairyBadge();
+  if (typeof updateNycBadge === 'function') updateNycBadge();
+  if (typeof updateGlobalTimer === 'function') updateGlobalTimer();
+  return fairyChanged;
+}
+
+// Cập nhật tiến độ/timer tại chỗ (tránh re-render → hết nhấp nháy khi hover)
+function softUpdateGarden() {
+  if (!currentPlayer) return;
+  tickGardenCare({ render: false });
   const plots = Array.isArray(currentPlayer.plots) ? currentPlayer.plots : Object.values(currentPlayer.plots || {});
   let needFull = false;
   plots.forEach((plot, i) => {
@@ -2931,14 +2958,16 @@ function updateGlobalTimer() {
   }
 }
 
-// Live update + occasional rain check
+// Live update: Tiên/NYC luôn tick; UI vườn chỉ khi đang mở trang vườn
 setInterval(() => {
   if (!currentPlayer) return;
   const gardenPage = document.getElementById('page-garden');
   if (gardenPage && gardenPage.classList.contains('active')) {
     softUpdateGarden();
+  } else {
+    // Vẫn cho Tiên tưới/bón + NYC thu/trồng khi đang ở shop/kho/...
+    tickGardenCare({ render: false });
   }
-  // Ngân hàng: luôn tick khi đang mở trang bank (đếm ngược + lãi/giây)
   if (typeof softUpdateBank === 'function') softUpdateBank();
 }, 1000);
 
