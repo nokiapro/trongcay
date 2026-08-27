@@ -137,6 +137,7 @@ function updateFairyBadge() {
     el.style.display = 'none';
   }
   updateNycBadge();
+  updateHelperBadge();
 }
 
 function updateNycBadge() {
@@ -152,6 +153,22 @@ function updateNycBadge() {
     el.style.display = 'none';
   }
 }
+
+
+function updateHelperBadge() {
+  const el = document.getElementById('helper-badge');
+  const textEl = document.getElementById('helper-badge-text');
+  if (!el || !textEl || typeof Game === 'undefined') return;
+  if (Game.hasHelper && Game.hasHelper()) {
+    el.style.display = '';
+    const emoji = Game.getHelperEmoji ? Game.getHelperEmoji() : '💁';
+    const name = Game.getHelperDisplayName ? Game.getHelperDisplayName() : 'Giúp việc';
+    textEl.textContent = emoji + ' ' + name + ' · ' + Game.formatTime(Game.helperRemainingSec());
+  } else {
+    el.style.display = 'none';
+  }
+}
+
 
 function openNycConfigModal() {
   if (!currentPlayer) return;
@@ -242,6 +259,7 @@ function bindNycConfigUI() {
       showToast(res.msg, 'success');
       closeModals();
       updateNycBadge();
+  updateHelperBadge();
     } else {
       showToast(res.msg, 'error');
     }
@@ -1098,6 +1116,7 @@ document.getElementById('btn-save-profile')?.addEventListener('click', async () 
   // Không renderGarden full — chỉ cập nhật badge/hình, giữ timer ngoài vườn
   updateFairyBadge();
   updateNycBadge();
+  updateHelperBadge();
   try {
     document.querySelectorAll('.garden-decor-fairy').forEach(el => {
       el.style.display = Game.showFairyDecor && Game.showFairyDecor() ? '' : 'none';
@@ -1164,6 +1183,7 @@ async function applyPrefCombo(btn) {
   // Cập nhật badge & trang trí hình, không renderGarden full (tránh reset timer)
   updateFairyBadge();
   updateNycBadge();
+  updateHelperBadge();
   try {
     const stage = document.querySelector('.garden-stage') || document.getElementById('garden-grid');
     if (stage && typeof Game !== 'undefined') {
@@ -2296,7 +2316,47 @@ function renderShop() {
         updateCoins();
         renderShop();
         updateNycBadge();
+  updateHelperBadge();
         renderGarden();
+      });
+    });
+    return;
+  }
+
+
+  if (currentShopTab === 'helper') {
+    const countEl = document.getElementById('shop-count');
+    if (countEl) countEl.textContent = 'Người giúp việc tự mua kho';
+    document.getElementById('shop-pager').innerHTML = '';
+    const remain = Game.hasHelper() ? Game.formatTime(Game.helperRemainingSec()) : 'Không active';
+    const nRules = (Game.getHelperConfig().rules || []).length;
+    const info = document.createElement('div');
+    info.className = 'shop-event-banner';
+    info.innerHTML = `<i class="fa-solid fa-user-tie"></i> Giúp việc: <strong>${remain}</strong> · ${nRules} mục mua tự động
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-helper-cfg-shop" style="margin-left:8px">Cấu hình</button>`;
+    grid.appendChild(info);
+    document.getElementById('btn-helper-cfg-shop')?.addEventListener('click', () => openHelperConfigModal());
+    const packs = (typeof DEFAULT_HELPER_PACKS !== 'undefined') ? DEFAULT_HELPER_PACKS : (Game.getHelperPacks ? Game.getHelperPacks() : []);
+    packs.forEach(pack => {
+      const card = document.createElement('div');
+      card.className = 'shop-card';
+      card.innerHTML = `
+        <div class="shop-icon">${pack.icon}</div>
+        <div class="shop-name">${pack.name}</div>
+        <span class="shop-type">Buff mua sắm</span>
+        <div class="shop-desc">Tự mua vật phẩm theo mốc kho trong ${pack.days} ngày (cộng dồn).</div>
+        <div class="shop-price">${pack.price.toLocaleString()} 🪙</div>
+        <button class="btn btn-primary btn-buy-helper" data-id="${pack.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>
+      `;
+      grid.appendChild(card);
+    });
+    document.querySelectorAll('.btn-buy-helper').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const res = await Game.buyHelperPack(btn.dataset.id);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        updateCoins();
+        renderShop();
+        updateHelperBadge();
       });
     });
     return;
@@ -2384,7 +2444,7 @@ function renderShop() {
 
   // Banner limited đang mở
   const activeLimited = Game.getPlants().filter(p => Game.isPlantLimited(p) && Game.isPlantAvailable(p));
-  if (activeLimited.length && currentShopTab !== 'odat' && currentShopTab !== 'phan' && currentShopTab !== 'baoho' && currentShopTab !== 'tien' && currentShopTab !== 'nyc') {
+  if (activeLimited.length && currentShopTab !== 'odat' && currentShopTab !== 'phan' && currentShopTab !== 'baoho' && currentShopTab !== 'tien' && currentShopTab !== 'nyc' && currentShopTab !== 'helper') {
     const banner = document.createElement('div');
     banner.className = 'shop-event-banner';
     banner.innerHTML = `<i class="fa-solid fa-bolt"></i> <strong>${activeLimited.length} hạt Limited</strong> đang mở bán — nhanh tay trước khi hết sự kiện!`;
@@ -2844,6 +2904,15 @@ function tickGardenCare(opts) {
       if (typeof softUpdatePlotModal === 'function') softUpdatePlotModal();
     }
   }
+  if (typeof Game.tickHelperBuy === 'function' && Game.isHelperActive && Game.isHelperActive()) {
+    const didH = Game.tickHelperBuy();
+    if (didH) {
+      if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(2000);
+      else if (typeof savePlayer === 'function') savePlayer().catch(() => {});
+      if (typeof updateCoins === 'function') updateCoins();
+      if (typeof updateHelperBadge === 'function') updateHelperBadge();
+    }
+  }
   if (typeof Game.tickNycCare === 'function' && Game.isNycActive()) {
     Game.tickNycCare().then(did => {
       if (!did) return;
@@ -2857,6 +2926,7 @@ function tickGardenCare(opts) {
   }
   if (typeof updateFairyBadge === 'function') updateFairyBadge();
   if (typeof updateNycBadge === 'function') updateNycBadge();
+  updateHelperBadge();
   if (typeof updateGlobalTimer === 'function') updateGlobalTimer();
   return fairyChanged;
 }
@@ -2908,6 +2978,7 @@ function softUpdateGarden() {
   else updateGlobalTimer();
   updateFairyBadge();
   updateNycBadge();
+  updateHelperBadge();
   softUpdatePlotModal();
   if (typeof softUpdateBank === 'function') softUpdateBank();
 }
@@ -3749,3 +3820,147 @@ setInterval(() => {
     }
   });
 })();
+
+
+// ===== NGƯỜI GIÚP VIỆC UI =====
+let _helperRulesDraft = [];
+
+function fillHelperItemSelect() {
+  const kind = document.getElementById('helper-add-kind')?.value || 'seed';
+  const sel = document.getElementById('helper-add-id');
+  if (!sel || typeof Game === 'undefined') return;
+  sel.innerHTML = '';
+  if (kind === 'seed') {
+    (Game.getPlants() || []).forEach(pl => {
+      if (!pl || !pl.id) return;
+      const o = document.createElement('option');
+      o.value = pl.id;
+      o.textContent = `${pl.icon || ''} ${pl.name}`.trim() + ` (${(pl.seedPrice || 0).toLocaleString()}🪙)`;
+      sel.appendChild(o);
+    });
+  } else if (kind === 'fert') {
+    (Game.getFertilizers() || []).forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.id;
+      o.textContent = `${f.icon || ''} ${f.name}`.trim() + ` (${(f.price || 0).toLocaleString()}🪙)`;
+      sel.appendChild(o);
+    });
+  } else if (kind === 'protect') {
+    const list = Game.getProtects ? Game.getProtects() : (typeof DEFAULT_PROTECTS !== 'undefined' ? DEFAULT_PROTECTS : []);
+    list.forEach(pr => {
+      const o = document.createElement('option');
+      o.value = pr.id;
+      o.textContent = `${pr.icon || ''} ${pr.name}`.trim() + ` (${(pr.price || 0).toLocaleString()}🪙)`;
+      sel.appendChild(o);
+    });
+  }
+}
+
+function renderHelperRulesList() {
+  const host = document.getElementById('helper-rules-list');
+  if (!host || typeof Game === 'undefined') return;
+  host.innerHTML = '';
+  if (!_helperRulesDraft.length) {
+    host.innerHTML = '<p class="bulk-hint">Chưa có mục nào — thêm bên dưới.</p>';
+    return;
+  }
+  _helperRulesDraft.forEach((r, idx) => {
+    const row = document.createElement('div');
+    row.className = 'helper-rule-row';
+    const name = Game.getItemDisplayName(r.kind, r.id);
+    const kindLabel = r.kind === 'seed' ? 'Hạt' : (r.kind === 'fert' ? 'Phân' : 'Bảo hộ');
+    row.innerHTML = `
+      <span class="helper-rule-name">${kindLabel}: ${name}</span>
+      <label>Mốc <input type="number" min="0" max="9999" data-i="${idx}" data-f="minStock" value="${r.minStock}" /></label>
+      <label>Mua <input type="number" min="1" max="99" data-i="${idx}" data-f="buyQty" value="${r.buyQty}" /></label>
+      <label class="checkbox-row"><input type="checkbox" data-i="${idx}" data-f="enabled" ${r.enabled !== false ? 'checked' : ''}/> Bật</label>
+      <button type="button" class="btn btn-secondary btn-sm" data-del="${idx}"><i class="fa-solid fa-trash"></i></button>
+    `;
+    host.appendChild(row);
+  });
+  host.querySelectorAll('input[data-f]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      const i = parseInt(inp.dataset.i, 10);
+      const f = inp.dataset.f;
+      if (!_helperRulesDraft[i]) return;
+      if (f === 'enabled') _helperRulesDraft[i].enabled = inp.checked;
+      else _helperRulesDraft[i][f] = parseInt(inp.value, 10) || 0;
+    });
+  });
+  host.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.del, 10);
+      _helperRulesDraft.splice(i, 1);
+      renderHelperRulesList();
+    });
+  });
+}
+
+function openHelperConfigModal() {
+  if (!currentPlayer || typeof Game === 'undefined') return;
+  const cfg = Game.getHelperConfig();
+  _helperRulesDraft = (cfg.rules || []).map(r => ({ ...r }));
+  const nameInp = document.getElementById('helper-custom-name');
+  if (nameInp) nameInp.value = cfg.customName || '';
+  const gF = document.querySelector('input[name="helper-gender"][value="female"]');
+  const gM = document.querySelector('input[name="helper-gender"][value="male"]');
+  if (cfg.gender === 'male') { if (gM) gM.checked = true; }
+  else { if (gF) gF.checked = true; }
+  fillHelperItemSelect();
+  renderHelperRulesList();
+  document.getElementById('modal-helper-config')?.classList.add('show');
+  if (typeof mountAllPillDropdowns === 'function') {
+    setTimeout(() => mountAllPillDropdowns(document.getElementById('modal-helper-config')), 50);
+  }
+}
+
+document.getElementById('helper-add-kind')?.addEventListener('change', () => {
+  fillHelperItemSelect();
+  if (typeof mountAllPillDropdowns === 'function') {
+    setTimeout(() => mountAllPillDropdowns(document.getElementById('modal-helper-config')), 50);
+  }
+});
+
+document.getElementById('btn-helper-add-rule')?.addEventListener('click', () => {
+  const kind = document.getElementById('helper-add-kind')?.value || 'seed';
+  const id = document.getElementById('helper-add-id')?.value;
+  if (!id) { showToast('Chọn vật phẩm!', 'error'); return; }
+  const minStock = parseInt(document.getElementById('helper-add-min')?.value, 10);
+  const buyQty = parseInt(document.getElementById('helper-add-qty')?.value, 10);
+  if (_helperRulesDraft.some(r => r.kind === kind && r.id === id)) {
+    showToast('Mục này đã có trong danh sách!', 'error');
+    return;
+  }
+  _helperRulesDraft.push({
+    kind, id,
+    minStock: Number.isFinite(minStock) ? minStock : 5,
+    buyQty: Number.isFinite(buyQty) && buyQty > 0 ? buyQty : 10,
+    enabled: true
+  });
+  renderHelperRulesList();
+});
+
+document.getElementById('btn-save-helper-config')?.addEventListener('click', async () => {
+  if (typeof Game === 'undefined') return;
+  const res = Game.setHelperConfig({
+    customName: document.getElementById('helper-custom-name')?.value || '',
+    gender: document.querySelector('input[name="helper-gender"]:checked')?.value || 'female',
+    rules: _helperRulesDraft
+  });
+  showToast(res.msg, res.ok ? 'success' : 'error');
+  if (res.ok) {
+    try { await savePlayer(); } catch (_) {}
+    updateHelperBadge();
+    document.getElementById('modal-helper-config')?.classList.remove('show');
+    if (Game.isHelperActive && Game.isHelperActive()) {
+      currentPlayer.lastHelperBuy = 0;
+      if (Game.tickHelperBuy()) {
+        updateCoins();
+        if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(1000);
+        else if (typeof savePlayer === 'function') savePlayer().catch(() => {});
+      }
+    }
+  }
+});
+
+document.getElementById('btn-helper-config')?.addEventListener('click', () => openHelperConfigModal());

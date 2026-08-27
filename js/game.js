@@ -14,6 +14,7 @@ const Game = {
   getProtect(id) { return DEFAULT_PROTECTS.find(p => p.id === id); },
   getProtects() { return DEFAULT_PROTECTS; },
   getFairyPacks() { return DEFAULT_FAIRY_PACKS; },
+  getHelperPacks() { return (typeof DEFAULT_HELPER_PACKS !== 'undefined') ? DEFAULT_HELPER_PACKS : []; },
   getNycPacks() { return DEFAULT_NYC_PACKS; },
   getPets() { return typeof getPets === 'function' ? getPets() : (typeof DEFAULT_PETS !== 'undefined' ? DEFAULT_PETS : []); },
   getPet(id) { return this.getPets().find(p => p.id === id); },
@@ -162,7 +163,7 @@ const Game = {
   },
 
   getBuffPrefs() {
-    const def = { fairyEnabled: true, nycEnabled: true, fairyVisual: true, nycVisual: true };
+    const def = { fairyEnabled: true, nycEnabled: true, helperEnabled: true, fairyVisual: true, nycVisual: true, helperVisual: true };
     if (!currentPlayer) return { ...def };
     if (!currentPlayer.buffPrefs || typeof currentPlayer.buffPrefs !== 'object') {
       currentPlayer.buffPrefs = { ...def };
@@ -170,8 +171,10 @@ const Game = {
     const p = currentPlayer.buffPrefs;
     if (typeof p.fairyEnabled !== 'boolean') p.fairyEnabled = true;
     if (typeof p.nycEnabled !== 'boolean') p.nycEnabled = true;
+    if (typeof p.helperEnabled !== 'boolean') p.helperEnabled = true;
     if (typeof p.fairyVisual !== 'boolean') p.fairyVisual = true;
     if (typeof p.nycVisual !== 'boolean') p.nycVisual = true;
+    if (typeof p.helperVisual !== 'boolean') p.helperVisual = true;
     return p;
   },
 
@@ -1452,6 +1455,211 @@ const Game = {
     await savePlayer();
     return { ok: true, msg: `Đã kích hoạt ${pack.name}! Còn ${this.formatTime(this.nycRemainingSec())}` };
   },
+
+  // ===== NGƯỜI GIÚP VIỆC (tự mua cửa hàng theo mốc) =====
+  hasHelper() {
+    return !!(currentPlayer && currentPlayer.helperUntil && currentPlayer.helperUntil > Date.now());
+  },
+  isHelperActive() {
+    return this.hasHelper() && this.getBuffPrefs().helperEnabled !== false;
+  },
+  helperRemainingSec() {
+    if (!this.hasHelper()) return 0;
+    return Math.max(0, Math.ceil((currentPlayer.helperUntil - Date.now()) / 1000));
+  },
+  getHelperEmoji() {
+    const g = (this.getHelperConfig().gender === 'male') ? 'male' : 'female';
+    return g === 'male' ? '🤵' : '💁';
+  },
+  getHelperDisplayName() {
+    const n = (this.getHelperConfig().customName || '').trim();
+    return n || 'Giúp việc';
+  },
+  defaultHelperConfig() {
+    return {
+      customName: '',
+      gender: 'female',
+      /** rules: { kind, id, minStock, buyQty, enabled } */
+      rules: []
+    };
+  },
+  getHelperConfig() {
+    const def = this.defaultHelperConfig();
+    if (!currentPlayer) return { ...def, rules: [] };
+    if (!currentPlayer.helperConfig || typeof currentPlayer.helperConfig !== 'object') {
+      currentPlayer.helperConfig = { ...def, rules: [] };
+    }
+    const c = currentPlayer.helperConfig;
+    if (typeof c.customName !== 'string') c.customName = '';
+    if (c.gender !== 'male' && c.gender !== 'female') c.gender = 'female';
+    if (!Array.isArray(c.rules)) c.rules = [];
+    c.rules = c.rules.filter(r => r && r.kind && r.id).map(r => ({
+      kind: r.kind,
+      id: String(r.id),
+      minStock: Math.max(0, Math.min(9999, parseInt(r.minStock, 10) || 0)),
+      buyQty: Math.max(1, Math.min(99, parseInt(r.buyQty, 10) || 1)),
+      enabled: r.enabled !== false
+    }));
+    return c;
+  },
+  setHelperConfig(cfg) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    const next = {
+      customName: (cfg && typeof cfg.customName === 'string') ? cfg.customName.trim().slice(0, 20) : '',
+      gender: cfg && cfg.gender === 'male' ? 'male' : 'female',
+      rules: Array.isArray(cfg && cfg.rules) ? cfg.rules.filter(r => r && r.kind && r.id).map(r => ({
+        kind: r.kind,
+        id: String(r.id),
+        minStock: Math.max(0, Math.min(9999, parseInt(r.minStock, 10) || 0)),
+        buyQty: Math.max(1, Math.min(99, parseInt(r.buyQty, 10) || 1)),
+        enabled: r.enabled !== false
+      })) : []
+    };
+    currentPlayer.helperConfig = next;
+    return { ok: true, msg: 'Đã lưu cấu hình Người giúp việc (' + next.rules.length + ' mục)' };
+  },
+
+  /** Số lượng hiện có trong kho theo kind+id */
+  getStockCount(kind, id) {
+    if (!currentPlayer || !currentPlayer.inventory) return 0;
+    const inv = currentPlayer.inventory;
+    if (kind === 'seed') return (inv.seeds && inv.seeds[id]) || 0;
+    if (kind === 'fert') return (inv.fertilizers && inv.fertilizers[id]) || 0;
+    if (kind === 'protect') return (inv.protects && inv.protects[id]) || 0;
+    return 0;
+  },
+
+  /** Giá 1 đơn vị vật phẩm cửa hàng */
+  getShopUnitPrice(kind, id) {
+    if (kind === 'seed') {
+      const p = this.getPlant(id);
+      return p ? (p.seedPrice || 0) : 0;
+    }
+    if (kind === 'fert') {
+      const f = this.getFertilizer(id);
+      return f ? (f.price || 0) : 0;
+    }
+    if (kind === 'protect') {
+      const pr = this.getProtect(id);
+      return pr ? (pr.price || 0) : 0;
+    }
+    return 0;
+  },
+
+  getItemDisplayName(kind, id) {
+    if (kind === 'seed') {
+      const p = this.getPlant(id);
+      return p ? ((p.icon || '') + ' ' + p.name).trim() : id;
+    }
+    if (kind === 'fert') {
+      const f = this.getFertilizer(id);
+      return f ? ((f.icon || '') + ' ' + f.name).trim() : id;
+    }
+    if (kind === 'protect') {
+      const pr = this.getProtect(id);
+      return pr ? ((pr.icon || '') + ' ' + pr.name).trim() : id;
+    }
+    return id;
+  },
+
+  /**
+   * Mua im lặng (không save) — dùng bởi helper.
+   * Trả về { ok, bought, cost, msg }
+   */
+  helperBuySilent(kind, id, qty) {
+    qty = Math.max(1, Math.min(99, parseInt(qty, 10) || 1));
+    if (kind === 'seed') {
+      const plant = this.getPlant(id);
+      if (!plant) return { ok: false, bought: 0, cost: 0, msg: 'Không có hạt' };
+      if (!this.isPlantAvailable(plant)) return { ok: false, bought: 0, cost: 0, msg: 'Limited hết hạn' };
+      const cost = plant.seedPrice * qty;
+      if (currentPlayer.coins < cost) return { ok: false, bought: 0, cost: 0, msg: 'Thiếu tiền' };
+      currentPlayer.coins -= cost;
+      currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
+      if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
+      currentPlayer.inventory.seeds[id] = (currentPlayer.inventory.seeds[id] || 0) + qty;
+      return { ok: true, bought: qty, cost, msg: plant.name };
+    }
+    if (kind === 'fert') {
+      const fert = this.getFertilizer(id);
+      if (!fert) return { ok: false, bought: 0, cost: 0, msg: 'Không có phân' };
+      const cost = fert.price * qty;
+      if (currentPlayer.coins < cost) return { ok: false, bought: 0, cost: 0, msg: 'Thiếu tiền' };
+      currentPlayer.coins -= cost;
+      currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
+      if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
+      currentPlayer.inventory.fertilizers[id] = (currentPlayer.inventory.fertilizers[id] || 0) + qty;
+      return { ok: true, bought: qty, cost, msg: fert.name };
+    }
+    if (kind === 'protect') {
+      const item = this.getProtect(id);
+      if (!item) return { ok: false, bought: 0, cost: 0, msg: 'Không có bảo hộ' };
+      const cost = item.price * qty;
+      if (currentPlayer.coins < cost) return { ok: false, bought: 0, cost: 0, msg: 'Thiếu tiền' };
+      currentPlayer.coins -= cost;
+      currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
+      if (!currentPlayer.inventory.protects) currentPlayer.inventory.protects = {};
+      currentPlayer.inventory.protects[id] = (currentPlayer.inventory.protects[id] || 0) + qty;
+      return { ok: true, bought: qty, cost, msg: item.name };
+    }
+    return { ok: false, bought: 0, cost: 0, msg: 'Loại không hỗ trợ' };
+  },
+
+  /**
+   * Tick giúp việc: với mỗi rule, nếu kho < minStock thì mua buyQty (nếu đủ tiền).
+   * Tối đa 1 lần / ~20s để tránh spam.
+   */
+  tickHelperBuy(now = Date.now()) {
+    if (!this.isHelperActive() || !currentPlayer) return false;
+    const last = currentPlayer.lastHelperBuy || 0;
+    if (now - last < 20000) return false; // 20s
+    const cfg = this.getHelperConfig();
+    const rules = (cfg.rules || []).filter(r => r.enabled !== false);
+    if (!rules.length) return false;
+
+    let any = false;
+    let totalCost = 0;
+    const lines = [];
+    rules.forEach(r => {
+      const have = this.getStockCount(r.kind, r.id);
+      if (have >= r.minStock) return;
+      // Kho dưới mốc → mua buyQty
+      const res = this.helperBuySilent(r.kind, r.id, r.buyQty);
+      if (res.ok && res.bought > 0) {
+        any = true;
+        totalCost += res.cost;
+        lines.push(`${res.msg} x${res.bought}`);
+      }
+    });
+    if (any) {
+      currentPlayer.lastHelperBuy = now;
+      const emoji = this.getHelperEmoji();
+      const name = this.getHelperDisplayName();
+      this.addActivity(`${emoji} ${name} mua: ${lines.slice(0, 5).join(', ')} (−${totalCost}🪙)`);
+      if (typeof Features !== 'undefined' && Features.trackQuest) {
+        // không bắt buộc
+      }
+    }
+    return any;
+  },
+
+  async buyHelperPack(packId) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    const packs = this.getHelperPacks();
+    const pack = packs.find(p => p.id === packId);
+    if (!pack) return { ok: false, msg: 'Gói không hợp lệ!' };
+    if (currentPlayer.coins < pack.price) return { ok: false, msg: 'Không đủ tiền!' };
+    currentPlayer.coins -= pack.price;
+    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + pack.price;
+    const base = Math.max(Date.now(), currentPlayer.helperUntil || 0);
+    currentPlayer.helperUntil = base + pack.days * 24 * 60 * 60 * 1000;
+    // Mua xong chạy 1 lần ngay nếu đã có rule
+    this.tickHelperBuy(Date.now());
+    this.addActivity(`Mua ${pack.name} (-${pack.price}🪙)`);
+    await savePlayer();
+    return { ok: true, msg: `Đã kích hoạt ${pack.name}! Còn ${this.formatTime(this.helperRemainingSec())}` };
+  },
+
 
   /** Cửa sổ đồng bộ trong MỘT vườn: 10s cuối gom ô sắp chín rồi thu + trồng cùng lúc */
   nycSyncWindowSec: 10,

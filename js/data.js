@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.3.1';
+const APP_VERSION = '1.4.0';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13105,7 +13105,7 @@ const DEFAULT_SETTINGS = {
   rainDurationMinutes: 0.25, // phút mưa liên tục (0.25 = 15 giây mặc định)
   plotPrice: 500,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.3.1',
+  appVersion: '1.4.0',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13142,6 +13142,17 @@ const DEFAULT_NYC_PACKS = [
   { id: 'nyc-10', days: 10, price: 1700, icon: '<i class="fa-solid fa-heart-crack"></i>', name: 'NYC 10 ngày' },
   { id: 'nyc-15', days: 15, price: 2400, icon: '<i class="fa-solid fa-heart-crack"></i>', name: 'NYC 15 ngày' },
   { id: 'nyc-30', days: 30, price: 4000, icon: '<i class="fa-solid fa-heart-crack"></i>', name: 'NYC 30 ngày' }
+];
+
+/** Gói Người giúp việc — tự mua vật phẩm cửa hàng theo mốc kho */
+const DEFAULT_HELPER_PACKS = [
+  { id: 'help-1', days: 1, price: 180, icon: '<i class="fa-solid fa-user-tie"></i>', name: 'Giúp việc 1 ngày' },
+  { id: 'help-3', days: 3, price: 450, icon: '<i class="fa-solid fa-user-tie"></i>', name: 'Giúp việc 3 ngày' },
+  { id: 'help-5', days: 5, price: 700, icon: '<i class="fa-solid fa-user-tie"></i>', name: 'Giúp việc 5 ngày' },
+  { id: 'help-7', days: 7, price: 950, icon: '<i class="fa-solid fa-user-tie"></i>', name: 'Giúp việc 7 ngày' },
+  { id: 'help-10', days: 10, price: 1250, icon: '<i class="fa-solid fa-user-tie"></i>', name: 'Giúp việc 10 ngày' },
+  { id: 'help-15', days: 15, price: 1700, icon: '<i class="fa-solid fa-user-tie"></i>', name: 'Giúp việc 15 ngày' },
+  { id: 'help-30', days: 30, price: 2800, icon: '<i class="fa-solid fa-user-tie"></i>', name: 'Giúp việc 30 ngày' }
 ];
 
 const TYPE_LABELS = {
@@ -13308,6 +13319,8 @@ async function loadPlayer(uid, email) {
     if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
     if (typeof currentPlayer.fairyUntil !== 'number') currentPlayer.fairyUntil = 0;
     if (typeof currentPlayer.lastFairyCare !== 'number') currentPlayer.lastFairyCare = 0;
+    if (typeof currentPlayer.helperUntil !== 'number') currentPlayer.helperUntil = 0;
+    if (typeof currentPlayer.lastHelperBuy !== 'number') currentPlayer.lastHelperBuy = 0;
     if (!currentPlayer.fairyConfig || typeof currentPlayer.fairyConfig !== 'object') {
       currentPlayer.fairyConfig = {
         waterMode: 'all', waterCount: 12, useFertilizer: true,
