@@ -46,10 +46,24 @@
       <span id="server-announce-text"></span>
       <button type="button" id="server-announce-close" class="server-announce-close" aria-label="Đóng">×</button>
     </div>
+    <div id="update-banner" class="update-banner" style="display:none" role="status">
+      <div class="update-banner-inner">
+        <span class="update-banner-icon"><i class="fa-solid fa-cloud-arrow-down"></i></span>
+        <div class="update-banner-text">
+          <strong id="update-banner-title">Có bản cập nhật mới</strong>
+          <span id="update-banner-notes"></span>
+        </div>
+        <button type="button" id="btn-update-reload" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-rotate"></i> Tải lại
+        </button>
+        <button type="button" id="btn-update-dismiss" class="update-banner-dismiss" aria-label="Đóng">×</button>
+      </div>
+    </div>
     <header class="header">
       <div class="logo">
         <span class="logo-icon"><i class="fa-duotone fa-seedling"></i></span>
         <span>Vườn Xanh</span>
+        <span id="app-version-badge" class="app-version-badge" title="Phiên bản client">v?</span>
       </div>
       <div class="user-info">
         <div class="level-badge" id="level-badge" title="Cấp độ">
@@ -609,10 +623,10 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/features.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/firebase-config.js?v=1.2.0"></script>
+  <script src="js/data.js?v=1.2.0"></script>
+  <script src="js/game.js?v=1.2.0"></script>
+  <script src="js/features.js?v=1.2.0"></script>
+  <script src="js/app.js?v=1.2.0"></script>
 </body>
 </html>
