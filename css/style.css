@@ -5280,3 +5280,65 @@ html, body, button, input, select, textarea {
 #modal-plot .plot-upgrade-row .pill-dd.open {
   z-index: 50;
 }
+
+/* Người giúp việc */
+.helper-badge {
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 0.88rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.helper-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  margin-top: 6px;
+}
+.helper-rule-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid rgba(45, 106, 79, 0.15);
+  font-size: 0.88rem;
+}
+.helper-rule-row .helper-rule-name { flex: 1; min-width: 120px; font-weight: 600; }
+.helper-rule-row input[type="number"] { width: 64px; }
+
+/* Menu Hỗ trợ (cạnh Công cụ) */
+.garden-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.garden-support-dd #btn-support-menu {
+  background: linear-gradient(135deg, #6366f1, #0ea5e9) !important;
+  border: none !important;
+}
+.garden-support-dd #btn-support-menu:hover {
+  filter: brightness(1.08);
+}
+.garden-tools-menu .support-menu-status {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.85;
+  color: var(--text-muted, #52796f);
+}
+.garden-tools-menu button[role="menuitem"] {
+  justify-content: flex-start;
+}
+html[data-theme="dark"] .garden-tools-menu .support-menu-status {
+  color: #a7c4b5;
+}
