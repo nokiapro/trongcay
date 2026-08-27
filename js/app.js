@@ -167,6 +167,7 @@ function updateHelperBadge() {
   } else {
     el.style.display = 'none';
   }
+  if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
 }
 
 
@@ -1999,6 +2000,7 @@ document.getElementById('btn-harvest-all')?.addEventListener('click', () => {
   if (!wrap || !btn) return;
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
+    document.getElementById('garden-support-dd')?.classList.remove('open');
     const open = wrap.classList.toggle('open');
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (open && typeof closeAllPillMenus === 'function') closeAllPillMenus();
@@ -2010,6 +2012,70 @@ document.getElementById('btn-harvest-all')?.addEventListener('click', () => {
     }
   });
 })();
+
+(function bindGardenSupportMenu() {
+  const wrap = document.getElementById('garden-support-dd');
+  const btn = document.getElementById('btn-support-menu');
+  if (!wrap || !btn) return;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('garden-tools-dd')?.classList.remove('open');
+    const open = wrap.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
+      if (typeof closeAllPillMenus === 'function') closeAllPillMenus();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target)) {
+      wrap.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+  const close = () => {
+    wrap.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+  };
+  document.getElementById('btn-support-fairy')?.addEventListener('click', () => {
+    close();
+    if (typeof openFairyConfigModal === 'function') openFairyConfigModal();
+  });
+  document.getElementById('btn-support-nyc')?.addEventListener('click', () => {
+    close();
+    if (typeof openNycConfigModal === 'function') openNycConfigModal();
+  });
+  document.getElementById('btn-support-helper')?.addEventListener('click', () => {
+    close();
+    if (typeof openHelperConfigModal === 'function') openHelperConfigModal();
+  });
+})();
+
+function refreshSupportMenuStatus() {
+  if (typeof Game === 'undefined') return;
+  const set = (id, active, text) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.style.opacity = active ? '1' : '0.55';
+  };
+  if (Game.hasFairy && Game.hasFairy()) {
+    set('support-status-fairy', true, Game.formatTime(Game.fairyRemainingSec()));
+  } else {
+    set('support-status-fairy', false, 'Chưa mua');
+  }
+  if (Game.hasNyc && Game.hasNyc()) {
+    set('support-status-nyc', true, Game.formatTime(Game.nycRemainingSec()));
+  } else {
+    set('support-status-nyc', false, 'Chưa mua');
+  }
+  if (Game.hasHelper && Game.hasHelper()) {
+    set('support-status-helper', true, Game.formatTime(Game.helperRemainingSec()));
+  } else {
+    set('support-status-helper', false, 'Chưa mua');
+  }
+}
+
 
 // ===== FERT PICKER =====
 function openFertModal(plotId) {
