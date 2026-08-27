@@ -165,9 +165,38 @@
           <input type="number" id="set-plots" min="4" max="36" />
           <label>Tiền khởi đầu (cho user mới)</label>
           <input type="number" id="set-coins" min="0" />
-          <label>Tỉ lệ mưa ngẫu nhiên (%) — mỗi ~45 giây kiểm tra một lần</label>
-          <input type="number" id="set-rain" min="0" max="100" />
-          <p style="font-size:0.85rem;color:#52796f;margin-top:4px">Mưa kéo dài ~15s, rút ngắn ~12% thời gian còn lại của cây đang lớn.</p>
+          <label>Tỉ lệ mưa ngẫu nhiên (%) — mỗi ~45 giây kiểm tra một lần (1–50)</label>
+          <input type="number" id="set-rain" min="1" max="50" step="1" />
+          <label>Thời lượng mưa liên tục (phút)</label>
+          <input type="number" id="set-rain-duration" min="0.1" max="120" step="0.05" />
+          <p style="font-size:0.85rem;color:#52796f;margin-top:4px">Ví dụ: 0.25 = 15 giây, 1 = 1 phút, 5 = 5 phút. Mưa rút ngắn ~12% thời gian còn lại của cây đang lớn. Tiên (nếu bật) tưới hết khi mưa.</p>
+        </div>
+        <div class="admin-card maint-card" style="margin-top:16px">
+          <div class="maint-card-head">
+            <span class="maint-icon"><i class="fa-solid fa-cloud-arrow-down"></i></span>
+            <div>
+              <h3 style="margin:0">Hệ thống cập nhật client</h3>
+              <p style="margin:4px 0 0;font-size:0.88rem;color:#52796f">Sau khi deploy code mới lên host, bấm <strong>Công bố phiên bản</strong> để user đang online nhận thông báo tải lại.</p>
+            </div>
+          </div>
+          <p style="margin:10px 0 6px;font-size:0.9rem">
+            Code admin đang chạy: <strong id="set-client-version">—</strong>
+            · Đã công bố trên server: <strong id="set-published-version">—</strong>
+          </p>
+          <label>Ghi chú bản cập nhật (hiện cho user)</label>
+          <textarea id="set-update-notes" rows="2" placeholder="Ví dụ: Sửa Tiên tưới không giới hạn, thêm mưa theo phút…"></textarea>
+          <label class="maint-toggle" style="margin-top:8px">
+            <input type="checkbox" id="set-force-update" />
+            <span>Bắt buộc tải lại (không cho đóng thông báo)</span>
+          </label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
+            <button type="button" id="btn-publish-version" class="btn btn-primary">
+              <i class="fa-solid fa-rocket"></i> Công bố phiên bản code hiện tại
+            </button>
+            <button type="button" id="btn-save-update-meta" class="btn btn-secondary">
+              <i class="fa-solid fa-floppy-disk"></i> Lưu ghi chú / bắt buộc
+            </button>
+          </div>
         </div>
         <div class="admin-card maint-card">
           <div class="maint-card-head">
@@ -267,8 +296,8 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="../js/firebase-config.js"></script>
-  <script src="../js/data.js"></script>
-  <script src="../js/admin.js"></script>
+  <script src="../js/firebase-config.js?v=1.2.0"></script>
+  <script src="../js/data.js?v=1.2.0"></script>
+  <script src="../js/admin.js?v=1.2.0"></script>
 </body>
 </html>
