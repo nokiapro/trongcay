@@ -959,18 +959,95 @@ const Game = {
     return { ok: true, msg: count > 0 ? `Đã bón phân ${count} ô!` : 'Không có ô nào cần bón.' };
   },
 
+  /** Chu kỳ hiệu lực tưới / bón: 3 giờ */
+  BOOST_MS: 3 * 60 * 60 * 1000,
+  /** 10 giây cuối: UI hiện "chưa tưới / chưa bón" (sắp hết lượt) */
+  BOOST_PREVIEW_MS: 10 * 1000,
+
+  /** ms còn lại hiệu lực tưới (0 = hết / chưa tưới) */
+  getWaterBoostRemainingMs(plot, now = Date.now()) {
+    if (!plot || !(plot.waterCount > 0) || !plot.lastWatered) return 0;
+    return Math.max(0, (plot.lastWatered + this.BOOST_MS) - now);
+  },
+
+  /** ms còn lại hiệu lực phân (0 = hết / chưa bón) */
+  getFertBoostRemainingMs(plot, now = Date.now()) {
+    if (!plot || !plot.fertilizerId || !plot.fertilizedAt) return 0;
+    return Math.max(0, (plot.fertilizedAt + this.BOOST_MS) - now);
+  },
+
+  /** Tưới còn hiệu lực thật (chưa về 0) */
+  isWaterBoostActive(plot, now = Date.now()) {
+    return this.getWaterBoostRemainingMs(plot, now) > 0;
+  },
+
+  /** Phân còn hiệu lực thật */
+  isFertBoostActive(plot, now = Date.now()) {
+    return this.getFertBoostRemainingMs(plot, now) > 0;
+  },
+
+  /**
+   * Hiển thị tưới trong chi tiết ô:
+   * - 10 giây cuối hoặc đã hết → "Chưa tưới nước"
+   * - còn hiệu lực → "3/3 💧" (1 lượt tưới đủ)
+   */
+  getWaterDisplayState(plot, now = Date.now()) {
+    const rem = this.getWaterBoostRemainingMs(plot, now);
+    if (rem <= 0 || rem <= this.BOOST_PREVIEW_MS) {
+      return {
+        active: false,
+        nearExpiry: rem > 0 && rem <= this.BOOST_PREVIEW_MS,
+        remainingMs: rem,
+        text: 'Chưa tưới nước',
+        short: '0/3'
+      };
+    }
+    const c = Math.min(3, plot.waterCount || 0);
+    return {
+      active: true,
+      nearExpiry: false,
+      remainingMs: rem,
+      text: `${c}/3 💧`,
+      short: `${c}/3`
+    };
+  },
+
+  /**
+   * Hiển thị phân trong chi tiết ô:
+   * - 10 giây cuối hoặc đã hết → "Chưa bón phân"
+   * - còn hiệu lực → tên phân
+   */
+  getFertDisplayState(plot, now = Date.now()) {
+    const rem = this.getFertBoostRemainingMs(plot, now);
+    if (rem <= 0 || rem <= this.BOOST_PREVIEW_MS || !plot.fertilizerId) {
+      return {
+        active: false,
+        nearExpiry: rem > 0 && rem <= this.BOOST_PREVIEW_MS,
+        remainingMs: rem,
+        text: 'Chưa bón phân',
+        fertId: null
+      };
+    }
+    const fert = this.getFertilizer(plot.fertilizerId);
+    const name = fert ? `${fert.icon || ''} ${fert.name}`.trim() : plot.fertilizerId;
+    return {
+      active: true,
+      nearExpiry: false,
+      remainingMs: rem,
+      text: name,
+      fertId: plot.fertilizerId
+    };
+  },
+
   /** Giây còn lại đến khi hết hiệu lực nước/phân (mốc sớm nhất). null nếu không có boost */
   getBoostResetRemaining(plot) {
     if (!plot) return null;
-    const THREE_H = 3 * 60 * 60 * 1000;
     const now = Date.now();
     let ends = [];
-    if ((plot.waterCount || 0) > 0 && plot.lastWatered) {
-      ends.push(plot.lastWatered + THREE_H);
-    }
-    if (plot.fertilizerId && plot.fertilizedAt) {
-      ends.push(plot.fertilizedAt + THREE_H);
-    }
+    const w = this.getWaterBoostRemainingMs(plot, now);
+    if (w > 0) ends.push(now + w);
+    const f = this.getFertBoostRemainingMs(plot, now);
+    if (f > 0) ends.push(now + f);
     if (!ends.length) return null;
     const soonest = Math.min(...ends);
     return Math.max(0, Math.ceil((soonest - now) / 1000));
@@ -1163,13 +1240,20 @@ const Game = {
       wateredN++;
     }
 
-    // 2) Bón phân từ kho — chọn loại theo config; hết kho thì dừng, không bón nữa
+    // 2) Bón phân từ kho — chưa bón hoặc đã hết hạn 3h; hết kho thì dừng
     if (cfg.useFertilizer) {
-      const needFert = plots.filter(p => p && p.plantId && !this.isReady(p) && !p.fertilizerId);
+      const needFert = plots.filter(p => {
+        if (!p || !p.plantId || this.isReady(p)) return false;
+        return !this.isFertBoostActive(p, now);
+      });
       for (let i = 0; i < needFert.length; i++) {
+        const plot = needFert[i];
+        if (plot.fertilizerId) {
+          plot.fertilizerId = null;
+          plot.fertilizedAt = null;
+        }
         const fertId = this.takeFertFromBagForFairy(cfg);
         if (!fertId) break; // hết phân → dừng
-        const plot = needFert[i];
         plot.fertilizerId = fertId;
         plot.fertilizedAt = now;
         fertN++;
@@ -1191,16 +1275,12 @@ const Game = {
   },
 
   /**
-   * Tiên tưới lại ô có cây ngay khi có lượt (trên currentPlayer.plots = vườn đang xét):
-   * - chưa đủ 3/3 nước, HOẶC
-   * - đã hết hạn 3 giờ kể từ lastWatered (đếm ngược về 0 = có 1 lượt tưới)
-   * → tưới ngay 3/3 + lastWatered = now (không chờ chu kỳ lastFairyCare).
-   * Không giới hạn số ô — cứ thấy ô cần tưới là tưới hết.
-   * Gọi từ forEachGarden trong resetExpiredBoosts → mỗi vườn được xử lý riêng.
+   * Tiên tưới ngay khi có lượt (currentPlayer.plots = vườn đang xét):
+   * - chưa đủ 3/3, HOẶC đồng hồ 3h về 0 (hết lượt tưới)
+   * → set 3/3 + lastWatered = now. Không giới hạn số ô.
    */
   fairyEnsureWatered(now = Date.now()) {
     if (!this.isFairyActive() || !currentPlayer || !currentPlayer.plots) return false;
-    const THREE_H = 3 * 60 * 60 * 1000;
     const plots = Array.isArray(currentPlayer.plots)
       ? currentPlayer.plots
       : Object.values(currentPlayer.plots || {});
@@ -1208,18 +1288,17 @@ const Game = {
     let n = 0;
     plots.forEach(plot => {
       if (!plot || !plot.plantId) return;
+      if (this.isReady(plot)) return;
       const count = plot.waterCount || 0;
-      const expired = count > 0 && plot.lastWatered && (now - plot.lastWatered >= THREE_H);
+      const expired = !this.isWaterBoostActive(plot, now);
       const missing = count < 3;
       const never = count <= 0 || !plot.lastWatered;
-      // Có lượt (hết 3h / thiếu / chưa tưới) → tưới ngay
       if (!expired && !missing && !never) return;
       plot.waterCount = 3;
       plot.watered = true;
       plot.lastWatered = now;
       n++;
     });
-    // Tiên tưới lại cũng tính nhiệm vụ
     if (n > 0 && typeof Features !== 'undefined' && Features.trackQuest) {
       Features.trackQuest('water', n * 3);
     }
@@ -1227,35 +1306,67 @@ const Game = {
   },
 
   /**
+   * Tiên bón ngay khi:
+   * - chưa bón, HOẶC hết hạn 3h phân (đồng hồ về 0)
+   * Theo fairyConfig (loại phân / any); hết kho thì dừng, không bón nữa.
+   */
+  fairyEnsureFertilized(now = Date.now()) {
+    if (!this.isFairyActive() || !currentPlayer || !currentPlayer.plots) return false;
+    const cfg = this.getFairyConfig();
+    if (!cfg.useFertilizer) return false;
+    const plots = Array.isArray(currentPlayer.plots)
+      ? currentPlayer.plots
+      : Object.values(currentPlayer.plots || {});
+    if (!Array.isArray(currentPlayer.plots)) currentPlayer.plots = plots;
+    let n = 0;
+    plots.forEach(plot => {
+      if (!plot || !plot.plantId) return;
+      if (this.isReady(plot)) return;
+      const active = this.isFertBoostActive(plot, now);
+      if (active) return;
+      // Hết hạn → xóa phân cũ rồi bón lại nếu còn trong kho
+      if (plot.fertilizerId) {
+        plot.fertilizerId = null;
+        plot.fertilizedAt = null;
+      }
+      const fertId = this.takeFertFromBagForFairy(cfg);
+      if (!fertId) return; // hết phân
+      plot.fertilizerId = fertId;
+      plot.fertilizedAt = now;
+      n++;
+    });
+    return n > 0;
+  },
+
+  /**
    * Mỗi tick:
-   * - Có Tiên: khi hết hạn nước (timer → 0) hoặc thiếu nước → Tiên tưới NGAY (không chờ);
-   *   đủ 3 giờ kể từ lastFairyCare → chăm full (tưới + bón theo config), luôn cập nhật mốc 3h.
-   * - Không Tiên: hết 3 giờ trên ô → mất nước/phân như cũ.
+   * - Có Tiên: hết 3h nước → tưới ngay; hết 3h phân / chưa bón → bón ngay (nếu còn kho);
+   *   chu kỳ lastFairyCare 3h → chăm full.
+   * - Không Tiên: hết 3h → mất nước/phân.
+   * UI 10 giây cuối do getWater/FertDisplayState xử lý (hiện "chưa ...").
    */
   resetExpiredBoosts() {
     if (!currentPlayer) return false;
     this.ensureGardens();
-    const THREE_H = 3 * 60 * 60 * 1000;
     const now = Date.now();
     let changed = false;
     const fairy = this.isFairyActive();
 
-    // Xử lý trên từng vườn (Tiên chỉ chăm vườn được bật trong cấu hình)
     this.forEachGarden((plots, gi) => {
       const fairyHere = fairy && this.isFairyGardenEnabled(gi);
       if (fairyHere) {
-        // Tiên thấy có lượt tưới (đếm ngược 3h = 0) → tưới ngay
         if (this.fairyEnsureWatered(now)) changed = true;
+        if (this.fairyEnsureFertilized(now)) changed = true;
       } else {
         plots.forEach(plot => {
           if (!plot) return;
-          if ((plot.waterCount || 0) > 0 && plot.lastWatered && (now - plot.lastWatered >= THREE_H)) {
+          if ((plot.waterCount || 0) > 0 && plot.lastWatered && !this.isWaterBoostActive(plot, now)) {
             plot.waterCount = 0;
             plot.watered = false;
             plot.lastWatered = null;
             changed = true;
           }
-          if (plot.fertilizerId && plot.fertilizedAt && (now - plot.fertilizedAt >= THREE_H)) {
+          if (plot.fertilizerId && plot.fertilizedAt && !this.isFertBoostActive(plot, now)) {
             plot.fertilizerId = null;
             plot.fertilizedAt = null;
             changed = true;
@@ -1272,8 +1383,7 @@ const Game = {
 
     if (fairy) {
       const last = currentPlayer.lastFairyCare || 0;
-      // Có lượt chăm 3h → chạy ngay (tưới hết + bón theo lựa chọn, hết phân thì dừng)
-      if (!last || (now - last >= THREE_H)) {
+      if (!last || (now - last >= this.BOOST_MS)) {
         this.forEachGarden((plots, gi) => {
           if (!this.isFairyGardenEnabled(gi)) return;
           this.runFairyCare(now);

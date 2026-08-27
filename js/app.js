@@ -1198,10 +1198,20 @@ const PILL_ARROW_SVG = `<svg class="pill-dd-arrow" fill="none" stroke="currentCo
 function closeAllPillMenus(except) {
   document.querySelectorAll('.pill-dd.open').forEach(dd => {
     if (except && dd === except) return;
-    dd.classList.remove('open');
+    dd.classList.remove('open', 'drop-up');
     const menu = dd.querySelector('.pill-dd-menu');
     const trigger = dd.querySelector('.pill-dd-trigger');
-    if (menu) menu.hidden = true;
+    if (menu) {
+      menu.hidden = true;
+      // reset fixed pos
+      menu.style.top = '';
+      menu.style.left = '';
+      menu.style.bottom = '';
+      menu.style.right = '';
+      menu.style.position = '';
+      menu.style.minWidth = '';
+      menu.style.zIndex = '';
+    }
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
   });
 }
@@ -1299,15 +1309,42 @@ function mountPillDropdown(select, opts = {}) {
     rebuildMenu();
   };
 
+  const positionMenu = () => {
+    // fixed để không bị modal overflow cắt; tự lật lên nếu thiếu chỗ dưới
+    menu.style.position = 'fixed';
+    menu.style.right = 'auto';
+    menu.style.bottom = 'auto';
+    const tr = trigger.getBoundingClientRect();
+    const minW = Math.max(tr.width, wrap.classList.contains('pill-dd-block') ? tr.width : 0);
+    menu.style.minWidth = minW + 'px';
+    menu.style.maxWidth = Math.min(320, window.innerWidth - 16) + 'px';
+    // đo chiều cao sau khi hiện
+    menu.hidden = false;
+    const mh = Math.min(menu.scrollHeight || 260, 280);
+    const spaceBelow = window.innerHeight - tr.bottom - 8;
+    const spaceAbove = tr.top - 8;
+    const openUp = spaceBelow < mh + 4 && spaceAbove > spaceBelow;
+    wrap.classList.toggle('drop-up', openUp);
+    if (openUp) {
+      const top = Math.max(8, tr.top - mh - 6);
+      menu.style.top = top + 'px';
+      menu.style.left = Math.min(tr.left, window.innerWidth - minW - 8) + 'px';
+    } else {
+      menu.style.top = (tr.bottom + 6) + 'px';
+      menu.style.left = Math.min(Math.max(8, tr.left), window.innerWidth - minW - 8) + 'px';
+    }
+    menu.style.zIndex = '400';
+  };
+
   trigger.addEventListener('click', (e) => {
     e.stopPropagation();
     const willOpen = menu.hidden;
     closeAllPillMenus();
     if (willOpen) {
       rebuildMenu();
-      menu.hidden = false;
       trigger.setAttribute('aria-expanded', 'true');
       wrap.classList.add('open');
+      positionMenu();
     }
   });
 
@@ -1679,11 +1716,13 @@ function openPlotModal(plotId) {
   const remain = Game.getRemainingSeconds(plot);
   const stage = Game.getStage(plot);
 
-  let fertText = 'Chưa bón';
-  if (plot.fertilizerId) {
-    const f = Game.getFertilizer(plot.fertilizerId);
-    fertText = f ? `${f.icon} ${f.name}` : 'Đã bón';
-  }
+  const waterDisp = (typeof Game.getWaterDisplayState === 'function')
+    ? Game.getWaterDisplayState(plot)
+    : { text: `${plot.waterCount || 0}/3 ${plot.watered ? '💧' : ''}`, active: (plot.waterCount || 0) >= 3 };
+  const fertDisp = (typeof Game.getFertDisplayState === 'function')
+    ? Game.getFertDisplayState(plot)
+    : { text: plot.fertilizerId ? ((Game.getFertilizer(plot.fertilizerId) || {}).name || 'Đã bón') : 'Chưa bón phân', active: !!plot.fertilizerId };
+  let fertText = fertDisp.text;
 
   document.getElementById('plot-title').innerHTML = `${plant.icon} ${plant.name}`;
   document.getElementById('plot-detail').innerHTML = `
@@ -1694,15 +1733,15 @@ function openPlotModal(plotId) {
         <div class="plot-detail-progress-label">Tiến độ ra hoa/quả: <strong data-role="plot-pct">${Math.min(100, progress)}%</strong></div>
         <div class="plot-progress plot-progress-lg"><div class="plot-progress-bar" data-role="plot-bar" style="width:${Math.min(100, progress)}%"></div></div>
       </div>
-      <p><strong>Tưới nước:</strong> <span data-role="plot-water">${plot.waterCount || 0}/3 ${plot.watered ? '💧' : ''}</span></p>
-      <p><strong>Phân bón:</strong> ${fertText}</p>
+      <p><strong>Tưới nước:</strong> <span data-role="plot-water" class="${waterDisp.active ? '' : 'plot-boost-off'}">${waterDisp.text}</span></p>
+      <p><strong>Phân bón:</strong> <span data-role="plot-fert" class="${fertDisp.active ? '' : 'plot-boost-off'}">${fertText}</span></p>
       <p><strong>Sản lượng gốc:</strong> ${plant.yield} · Giá bán: ${plant.sellPrice}🪙</p>
       ${plant.desc ? `<p class="plot-detail-desc">${plant.desc}</p>` : ''}
     </div>
   `;
 
-  document.getElementById('btn-water').style.display = ready || (plot.waterCount || 0) >= 3 ? 'none' : 'inline-flex';
-  document.getElementById('btn-fertilize').style.display = ready || plot.fertilizerId ? 'none' : 'inline-flex';
+  document.getElementById('btn-water').style.display = ready || waterDisp.active ? 'none' : 'inline-flex';
+  document.getElementById('btn-fertilize').style.display = ready || fertDisp.active ? 'none' : 'inline-flex';
   document.getElementById('btn-harvest').style.display = ready ? 'inline-flex' : 'none';
   // Nâng cấp hệ số ô (1.0 → 50)
   const curMult = Number(plot.specialMult) || 1;
@@ -1765,15 +1804,30 @@ function softUpdatePlotModal() {
   const barEl = detail.querySelector('[data-role="plot-bar"]');
   if (barEl) barEl.style.width = Math.min(100, progress) + '%';
 
-  const waterEl = detail.querySelector('[data-role="plot-water"]');
-  if (waterEl) waterEl.textContent = `${plot.waterCount || 0}/3 ${plot.watered ? '💧' : ''}`;
+  const waterDisp = (typeof Game.getWaterDisplayState === 'function')
+    ? Game.getWaterDisplayState(plot)
+    : { text: `${plot.waterCount || 0}/3`, active: (plot.waterCount || 0) >= 3 };
+  const fertDisp = (typeof Game.getFertDisplayState === 'function')
+    ? Game.getFertDisplayState(plot)
+    : { text: plot.fertilizerId ? 'Đã bón' : 'Chưa bón phân', active: !!plot.fertilizerId };
 
-  // Đổi nút khi chín
+  const waterEl = detail.querySelector('[data-role="plot-water"]');
+  if (waterEl) {
+    waterEl.textContent = waterDisp.text;
+    waterEl.classList.toggle('plot-boost-off', !waterDisp.active);
+  }
+  const fertEl = detail.querySelector('[data-role="plot-fert"]');
+  if (fertEl) {
+    fertEl.textContent = fertDisp.text;
+    fertEl.classList.toggle('plot-boost-off', !fertDisp.active);
+  }
+
+  // Đổi nút khi chín / hết hiệu lực (gồm 10 giây cuối)
   const btnWater = document.getElementById('btn-water');
   const btnFert = document.getElementById('btn-fertilize');
   const btnHarvest = document.getElementById('btn-harvest');
-  if (btnWater) btnWater.style.display = ready || (plot.waterCount || 0) >= 3 ? 'none' : 'inline-flex';
-  if (btnFert) btnFert.style.display = ready || plot.fertilizerId ? 'none' : 'inline-flex';
+  if (btnWater) btnWater.style.display = ready || waterDisp.active ? 'none' : 'inline-flex';
+  if (btnFert) btnFert.style.display = ready || fertDisp.active ? 'none' : 'inline-flex';
   if (btnHarvest) btnHarvest.style.display = ready ? 'inline-flex' : 'none';
 }
 

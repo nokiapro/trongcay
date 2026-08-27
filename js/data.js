@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13105,7 +13105,7 @@ const DEFAULT_SETTINGS = {
   rainDurationMinutes: 0.25, // phút mưa liên tục (0.25 = 15 giây mặc định)
   plotPrice: 500,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.2.0',
+  appVersion: '1.3.0',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
