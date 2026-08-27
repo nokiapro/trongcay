@@ -13095,11 +13095,21 @@ const DEFAULT_FERTILIZERS = [
   }
 ];
 
+/** Phiên bản client (tăng mỗi lần deploy code mới) */
+const APP_VERSION = '1.2.0';
+
 const DEFAULT_SETTINGS = {
   plotCount: 12,
   startCoins: 1000,
-  rainChance: 15,
-  plotPrice: 500
+  rainChance: 15,          // 1–50 (%)
+  rainDurationMinutes: 0.25, // phút mưa liên tục (0.25 = 15 giây mặc định)
+  plotPrice: 500,
+  /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
+  appVersion: '1.2.0',
+  /** Ghi chú hiển thị khi có bản mới */
+  updateNotes: '',
+  /** true = bắt buộc tải lại (không cho đóng banner) */
+  forceUpdate: false
 };
 
 /** Bùa bảo hộ ghép hạt — tỉ lệ thành công % */

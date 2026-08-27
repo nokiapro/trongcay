@@ -3508,3 +3508,161 @@ async function maybeSendBirthdayMailLocal() {
     loadPlayerMailbox();
   } catch (_) {}
 }
+
+
+// ===== HỆ THỐNG CẬP NHẬT CLIENT =====
+/** So sánh version dạng 1.2.3 — trả về <0 / 0 / >0 */
+function compareSemver(a, b) {
+  const pa = String(a || '0').split(/[^\d]+/).map(n => parseInt(n, 10) || 0);
+  const pb = String(b || '0').split(/[^\d]+/).map(n => parseInt(n, 10) || 0);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const x = pa[i] || 0, y = pb[i] || 0;
+    if (x !== y) return x - y;
+  }
+  return 0;
+}
+
+function getClientVersion() {
+  return (typeof APP_VERSION !== 'undefined' && APP_VERSION) ? String(APP_VERSION) : '0.0.0';
+}
+
+function getPublishedVersion() {
+  const s = (typeof currentSettings !== 'undefined' && currentSettings) ? currentSettings : null;
+  return (s && s.appVersion) ? String(s.appVersion) : getClientVersion();
+}
+
+function hardReloadApp() {
+  try {
+    sessionStorage.setItem('vx_reload_at', String(Date.now()));
+  } catch (_) {}
+  const url = new URL(location.href);
+  url.searchParams.set('_v', String(Date.now()));
+  // Bỏ hash để tránh kẹt modal
+  url.hash = '';
+  location.replace(url.toString());
+}
+
+function showUpdateBanner(opts) {
+  const el = document.getElementById('update-banner');
+  if (!el) return;
+  const title = document.getElementById('update-banner-title');
+  const notes = document.getElementById('update-banner-notes');
+  const pub = (opts && opts.published) || getPublishedVersion();
+  const client = getClientVersion();
+  if (title) title.textContent = `Có bản cập nhật mới (v${pub}) — bạn đang ở v${client}`;
+  if (notes) {
+    const n = (opts && opts.notes != null) ? opts.notes : ((currentSettings && currentSettings.updateNotes) || '');
+    notes.textContent = n ? String(n) : 'Vui lòng tải lại để dùng tính năng / sửa lỗi mới.';
+  }
+  const force = !!(opts && opts.force != null ? opts.force : (currentSettings && currentSettings.forceUpdate));
+  el.classList.toggle('force', force);
+  el.classList.add('show');
+  el.style.display = '';
+}
+
+function hideUpdateBanner() {
+  const el = document.getElementById('update-banner');
+  if (!el) return;
+  if (el.classList.contains('force')) return; // bắt buộc → không đóng
+  el.classList.remove('show');
+  el.style.display = 'none';
+  try {
+    sessionStorage.setItem('vx_dismiss_update', getPublishedVersion());
+  } catch (_) {}
+}
+
+function needsClientUpdate() {
+  const client = getClientVersion();
+  const pub = getPublishedVersion();
+  return compareSemver(client, pub) < 0;
+}
+
+function checkClientUpdate(fromListener) {
+  const badge = document.getElementById('app-version-badge');
+  if (badge) badge.textContent = 'v' + getClientVersion();
+
+  if (!needsClientUpdate()) {
+    hideUpdateBanner();
+    return false;
+  }
+  // Nếu user đã dismiss bản này và không force → không hiện lại (trừ khi force)
+  const force = !!(currentSettings && currentSettings.forceUpdate);
+  if (!force && !fromListener) {
+    try {
+      if (sessionStorage.getItem('vx_dismiss_update') === getPublishedVersion()) {
+        return true;
+      }
+    } catch (_) {}
+  }
+  showUpdateBanner({
+    published: getPublishedVersion(),
+    notes: currentSettings && currentSettings.updateNotes,
+    force
+  });
+  return true;
+}
+
+function bindUpdateUI() {
+  document.getElementById('btn-update-reload')?.addEventListener('click', () => hardReloadApp());
+  document.getElementById('btn-update-dismiss')?.addEventListener('click', () => hideUpdateBanner());
+  const badge = document.getElementById('app-version-badge');
+  if (badge) badge.textContent = 'v' + getClientVersion();
+}
+
+let _settingsVersionUnsub = null;
+function watchSettingsForUpdate() {
+  if (typeof db === 'undefined' || !db) return;
+  try {
+    if (_settingsVersionUnsub) {
+      db.ref('settings').off('value', _settingsVersionUnsub);
+      _settingsVersionUnsub = null;
+    }
+  } catch (_) {}
+  const handler = (snap) => {
+    if (!snap.exists()) return;
+    const val = snap.val() || {};
+    // Giữ object settings đồng bộ (không ghi đè toàn bộ nếu đang sửa local — merge)
+    if (typeof currentSettings === 'undefined' || !currentSettings) {
+      // eslint-disable-next-line no-undef
+      currentSettings = { ...(typeof DEFAULT_SETTINGS !== 'undefined' ? DEFAULT_SETTINGS : {}), ...val };
+    } else {
+      if (val.appVersion != null) currentSettings.appVersion = val.appVersion;
+      if (val.updateNotes != null) currentSettings.updateNotes = val.updateNotes;
+      if (typeof val.forceUpdate === 'boolean') currentSettings.forceUpdate = val.forceUpdate;
+      // Đồng bộ vài field hay dùng
+      if (val.rainChance != null) currentSettings.rainChance = val.rainChance;
+      if (val.rainDurationMinutes != null) currentSettings.rainDurationMinutes = val.rainDurationMinutes;
+      if (typeof val.maintenanceOn === 'boolean') currentSettings.maintenanceOn = val.maintenanceOn;
+    }
+    checkClientUpdate(true);
+  };
+  _settingsVersionUnsub = handler;
+  db.ref('settings').on('value', handler);
+}
+
+// Bind sớm + kiểm tra sau khi có settings
+bindUpdateUI();
+document.addEventListener('DOMContentLoaded', () => {
+  bindUpdateUI();
+  // Sau khi login/initGlobalData thường đã có settings — check định kỳ nhẹ
+  setTimeout(() => checkClientUpdate(false), 1500);
+});
+
+// Mỗi 2 phút kiểm tra lại (phòng listener bị mất)
+setInterval(() => {
+  if (typeof currentUser !== 'undefined' && currentUser) checkClientUpdate(false);
+}, 120000);
+
+// Bật realtime settings khi đã auth (hook vào flow có sẵn)
+(function hookAuthForUpdateWatch() {
+  if (typeof auth === 'undefined' || !auth) return;
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      setTimeout(() => {
+        watchSettingsForUpdate();
+        checkClientUpdate(false);
+      }, 800);
+    }
+  });
+})();

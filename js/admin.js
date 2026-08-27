@@ -429,11 +429,31 @@ function renderSettings() {
   document.getElementById('set-plots').value = currentSettings.plotCount || 12;
   document.getElementById('set-coins').value = currentSettings.startCoins || 1000;
   const rainEl = document.getElementById('set-rain');
-  if (rainEl) rainEl.value = currentSettings.rainChance ?? 15;
+  if (rainEl) {
+    let rc = currentSettings.rainChance ?? 15;
+    rainEl.value = Math.max(1, Math.min(50, Number(rc) || 15));
+  }
+  const rainDurEl = document.getElementById('set-rain-duration');
+  if (rainDurEl) {
+    let d = currentSettings.rainDurationMinutes;
+    if (d == null || !Number.isFinite(Number(d))) d = 0.25;
+    rainDurEl.value = Number(d);
+  }
   const mOn = document.getElementById('set-maint-on');
   if (mOn) mOn.checked = !!currentSettings.maintenanceOn;
   const mMsg = document.getElementById('set-maint-msg');
   if (mMsg) mMsg.value = currentSettings.maintenanceMsg || '';
+
+  // Hệ thống cập nhật
+  const clientVer = (typeof APP_VERSION !== 'undefined' && APP_VERSION) ? APP_VERSION : '—';
+  const pubEl = document.getElementById('set-published-version');
+  const cliEl = document.getElementById('set-client-version');
+  if (cliEl) cliEl.textContent = 'v' + clientVer;
+  if (pubEl) pubEl.textContent = 'v' + (currentSettings.appVersion || clientVer);
+  const notesEl = document.getElementById('set-update-notes');
+  if (notesEl) notesEl.value = currentSettings.updateNotes || '';
+  const forceEl = document.getElementById('set-force-update');
+  if (forceEl) forceEl.checked = !!currentSettings.forceUpdate;
 }
 
 document.getElementById('btn-save-settings').addEventListener('click', async () => {
@@ -443,7 +463,15 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
   if (rainEl) {
     let r = parseInt(rainEl.value, 10);
     if (isNaN(r)) r = 15;
-    currentSettings.rainChance = Math.max(0, Math.min(100, r));
+    // Random mưa 1% – 50%
+    currentSettings.rainChance = Math.max(1, Math.min(50, r));
+  }
+  const rainDurEl = document.getElementById('set-rain-duration');
+  if (rainDurEl) {
+    let d = parseFloat(rainDurEl.value);
+    if (!Number.isFinite(d) || d <= 0) d = 0.25;
+    // 0.1 phút (~6s) – 120 phút
+    currentSettings.rainDurationMinutes = Math.max(0.1, Math.min(120, d));
   }
   currentSettings.maintenanceOn = !!document.getElementById('set-maint-on')?.checked;
   currentSettings.maintenanceMsg = (document.getElementById('set-maint-msg')?.value || '').trim()
@@ -755,3 +783,39 @@ document.getElementById('btn-reset-plants').addEventListener('click', async () =
     applyTheme(cur === 'dark' ? 'light' : 'dark');
   });
 })();
+
+
+// ===== CÔNG BỐ PHIÊN BẢN CLIENT =====
+document.getElementById('btn-publish-version')?.addEventListener('click', async () => {
+  const clientVer = (typeof APP_VERSION !== 'undefined' && APP_VERSION) ? String(APP_VERSION) : '';
+  if (!clientVer) {
+    showToast('Không đọc được APP_VERSION trong code!', 'error');
+    return;
+  }
+  const notesEl = document.getElementById('set-update-notes');
+  const forceEl = document.getElementById('set-force-update');
+  currentSettings.appVersion = clientVer;
+  currentSettings.updateNotes = (notesEl && notesEl.value) ? notesEl.value.trim() : '';
+  currentSettings.forceUpdate = !!(forceEl && forceEl.checked);
+  try {
+    await saveSettings();
+    renderSettings();
+    showToast('Đã công bố v' + clientVer + ' — user online sẽ được nhắc tải lại!', 'success');
+  } catch (e) {
+    showToast('Lỗi lưu: ' + (e.message || e), 'error');
+  }
+});
+
+document.getElementById('btn-save-update-meta')?.addEventListener('click', async () => {
+  const notesEl = document.getElementById('set-update-notes');
+  const forceEl = document.getElementById('set-force-update');
+  currentSettings.updateNotes = (notesEl && notesEl.value) ? notesEl.value.trim() : '';
+  currentSettings.forceUpdate = !!(forceEl && forceEl.checked);
+  // Không đổi appVersion — chỉ meta
+  try {
+    await saveSettings();
+    showToast('Đã lưu ghi chú / bắt buộc tải lại', 'success');
+  } catch (e) {
+    showToast('Lỗi lưu: ' + (e.message || e), 'error');
+  }
+});

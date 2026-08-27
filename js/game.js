@@ -258,9 +258,14 @@ const Game = {
   },
 
   // Try trigger rain based on admin %
+  // Try trigger rain based on admin % (1–50)
   tryTriggerRain() {
     if (this.raining && Date.now() < this.rainUntil) return false;
-    const chance = (currentSettings && currentSettings.rainChance) || 15;
+    let chance = (currentSettings && currentSettings.rainChance) != null
+      ? Number(currentSettings.rainChance)
+      : 15;
+    if (!Number.isFinite(chance)) chance = 15;
+    chance = Math.max(1, Math.min(50, chance));
     if (Math.random() * 100 < chance) {
       this.startRain();
       return true;
@@ -268,9 +273,21 @@ const Game = {
     return false;
   },
 
+  /** Thời lượng mưa (ms) từ admin — mặc định 15s (0.25 phút) */
+  getRainDurationMs() {
+    let mins = (currentSettings && currentSettings.rainDurationMinutes) != null
+      ? Number(currentSettings.rainDurationMinutes)
+      : 0.25;
+    if (!Number.isFinite(mins) || mins <= 0) mins = 0.25;
+    // Giới hạn hợp lý: 5 giây – 120 phút
+    mins = Math.max(5 / 60, Math.min(120, mins));
+    return Math.round(mins * 60 * 1000);
+  },
+
   startRain() {
     this.raining = true;
-    this.rainUntil = Date.now() + 15000; // 15s: animation + mini-game
+    const durationMs = this.getRainDurationMs();
+    this.rainUntil = Date.now() + durationMs;
     this.rainCollectCount = 0;
     // Apply rain boost to growing plots (shorten remaining like light fertilizer)
     if (currentPlayer && currentPlayer.plots) {
@@ -317,7 +334,7 @@ const Game = {
     setTimeout(() => {
       this.raining = false;
       if (typeof hideRainEffect === 'function') hideRainEffect();
-    }, 15000);
+    }, durationMs);
   },
 
   /** Nhặt vật phẩm khi mưa (sâu / hạt rơi). Tối đa 8 lần / trận mưa */
@@ -1123,8 +1140,8 @@ const Game = {
 
   /**
    * Tiên chăm 1 lần (chu kỳ 3 giờ) theo fairyConfig:
-   * - Tưới: all hoặc N ô (có cây)
-   * - Bón: tắt / bất kỳ loại trong kho / 1 loại chỉ định; all hoặc N ô; trừ kho, hết thì dừng
+   * - Tưới: KHÔNG giới hạn — tưới hết mọi ô có cây (mọi nguồn / mọi vườn được bật)
+   * - Bón: tắt / bất kỳ loại trong kho / 1 loại chỉ định; bón hết ô cần bón; trừ kho, hết thì dừng
    */
   runFairyCare(now = Date.now()) {
     if (!currentPlayer || !currentPlayer.plots) return false;
@@ -1136,12 +1153,9 @@ const Game = {
     if (!Array.isArray(currentPlayer.plots)) currentPlayer.plots = plots;
     const cfg = this.getFairyConfig();
 
-    // 1) Tưới
+    // 1) Tưới hết — không giới hạn số ô
     const needWater = plots.filter(p => p && p.plantId);
-    const waterLimit = cfg.waterMode === 'count'
-      ? Math.min(cfg.waterCount, needWater.length)
-      : needWater.length;
-    for (let i = 0; i < waterLimit; i++) {
+    for (let i = 0; i < needWater.length; i++) {
       const plot = needWater[i];
       plot.waterCount = 3;
       plot.watered = true;
@@ -1149,13 +1163,10 @@ const Game = {
       wateredN++;
     }
 
-    // 2) Bón phân từ kho
+    // 2) Bón phân từ kho — chọn loại theo config; hết kho thì dừng, không bón nữa
     if (cfg.useFertilizer) {
-      const needFert = plots.filter(p => p && p.plantId && !this.isReady(p));
-      const fertLimit = cfg.fertMode === 'count'
-        ? Math.min(cfg.fertCount, needFert.length)
-        : needFert.length;
-      for (let i = 0; i < fertLimit; i++) {
+      const needFert = plots.filter(p => p && p.plantId && !this.isReady(p) && !p.fertilizerId);
+      for (let i = 0; i < needFert.length; i++) {
         const fertId = this.takeFertFromBagForFairy(cfg);
         if (!fertId) break; // hết phân → dừng
         const plot = needFert[i];
@@ -1180,10 +1191,12 @@ const Game = {
   },
 
   /**
-   * Tiên tưới lại ô có cây khi:
+   * Tiên tưới lại ô có cây ngay khi có lượt (trên currentPlayer.plots = vườn đang xét):
    * - chưa đủ 3/3 nước, HOẶC
-   * - đã hết hạn 3 giờ kể từ lastWatered (đồng hồ về 0)
-   * → gán lại 3/3 + lastWatered = now để chu kỳ 3 giờ chạy tiếp.
+   * - đã hết hạn 3 giờ kể từ lastWatered (đếm ngược về 0 = có 1 lượt tưới)
+   * → tưới ngay 3/3 + lastWatered = now (không chờ chu kỳ lastFairyCare).
+   * Không giới hạn số ô — cứ thấy ô cần tưới là tưới hết.
+   * Gọi từ forEachGarden trong resetExpiredBoosts → mỗi vườn được xử lý riêng.
    */
   fairyEnsureWatered(now = Date.now()) {
     if (!this.isFairyActive() || !currentPlayer || !currentPlayer.plots) return false;
@@ -1199,6 +1212,7 @@ const Game = {
       const expired = count > 0 && plot.lastWatered && (now - plot.lastWatered >= THREE_H);
       const missing = count < 3;
       const never = count <= 0 || !plot.lastWatered;
+      // Có lượt (hết 3h / thiếu / chưa tưới) → tưới ngay
       if (!expired && !missing && !never) return;
       plot.waterCount = 3;
       plot.watered = true;
@@ -1214,7 +1228,7 @@ const Game = {
 
   /**
    * Mỗi tick:
-   * - Có Tiên: khi hết hạn nước (timer → 0) hoặc thiếu nước → Tiên tưới lại để 3h chạy tiếp;
+   * - Có Tiên: khi hết hạn nước (timer → 0) hoặc thiếu nước → Tiên tưới NGAY (không chờ);
    *   đủ 3 giờ kể từ lastFairyCare → chăm full (tưới + bón theo config), luôn cập nhật mốc 3h.
    * - Không Tiên: hết 3 giờ trên ô → mất nước/phân như cũ.
    */
@@ -1230,6 +1244,7 @@ const Game = {
     this.forEachGarden((plots, gi) => {
       const fairyHere = fairy && this.isFairyGardenEnabled(gi);
       if (fairyHere) {
+        // Tiên thấy có lượt tưới (đếm ngược 3h = 0) → tưới ngay
         if (this.fairyEnsureWatered(now)) changed = true;
       } else {
         plots.forEach(plot => {
@@ -1257,6 +1272,7 @@ const Game = {
 
     if (fairy) {
       const last = currentPlayer.lastFairyCare || 0;
+      // Có lượt chăm 3h → chạy ngay (tưới hết + bón theo lựa chọn, hết phân thì dừng)
       if (!last || (now - last >= THREE_H)) {
         this.forEachGarden((plots, gi) => {
           if (!this.isFairyGardenEnabled(gi)) return;
