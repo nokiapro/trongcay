@@ -43,16 +43,28 @@ const Game = {
 
   ensureGardens() {
     if (!currentPlayer) return;
+    // Firebase đôi khi trả gardens dạng object {0: [...], 1: [...]}
+    if (currentPlayer.gardens && !Array.isArray(currentPlayer.gardens) && typeof currentPlayer.gardens === 'object') {
+      const keys = Object.keys(currentPlayer.gardens).sort((a, b) => Number(a) - Number(b));
+      currentPlayer.gardens = keys.map(k => currentPlayer.gardens[k]);
+    }
     if (!Array.isArray(currentPlayer.gardens) || !currentPlayer.gardens.length) {
       let plots = currentPlayer.plots;
       if (!Array.isArray(plots)) plots = Object.values(plots || {});
       if (!plots.length) plots = this.makeEmptyPlots();
-      // chuẩn hóa id
       plots = plots.map((p, i) => ({ ...(p || {}), id: (p && typeof p.id === 'number') ? p.id : i }));
       currentPlayer.gardens = [plots];
     } else {
       currentPlayer.gardens = currentPlayer.gardens.map((g, gi) => {
-        let plots = Array.isArray(g) ? g : (g && Array.isArray(g.plots) ? g.plots : []);
+        let plots;
+        if (Array.isArray(g)) plots = g;
+        else if (g && Array.isArray(g.plots)) plots = g.plots;
+        else if (g && typeof g === 'object') {
+          // object-array từ Firebase
+          const keys = Object.keys(g).filter(k => /^\d+$/.test(k)).sort((a, b) => Number(a) - Number(b));
+          plots = keys.length ? keys.map(k => g[k]) : [];
+        } else plots = [];
+        // Chỉ tạo vườn trống khi thật sự không có ô — không đè dữ liệu
         if (!plots.length) plots = this.makeEmptyPlots();
         return plots.map((p, i) => ({ ...(p || {}), id: i }));
       });

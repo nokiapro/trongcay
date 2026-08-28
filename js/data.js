@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.7.8';
+const APP_VERSION = '1.7.9';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13107,7 +13107,7 @@ const DEFAULT_SETTINGS = {
   /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.7.8',
+  appVersion: '1.7.9',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13387,9 +13387,42 @@ function backupPlayerLocal() {
   }
 }
 
+/** Điểm “độ giàu” tiến trình — tránh backup rỗng đè Firebase đầy đủ */
+function playerProgressScore(p) {
+  if (!p || typeof p !== 'object') return 0;
+  let score = (Number(p.coins) || 0) + (Number(p.level) || 1) * 10000 + (Number(p.xp) || 0);
+  const inv = p.inventory || {};
+  const countBag = (bag) => {
+    if (!bag || typeof bag !== 'object') return 0;
+    return Object.keys(bag).reduce((s, k) => s + (Number(bag[k]) || 0), 0);
+  };
+  score += countBag(inv.seeds) * 50;
+  score += countBag(inv.seedsStar) * 80;
+  score += countBag(inv.harvest) * 30;
+  score += countBag(inv.fertilizers) * 20;
+  score += countBag(inv.protects) * 40;
+  let plants = 0;
+  const gardens = Array.isArray(p.gardens) ? p.gardens : null;
+  if (gardens) {
+    gardens.forEach(g => {
+      const plots = Array.isArray(g) ? g : (g && g.plots) || [];
+      (plots || []).forEach(pl => { if (pl && pl.plantId) plants++; });
+    });
+  } else {
+    const plots = Array.isArray(p.plots) ? p.plots : Object.values(p.plots || {});
+    plots.forEach(pl => { if (pl && pl.plantId) plants++; });
+  }
+  score += plants * 200;
+  if (p.fairyUntil) score += 500;
+  if (p.nycUntil) score += 500;
+  if (p.helperUntil) score += 500;
+  return score;
+}
+
 /**
- * Nếu backup máy mới hơn Firebase → dùng backup (tránh thoát ra mất tiến trình).
- * @returns {boolean} true nếu đã restore từ local
+ * Chỉ lấy backup local khi:
+ * - backup mới hơn remote theo updatedAt, VÀ
+ * - tiến trình backup không kém hơn remote rõ rệt (không đè bản Firebase giàu bằng bản local trống)
  */
 function restorePlayerLocalIfNewer(remotePlayer) {
   try {
@@ -13400,12 +13433,18 @@ function restorePlayerLocalIfNewer(remotePlayer) {
     if (!payload || !payload.player) return false;
     const bAt = Number(payload.updatedAt) || Number(payload.savedAt) || 0;
     const rAt = remotePlayer ? (Number(remotePlayer.updatedAt) || 0) : 0;
-    // Backup mới hơn remote ≥ 1s → lấy backup
-    if (bAt > rAt + 1000) {
+    const bScore = playerProgressScore(payload.player);
+    const rScore = playerProgressScore(remotePlayer);
+    // Backup mới hơn và tiến trình ≥ 80% remote (hoặc remote gần như trống)
+    if (bAt > rAt + 1000 && (rScore < 1000 || bScore >= rScore * 0.8)) {
       currentPlayer = payload.player;
       _playerBaseUpdatedAt = bAt;
       _playerDirty = true;
       return true;
+    }
+    // Remote tốt hơn → giữ Firebase, có thể xóa backup cũ lỗi
+    if (rScore > bScore * 1.2 && rAt >= bAt) {
+      try { localStorage.removeItem(playerBackupKey(currentUser.uid)); } catch (_) {}
     }
   } catch (e) {
     console.warn('restorePlayerLocalIfNewer', e);
@@ -13569,7 +13608,17 @@ async function loadPlayer(uid, email) {
     if (typeof Game !== 'undefined' && Game.applyPendingHelps) {
       await Game.applyPendingHelps();
     }
-    await savePlayer();
+    // Chuẩn hóa multi-vườn TRƯỚC khi cân nhắc lưu (không tạo vườn trống đè vườn đầy)
+    if (typeof Game !== 'undefined' && Game.ensureGardens) {
+      try { Game.ensureGardens(); } catch (_) {}
+    }
+    // CHỈ ghi Firebase khi local dirty (restore backup) — tránh mỗi lần F5 / bản mới ghi đè
+    if (_playerDirty) {
+      try { await savePlayer(); } catch (_) {}
+    } else {
+      // Cập nhật backup = bản Firebase ổn định (phòng thoát tab)
+      try { backupPlayerLocal(); } catch (_) {}
+    }
   }
   return currentPlayer;
 }
