@@ -793,8 +793,19 @@ const Game = {
     const plant = this.getPlant(plantId);
     this.addActivity(`Trồng ${usedStar ? '⭐ ' : ''}${plant.name} vào ô #${plotId + 1}` + (fairyWatered ? ' · 🧚 Tiên tưới ngay' : ''));
     if (typeof Features !== 'undefined') Features.trackQuest('plant', 1);
+    if (typeof recordGameEvent === 'function') {
+      recordGameEvent('plant', {
+        plotId,
+        gardenIndex: currentPlayer.activeGarden || 0,
+        plantId,
+        plantedAt: plot.plantedAt,
+        seedKind: usedStar ? 'star' : 'normal',
+        watered: plot.watered,
+        waterCount: plot.waterCount || 0
+      });
+    }
     const ach = this.checkAchievements();
-    await savePlayer();
+    await savePlayer({ action: 'plant' });
     this.notifyAchievements(ach);
     return { ok: true, msg: `Đã trồng ${usedStar ? '⭐ ' : ''}${plant.name}!` + (fairyWatered ? ' 🧚 Tiên đã tưới.' : '') };
   },
@@ -890,7 +901,16 @@ const Game = {
     plot.lastWatered = (typeof nowMs==="function"?nowMs():Date.now());
     this.addActivity(`Tưới nước ô #${plotId + 1} (${plot.waterCount}/3)`);
     if (typeof Features !== 'undefined') Features.trackQuest('water', 1);
-    await savePlayer();
+    if (typeof recordGameEvent === 'function') {
+      recordGameEvent('water', {
+        plotId,
+        gardenIndex: currentPlayer.activeGarden || 0,
+        plantId: plot.plantId,
+        waterCount: plot.waterCount,
+        at: plot.lastWatered
+      });
+    }
+    await savePlayer({ action: 'water' });
     this.checkAchievements();
     return { ok: true, msg: `Đã tưới! (${plot.waterCount}/3)` };
   },
@@ -910,7 +930,16 @@ const Game = {
     plot.fertilizerId = fertId;
     plot.fertilizedAt = (typeof nowMs==="function"?nowMs():Date.now());
     this.addActivity(`Bón ${fert.name} ô #${plotId + 1}`);
-    await savePlayer();
+    if (typeof recordGameEvent === 'function') {
+      recordGameEvent('fert', {
+        plotId,
+        gardenIndex: currentPlayer.activeGarden || 0,
+        plantId: plot.plantId,
+        fertId,
+        at: plot.fertilizedAt
+      });
+    }
+    await savePlayer({ action: 'fert' });
     return { ok: true, msg: `Đã bón ${fert.name}!` };
   },
 
@@ -1578,7 +1607,11 @@ const Game = {
     if (!currentPlayer) return { ok: false, changed: false, notes: [] };
     this.ensureGardens();
     const now = (typeof nowMs==="function"?nowMs():Date.now());
-    const from = Math.min(
+    // Nếu vào web sau khi có log trồng/tưới/bón chưa bù → hạ ngưỡng 5 phút
+    const fromLog = currentPlayer._needOfflineFromLog && currentPlayer._logEarliest
+      ? Number(currentPlayer._logEarliest)
+      : null;
+    let from = Math.min(
       now,
       Math.max(
         0,
@@ -1589,9 +1622,14 @@ const Game = {
           now
       )
     );
-    const OFFLINE_MIN_MS = 5 * 60 * 1000;
+    if (fromLog && fromLog < from) {
+      from = Math.max(Number(currentPlayer.lastCatchUpAt) || 0, fromLog - 1000);
+    }
+    const OFFLINE_MIN_MS = (fromLog != null) ? 30 * 1000 : 5 * 60 * 1000;
     if (now - from < OFFLINE_MIN_MS) {
       currentPlayer.lastCatchUpAt = now;
+      delete currentPlayer._needOfflineFromLog;
+      delete currentPlayer._logEarliest;
       return { ok: true, changed: false, notes: [], offlineMs: 0, skipped: true };
     }
 
@@ -1746,6 +1784,11 @@ const Game = {
 
     currentPlayer.lastSeenAt = now;
     currentPlayer.lastCatchUpAt = now;
+    delete currentPlayer._needOfflineFromLog;
+    delete currentPlayer._logEarliest;
+    if (fromLog) {
+      notes.unshift('Log thao tác → bù từ ' + new Date(from).toLocaleTimeString('vi-VN'));
+    }
     if (changed) {
       this.addActivity('⚡ Bù offline: ' + (notes.join(' · ') || 'đã cập nhật'));
     }
@@ -1760,7 +1803,8 @@ const Game = {
       helperBuys,
       rainHits,
       rainWatered,
-      rainChance
+      rainChance,
+      fromLog: fromLog || null
     };
   },
 
@@ -2378,8 +2422,17 @@ const Game = {
     plot.fertilizedAt = null;
     plot.seedStar = false;
     this.addActivity(`Thu hoạch ${amount} ${plant.name} (+${xpGain} XP)` + (newCol ? ' · Album +1' : ''));
+    if (typeof recordGameEvent === 'function') {
+      recordGameEvent('harvest', {
+        plotId,
+        gardenIndex: currentPlayer.activeGarden || 0,
+        plantId: hid,
+        amount,
+        at: (typeof nowMs === 'function' ? nowMs() : Date.now())
+      });
+    }
     const ach = this.checkAchievements();
-    await savePlayer();
+    await savePlayer({ action: 'harvest' });
     this.notifyAchievements(ach);
     return { ok: true, msg: `Thu hoạch ${amount} ${plant.name}! +${xpGain} XP` + (newCol ? ' · Mở album!' : '') };
   },

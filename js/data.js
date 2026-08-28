@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.8.1';
+const APP_VERSION = '1.8.3';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13107,7 +13107,7 @@ const DEFAULT_SETTINGS = {
   /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.8.1',
+  appVersion: '1.8.3',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13366,6 +13366,307 @@ function formatGameDateTime(ms, withSeconds) {
 
 function markPlayerDirty() {
   _playerDirty = true;
+}
+
+/**
+ * ===== PLAY LOG (nhật ký theo giây) =====
+ * - Mỗi thao tác → ghi local ngay + đẩy Firebase song song
+ * - Thoát chưa kịp đẩy → vào web flush lại
+ * - Sự kiện plant/water/fert/harvest có data ô → replay + đưa vào mốc bù offline
+ */
+function pendingSyncKey(uid) {
+  return 'vx_pending_sync_' + (uid || (currentUser && currentUser.uid) || 'guest');
+}
+function playLogLocalKey(uid) {
+  return 'vx_play_log_' + (uid || (currentUser && currentUser.uid) || 'guest');
+}
+
+function readLocalPlayLog(uid) {
+  try {
+    const raw = localStorage.getItem(playLogLocalKey(uid));
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeLocalPlayLog(uid, arr) {
+  try {
+    localStorage.setItem(playLogLocalKey(uid), JSON.stringify((arr || []).slice(0, 120)));
+  } catch (_) {}
+}
+
+function markPendingSnapshot(action, at) {
+  if (!currentUser || !currentPlayer) return;
+  _playerDirty = true;
+  try {
+    localStorage.setItem(pendingSyncKey(currentUser.uid), JSON.stringify({
+      synced: false,
+      action: action || 'action',
+      at: at || (typeof nowMs === 'function' ? nowMs() : Date.now()),
+      updatedAt: Number(currentPlayer.updatedAt) || at || Date.now(),
+      player: currentPlayer
+    }));
+  } catch (_) {}
+  backupPlayerLocal();
+}
+
+/**
+ * Ghi sự kiện game có cấu trúc (trồng / tưới / bón / thu…).
+ * @param {string} type plant|water|fert|harvest|buy|other
+ * @param {object} data { plotId, gardenIndex, plantId, fertId, plantedAt, ... }
+ */
+function recordGameEvent(type, data) {
+  if (!currentUser || !currentPlayer) return null;
+  const t = typeof nowMs === 'function' ? nowMs() : Date.now();
+  const entry = {
+    id: 'l_' + t + '_' + Math.random().toString(36).slice(2, 8),
+    type: String(type || 'other').slice(0, 24),
+    a: String(type || 'other').slice(0, 48),
+    t: t,
+    data: data && typeof data === 'object' ? data : null,
+    coins: Number(currentPlayer.coins) || 0,
+    sessionId: CLIENT_SESSION_ID,
+    _synced: false
+  };
+
+  if (!Array.isArray(currentPlayer.playLog)) currentPlayer.playLog = [];
+  currentPlayer.playLog.unshift({
+    a: entry.type,
+    t: entry.t,
+    d: data ? JSON.stringify(data).slice(0, 100) : null
+  });
+  if (currentPlayer.playLog.length > 50) currentPlayer.playLog.length = 50;
+
+  const local = readLocalPlayLog(currentUser.uid);
+  local.unshift(entry);
+  writeLocalPlayLog(currentUser.uid, local.slice(0, 120));
+  markPendingSnapshot(entry.type, t);
+
+  // Đẩy Firebase ngay (không chờ) — nếu fail, vào web sẽ flush lại
+  if (db && currentUser) {
+    const clean = {
+      id: entry.id,
+      type: entry.type,
+      a: entry.a,
+      t: entry.t,
+      data: entry.data,
+      coins: entry.coins,
+      sessionId: entry.sessionId
+    };
+    db.ref('playLogs/' + currentUser.uid + '/' + entry.id).set(clean)
+      .then(() => {
+        try {
+          const arr = readLocalPlayLog(currentUser.uid);
+          const hit = arr.find(x => x && x.id === entry.id);
+          if (hit) hit._synced = true;
+          writeLocalPlayLog(currentUser.uid, arr);
+        } catch (_) {}
+      })
+      .catch(e => console.warn('playLog push', e && e.message));
+  }
+  return entry;
+}
+
+/** Ghi 1 thao tác text (tương thích cũ) */
+function recordPlayerAction(action, detail) {
+  return recordGameEvent(action || 'action', detail != null ? { detail: String(detail).slice(0, 120) } : null);
+}
+
+/** Đẩy log local chưa sync lên Firebase */
+async function flushPlayLogsToFirebase() {
+  if (!db || !currentUser) return { ok: false, n: 0 };
+  const local = readLocalPlayLog(currentUser.uid);
+  if (!local.length) return { ok: true, n: 0 };
+  let n = 0;
+  const pending = local.filter(e => e && e.id && !e._synced);
+  for (const entry of pending.slice(0, 50)) {
+    try {
+      const clean = {
+        id: entry.id,
+        type: entry.type || entry.a,
+        a: entry.a || entry.type,
+        t: entry.t,
+        data: entry.data || null,
+        coins: entry.coins,
+        sessionId: entry.sessionId
+      };
+      await db.ref('playLogs/' + currentUser.uid + '/' + entry.id).set(clean);
+      entry._synced = true;
+      n++;
+    } catch (e) {
+      console.warn('flushPlayLogs', e);
+      break;
+    }
+  }
+  writeLocalPlayLog(currentUser.uid, local);
+  return { ok: true, n };
+}
+
+/**
+ * Áp log plant/water/fert/harvest lên state nếu Firebase thiếu (tránh mất giờ trồng).
+ * Trả về mốc thời gian sớm nhất của sự kiện critical (để bù offline).
+ */
+function applyCriticalPlayLogToPlayer(player) {
+  if (!currentUser || !player) return null;
+  const local = readLocalPlayLog(currentUser.uid);
+  if (!local.length) return null;
+  // Chỉ lấy event chưa sync hoặc trong 48h gần nhất
+  const now = typeof nowMs === 'function' ? nowMs() : Date.now();
+  const cutoff = now - 48 * 3600 * 1000;
+  const critical = local
+    .filter(e => e && e.t >= cutoff && e.data && ['plant', 'water', 'fert', 'harvest'].includes(e.type || e.a))
+    .slice()
+    .sort((a, b) => (a.t || 0) - (b.t || 0));
+
+  if (!critical.length) return null;
+
+  if (typeof Game !== 'undefined' && Game.ensureGardens) {
+    try {
+      const prev = currentPlayer;
+      currentPlayer = player;
+      Game.ensureGardens();
+      currentPlayer = prev;
+    } catch (_) {}
+  }
+
+  let earliest = null;
+  critical.forEach(e => {
+    const d = e.data || {};
+    const gi = typeof d.gardenIndex === 'number' ? d.gardenIndex : 0;
+    const pi = typeof d.plotId === 'number' ? d.plotId : -1;
+    if (pi < 0) return;
+    if (!Array.isArray(player.gardens)) return;
+    if (!player.gardens[gi]) return;
+    let plots = player.gardens[gi];
+    if (!Array.isArray(plots)) {
+      const keys = Object.keys(plots || {}).filter(k => /^\d+$/.test(k)).sort((a, b) => Number(a) - Number(b));
+      plots = keys.map(k => plots[k]);
+      player.gardens[gi] = plots;
+    }
+    if (!plots[pi]) plots[pi] = { id: pi };
+    const plot = plots[pi];
+    const type = e.type || e.a;
+    if (type === 'plant' && d.plantId) {
+      // Chỉ áp nếu ô trống hoặc cùng cây nhưng plantedAt muộn hơn log
+      if (!plot.plantId || (plot.plantedAt && d.plantedAt && plot.plantedAt > d.plantedAt)) {
+        plot.plantId = d.plantId;
+        plot.plantedAt = d.plantedAt || e.t;
+        plot.watered = !!d.watered;
+        plot.waterCount = d.waterCount || 0;
+        plot.fertilizerId = d.fertilizerId || null;
+        plot.seedKind = d.seedKind || 'normal';
+      } else if (plot.plantId === d.plantId && d.plantedAt && (!plot.plantedAt || plot.plantedAt > d.plantedAt)) {
+        plot.plantedAt = d.plantedAt;
+      }
+      earliest = earliest == null ? e.t : Math.min(earliest, e.t);
+    } else if (type === 'water' && plot.plantId) {
+      plot.watered = true;
+      plot.waterCount = Math.max(plot.waterCount || 0, d.waterCount || 1);
+      plot.lastWatered = d.at || e.t;
+      earliest = earliest == null ? e.t : Math.min(earliest, e.t);
+    } else if (type === 'fert' && plot.plantId && d.fertId) {
+      if (!plot.fertilizerId) {
+        plot.fertilizerId = d.fertId;
+        plot.fertilizedAt = d.at || e.t;
+      }
+      earliest = earliest == null ? e.t : Math.min(earliest, e.t);
+    } else if (type === 'harvest') {
+      if (plot.plantId && (d.plantId ? plot.plantId === d.plantId : true)) {
+        plot.plantId = null;
+        plot.plantedAt = null;
+        plot.watered = false;
+        plot.waterCount = 0;
+        plot.lastWatered = null;
+        plot.fertilizerId = null;
+        plot.fertilizedAt = null;
+      }
+      earliest = earliest == null ? e.t : Math.min(earliest, e.t);
+    }
+  });
+
+  // Đồng bộ plots = active garden
+  const ag = typeof player.activeGarden === 'number' ? player.activeGarden : 0;
+  if (player.gardens && player.gardens[ag]) player.plots = player.gardens[ag];
+
+  return earliest;
+}
+
+/**
+ * Khi vào web: flush log → merge snapshot local → replay event critical → chỉnh mốc bù offline.
+ */
+async function syncPlayerOnEnter() {
+  if (!currentUser || !currentPlayer || !db) return { ok: false, msg: 'no-user' };
+  let usedLocal = false;
+  let logEarliest = null;
+
+  try {
+    const raw = localStorage.getItem(pendingSyncKey(currentUser.uid));
+    if (raw) {
+      const pending = JSON.parse(raw);
+      if (pending && pending.player && pending.synced === false) {
+        const pAt = Number(pending.updatedAt) || Number(pending.at) || 0;
+        const rAt = Number(currentPlayer.updatedAt) || 0;
+        const pScore = playerProgressScore(pending.player);
+        const rScore = playerProgressScore(currentPlayer);
+        if (pAt > rAt + 500 && (rScore < 1000 || pScore >= rScore * 0.75)) {
+          currentPlayer = pending.player;
+          _playerBaseUpdatedAt = Math.max(pAt, rAt);
+          _playerDirty = true;
+          usedLocal = true;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('syncPlayerOnEnter pending', e);
+  }
+
+  // Replay log critical lên state (bù trồng/tưới/bón bị thiếu)
+  try {
+    logEarliest = applyCriticalPlayLogToPlayer(currentPlayer);
+    if (logEarliest != null) {
+      _playerDirty = true;
+      // Mốc bù offline: lùi lastSeenAt về trước sự kiện sớm nhất chưa xử lý bù
+      // → simulateOfflineCare tính đủ mưa/Tiên/NYC từ lúc user đã chơi
+      const prevSeen = Number(currentPlayer.lastSeenAt) || 0;
+      const prevCatch = Number(currentPlayer.lastCatchUpAt) || 0;
+      // Chỉ lùi nếu event mới hơn lần bù trước (tránh bù trùng)
+      if (logEarliest > prevCatch) {
+        // lastSeenAt = min(seen hiện tại, earliest - 1s) nhưng không mới hơn catch-up cũ quá
+        const targetFrom = Math.max(prevCatch, logEarliest - 1000);
+        if (!prevSeen || prevSeen > targetFrom) {
+          currentPlayer.lastSeenAt = targetFrom;
+        }
+        // Đánh dấu cần bù (simulateOfflineCare sẽ chạy sau)
+        currentPlayer._needOfflineFromLog = true;
+        currentPlayer._logEarliest = logEarliest;
+      }
+    }
+  } catch (e) {
+    console.warn('applyCriticalPlayLog', e);
+  }
+
+  try { await flushPlayLogsToFirebase(); } catch (_) {}
+
+  if (_playerDirty || usedLocal) {
+    const res = await savePlayer({
+      action: usedLocal ? 'sync-pending' : 'enter-sync',
+      silent: false
+    });
+    if (res && res.ok) {
+      try {
+        localStorage.setItem(pendingSyncKey(currentUser.uid), JSON.stringify({
+          synced: true,
+          at: typeof nowMs === 'function' ? nowMs() : Date.now(),
+          updatedAt: currentPlayer.updatedAt
+        }));
+      } catch (_) {}
+    }
+    return Object.assign({}, res || {}, { usedLocal, logEarliest });
+  }
+  try { backupPlayerLocal(); } catch (_) {}
+  return { ok: true, msg: 'up-to-date', usedLocal, logEarliest };
 }
 
 /** Backup localStorage — thoát tab / F5 vẫn còn bản mới nhất trên máy */
@@ -13655,6 +13956,12 @@ async function savePlayer(opts) {
     notifyFirebaseSave(false, r.msg, opts);
     return r;
   }
+  // Ghi nhật ký thao tác (trừ các lần sync nền lặp lại)
+  if (opts.action && opts.action !== 'enter-sync') {
+    try { recordPlayerAction(opts.action, opts.detail || null); } catch (_) {}
+  } else if (!opts.silent && !opts.action) {
+    try { recordPlayerAction('save', null); } catch (_) {}
+  }
   if (typeof Game !== 'undefined' && Game.ensureGardens) {
     try {
       Game.ensureGardens();
@@ -13701,6 +14008,17 @@ async function savePlayer(opts) {
       try {
         if (typeof Game !== 'undefined' && Game.publishPublicGarden) await Game.publishPublicGarden();
       } catch (_) {}
+      try {
+        if (currentUser) {
+          localStorage.setItem(pendingSyncKey(currentUser.uid), JSON.stringify({
+            synced: true,
+            at: currentPlayer.updatedAt,
+            updatedAt: currentPlayer.updatedAt
+          }));
+        }
+      } catch (_) {}
+      // Đẩy play log kèm (không chặn)
+      try { flushPlayLogsToFirebase(); } catch (_) {}
       notifyFirebaseSave(true, null, opts);
       return { ok: true };
     } catch (e) {

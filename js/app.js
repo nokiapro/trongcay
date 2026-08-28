@@ -504,9 +504,17 @@ auth.onAuthStateChanged(async (user) => {
       }
       if (typeof Features !== 'undefined') Features.ensureQuests();
       if (typeof listenPlayerTimers === 'function') listenPlayerTimers(); // no-op
-      // Bù offline — trước hết kéo bản Firebase mới hơn (tránh 2 máy bù đè nhau)
+      // Đồng bộ play-log + snapshot local → Firebase khi vào web
       setTimeout(async () => {
         try {
+          if (typeof syncPlayerOnEnter === 'function') {
+            const syn = await syncPlayerOnEnter();
+            if (syn && syn.ok && typeof updateCoins === 'function') updateCoins();
+            if (typeof renderGarden === 'function') {
+              const gp = document.getElementById('page-garden');
+              if (gp && gp.classList.contains('active')) renderGarden();
+            }
+          }
           if (typeof pullRemotePlayerIfNewer === 'function') {
             const pulled = await pullRemotePlayerIfNewer();
             if (pulled) {
