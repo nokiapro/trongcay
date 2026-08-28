@@ -560,7 +560,7 @@
       <p class="bulk-hint">Mỗi 3 giờ Tiên chăm theo cấu hình. Phân bón lấy từ kho — hết thì dừng bón.</p>
 
       <label>Tên Tiên</label>
-      <input type="text" id="fairy-custom-name" maxlength="20" placeholder="Tiên Xanh" style="width:100%;margin:6px 0 8px" />
+      <input type="text" id="fairy-custom-name" class="cfg-name-input" maxlength="20" placeholder="Tiên Xanh" />
       <div class="gender-row" style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap">
         <label class="checkbox-row"><input type="radio" name="fairy-gender" value="female" checked /> Nữ 🧚</label>
         <label class="checkbox-row"><input type="radio" name="fairy-gender" value="male" /> Nam 🧙</label>
@@ -613,7 +613,7 @@
       <p class="bulk-hint">NYC chăm từng vườn độc lập: vườn chín thì thu + trồng lại cùng giờ. Cửa sổ 10s cuối gom ô sắp chín trong cùng vườn. Ô còn lâu hơn 10s để sau. Vườn khác không bị kéo theo.</p>
 
       <label>Tên Người Yêu Cũ</label>
-      <input type="text" id="nyc-custom-name" maxlength="20" placeholder="Người Yêu Cũ" style="width:100%;margin:6px 0 8px" />
+      <input type="text" id="nyc-custom-name" class="cfg-name-input" maxlength="20" placeholder="Người Yêu Cũ" />
       <div class="gender-row" style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap">
         <label class="checkbox-row"><input type="radio" name="nyc-gender" value="female" checked /> Nữ 👩‍🌾</label>
         <label class="checkbox-row"><input type="radio" name="nyc-gender" value="male" /> Nam 👨‍🌾</label>
@@ -646,7 +646,7 @@
       <h2><i class="fa-solid fa-user-tie"></i> Cấu hình Người giúp việc</h2>
       <p class="bulk-hint">Khi kho vật phẩm <strong>dưới mốc</strong> bạn đặt, giúp việc tự mua thêm <strong>số lượng</strong> tương ứng (trừ tiền). Chỉ mua khi còn hạn gói.</p>
       <label>Tên gọi</label>
-      <input type="text" id="helper-custom-name" maxlength="20" placeholder="VD: Chị Tư" style="width:100%;margin:6px 0 8px" />
+      <input type="text" id="helper-custom-name" class="cfg-name-input" maxlength="20" placeholder="VD: Chị Tư" />
       <div class="gender-row" style="margin-bottom:12px;display:flex;gap:12px;flex-wrap:wrap">
         <label class="checkbox-row"><input type="radio" name="helper-gender" value="female" checked /> Nữ 💁</label>
         <label class="checkbox-row"><input type="radio" name="helper-gender" value="male" /> Nam 🤵</label>
@@ -672,7 +672,7 @@
         </div>
         <div style="width:72px">
           <label style="font-size:0.8rem">Mua thêm</label>
-          <input type="number" id="helper-add-qty" min="1" max="99" value="10" />
+          <input type="number" id="helper-add-qty" min="1" max="9999" value="10" />
         </div>
         <button type="button" id="btn-helper-add-rule" class="btn btn-secondary btn-sm"><i class="fa-solid fa-plus"></i></button>
       </div>
@@ -686,10 +686,10 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.6.5"></script>
-  <script src="js/data.js?v=1.6.5"></script>
-  <script src="js/game.js?v=1.6.5"></script>
-  <script src="js/features.js?v=1.6.5"></script>
-  <script src="js/app.js?v=1.6.5"></script>
+  <script src="js/firebase-config.js?v=1.6.8"></script>
+  <script src="js/data.js?v=1.6.8"></script>
+  <script src="js/game.js?v=1.6.8"></script>
+  <script src="js/features.js?v=1.6.8"></script>
+  <script src="js/app.js?v=1.6.8"></script>
 </body>
 </html>

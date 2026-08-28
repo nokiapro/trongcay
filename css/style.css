@@ -3017,19 +3017,22 @@ html[data-theme="dark"] .plot-boost-badge {
     gap: 8px;
   }
   .buff-card {
-    padding: 10px 8px;
-    gap: 8px;
+    padding: 12px 8px 10px;
+    gap: 6px;
   }
-  .buff-card-icon { font-size: 1.35rem; }
+  .buff-card-icon { font-size: 1.5rem; }
   .buff-card-body strong { font-size: 0.82rem; }
   .buff-card-body small { font-size: 0.68rem; line-height: 1.2; }
   .buff-switch { width: 18px; height: 18px; }
 }
 .buff-card {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 14px;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 16px 12px 14px;
   border-radius: 16px;
   cursor: pointer;
   border: 2px solid transparent;
@@ -3046,14 +3049,40 @@ html[data-theme="dark"] .plot-boost-badge {
 .buff-card.nyc-card:has(input:checked) {
   border-color: #e63946;
 }
-.buff-card-icon { font-size: 1.8rem; }
-.buff-card-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.buff-card-body strong { font-size: 0.98rem; }
-.buff-card-body small { color: var(--text-muted); font-size: 0.8rem; }
+.buff-card-icon {
+  font-size: 2rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.buff-card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+.buff-card-body strong {
+  font-size: 0.98rem;
+  text-align: center;
+  width: 100%;
+}
+.buff-card-body small {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+  line-height: 1.25;
+  width: 100%;
+}
 .buff-switch {
   width: 22px;
   height: 22px;
   accent-color: #2d6a4f;
+  margin: 2px auto 0;
+}
+.buff-card.nyc-card .buff-switch {
+  accent-color: #e63946;
 }
 .profile-buff-quick {
   display: flex;
@@ -5874,4 +5903,319 @@ html[data-theme="dark"] .support-row-time { color: #a7c4b5; }
 html[data-theme="dark"] .support-row-gear {
   background: rgba(149, 213, 178, 0.15);
   color: #e8f5e9;
+}
+
+/* ===== Modal cấu hình Tiên / NYC / Helper: căn giữa tiêu đề ===== */
+#modal-fairy-config .modal-content > h2,
+#modal-nyc-config .modal-content > h2,
+#modal-helper-config .modal-content > h2,
+#modal-bulk .modal-content > h2,
+#modal-fairy-config .bulk-hint,
+#modal-nyc-config .bulk-hint,
+#modal-helper-config .bulk-hint,
+#modal-bulk .bulk-hint {
+  text-align: center !important;
+}
+#modal-fairy-config .modal-content > h2,
+#modal-nyc-config .modal-content > h2,
+#modal-helper-config .modal-content > h2,
+#modal-bulk .modal-content > h2 {
+  width: 100%;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#modal-fairy-config .gender-row,
+#modal-nyc-config .gender-row,
+#modal-helper-config .gender-row {
+  justify-content: center;
+}
+
+/* Bulk: ô nhập + Tất cả */
+.modal-bulk-content {
+  max-width: 340px !important;
+  text-align: center;
+}
+.bulk-qty-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 8px;
+}
+.bulk-qty-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.bulk-qty-input {
+  width: 120px !important;
+  text-align: center;
+  font-size: 1.1rem !important;
+  font-weight: 700;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  border: 1.5px solid rgba(45, 106, 79, 0.3);
+  background: var(--card, #fff);
+  color: var(--text, #1b4332);
+  font-variant-numeric: tabular-nums;
+}
+html[data-theme="dark"] .bulk-qty-input {
+  background: #1a2420;
+  border-color: #3d5a4c;
+  color: #e8f5e9;
+}
+.bulk-fert-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  width: 100%;
+}
+.bulk-fert-btn.active {
+  outline: 2px solid var(--primary, #2d6a4f);
+  background: rgba(45, 106, 79, 0.15) !important;
+}
+
+/* Helper rules — khung đẹp */
+.helper-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.helper-rule-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(45, 106, 79, 0.07);
+  border: 1px solid rgba(45, 106, 79, 0.14);
+  box-shadow: 0 2px 8px rgba(27, 67, 50, 0.06);
+}
+html[data-theme="dark"] .helper-rule-row {
+  background: rgba(149, 213, 178, 0.08);
+  border-color: #3d5a4c;
+}
+.helper-rule-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.helper-rule-kind {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(45, 106, 79, 0.15);
+  color: var(--primary, #2d6a4f);
+  flex-shrink: 0;
+}
+html[data-theme="dark"] .helper-rule-kind {
+  background: rgba(149, 213, 178, 0.18);
+  color: #95d5b2;
+}
+.helper-rule-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.helper-rule-del {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.helper-rule-del:hover {
+  background: rgba(239, 68, 68, 0.22);
+}
+.helper-rule-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+.helper-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted, #52796f);
+}
+.helper-field input[type="number"] {
+  width: 88px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(45, 106, 79, 0.25);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--card, #fff);
+  color: var(--text, #1b4332);
+}
+html[data-theme="dark"] .helper-field input[type="number"] {
+  background: #121a16;
+  border-color: #3d5a4c;
+  color: #e8f5e9;
+}
+.helper-field-toggle {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+.helper-add-row {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(45, 106, 79, 0.05);
+  border: 1px dashed rgba(45, 106, 79, 0.25);
+  margin-top: 10px !important;
+}
+html[data-theme="dark"] .helper-add-row {
+  background: rgba(149, 213, 178, 0.05);
+  border-color: #3d5a4c;
+}
+#modal-helper-config .modal-content {
+  max-width: min(520px, calc(100vw - 24px)) !important;
+}
+
+
+/* ===== Ô nhập tên cấu hình (Tiên / NYC / Helper) ===== */
+.cfg-name-input,
+#fairy-custom-name,
+#nyc-custom-name,
+#helper-custom-name {
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  margin: 6px 0 12px !important;
+  padding: 12px 14px !important;
+  border: 1.5px solid rgba(45, 106, 79, 0.28) !important;
+  border-radius: 12px !important;
+  border-bottom: 1.5px solid rgba(45, 106, 79, 0.28) !important;
+  background: rgba(45, 106, 79, 0.06) !important;
+  color: var(--text, #1b4332) !important;
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.cfg-name-input:hover,
+#fairy-custom-name:hover,
+#nyc-custom-name:hover,
+#helper-custom-name:hover {
+  border-color: rgba(45, 106, 79, 0.45) !important;
+  background: rgba(45, 106, 79, 0.09) !important;
+}
+.cfg-name-input:focus,
+#fairy-custom-name:focus,
+#nyc-custom-name:focus,
+#helper-custom-name:focus {
+  border-color: var(--primary-light, #40916c) !important;
+  background: var(--card, #fff) !important;
+  box-shadow: 0 0 0 3px rgba(64, 145, 108, 0.18) !important;
+}
+.cfg-name-input::placeholder {
+  color: var(--text-muted, #52796f);
+  opacity: 0.7;
+  font-weight: 500;
+}
+html[data-theme="dark"] .cfg-name-input,
+html[data-theme="dark"] #fairy-custom-name,
+html[data-theme="dark"] #nyc-custom-name,
+html[data-theme="dark"] #helper-custom-name {
+  background: rgba(149, 213, 178, 0.08) !important;
+  border-color: rgba(149, 213, 178, 0.28) !important;
+  color: #e8f5e9 !important;
+}
+html[data-theme="dark"] .cfg-name-input:hover,
+html[data-theme="dark"] #fairy-custom-name:hover,
+html[data-theme="dark"] #nyc-custom-name:hover,
+html[data-theme="dark"] #helper-custom-name:hover {
+  background: rgba(149, 213, 178, 0.12) !important;
+  border-color: rgba(149, 213, 178, 0.4) !important;
+}
+html[data-theme="dark"] .cfg-name-input:focus,
+html[data-theme="dark"] #fairy-custom-name:focus,
+html[data-theme="dark"] #nyc-custom-name:focus,
+html[data-theme="dark"] #helper-custom-name:focus {
+  background: #1a2420 !important;
+  border-color: #52b788 !important;
+  box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.2) !important;
+}
+
+
+/* ===== Ô number đẹp toàn site (không còn gạch dưới trơ) ===== */
+input[type="number"]:not(.qty-stepper input):not(.bank-amount-stepper input) {
+  border-radius: 10px !important;
+  border: 1.5px solid rgba(45, 106, 79, 0.28) !important;
+  padding: 8px 10px !important;
+  background: rgba(45, 106, 79, 0.06) !important;
+  color: var(--text, #1b4332) !important;
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+  outline: none !important;
+  box-shadow: none !important;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+input[type="number"]:not(.qty-stepper input):focus {
+  border-color: var(--primary-light, #40916c) !important;
+  background: var(--card, #fff) !important;
+  box-shadow: 0 0 0 3px rgba(64, 145, 108, 0.16) !important;
+}
+html[data-theme="dark"] input[type="number"] {
+  background: rgba(149, 213, 178, 0.08) !important;
+  border-color: rgba(149, 213, 178, 0.28) !important;
+  color: #e8f5e9 !important;
+}
+html[data-theme="dark"] input[type="number"]:focus {
+  background: #1a2420 !important;
+  border-color: #52b788 !important;
+  box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.2) !important;
+}
+
+/* Helper add form labels */
+.helper-add-row label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted, #52796f);
+  margin-bottom: 4px;
+  text-align: center;
+}
+.helper-add-row input[type="number"] {
+  width: 100% !important;
+  text-align: center;
+  box-sizing: border-box;
+}
+#helper-add-min,
+#helper-add-qty {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  text-align: center;
 }

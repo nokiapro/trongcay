@@ -1888,7 +1888,7 @@ const Game = {
       kind: r.kind,
       id: String(r.id),
       minStock: Math.max(0, Math.min(9999, parseInt(r.minStock, 10) || 0)),
-      buyQty: Math.max(1, Math.min(99, parseInt(r.buyQty, 10) || 1)),
+      buyQty: Math.max(1, Math.min(9999, parseInt(r.buyQty, 10) || 1)),
       enabled: r.enabled !== false
     }));
     return c;
@@ -1902,7 +1902,7 @@ const Game = {
         kind: r.kind,
         id: String(r.id),
         minStock: Math.max(0, Math.min(9999, parseInt(r.minStock, 10) || 0)),
-        buyQty: Math.max(1, Math.min(99, parseInt(r.buyQty, 10) || 1)),
+        buyQty: Math.max(1, Math.min(9999, parseInt(r.buyQty, 10) || 1)),
         enabled: r.enabled !== false
       })) : []
     };

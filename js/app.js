@@ -1975,9 +1975,9 @@ function openBulkModal(action) {
     harvest: 'Thu hoạch bao nhiêu ô?'
   };
   const hints = {
-    water: 'Chọn số ô cần tưới (mỗi ô +1 lần tưới nếu đủ điều kiện)',
-    fert: 'Chọn loại phân, rồi chọn số ô cần bón',
-    harvest: 'Chọn số ô đã chín để thu hoạch'
+    water: 'Nhập số ô cần tưới (mỗi ô +1 lần nếu đủ điều kiện)',
+    fert: 'Chọn loại phân, rồi nhập số ô cần bón',
+    harvest: 'Nhập số ô đã chín để thu hoạch'
   };
   document.getElementById('bulk-title').textContent = titles[action] || 'Chọn số lượng';
   document.getElementById('bulk-hint').textContent = hints[action] || '';
@@ -2009,7 +2009,6 @@ function openBulkModal(action) {
       });
       fertWrap.appendChild(btn);
     });
-    // mặc định chọn phân tốt nhất
     const sorted = ids.map(id => Game.getFertilizer(id)).filter(Boolean)
       .sort((a, b) => (b.yieldBonus || 0) - (a.yieldBonus || 0));
     if (sorted[0]) {
@@ -2018,46 +2017,62 @@ function openBulkModal(action) {
       if (first) first.classList.add('active');
     }
     list.appendChild(fertWrap);
-    const sep = document.createElement('p');
-    sep.className = 'bulk-hint';
-    sep.textContent = 'Số ô cần bón:';
-    list.appendChild(sep);
   }
 
-  for (let n = 1; n <= 11; n++) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'btn btn-secondary btn-sm bulk-qty-btn';
-    b.dataset.n = String(n);
-    b.textContent = String(n);
-    list.appendChild(b);
-  }
-  const allBtn = document.createElement('button');
-  allBtn.type = 'button';
-  allBtn.className = 'btn btn-primary btn-sm bulk-qty-btn bulk-qty-all';
-  allBtn.dataset.n = 'all';
-  allBtn.textContent = 'Tất cả';
-  list.appendChild(allBtn);
-  list.querySelectorAll('.bulk-qty-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const n = btn.dataset.n === 'all' ? 'all' : parseInt(btn.dataset.n, 10);
-      if (bulkAction === 'fert' && !bulkFertId) {
-        showToast('Hãy chọn loại phân bón!', 'error');
+  const row = document.createElement('div');
+  row.className = 'bulk-qty-row';
+  row.innerHTML = `
+    <input type="number" id="bulk-qty-input" class="bulk-qty-input" min="1" max="999" value="" placeholder="Số ô" inputmode="numeric" />
+    <button type="button" class="btn btn-primary btn-sm bulk-qty-all" id="bulk-qty-all">Tất cả</button>
+  `;
+  list.appendChild(row);
+
+  const runBulk = async (n) => {
+    if (bulkAction === 'fert' && !bulkFertId) {
+      showToast('Hãy chọn loại phân bón!', 'error');
+      return;
+    }
+    closeModals();
+    let res;
+    if (bulkAction === 'water') res = await Game.waterAll(n);
+    else if (bulkAction === 'fert') res = await Game.fertilizeAll(n, bulkFertId);
+    else res = await Game.harvestAll(n);
+    showToast(res.msg, res.ok ? 'success' : 'error');
+    renderGarden();
+    updateCoins();
+    bulkAction = null;
+    bulkFertId = null;
+  };
+
+  row.querySelector('#bulk-qty-all')?.addEventListener('click', () => runBulk('all'));
+  const inp = row.querySelector('#bulk-qty-input');
+  inp?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const v = parseInt(inp.value, 10);
+      if (!Number.isFinite(v) || v < 1) {
+        showToast('Nhập số ô hợp lệ!', 'error');
         return;
       }
-      closeModals();
-      let res;
-      if (bulkAction === 'water') res = await Game.waterAll(n);
-      else if (bulkAction === 'fert') res = await Game.fertilizeAll(n, bulkFertId);
-      else res = await Game.harvestAll(n);
-      showToast(res.msg, res.ok ? 'success' : 'error');
-      renderGarden();
-      updateCoins();
-      bulkAction = null;
-      bulkFertId = null;
-    });
+      runBulk(v);
+    }
   });
+  // Nút xác nhận nhỏ cạnh input
+  const go = document.createElement('button');
+  go.type = 'button';
+  go.className = 'btn btn-secondary btn-sm';
+  go.textContent = 'OK';
+  go.addEventListener('click', () => {
+    const v = parseInt(inp.value, 10);
+    if (!Number.isFinite(v) || v < 1) {
+      showToast('Nhập số ô hợp lệ!', 'error');
+      return;
+    }
+    runBulk(v);
+  });
+  row.appendChild(go);
+
   document.getElementById('modal-bulk').classList.add('show');
+  setTimeout(() => inp?.focus(), 80);
 }
 
 document.getElementById('btn-water-all')?.addEventListener('click', () => {
@@ -4118,11 +4133,16 @@ function renderHelperRulesList() {
     const name = Game.getItemDisplayName(r.kind, r.id);
     const kindLabel = r.kind === 'seed' ? 'Hạt' : (r.kind === 'fert' ? 'Phân' : 'Bảo hộ');
     row.innerHTML = `
-      <span class="helper-rule-name">${kindLabel}: ${name}</span>
-      <label>Mốc <input type="number" min="0" max="9999" data-i="${idx}" data-f="minStock" value="${r.minStock}" /></label>
-      <label>Mua <input type="number" min="1" max="99" data-i="${idx}" data-f="buyQty" value="${r.buyQty}" /></label>
-      <label class="checkbox-row"><input type="checkbox" data-i="${idx}" data-f="enabled" ${r.enabled !== false ? 'checked' : ''}/> Bật</label>
-      <button type="button" class="btn btn-secondary btn-sm" data-del="${idx}"><i class="fa-solid fa-trash"></i></button>
+      <div class="helper-rule-top">
+        <span class="helper-rule-kind">${kindLabel}</span>
+        <span class="helper-rule-name">${name}</span>
+        <button type="button" class="helper-rule-del" data-del="${idx}" title="Xóa"><i class="fa-solid fa-trash"></i></button>
+      </div>
+      <div class="helper-rule-fields">
+        <label class="helper-field">Mốc kho<input type="number" min="0" max="9999" data-i="${idx}" data-f="minStock" value="${r.minStock}" /></label>
+        <label class="helper-field">Mua thêm<input type="number" min="1" max="9999" data-i="${idx}" data-f="buyQty" value="${r.buyQty}" /></label>
+        <label class="helper-field helper-field-toggle"><span>Bật</span><input type="checkbox" data-i="${idx}" data-f="enabled" ${r.enabled !== false ? 'checked' : ''}/></label>
+      </div>
     `;
     host.appendChild(row);
   });
@@ -4181,8 +4201,8 @@ document.getElementById('btn-helper-add-rule')?.addEventListener('click', () => 
   }
   _helperRulesDraft.push({
     kind, id,
-    minStock: Number.isFinite(minStock) ? minStock : 5,
-    buyQty: Number.isFinite(buyQty) && buyQty > 0 ? buyQty : 10,
+    minStock: Number.isFinite(minStock) ? Math.max(0, Math.min(9999, minStock)) : 5,
+    buyQty: Number.isFinite(buyQty) && buyQty > 0 ? Math.max(1, Math.min(9999, buyQty)) : 10,
     enabled: true
   });
   renderHelperRulesList();
