@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.7.9';
+const APP_VERSION = '1.8.0';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13107,7 +13107,7 @@ const DEFAULT_SETTINGS = {
   /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.7.9',
+  appVersion: '1.8.0',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13623,9 +13623,14 @@ async function loadPlayer(uid, email) {
   return currentPlayer;
 }
 
+/**
+ * Lưu player lên Firebase + backup máy.
+ * @returns {{ ok: boolean, msg?: string }}
+ */
 async function savePlayer() {
-  if (!currentUser || !currentPlayer || !db) return;
-  // Đồng bộ multi-vườn trước khi ghi
+  if (!currentUser || !currentPlayer || !db) {
+    return { ok: false, msg: 'Chưa đăng nhập / chưa có DB' };
+  }
   if (typeof Game !== 'undefined' && Game.ensureGardens) {
     try {
       Game.ensureGardens();
@@ -13641,7 +13646,6 @@ async function savePlayer() {
   currentPlayer.timersSyncedAt = t;
   currentPlayer.lastSeenAt = t;
   currentPlayer.sessionId = CLIENT_SESSION_ID;
-  // updatedAt luôn tăng so với base → bản local offline không bị coi là cũ
   const prev = Math.max(
     Number(currentPlayer.updatedAt) || 0,
     Number(_playerBaseUpdatedAt) || 0
@@ -13649,27 +13653,44 @@ async function savePlayer() {
   currentPlayer.updatedAt = Math.max(t, prev + 1);
   _playerDirty = true;
 
-  // Luôn backup máy trước — dù Firebase lỗi vẫn còn khi vào lại
+  // Backup local (chỉ cùng origin: localhost ≠ GitHub pages)
   backupPlayerLocal();
 
-  // set() — xếp hàng khi mạng chập chờn; không dùng transaction (dễ hủy)
+  const ref = db.ref('users/' + currentUser.uid);
+  let lastErr = null;
+  // Clone plain JSON — tránh Firebase từ chối undefined / function
+  let payload;
   try {
-    await db.ref('users/' + currentUser.uid).set(currentPlayer);
-    _playerBaseUpdatedAt = currentPlayer.updatedAt;
-    _playerDirty = false;
-    backupPlayerLocal();
+    payload = JSON.parse(JSON.stringify(currentPlayer));
   } catch (e) {
-    console.warn('savePlayer (giữ backup local, thử lại sau)', e && e.message ? e.message : e);
-    _playerDirty = true;
-    return;
+    payload = currentPlayer;
   }
-
-  if (typeof Game !== 'undefined' && Game.updateLeaderboard) {
-    try { await Game.updateLeaderboard(); } catch (_) {}
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await ref.set(payload);
+      _playerBaseUpdatedAt = currentPlayer.updatedAt;
+      _playerDirty = false;
+      backupPlayerLocal();
+      try {
+        if (typeof Game !== 'undefined' && Game.updateLeaderboard) await Game.updateLeaderboard();
+      } catch (_) {}
+      try {
+        if (typeof Game !== 'undefined' && Game.publishPublicGarden) await Game.publishPublicGarden();
+      } catch (_) {}
+      return { ok: true };
+    } catch (e) {
+      lastErr = e;
+      console.warn('savePlayer attempt ' + attempt, e && e.message ? e.message : e);
+      await new Promise(r => setTimeout(r, 350 * attempt));
+    }
   }
-  if (typeof Game !== 'undefined' && Game.publishPublicGarden) {
-    try { await Game.publishPublicGarden(); } catch (_) {}
+  _playerDirty = true;
+  const msg = (lastErr && lastErr.message) ? lastErr.message : 'Lỗi lưu Firebase';
+  console.error('savePlayer FAILED', msg);
+  if (typeof showToast === 'function') {
+    try { showToast('⚠️ Chưa lưu lên server — F5 sẽ mất tiến trình. ' + msg, 'error'); } catch (_) {}
   }
+  return { ok: false, msg };
 }
 
 /**
