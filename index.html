@@ -136,40 +136,36 @@
                 </div>
               </div>
               <div class="garden-tools-dd garden-support-dd" id="garden-support-dd">
-                <button type="button" id="btn-support-menu" class="btn-support-trigger" aria-haspopup="true" aria-expanded="false">
+                <button type="button" id="btn-support-menu" class="btn btn-primary" aria-haspopup="true" aria-expanded="false">
                   <i class="fa-solid fa-hands-helping"></i> Hỗ trợ
-                  <i class="fa-solid fa-chevron-down" style="font-size:0.65rem;opacity:0.85"></i>
+                  <i class="fa-solid fa-chevron-down" style="font-size:0.65rem;opacity:0.9"></i>
                 </button>
                 <div class="garden-tools-menu garden-support-menu" id="garden-support-menu" role="menu">
-                  <button type="button" id="btn-support-fairy" class="support-pill support-pill-fairy" role="menuitem">
-                    <span class="support-pill-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
-                    <span class="support-pill-name" id="support-name-fairy">Tiên</span>
-                    <span class="support-pill-sep">·</span>
-                    <span class="support-pill-time" id="support-status-fairy">—</span>
-                    <span class="support-pill-gear"><i class="fa-solid fa-gear"></i></span>
+                  <button type="button" id="btn-support-fairy" class="support-row support-row-fairy" role="menuitem">
+                    <span class="support-row-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span>
+                    <span class="support-row-name" id="support-name-fairy">Tiên</span>
+                    <span class="support-row-time" id="support-status-fairy">—</span>
+                    <span class="support-row-gear" title="Cấu hình"><i class="fa-solid fa-gear"></i></span>
                   </button>
-                  <button type="button" id="btn-support-nyc" class="support-pill support-pill-nyc" role="menuitem">
-                    <span class="support-pill-icon"><i class="fa-solid fa-heart-crack"></i></span>
-                    <span class="support-pill-name" id="support-name-nyc">NYC</span>
-                    <span class="support-pill-sep">·</span>
-                    <span class="support-pill-time" id="support-status-nyc">—</span>
-                    <span class="support-pill-gear"><i class="fa-solid fa-gear"></i></span>
+                  <button type="button" id="btn-support-nyc" class="support-row support-row-nyc" role="menuitem">
+                    <span class="support-row-icon"><i class="fa-solid fa-heart-crack"></i></span>
+                    <span class="support-row-name" id="support-name-nyc">NYC</span>
+                    <span class="support-row-time" id="support-status-nyc">—</span>
+                    <span class="support-row-gear" title="Cấu hình"><i class="fa-solid fa-gear"></i></span>
                   </button>
-                  <button type="button" id="btn-support-helper" class="support-pill support-pill-helper" role="menuitem">
-                    <span class="support-pill-icon"><i class="fa-solid fa-user-tie"></i></span>
-                    <span class="support-pill-name" id="support-name-helper">Giúp việc</span>
-                    <span class="support-pill-sep">·</span>
-                    <span class="support-pill-time" id="support-status-helper">—</span>
-                    <span class="support-pill-gear"><i class="fa-solid fa-gear"></i></span>
+                  <button type="button" id="btn-support-helper" class="support-row support-row-helper" role="menuitem">
+                    <span class="support-row-icon"><i class="fa-solid fa-user-tie"></i></span>
+                    <span class="support-row-name" id="support-name-helper">Giúp việc</span>
+                    <span class="support-row-time" id="support-status-helper">—</span>
+                    <span class="support-row-gear" title="Cấu hình"><i class="fa-solid fa-gear"></i></span>
                   </button>
                 </div>
               </div>
+              <div id="btn-global-timer" class="weather garden-cycle-chip" title="Đếm ngược chu kỳ 3 giờ (Tiên / tưới·phân)" role="status">
+                <i class="fa-regular fa-clock"></i>
+                <span id="global-timer-text">--:--:--</span>
+              </div>
             </div>
-          </div>
-          <div class="garden-controls-timers">
-            <button id="btn-global-timer" class="btn btn-timer" title="Đếm ngược đến lúc reset tưới & phân (mỗi 3 giờ)" disabled>
-              <i class="fa-regular fa-clock"></i> <span id="global-timer-text">--:--:--</span>
-            </button>
           </div>
         </div>
         <div class="garden-stage" id="garden-stage">
@@ -690,10 +686,10 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.4.4"></script>
-  <script src="js/data.js?v=1.4.4"></script>
-  <script src="js/game.js?v=1.4.4"></script>
-  <script src="js/features.js?v=1.4.4"></script>
-  <script src="js/app.js?v=1.4.4"></script>
+  <script src="js/firebase-config.js?v=1.6.5"></script>
+  <script src="js/data.js?v=1.6.5"></script>
+  <script src="js/game.js?v=1.6.5"></script>
+  <script src="js/features.js?v=1.6.5"></script>
+  <script src="js/app.js?v=1.6.5"></script>
 </body>
 </html>

@@ -4129,28 +4129,40 @@ html[data-theme="dark"] .garden-switch-hint {
   z-index: 40;
 }
 
-/* Nút trigger dropdown (Vườn / Công cụ / select): không tô nền */
+/* Nút trigger dropdown (Vườn / Công cụ / Hỗ trợ): không tô nền */
 #btn-tools-menu.btn,
-#btn-tools-menu.btn-primary {
+#btn-tools-menu.btn-primary,
+#btn-support-menu.btn,
+#btn-support-menu.btn-primary,
+.garden-support-dd #btn-support-menu {
   background: transparent !important;
   border: 1.5px solid rgba(45, 106, 79, 0.35) !important;
   color: var(--text, #1b4332) !important;
   box-shadow: none !important;
+  filter: none !important;
 }
 #btn-tools-menu.btn:hover,
-#btn-tools-menu.btn-primary:hover {
+#btn-tools-menu.btn-primary:hover,
+#btn-support-menu.btn:hover,
+#btn-support-menu.btn-primary:hover,
+.garden-support-dd #btn-support-menu:hover {
   background: rgba(45, 106, 79, 0.08) !important;
   border-color: var(--primary, #2d6a4f) !important;
-  transform: none;
-  filter: none;
+  transform: none !important;
+  filter: none !important;
 }
 html[data-theme="dark"] #btn-tools-menu.btn,
-html[data-theme="dark"] #btn-tools-menu.btn-primary {
+html[data-theme="dark"] #btn-tools-menu.btn-primary,
+html[data-theme="dark"] #btn-support-menu.btn,
+html[data-theme="dark"] #btn-support-menu.btn-primary,
+html[data-theme="dark"] .garden-support-dd #btn-support-menu {
   background: transparent !important;
   border-color: rgba(149, 213, 178, 0.35) !important;
   color: #e8f5e9 !important;
 }
-html[data-theme="dark"] #btn-tools-menu.btn:hover {
+html[data-theme="dark"] #btn-tools-menu.btn:hover,
+html[data-theme="dark"] #btn-support-menu.btn:hover,
+html[data-theme="dark"] .garden-support-dd #btn-support-menu:hover {
   background: rgba(82, 183, 136, 0.12) !important;
   border-color: #52b788 !important;
 }
@@ -5483,4 +5495,383 @@ button, input, select, textarea, option,
 }
 .modal-content {
   overflow-x: visible;
+}
+
+
+/* Timer cạnh Hỗ trợ — không nền */
+.btn-timer-bare,
+#btn-global-timer.btn-timer-bare {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px !important;
+  border: none !important;
+  border-radius: 12px;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--text, #1b4332) !important;
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: default;
+  min-height: auto !important;
+}
+#btn-global-timer.btn-timer-bare.ready {
+  color: #0d9488 !important;
+}
+html[data-theme="dark"] #btn-global-timer.btn-timer-bare {
+  color: #e8f5e9 !important;
+  background: transparent !important;
+}
+.btn-support-trigger {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+.garden-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+/* Tên cây chi tiết ô — căn giữa */
+#modal-plot #plot-title,
+#plot-title {
+  text-align: center !important;
+  width: 100%;
+  justify-content: center;
+  display: block;
+}
+
+/* Modal plot: không để scrollbar cắt dropdown */
+#modal-plot .modal-content {
+  overflow-x: visible !important;
+  overflow-y: auto !important;
+  max-height: min(90vh, 640px);
+}
+#modal-plot.modal.show .modal-content.dropdown-open {
+  overflow: visible !important;
+}
+#modal-plot .plot-upgrade-box {
+  overflow: visible !important;
+  position: relative;
+  z-index: 30;
+}
+
+/* ===== Hỗ trợ = cùng style Công cụ (btn-primary) ===== */
+.garden-support-dd #btn-support-menu,
+#btn-support-menu.btn.btn-primary {
+  background: linear-gradient(135deg, var(--primary, #2d6a4f), var(--primary-light, #40916c)) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(45, 106, 79, 0.28) !important;
+}
+.garden-support-dd #btn-support-menu:hover {
+  filter: brightness(1.06);
+}
+.garden-support-menu {
+  min-width: 11rem !important;
+  padding: 6px !important;
+  gap: 2px !important;
+  background: var(--card, #fff) !important;
+  border: 1px solid rgba(45, 106, 79, 0.15) !important;
+  box-shadow: 0 12px 28px rgba(27, 67, 50, 0.16) !important;
+  border-radius: 12px !important;
+}
+.garden-support-menu button[role="menuitem"] {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px !important;
+  border: none !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--text, #1b4332) !important;
+  font-weight: 600 !important;
+  font-size: 0.88rem !important;
+  box-shadow: none !important;
+}
+.garden-support-menu button[role="menuitem"]:hover {
+  background: rgba(45, 106, 79, 0.1) !important;
+}
+html[data-theme="dark"] .garden-support-menu {
+  background: #1a2420 !important;
+  border-color: #3d5a4c !important;
+}
+html[data-theme="dark"] .garden-support-menu button[role="menuitem"] {
+  color: #e8f5e9 !important;
+}
+
+/* Chip chu kỳ 3h — giống khối Thời tiết */
+.garden-cycle-chip,
+#btn-global-timer.garden-cycle-chip,
+#btn-global-timer.weather {
+  background: var(--card) !important;
+  padding: 10px 16px !important;
+  border-radius: 14px !important;
+  box-shadow: var(--shadow) !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  border: none !important;
+  color: var(--text, #1b4332) !important;
+  cursor: default !important;
+  min-width: 7.5rem;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
+}
+#btn-global-timer.garden-cycle-chip.ready {
+  color: #0d9488 !important;
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.25) !important;
+}
+#btn-global-timer.garden-cycle-chip.is-empty {
+  opacity: 0.65;
+}
+html[data-theme="dark"] #btn-global-timer.garden-cycle-chip {
+  background: var(--card) !important;
+  color: #e8f5e9 !important;
+}
+
+/* Thanh trạng thái dài dưới garden-controls */
+.garden-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: stretch;
+  gap: 8px;
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto 4px;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+.gsb-item {
+  flex: 1 1 140px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(45, 106, 79, 0.1);
+  transition: opacity 0.2s;
+}
+.gsb-item.is-off {
+  opacity: 0.62;
+}
+.gsb-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+.gsb-fairy .gsb-icon { background: linear-gradient(135deg, #a78bfa, #ec4899); }
+.gsb-nyc .gsb-icon { background: linear-gradient(135deg, #fb7185, #f472b6); }
+.gsb-helper .gsb-icon { background: linear-gradient(135deg, #38bdf8, #818cf8); }
+.gsb-cycle .gsb-icon { background: linear-gradient(135deg, #1e3a5f, #3b82f6); }
+.gsb-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.gsb-name {
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: var(--text, #1b4332);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gsb-time {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted, #52796f);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html[data-theme="dark"] .gsb-item {
+  background: var(--card);
+  border-color: #3d5a4c;
+}
+html[data-theme="dark"] .gsb-name { color: #e8f5e9; }
+html[data-theme="dark"] .gsb-time { color: #a7c4b5; }
+
+@media (max-width: 560px) {
+  .garden-status-bar {
+    gap: 6px;
+  }
+  .gsb-item {
+    flex: 1 1 calc(50% - 6px);
+    padding: 8px 10px;
+  }
+  .gsb-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+}
+
+/* Modal chi tiết ô — triệt scrollbar ngang */
+#modal-plot {
+  overflow: hidden !important;
+}
+#modal-plot .modal-content {
+  width: min(400px, calc(100vw - 28px)) !important;
+  max-width: calc(100vw - 28px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+}
+#modal-plot .modal-content::-webkit-scrollbar:horizontal {
+  display: none !important;
+  height: 0 !important;
+}
+#modal-plot #plot-detail,
+#modal-plot .plot-upgrade-box,
+#modal-plot .plot-upgrade-row,
+#modal-plot .modal-actions {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+#modal-plot .pill-dd-block,
+#modal-plot .pill-dd {
+  max-width: 100% !important;
+}
+#modal-plot .pill-dd-trigger {
+  max-width: 100% !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* FORCE: Hỗ trợ = Công cụ (không nền xanh) */
+#btn-support-menu,
+#btn-support-menu.btn,
+#btn-support-menu.btn-primary,
+.garden-support-dd #btn-support-menu,
+.garden-support-dd #btn-support-menu.btn-primary {
+  background: transparent !important;
+  background-image: none !important;
+  border: 1.5px solid rgba(45, 106, 79, 0.35) !important;
+  color: var(--text, #1b4332) !important;
+  box-shadow: none !important;
+}
+html[data-theme="dark"] #btn-support-menu,
+html[data-theme="dark"] .garden-support-dd #btn-support-menu {
+  background: transparent !important;
+  border-color: rgba(149, 213, 178, 0.35) !important;
+  color: #e8f5e9 !important;
+}
+/* Ẩn status bar nếu còn sót */
+.garden-status-bar { display: none !important; }
+
+/* Menu Hỗ trợ: icon | tên | giờ còn | gear */
+.garden-support-menu {
+  min-width: min(300px, 92vw) !important;
+  padding: 8px !important;
+  gap: 6px !important;
+  background: var(--card, #fff) !important;
+  border: 1px solid rgba(45, 106, 79, 0.16) !important;
+  box-shadow: 0 12px 28px rgba(27, 67, 50, 0.16) !important;
+  border-radius: 14px !important;
+}
+.garden-support-menu .support-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  padding: 10px 12px !important;
+  border: none !important;
+  border-radius: 12px !important;
+  background: rgba(45, 106, 79, 0.06) !important;
+  color: var(--text, #1b4332) !important;
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 0.88rem !important;
+  text-align: left !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+.garden-support-menu .support-row:hover {
+  background: rgba(45, 106, 79, 0.12) !important;
+  filter: none !important;
+}
+.garden-support-menu .support-row.is-off {
+  opacity: 0.7;
+}
+.support-row-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+.support-row-fairy .support-row-icon { background: linear-gradient(135deg, #a78bfa, #ec4899); }
+.support-row-nyc .support-row-icon { background: linear-gradient(135deg, #fb7185, #f472b6); }
+.support-row-helper .support-row-icon { background: linear-gradient(135deg, #38bdf8, #818cf8); }
+.support-row-name {
+  flex: 0 1 auto;
+  max-width: 7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+}
+.support-row-time {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--text-muted, #52796f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.support-row-gear {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(45, 106, 79, 0.12);
+  color: var(--text, #1b4332);
+  flex-shrink: 0;
+  font-size: 0.8rem;
+}
+html[data-theme="dark"] .garden-support-menu {
+  background: #1a2420 !important;
+  border-color: #3d5a4c !important;
+}
+html[data-theme="dark"] .garden-support-menu .support-row {
+  background: rgba(149, 213, 178, 0.08) !important;
+  color: #e8f5e9 !important;
+}
+html[data-theme="dark"] .garden-support-menu .support-row:hover {
+  background: rgba(149, 213, 178, 0.16) !important;
+}
+html[data-theme="dark"] .support-row-time { color: #a7c4b5; }
+html[data-theme="dark"] .support-row-gear {
+  background: rgba(149, 213, 178, 0.15);
+  color: #e8f5e9;
 }

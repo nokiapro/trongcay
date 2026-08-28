@@ -1243,10 +1243,12 @@ const Game = {
       wateredN++;
     }
 
-    // 2) Bón phân từ kho — chưa bón hoặc đã hết hạn 3h; hết kho thì dừng
+    // 2) Bón phân từ kho — chưa bón hoặc đã hết hạn 3h tại mốc `now`; hết kho thì dừng
+    // Dùng isReadyAt/isFertBoostActive(…, now) để bù offline đúng giờ (không dùng Date.now() lệch)
     if (cfg.useFertilizer) {
       const needFert = plots.filter(p => {
-        if (!p || !p.plantId || this.isReady(p)) return false;
+        if (!p || !p.plantId) return false;
+        if (typeof this.isReadyAt === 'function' ? this.isReadyAt(p, now) : this.isReady(p)) return false;
         return !this.isFertBoostActive(p, now);
       });
       for (let i = 0; i < needFert.length; i++) {
@@ -1258,7 +1260,7 @@ const Game = {
         const fertId = this.takeFertFromBagForFairy(cfg);
         if (!fertId) break; // hết phân → dừng
         plot.fertilizerId = fertId;
-        plot.fertilizedAt = now;
+        plot.fertilizedAt = now; // mốc tưới/bón = careAt khi bù offline
         fertN++;
       }
     }
@@ -1397,6 +1399,370 @@ const Game = {
     }
     return changed;
   },
+
+  /** Elapsed seconds tại mốc thời gian atMs (mô phỏng offline) */
+  getElapsedAt(plot, atMs) {
+    if (!plot || !plot.plantId || !plot.plantedAt) return 0;
+    return Math.max(0, (atMs - plot.plantedAt) / 1000);
+  },
+
+  isReadyAt(plot, atMs) {
+    if (!plot || !plot.plantId || !plot.plantedAt) return false;
+    return this.getElapsedAt(plot, atMs) >= this.getEffectiveGrowTime(plot);
+  },
+
+  /** Thời điểm chín (ms) nếu giữ nguyên nước/phân hiện tại */
+  getReadyAtMs(plot) {
+    if (!plot || !plot.plantId || !plot.plantedAt) return null;
+    const growSec = this.getEffectiveGrowTime(plot);
+    return plot.plantedAt + growSec * 1000;
+  },
+
+  /**
+   * Bù offline có tính thời gian đúng:
+   * - Cây vẫn lớn theo plantedAt khi tắt máy
+   * - NYC: thu khi đến giờ chín, trồng lại với plantedAt = lúc thu (không phải lúc mở app)
+   *   → nhiều vòng thu/trồng trong thời gian offline được tính đủ
+   * - Ô trống khi offline: NYC trồng từ mốc lastSeen (nếu còn hạt)
+   * - Tiên: mỗi chu kỳ 3h tưới/bón (trừ kho phân)
+   * - Giúp việc: mua theo mốc sau khi đã trừ kho (Tiên/NYC)
+   */
+  /** Khoảng cách roll mưa offline (15 phút) */
+  OFFLINE_RAIN_INTERVAL_MS: 15 * 60 * 1000,
+
+  getRainChancePct() {
+    let chance = (typeof currentSettings !== 'undefined' && currentSettings && currentSettings.rainChance) != null
+      ? Number(currentSettings.rainChance)
+      : 15;
+    if (!Number.isFinite(chance)) chance = 15;
+    return Math.max(1, Math.min(50, chance));
+  },
+
+  /**
+   * Áp 1 trận mưa tại mốc t (ms) — bù offline.
+   * - Rút 12% thời gian còn lại (như mưa online)
+   * - Có Tiên: tưới 3/3, lastWatered = t
+   */
+  applyOfflineRainAt(t) {
+    if (!currentPlayer) return { watered: 0, boosted: 0 };
+    this.ensureGardens();
+    let watered = 0;
+    let boosted = 0;
+    const fairy = this.isFairyActive();
+    this.forEachGarden((plots, gi) => {
+      const fairyHere = fairy && this.isFairyGardenEnabled(gi);
+      (plots || []).forEach(plot => {
+        if (!plot || !plot.plantId || !plot.plantedAt) return;
+        const ready = typeof this.isReadyAt === 'function'
+          ? this.isReadyAt(plot, t)
+          : this.isReady(plot);
+        if (!ready) {
+          const growSec = this.getEffectiveGrowTime(plot);
+          const elapsed = this.getElapsedAt(plot, t);
+          const remain = Math.max(0, growSec - elapsed);
+          const cut = Math.floor(remain * 0.12);
+          if (cut > 0) {
+            plot.plantedAt -= cut * 1000;
+            boosted++;
+          }
+        }
+        if (fairyHere) {
+          plot.waterCount = 3;
+          plot.watered = true;
+          plot.lastWatered = t;
+          watered++;
+        }
+      });
+    });
+    return { watered, boosted };
+  },
+
+  async simulateOfflineCare() {
+    if (!currentPlayer) return { ok: false, changed: false, notes: [] };
+    this.ensureGardens();
+    const now = Date.now();
+    const from = Math.min(
+      now,
+      Math.max(
+        0,
+        currentPlayer.lastSeenAt ||
+          currentPlayer.lastCatchUpAt ||
+          currentPlayer.timersSyncedAt ||
+          currentPlayer.updatedAt ||
+          now
+      )
+    );
+    // Chỉ coi là offline khi vắng ≥ 5 phút — dưới 5 phút coi như vẫn online (không bù, không reset chu kỳ 3h)
+    const OFFLINE_MIN_MS = 5 * 60 * 1000;
+    if (now - from < OFFLINE_MIN_MS) {
+      // Giữ lastSeenAt cũ để lần sau còn đo đúng; chỉ cập nhật lastCatchUp nhẹ
+      currentPlayer.lastCatchUpAt = now;
+      return { ok: true, changed: false, notes: [], offlineMs: 0, skipped: true };
+    }
+
+    let changed = false;
+    const notes = [];
+    let totalHarvest = 0;
+    let totalPlant = 0;
+    let fairyCycles = 0;
+    let helperBuys = 0;
+    let rainHits = 0;
+    let rainWatered = 0;
+
+    // --- Timeline offline: mưa mỗi 15p (roll % admin) + Tiên mỗi 3h ---
+    const events = []; // { t, type: 'rain'|'fairy' }
+
+    // Mưa: mỗi 15 phút, tỉ lệ rainChance (1–50%) trong admin
+    const rainChance = this.getRainChancePct();
+    const rainStep = this.OFFLINE_RAIN_INTERVAL_MS || (15 * 60 * 1000);
+    let rainT = from + rainStep;
+    let rainGuard = 0;
+    const maxRainChecks = 2000; // ~20 ngày * 96
+    while (rainT <= now && rainGuard++ < maxRainChecks) {
+      if (Math.random() * 100 < rainChance) {
+        events.push({ t: rainT, type: 'rain' });
+      }
+      rainT += rainStep;
+    }
+
+    // Tiên chu kỳ 3 giờ
+    if (this.isFairyActive()) {
+      let careAt = currentPlayer.lastFairyCare || 0;
+      if (!careAt || careAt < from) {
+        events.push({ t: from, type: 'fairy' });
+        careAt = from;
+      }
+      while (careAt + this.BOOST_MS <= now) {
+        careAt += this.BOOST_MS;
+        events.push({ t: careAt, type: 'fairy' });
+      }
+    }
+
+    events.sort((a, b) => a.t - b.t || (a.type === 'rain' ? -1 : 1));
+
+    events.forEach(ev => {
+      if (ev.type === 'rain') {
+        const r = this.applyOfflineRainAt(ev.t);
+        rainHits++;
+        rainWatered += r.watered || 0;
+        if (r.watered || r.boosted) changed = true;
+      } else if (ev.type === 'fairy' && this.isFairyActive()) {
+        this.forEachGarden((plots, gi) => {
+          if (!this.isFairyGardenEnabled(gi)) return;
+          this.runFairyCare(ev.t);
+        });
+        currentPlayer.lastFairyCare = ev.t;
+        fairyCycles++;
+        changed = true;
+      }
+    });
+
+    // Chốt trạng thái nước/phân hiện tại
+    if (this.resetExpiredBoosts()) changed = true;
+
+    if (rainHits) {
+      notes.push(
+        this.isFairyActive()
+          ? `Mưa ${rainHits} trận (Tiên tưới kèm)`
+          : `Mưa ${rainHits} trận (buff lớn)`
+      );
+    }
+    if (fairyCycles) notes.push(`Tiên ${fairyCycles} lần chu kỳ 3h`);
+
+    // --- NYC: mô phỏng thu/trồng với plantedAt đúng ---
+    if (this.isNycActive()) {
+      const cfg = this.getNycConfig();
+      const active = currentPlayer.activeGarden || 0;
+      this.syncActiveGarden();
+
+      for (let gi = 0; gi < currentPlayer.gardens.length; gi++) {
+        if (!this.isNycGardenEnabled(gi)) continue;
+        currentPlayer.activeGarden = gi;
+        currentPlayer.plots = currentPlayer.gardens[gi];
+        const plots = currentPlayer.plots;
+        if (!Array.isArray(plots)) continue;
+
+        // 1) Ô trống khi bắt đầu offline → trồng từ mốc `from` (nếu có hạt)
+        if (cfg.plantId) {
+          const plantedEmpty = this._nycPlantEmptiesAt(plots, cfg, from);
+          if (plantedEmpty > 0) {
+            totalPlant += plantedEmpty;
+            changed = true;
+          }
+        }
+
+        // 2) Lặp: thu ô đã chín trước `now`, trồng lại tại thời điểm chín
+        let guard = 0;
+        while (guard++ < 40) {
+          let any = false;
+          // Tìm ô chín sớm nhất <= now
+          const readyList = [];
+          for (let i = 0; i < plots.length; i++) {
+            const plot = plots[i];
+            if (!plot || !plot.plantId || !plot.plantedAt) continue;
+            const readyAt = this.getReadyAtMs(plot);
+            if (readyAt != null && readyAt <= now) {
+              readyList.push({ i, plot, readyAt });
+            }
+          }
+          if (!readyList.length) break;
+          // Thu theo thứ tự chín
+          readyList.sort((a, b) => a.readyAt - b.readyAt);
+          for (const { plot, readyAt } of readyList) {
+            if (!plot.plantId || !this.isReadyAt(plot, Math.min(now, readyAt + 1))) {
+              // re-check
+              if (!this.isReadyAt(plot, now)) continue;
+            }
+            const plant = this.getPlant(plot.plantId);
+            if (!plant) continue;
+            let amount = plant.yield || 1;
+            if (plot.fertilizerId) {
+              const fert = this.getFertilizer(plot.fertilizerId);
+              if (fert && fert.yieldBonus) amount = Math.ceil(amount * (1 + fert.yieldBonus));
+            }
+            if ((plot.waterCount || 0) >= 2) amount = Math.ceil(amount * 1.1);
+            if (plot.seedStar) amount = Math.ceil(amount * 1.5);
+            const hid = plot.plantId;
+            if (!currentPlayer.inventory) currentPlayer.inventory = {};
+            if (plot.seedStar) {
+              if (!currentPlayer.inventory.harvestStar) currentPlayer.inventory.harvestStar = {};
+              currentPlayer.inventory.harvestStar[hid] = (currentPlayer.inventory.harvestStar[hid] || 0) + amount;
+            } else {
+              if (!currentPlayer.inventory.harvest) currentPlayer.inventory.harvest = {};
+              currentPlayer.inventory.harvest[hid] = (currentPlayer.inventory.harvest[hid] || 0) + amount;
+            }
+            currentPlayer.stats = currentPlayer.stats || {};
+            currentPlayer.stats.harvested = (currentPlayer.stats.harvested || 0) + amount;
+            this.unlockCollection(hid);
+            const xpGain = Math.ceil((plant.xp || 5) * (plot.seedStar ? 1.3 : 1));
+            this.addXp(xpGain);
+            totalHarvest++;
+            // Xóa cây
+            plot.plantId = null;
+            plot.plantedAt = null;
+            plot.watered = false;
+            plot.waterCount = 0;
+            plot.lastWatered = null;
+            plot.fertilizerId = null;
+            plot.fertilizedAt = null;
+            plot.seedStar = false;
+            any = true;
+            changed = true;
+
+            // Trồng lại tại thời điểm chín (không phải lúc mở app)
+            if (cfg.plantId) {
+              const plantTime = Math.min(readyAt, now);
+              if (this._nycPlantOneAt(plot, cfg, plantTime)) {
+                totalPlant++;
+                // Tiên tưới ngay sau trồng nếu đang active (mốc plantTime)
+                if (this.isFairyActive() && this.isFairyGardenEnabled(gi)) {
+                  plot.waterCount = 3;
+                  plot.watered = true;
+                  plot.lastWatered = plantTime;
+                  // Bón nếu còn phân & config
+                  const fcfg = this.getFairyConfig();
+                  if (fcfg.useFertilizer) {
+                    const fid = this.takeFertFromBagForFairy(fcfg);
+                    if (fid) {
+                      plot.fertilizerId = fid;
+                      plot.fertilizedAt = plantTime;
+                    }
+                  }
+                }
+              }
+            }
+          }
+          if (!any) break;
+        }
+
+        currentPlayer.gardens[gi] = plots;
+      }
+      currentPlayer.activeGarden = active;
+      currentPlayer.plots = currentPlayer.gardens[active];
+      if (totalHarvest || totalPlant) {
+        notes.push(`NYC thu ${totalHarvest} · trồng ${totalPlant} (giờ offline đúng)`);
+      }
+    }
+
+    // --- Giúp việc: sau khi đã trừ phân/hạt ---
+    if (this.isHelperActive()) {
+      const prev = currentPlayer.lastHelperBuy || 0;
+      currentPlayer.lastHelperBuy = 0;
+      // Có thể mua nhiều đợt nếu offline lâu (tối đa 5 lần)
+      let buys = 0;
+      for (let k = 0; k < 5; k++) {
+        currentPlayer.lastHelperBuy = 0;
+        if (this.tickHelperBuy(now)) {
+          buys++;
+          changed = true;
+        } else break;
+      }
+      if (!buys) currentPlayer.lastHelperBuy = prev;
+      else {
+        helperBuys = buys;
+        notes.push(`Giúp việc mua ${buys} đợt`);
+      }
+    }
+
+    currentPlayer.lastSeenAt = now;
+    currentPlayer.lastCatchUpAt = now;
+    if (changed) {
+      this.addActivity('⚡ Bù offline: ' + (notes.join(' · ') || 'đã cập nhật'));
+    }
+    return {
+      ok: true,
+      changed,
+      notes,
+      offlineMs: now - from,
+      totalHarvest,
+      totalPlant,
+      fairyCycles,
+      helperBuys,
+      rainHits,
+      rainWatered,
+      rainChance
+    };
+  },
+
+  /** Trồng 1 ô tại mốc plantTime (ms). Trả true nếu trồng được. */
+  _nycPlantOneAt(plot, cfg, plantTime) {
+    if (!plot || plot.plantId || !cfg || !cfg.plantId) return false;
+    const kind = cfg.seedKind === 'star' ? 'star' : 'normal';
+    if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
+    if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
+    const bag = kind === 'star' ? currentPlayer.inventory.seedsStar : currentPlayer.inventory.seeds;
+    const plantId = cfg.plantId;
+    if ((bag[plantId] || 0) < 1) return false;
+    bag[plantId]--;
+    if (bag[plantId] <= 0) delete bag[plantId];
+    plot.plantId = plantId;
+    plot.plantedAt = plantTime;
+    plot.seedStar = kind === 'star';
+    plot.waterCount = 0;
+    plot.watered = false;
+    plot.lastWatered = null;
+    plot.fertilizerId = null;
+    plot.fertilizedAt = null;
+    currentPlayer.stats = currentPlayer.stats || {};
+    currentPlayer.stats.planted = (currentPlayer.stats.planted || 0) + 1;
+    return true;
+  },
+
+  /** Trồng hết ô trống tại mốc t (theo mode all/count). Trả số ô đã trồng. */
+  _nycPlantEmptiesAt(plots, cfg, t) {
+    if (!cfg || !cfg.plantId) return 0;
+    const mode = cfg.mode === 'count' ? 'count' : 'all';
+    const limit = mode === 'count' ? Math.max(1, parseInt(cfg.count, 10) || 1) : Infinity;
+    let n = 0;
+    for (let i = 0; i < plots.length && n < limit; i++) {
+      const plot = plots[i];
+      if (!plot || plot.plantId) continue;
+      if (this._nycPlantOneAt(plot, cfg, t)) n++;
+      else break; // hết hạt
+    }
+    return n;
+  },
+
 
   async buyProtect(protectId, qty = 1) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };

@@ -504,17 +504,29 @@ auth.onAuthStateChanged(async (user) => {
       }
       if (typeof Features !== 'undefined') Features.ensureQuests();
       if (typeof listenPlayerTimers === 'function') listenPlayerTimers(); // no-op
-      // Chăm ngay sau login — bù việc khi offline / không mở vườn
-      setTimeout(() => {
+      // Bù offline có tính giờ (NYC thu/trồng đúng mốc, Tiên, Giúp việc)
+      setTimeout(async () => {
+        try {
+          if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
+            const r = await Game.simulateOfflineCare();
+            if (r && r.changed) {
+              if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(600);
+              else if (typeof savePlayer === 'function') await savePlayer();
+              if (typeof updateCoins === 'function') updateCoins();
+              if (typeof renderGarden === 'function') {
+                const gp = document.getElementById('page-garden');
+                if (gp && gp.classList.contains('active')) renderGarden();
+              }
+              if (r.notes && r.notes.length && typeof showToast === 'function') {
+                const hours = Math.floor((r.offlineMs || 0) / 3600000);
+                const mins = Math.floor(((r.offlineMs || 0) % 3600000) / 60000);
+                showToast('⚡ Bù ' + (hours ? hours + 'g ' : '') + mins + 'p: ' + r.notes.join(' · '), 'success');
+              }
+            }
+          }
+        } catch (e) { console.warn('simulateOfflineCare', e); }
         if (typeof forceBackgroundCare === 'function') forceBackgroundCare('login');
-        else if (typeof tickGardenCare === 'function') tickGardenCare({ render: true });
-        else if (typeof Game !== 'undefined' && Game.resetExpiredBoosts) {
-          if (Game.resetExpiredBoosts() && typeof scheduleSavePlayer === 'function') scheduleSavePlayer(1000);
-        }
-      }, 400);
-      setTimeout(() => {
-        if (typeof forceBackgroundCare === 'function') forceBackgroundCare('login');
-      }, 2500);
+      }, 500);
       showApp();
       if (typeof loadPlayerMailbox === 'function') loadPlayerMailbox().catch(() => {});
     } catch (e) {
@@ -1254,6 +1266,7 @@ function closeAllPillMenus(except) {
       }
     }
     dd._portalMenu = null;
+    document.querySelector('#modal-plot .modal-content')?.classList.remove('dropdown-open');
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
   });
   // dọn menu portal sót
@@ -1273,7 +1286,31 @@ if (!window.__pillDdDocBound) {
     if (e.key === 'Escape') closeAllPillMenus();
   });
   // khi scroll/resize — đóng menu portal để tránh lệch vị trí
-  window.addEventListener('scroll', () => closeAllPillMenus(), true);
+  window.addEventListener('scroll', (e) => {
+    // Không đóng khi scroll bên trong menu dropdown
+    const t = e.target;
+    if (t && t.closest && (t.closest('.pill-dd-menu') || t.closest('.pill-dd-portal'))) return;
+    // Scroll trong modal-content: reposition thay vì đóng (tránh menu biến mất)
+    if (t && t.closest && t.closest('#modal-plot .modal-content')) {
+      document.querySelectorAll('.pill-dd.open').forEach(dd => {
+        const menu = dd._portalMenu || dd.querySelector('.pill-dd-menu');
+        const trigger = dd.querySelector('.pill-dd-trigger');
+        if (!menu || !trigger || menu.hidden) return;
+        const tr = trigger.getBoundingClientRect();
+        const minW = Math.max(tr.width, 160);
+        let left = tr.left;
+        if (left + minW > window.innerWidth - 8) left = Math.max(8, window.innerWidth - minW - 8);
+        menu.style.left = left + 'px';
+        const openUp = dd.classList.contains('drop-up');
+        const mh = Math.min(menu.scrollHeight || 200, 280);
+        menu.style.top = openUp
+          ? (Math.max(8, tr.top - mh - 6) + 'px')
+          : ((tr.bottom + 6) + 'px');
+      });
+      return;
+    }
+    closeAllPillMenus();
+  }, true);
   window.addEventListener('resize', () => closeAllPillMenus());
 }
 
@@ -1411,6 +1448,7 @@ function mountPillDropdown(select, opts = {}) {
       rebuildMenu();
       trigger.setAttribute('aria-expanded', 'true');
       wrap.classList.add('open');
+      document.querySelector('#modal-plot .modal-content')?.classList.add('dropdown-open');
       positionMenu();
     }
   });
@@ -2097,32 +2135,36 @@ function refreshSupportMenuStatus() {
     const btn = document.getElementById(btnId);
     const nameEl = document.getElementById(nameId);
     const timeEl = document.getElementById(timeId);
-    const active = typeof hasFn === 'function' && hasFn();
+    const active = typeof hasFn === 'function' && !!hasFn();
     const name = (typeof nameFn === 'function' ? nameFn() : null) || fallbackName;
     if (nameEl) nameEl.textContent = name;
-    if (timeEl) timeEl.textContent = active
-      ? Game.formatTime(typeof remainFn === 'function' ? remainFn() : 0)
-      : 'Chưa mua';
+    if (timeEl) {
+      if (!active) timeEl.textContent = 'Chưa mua';
+      else {
+        const sec = typeof remainFn === 'function' ? (remainFn() || 0) : 0;
+        timeEl.textContent = sec > 0 ? Game.formatTime(sec) : 'Hết hạn';
+      }
+    }
     if (btn) btn.classList.toggle('is-off', !active);
   };
   fill(
     'btn-support-fairy', 'support-name-fairy', 'support-status-fairy',
     () => Game.hasFairy && Game.hasFairy(),
-    () => Game.fairyRemainingSec(),
+    () => Game.fairyRemainingSec && Game.fairyRemainingSec(),
     () => Game.getFairyDisplayName && Game.getFairyDisplayName(),
     'Tiên'
   );
   fill(
     'btn-support-nyc', 'support-name-nyc', 'support-status-nyc',
     () => Game.hasNyc && Game.hasNyc(),
-    () => Game.nycRemainingSec(),
+    () => Game.nycRemainingSec && Game.nycRemainingSec(),
     () => Game.getNycDisplayName && Game.getNycDisplayName(),
     'NYC'
   );
   fill(
     'btn-support-helper', 'support-name-helper', 'support-status-helper',
     () => Game.hasHelper && Game.hasHelper(),
-    () => Game.helperRemainingSec(),
+    () => Game.helperRemainingSec && Game.helperRemainingSec(),
     () => Game.getHelperDisplayName && Game.getHelperDisplayName(),
     'Giúp việc'
   );
@@ -3107,22 +3149,32 @@ function softUpdateGardenUI() {
   if (typeof softUpdateBank === 'function') softUpdateBank();
 }
 
-/** Cập nhật nút đếm ngược: thời gian gần nhất đến lúc reset tưới/phân (mỗi 3 giờ) */
+/** Cập nhật chip đếm ngược 3h (kiểu thời tiết) + thanh trạng thái hỗ trợ */
 function updateGlobalTimer() {
   const btn = document.getElementById('btn-global-timer');
   const textEl = document.getElementById('global-timer-text');
-  if (!btn || !textEl || !currentPlayer) return;
+  if (!textEl || !currentPlayer) return;
+
+  const setCycle = (label, ready) => {
+    textEl.textContent = label;
+    if (btn) {
+      btn.classList.toggle('ready', !!ready);
+      btn.classList.toggle('is-empty', label === '--:--:--');
+    }
+  };
 
   // Có Tiên: đồng hồ = thời gian đến lần chăm tiếp theo (chu kỳ 3 giờ)
-  if (Game.isFairyActive()) {
-    const sec = Game.getFairyCareRemainingSec();
+  if (Game.isFairyActive && Game.isFairyActive()) {
+    const sec = Game.getFairyCareRemainingSec ? Game.getFairyCareRemainingSec() : null;
     const remain = sec == null ? 0 : sec;
-    textEl.textContent = Game.formatTime(remain);
-    btn.disabled = false;
-    btn.classList.toggle('ready', remain <= 0);
-    btn.title = remain <= 0
-      ? '🧚 Tiên sắp / đang chăm vườn (tưới + bón nếu có phân)'
-      : `🧚 Tiên chăm lại sau: ${Game.formatTime(remain)} (mỗi 3 giờ)`;
+    const label = Game.formatTime(remain);
+    setCycle(label, remain <= 0);
+    if (btn) {
+      btn.title = remain <= 0
+        ? '🧚 Tiên sắp / đang chăm vườn (tưới + bón nếu có phân)'
+        : `🧚 Tiên chăm lại sau: ${label} (mỗi 3 giờ)`;
+    }
+    if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
     return;
   }
 
@@ -3132,25 +3184,25 @@ function updateGlobalTimer() {
 
   plots.forEach((plot) => {
     if (!plot) return;
-    const sec = Game.getBoostResetRemaining(plot);
+    const sec = Game.getBoostResetRemaining ? Game.getBoostResetRemaining(plot) : null;
     if (sec == null) return;
     activeBoosts++;
     if (minRemain == null || sec < minRemain) minRemain = sec;
   });
 
   if (minRemain != null) {
-    textEl.textContent = Game.formatTime(minRemain);
-    btn.disabled = false;
-    btn.classList.toggle('ready', minRemain <= 0);
-    btn.title = minRemain <= 0
-      ? 'Đã hết hiệu lực tưới/phân — có thể tưới/bón lại'
-      : `Reset tưới & phân gần nhất: ${Game.formatTime(minRemain)} (${activeBoosts} ô đang có hiệu lực)`;
+    const label = Game.formatTime(minRemain);
+    setCycle(label, minRemain <= 0);
+    if (btn) {
+      btn.title = minRemain <= 0
+        ? 'Đã hết hiệu lực tưới/phân — có thể tưới/bón lại'
+        : `Reset tưới & phân gần nhất: ${label} (${activeBoosts} ô đang có hiệu lực)`;
+    }
   } else {
-    textEl.textContent = '--:--:--';
-    btn.disabled = true;
-    btn.classList.remove('ready');
-    btn.title = 'Chưa tưới / bón phân — reset sau 3 giờ kể từ lần tưới/bón';
+    setCycle('--:--:--', false);
+    if (btn) btn.title = 'Chưa tưới / bón phân — reset sau 3 giờ kể từ lần tưới/bón';
   }
+  if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
 }
 
 /**
@@ -3194,16 +3246,45 @@ setInterval(() => {
 // Tab quay lại / focus / online → chăm ngay (bù thời gian bị throttle)
 if (!window.__careVisibilityBound) {
   window.__careVisibilityBound = true;
+  function markLastSeen() {
+    if (!currentPlayer) return;
+    currentPlayer.lastSeenAt = Date.now();
+    if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(1500);
+  }
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && currentPlayer) forceBackgroundCare('visible');
+    if (document.hidden) {
+      markLastSeen();
+    } else if (currentPlayer) {
+      forceBackgroundCare('visible');
+      const away = currentPlayer.lastSeenAt ? (Date.now() - currentPlayer.lastSeenAt) : 0;
+      if (away >= 5 * 60 * 1000 && typeof Game !== 'undefined' && Game.simulateOfflineCare) {
+          Game.simulateOfflineCare().then(r => {
+            if (r && r.changed) {
+              if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(800);
+              if (typeof updateCoins === 'function') updateCoins();
+              if (typeof renderGarden === 'function') {
+                const gp = document.getElementById('page-garden');
+                if (gp && gp.classList.contains('active')) renderGarden();
+              }
+              if (r.notes && r.notes.length && typeof showToast === 'function') {
+                showToast('⚡ ' + r.notes.join(' · '), 'success');
+              }
+            }
+          }).catch(() => {});
+      } else {
+        // Vắng < 5 phút: không bù offline, đồng hồ 3h chạy tiếp
+        currentPlayer.lastSeenAt = Date.now();
+      }
+    }
   });
+  window.addEventListener('pagehide', markLastSeen);
+  window.addEventListener('beforeunload', markLastSeen);
   window.addEventListener('focus', () => {
     if (currentPlayer) forceBackgroundCare('focus');
   });
   window.addEventListener('online', () => {
     if (currentPlayer) forceBackgroundCare('online');
   });
-  // Mở app từ background (PWA / mobile)
   document.addEventListener('resume', () => {
     if (currentPlayer) forceBackgroundCare('visible');
   }, false);
