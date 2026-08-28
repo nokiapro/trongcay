@@ -3417,7 +3417,9 @@ if (!window.__careVisibilityBound) {
     if (!currentPlayer) return;
     const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
     currentPlayer.lastSeenAt = t;
-    if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(1500);
+    // Lưu ngay khi ẩn/thoát — không debounce (tránh mất tiến trình)
+    if (typeof flushSavePlayer === 'function') flushSavePlayer();
+    else if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(200);
   }
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {

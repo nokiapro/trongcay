@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.7.5';
+const APP_VERSION = '1.7.6';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13107,7 +13107,7 @@ const DEFAULT_SETTINGS = {
   /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.7.5',
+  appVersion: '1.7.6',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13368,6 +13368,51 @@ function markPlayerDirty() {
   _playerDirty = true;
 }
 
+/** Backup localStorage — thoát tab / F5 vẫn còn bản mới nhất trên máy */
+function playerBackupKey(uid) {
+  return 'vx_player_backup_' + (uid || (currentUser && currentUser.uid) || 'guest');
+}
+
+function backupPlayerLocal() {
+  try {
+    if (!currentPlayer || !currentUser) return;
+    const payload = {
+      savedAt: typeof nowMs === 'function' ? nowMs() : Date.now(),
+      updatedAt: Number(currentPlayer.updatedAt) || 0,
+      player: currentPlayer
+    };
+    localStorage.setItem(playerBackupKey(currentUser.uid), JSON.stringify(payload));
+  } catch (e) {
+    console.warn('backupPlayerLocal', e);
+  }
+}
+
+/**
+ * Nếu backup máy mới hơn Firebase → dùng backup (tránh thoát ra mất tiến trình).
+ * @returns {boolean} true nếu đã restore từ local
+ */
+function restorePlayerLocalIfNewer(remotePlayer) {
+  try {
+    if (!currentUser) return false;
+    const raw = localStorage.getItem(playerBackupKey(currentUser.uid));
+    if (!raw) return false;
+    const payload = JSON.parse(raw);
+    if (!payload || !payload.player) return false;
+    const bAt = Number(payload.updatedAt) || Number(payload.savedAt) || 0;
+    const rAt = remotePlayer ? (Number(remotePlayer.updatedAt) || 0) : 0;
+    // Backup mới hơn remote ≥ 1s → lấy backup
+    if (bAt > rAt + 1000) {
+      currentPlayer = payload.player;
+      _playerBaseUpdatedAt = bAt;
+      _playerDirty = true;
+      return true;
+    }
+  } catch (e) {
+    console.warn('restorePlayerLocalIfNewer', e);
+  }
+  return false;
+}
+
 async function initServerTime() {
   // ĐÃ TẮT: không đồng bộ lệch giờ Firebase (tránh lệch khỏi GMT+7 trên máy người chơi)
   _serverTimeOffset = 0;
@@ -13432,8 +13477,14 @@ async function loadPlayer(uid, email) {
     _playerBaseUpdatedAt = data.updatedAt;
     isAdmin = role === 'admin';
   } else {
-    currentPlayer = snap.val();
-    _playerBaseUpdatedAt = Number(currentPlayer.updatedAt) || 0;
+    const remoteVal = snap.val();
+    // Ưu tiên backup local nếu mới hơn Firebase (thoát ra chưa kịp sync)
+    if (restorePlayerLocalIfNewer(remoteVal)) {
+      // currentPlayer đã = backup
+    } else {
+      currentPlayer = remoteVal;
+      _playerBaseUpdatedAt = Number(currentPlayer.updatedAt) || 0;
+    }
 
     if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {} };
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
@@ -13446,13 +13497,12 @@ async function loadPlayer(uid, email) {
     }
     if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
 
-    // Một lần: xóa hạt đã tặng free trước đây (nếu chưa xóa)
+    // ĐÃ TẮT xóa hạt hàng loạt (seedGiftRemoved) — từng gây mất kho khi load lại
     if (!currentPlayer.seedGiftRemoved) {
-      currentPlayer.inventory.seeds = {};
       currentPlayer.seedGiftRemoved = true;
     }
 
-    // Không tặng hạt free. Chỉ bổ sung phân cơ bản nếu kho phân trống hoàn toàn
+    // Chỉ tặng phân mẫu khi kho phân hoàn toàn trống (user mới)
     if (Object.keys(currentPlayer.inventory.fertilizers || {}).length === 0) {
       currentPlayer.inventory.fertilizers = { 'phan-thuong': 5, 'phan-xanh': 2 };
     }
@@ -13550,16 +13600,17 @@ async function savePlayer() {
   currentPlayer.updatedAt = Math.max(t, prev + 1);
   _playerDirty = true;
 
-  // Dùng set() (không transaction):
-  // - Transaction Firebase offline thường fail / hủy → mất tiến trình offline
-  // - set() được xếp hàng khi offline, lên mạng sẽ đẩy lên RTDB
+  // Luôn backup máy trước — dù Firebase lỗi vẫn còn khi vào lại
+  backupPlayerLocal();
+
+  // set() — xếp hàng khi mạng chập chờn; không dùng transaction (dễ hủy)
   try {
     await db.ref('users/' + currentUser.uid).set(currentPlayer);
     _playerBaseUpdatedAt = currentPlayer.updatedAt;
     _playerDirty = false;
+    backupPlayerLocal();
   } catch (e) {
-    // Offline / lỗi mạng: giữ dirty để lần online sau lưu lại
-    console.warn('savePlayer (sẽ thử lại khi online)', e && e.message ? e.message : e);
+    console.warn('savePlayer (giữ backup local, thử lại sau)', e && e.message ? e.message : e);
     _playerDirty = true;
     return;
   }
@@ -13588,11 +13639,12 @@ async function syncTimersToFirebase() {
   return;
 }
 
-/** Lưu player có debounce — dùng sau khi Tiên/NYC thay đổi ô */
+/** Lưu player có debounce — rút còn 800ms; thoát tab thì flush ngay */
 let _savePlayerDebounceTimer = null;
-function scheduleSavePlayer(delayMs = 2500) {
+function scheduleSavePlayer(delayMs = 800) {
   if (!currentUser || !currentPlayer) return;
   _playerDirty = true;
+  backupPlayerLocal();
   if (_savePlayerDebounceTimer) clearTimeout(_savePlayerDebounceTimer);
   _savePlayerDebounceTimer = setTimeout(() => {
     _savePlayerDebounceTimer = null;
@@ -13600,18 +13652,37 @@ function scheduleSavePlayer(delayMs = 2500) {
   }, delayMs);
 }
 
-/** Khi có mạng lại: ưu tiên đẩy local dirty lên Firebase */
+/** Hủy debounce và lưu ngay (khi ẩn tab / thoát) */
+function flushSavePlayer() {
+  if (!currentUser || !currentPlayer) return;
+  if (_savePlayerDebounceTimer) {
+    clearTimeout(_savePlayerDebounceTimer);
+    _savePlayerDebounceTimer = null;
+  }
+  backupPlayerLocal();
+  return savePlayer().catch(e => console.warn('flushSavePlayer', e));
+}
+
+/** Khi có mạng / ẩn-hiện tab: backup + đẩy Firebase */
 if (typeof window !== 'undefined' && !window.__vxOnlineSaveBound) {
   window.__vxOnlineSaveBound = true;
   window.addEventListener('online', () => {
-    if (_playerDirty && typeof savePlayer === 'function') {
-      savePlayer().catch(e => console.warn('online savePlayer', e));
-    }
+    flushSavePlayer();
   });
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && _playerDirty && typeof savePlayer === 'function') {
-      savePlayer().catch(() => {});
+    if (document.hidden) {
+      // Thoát / chuyển tab → lưu ngay, không đợi debounce
+      flushSavePlayer();
+    } else if (_playerDirty) {
+      flushSavePlayer();
     }
+  });
+  window.addEventListener('pagehide', () => {
+    backupPlayerLocal();
+    flushSavePlayer();
+  });
+  window.addEventListener('beforeunload', () => {
+    backupPlayerLocal();
   });
 }
 
