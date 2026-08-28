@@ -2227,51 +2227,105 @@ const Game = {
     }
   },
 
+  /** Tỉ lệ ghép cơ bản (admin mergeBaseRate, mặc định 25), kẹp 1–100 */
+  getMergeBaseRate() {
+    let b = 25;
+    if (typeof currentSettings !== 'undefined' && currentSettings && currentSettings.mergeBaseRate != null) {
+      b = Number(currentSettings.mergeBaseRate);
+    }
+    if (!Number.isFinite(b)) b = 25;
+    return Math.max(1, Math.min(100, Math.round(b)));
+  },
+
   /**
-   * Ghép 2 hạt thường → 1 hạt sao (sản lượng & giá bán cao hơn khi trồng).
-   * protectId optional: tỉ lệ thành công = rate của bùa; không có bùa = 25%.
-   * Thất bại: mất 1 hạt (giữ 1); có bùa vẫn mất bùa.
+   * Tỉ lệ thành công cuối: base + (bùa.rate cộng thêm), kẹp 1–100.
+   * VD: base 25 + bùa +10 → 35%.
    */
-  async mergeSeeds(plantId, protectId) {
+  getMergeSuccessRate(protectId) {
+    let rate = this.getMergeBaseRate();
+    if (protectId) {
+      const protect = this.getProtect(protectId);
+      if (protect && Number.isFinite(Number(protect.rate))) {
+        rate += Number(protect.rate);
+      }
+    }
+    return Math.max(1, Math.min(100, Math.round(rate)));
+  },
+
+  /**
+   * Ghép 2 hạt thường → 1 hạt sao.
+   * Tỉ lệ = base (admin) + bonus bùa. Thất bại: mất 1 hạt (+ bùa nếu có).
+   * times: số lần ghép (mặc định 1). saveOnce: gom 1 lần save.
+   */
+  async mergeSeeds(plantId, protectId, times = 1) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const plant = this.getPlant(plantId);
     if (!plant) return { ok: false, msg: 'Hạt không hợp lệ!' };
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
     if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
     if (!currentPlayer.inventory.protects) currentPlayer.inventory.protects = {};
-    const have = currentPlayer.inventory.seeds[plantId] || 0;
-    if (have < 2) return { ok: false, msg: 'Cần ít nhất 2 hạt thường cùng loại!' };
 
-    let rate = 25;
-    let protect = null;
-    if (protectId) {
-      protect = this.getProtect(protectId);
-      if (!protect) return { ok: false, msg: 'Bùa bảo hộ không hợp lệ!' };
-      const ph = currentPlayer.inventory.protects[protectId] || 0;
-      if (ph < 1) return { ok: false, msg: 'Không đủ bùa bảo hộ!' };
-      rate = protect.rate;
+    times = Math.max(1, Math.min(9999, parseInt(times, 10) || 1));
+    let success = 0;
+    let fail = 0;
+    let did = 0;
+    let lastRate = this.getMergeSuccessRate(protectId || null);
+
+    for (let i = 0; i < times; i++) {
+      const have = currentPlayer.inventory.seeds[plantId] || 0;
+      if (have < 2) break;
+      let protect = null;
+      if (protectId) {
+        protect = this.getProtect(protectId);
+        if (!protect) return { ok: false, msg: 'Bùa bảo hộ không hợp lệ!' };
+        const ph = currentPlayer.inventory.protects[protectId] || 0;
+        if (ph < 1) {
+          if (did === 0) return { ok: false, msg: 'Không đủ bùa bảo hộ!' };
+          break;
+        }
+      }
+      const rate = this.getMergeSuccessRate(protectId || null);
+      lastRate = rate;
+
+      currentPlayer.inventory.seeds[plantId] -= 2;
+      if (currentPlayer.inventory.seeds[plantId] <= 0) delete currentPlayer.inventory.seeds[plantId];
+      if (protect) {
+        currentPlayer.inventory.protects[protectId]--;
+        if (currentPlayer.inventory.protects[protectId] <= 0) delete currentPlayer.inventory.protects[protectId];
+      }
+
+      const roll = Math.random() * 100;
+      if (roll < rate) {
+        currentPlayer.inventory.seedsStar[plantId] = (currentPlayer.inventory.seedsStar[plantId] || 0) + 1;
+        success++;
+      } else {
+        currentPlayer.inventory.seeds[plantId] = (currentPlayer.inventory.seeds[plantId] || 0) + 1;
+        fail++;
+      }
+      did++;
     }
 
-    currentPlayer.inventory.seeds[plantId] -= 2;
-    if (currentPlayer.inventory.seeds[plantId] <= 0) delete currentPlayer.inventory.seeds[plantId];
-    if (protect) {
-      currentPlayer.inventory.protects[protectId]--;
-      if (currentPlayer.inventory.protects[protectId] <= 0) delete currentPlayer.inventory.protects[protectId];
-    }
+    if (did === 0) return { ok: false, msg: 'Cần ít nhất 2 hạt thường cùng loại!' };
 
-    const roll = Math.random() * 100;
-    const ok = roll < rate;
-    if (ok) {
-      currentPlayer.inventory.seedsStar[plantId] = (currentPlayer.inventory.seedsStar[plantId] || 0) + 1;
-      this.addActivity(`Ghép thành công ⭐ ${plant.name} (${rate}%)`);
+    if (did === 1) {
+      if (success) {
+        this.addActivity(`Ghép thành công ⭐ ${plant.name} (${lastRate}%)`);
+        await savePlayer();
+        return { ok: true, success: true, msg: `✨ Thành công! Nhận 1 hạt sao ${plant.name} (tỉ lệ ${lastRate}%)` };
+      }
+      this.addActivity(`Ghép thất bại ${plant.name} (${lastRate}%)`);
       await savePlayer();
-      return { ok: true, success: true, msg: `✨ Thành công! Nhận 1 hạt sao ${plant.name} (tỉ lệ ${rate}%)` };
+      return { ok: true, success: false, msg: `💥 Thất bại (tỉ lệ ${lastRate}%). Mất 1 hạt` + (protectId ? ' + bùa' : '') + '.' };
     }
-    // Thất bại: hoàn 1 hạt
-    currentPlayer.inventory.seeds[plantId] = (currentPlayer.inventory.seeds[plantId] || 0) + 1;
-    this.addActivity(`Ghép thất bại ${plant.name} (roll ${Math.floor(roll)}/${rate})`);
+
+    this.addActivity(`Ghép ×${did}: thành công ${success}, thất bại ${fail} (${plant.name}, ${lastRate}%)`);
     await savePlayer();
-    return { ok: true, success: false, msg: `💥 Thất bại (${Math.floor(roll)}≥${rate}%). Mất 1 hạt` + (protect ? ' + bùa' : '') + '.' };
+    return {
+      ok: true,
+      success: success > 0,
+      msg: `Ghép ${did} lần · ✨ ${success} sao · 💥 ${fail} thất bại (tỉ lệ ${lastRate}%)`,
+      did, successCount: success, failCount: fail
+    };
   },
 
   async harvestPlot(plotId) {

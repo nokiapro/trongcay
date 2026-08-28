@@ -1254,3 +1254,282 @@ html[data-theme="dark"] .pill-dd-item {
   background: transparent !important;
   color: #e8f5e9 !important;
 }
+
+
+/* ===== Admin polish — đồng bộ index (v1.7.1) ===== */
+body.admin-body,
+.admin-body {
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
+  background: var(--bg, #eef7f2) !important;
+  background-image:
+    radial-gradient(ellipse at 15% 0%, rgba(149, 213, 178, 0.22) 0%, transparent 45%),
+    radial-gradient(ellipse at 90% 100%, rgba(64, 145, 108, 0.12) 0%, transparent 50%) !important;
+  color: var(--text, #1b4332);
+}
+.admin-body .admin-login {
+  background: linear-gradient(145deg, #1b4332 0%, #2d6a4f 42%, #40916c 100%) !important;
+}
+.admin-body .login-card {
+  border-radius: 24px !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.22) !important;
+  border: 1px solid rgba(255,255,255,0.35);
+}
+.sidebar {
+  background: linear-gradient(165deg, #1b4332 0%, #2d6a4f 55%, #40916c 100%) !important;
+  box-shadow: 4px 0 24px rgba(27, 67, 50, 0.18);
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-logo {
+  font-family: 'Roboto Condensed', sans-serif;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  margin: 0 12px 12px;
+}
+.side-btn {
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  font-size: 0.92rem !important;
+  padding: 10px 14px !important;
+  transition: background .15s, transform .12s !important;
+  gap: 10px !important;
+}
+.side-btn:hover {
+  background: rgba(255,255,255,0.14) !important;
+}
+.side-btn.active {
+  background: rgba(255,255,255,0.22) !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+}
+.btn-logout {
+  margin: 12px;
+  border-radius: 12px !important;
+  background: rgba(0,0,0,0.18) !important;
+  color: #fff !important;
+  padding: 10px !important;
+  font-weight: 600;
+}
+.btn-logout:hover {
+  background: rgba(0,0,0,0.28) !important;
+}
+.admin-main {
+  background: transparent !important;
+  padding: 20px 24px 40px !important;
+}
+.admin-topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.admin-section h1 {
+  font-family: 'Roboto Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 1.55rem;
+  color: var(--text, #1b4332);
+  margin-bottom: 16px;
+}
+.admin-card {
+  background: var(--card, #fff) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 4px 24px rgba(27, 67, 50, 0.08) !important;
+  border: 1px solid rgba(45, 106, 79, 0.1) !important;
+  padding: 18px 20px !important;
+}
+.admin-stat {
+  background: var(--card, #fff);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 4px 18px rgba(27, 67, 50, 0.08);
+  border: 1px solid rgba(45, 106, 79, 0.1);
+  text-align: center;
+}
+.admin-stat .value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--primary, #2d6a4f);
+  font-variant-numeric: tabular-nums;
+}
+.admin-stat .label {
+  font-size: 0.82rem;
+  color: var(--text-muted, #52796f);
+  font-weight: 600;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border-radius: 14px;
+}
+.admin-table th {
+  background: rgba(45, 106, 79, 0.08);
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted, #52796f);
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(45, 106, 79, 0.12);
+}
+.admin-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(45, 106, 79, 0.08);
+  font-size: 0.92rem;
+  vertical-align: middle;
+}
+.admin-table tr:hover td {
+  background: rgba(45, 106, 79, 0.04);
+}
+.settings-form label,
+.admin-card label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin: 12px 0 6px;
+  color: var(--text, #1b4332);
+}
+.settings-form input,
+.settings-form textarea,
+.admin-card input,
+.admin-card textarea,
+.admin-card select,
+#plant-form input,
+#plant-form textarea,
+#plant-form select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  border: 1.5px solid rgba(45, 106, 79, 0.28) !important;
+  background: rgba(45, 106, 79, 0.04) !important;
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
+  font-weight: 600;
+  color: var(--text, #1b4332);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.settings-form input:focus,
+.admin-card input:focus,
+.admin-card textarea:focus,
+#plant-form input:focus,
+#plant-form textarea:focus {
+  border-color: var(--primary-light, #40916c) !important;
+  box-shadow: 0 0 0 3px rgba(64, 145, 108, 0.16) !important;
+  background: #fff !important;
+}
+#p-icon {
+  font-size: 1.35rem !important;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+.admin-body .btn {
+  border-radius: 12px !important;
+  font-family: 'Roboto Condensed', sans-serif !important;
+  font-weight: 700 !important;
+}
+.admin-body .btn-primary {
+  background: linear-gradient(135deg, #2d6a4f, #40916c) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(45, 106, 79, 0.28);
+}
+.admin-body .btn-secondary {
+  background: transparent !important;
+  border: 1.5px solid rgba(45, 106, 79, 0.35) !important;
+  color: var(--text, #1b4332) !important;
+  box-shadow: none !important;
+}
+.admin-menu-btn {
+  border-radius: 12px !important;
+  background: var(--card, #fff) !important;
+  border: 1px solid rgba(45, 106, 79, 0.15);
+  box-shadow: 0 2px 10px rgba(27, 67, 50, 0.1);
+}
+.maint-card, .admin-card.maint-card {
+  border-radius: 18px !important;
+}
+.maint-card-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.maint-icon, .announce-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(45, 106, 79, 0.12);
+  color: var(--primary, #2d6a4f);
+  flex-shrink: 0;
+}
+.ux-pager, .admin-pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+/* Dark */
+html[data-theme="dark"] body.admin-body {
+  background: #0f1613 !important;
+  background-image:
+    radial-gradient(ellipse at 20% 0%, rgba(45, 106, 79, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(27, 67, 50, 0.25) 0%, transparent 50%) !important;
+  color: #e8f5e9 !important;
+}
+html[data-theme="dark"] .admin-section h1 { color: #e8f5e9; }
+html[data-theme="dark"] .admin-card,
+html[data-theme="dark"] .admin-stat {
+  background: #1a2420 !important;
+  border-color: #3d5a4c !important;
+  color: #e8f5e9;
+}
+html[data-theme="dark"] .admin-stat .value { color: #95d5b2; }
+html[data-theme="dark"] .admin-stat .label,
+html[data-theme="dark"] .admin-table th { color: #a7c4b5; }
+html[data-theme="dark"] .admin-table td {
+  border-color: #2a3d34;
+  color: #e8f5e9;
+}
+html[data-theme="dark"] .admin-table th {
+  background: rgba(149, 213, 178, 0.08);
+}
+html[data-theme="dark"] .admin-table tr:hover td {
+  background: rgba(149, 213, 178, 0.06);
+}
+html[data-theme="dark"] .settings-form label,
+html[data-theme="dark"] .admin-card label { color: #e8f5e9; }
+html[data-theme="dark"] .settings-form input,
+html[data-theme="dark"] .admin-card input,
+html[data-theme="dark"] .admin-card textarea,
+html[data-theme="dark"] .admin-card select,
+html[data-theme="dark"] #plant-form input,
+html[data-theme="dark"] #plant-form textarea,
+html[data-theme="dark"] #plant-form select {
+  background: rgba(149, 213, 178, 0.08) !important;
+  border-color: rgba(149, 213, 178, 0.28) !important;
+  color: #e8f5e9 !important;
+}
+html[data-theme="dark"] .settings-form input:focus,
+html[data-theme="dark"] #plant-form input:focus {
+  background: #121a16 !important;
+  border-color: #52b788 !important;
+}
+html[data-theme="dark"] .admin-body .btn-secondary {
+  border-color: rgba(149, 213, 178, 0.35) !important;
+  color: #e8f5e9 !important;
+}
+html[data-theme="dark"] .maint-icon,
+html[data-theme="dark"] .announce-icon {
+  background: rgba(149, 213, 178, 0.15);
+  color: #95d5b2;
+}
+html[data-theme="dark"] .admin-menu-btn {
+  background: #1a2420 !important;
+  border-color: #3d5a4c;
+  color: #e8f5e9;
+}

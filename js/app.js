@@ -1963,6 +1963,72 @@ document.getElementById('btn-remove').addEventListener('click', async () => {
   renderGarden();
 });
 
+
+/** Ấn giữ (≥450ms) → callback hold; nhả sớm → callback click */
+function bindPressHold(el, { onClick, onHold, ms = 450 } = {}) {
+  if (!el) return;
+  let timer = null;
+  let held = false;
+  const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
+  const start = (e) => {
+    if (e.type === 'mousedown' && e.button !== 0) return;
+    held = false;
+    clear();
+    timer = setTimeout(() => {
+      held = true;
+      timer = null;
+      if (typeof onHold === 'function') onHold(e);
+    }, ms);
+  };
+  const end = (e) => {
+    if (!timer && !held) return;
+    const wasHold = held;
+    clear();
+    if (!wasHold && typeof onClick === 'function') onClick(e);
+    held = false;
+  };
+  const cancel = () => { clear(); held = false; };
+  el.addEventListener('mousedown', start);
+  el.addEventListener('touchstart', start, { passive: true });
+  el.addEventListener('mouseup', end);
+  el.addEventListener('touchend', end);
+  el.addEventListener('mouseleave', cancel);
+  el.addEventListener('touchcancel', cancel);
+}
+
+/** Modal nhập số lượng (ghép / mua): title, hint, maxHint, onConfirm(n|'all') */
+function openQtyPickModal({ title, hint, confirmLabel, onConfirm }) {
+  const modal = document.getElementById('modal-bulk');
+  const list = document.getElementById('bulk-qty-list');
+  const titleEl = document.getElementById('bulk-title');
+  const hintEl = document.getElementById('bulk-hint');
+  if (!modal || !list) return;
+  if (titleEl) titleEl.textContent = title || 'Chọn số lượng';
+  if (hintEl) hintEl.textContent = hint || '';
+  list.innerHTML = '';
+  const row = document.createElement('div');
+  row.className = 'bulk-qty-row';
+  row.innerHTML = `
+    <input type="number" id="bulk-qty-input" class="bulk-qty-input" min="1" max="9999" placeholder="Số lượng" inputmode="numeric" />
+    <button type="button" class="btn btn-primary btn-sm" id="bulk-qty-all">Tất cả</button>
+    <button type="button" class="btn btn-secondary btn-sm" id="bulk-qty-ok">${confirmLabel || 'OK'}</button>
+  `;
+  list.appendChild(row);
+  const run = async (n) => {
+    closeModals();
+    if (typeof onConfirm === 'function') await onConfirm(n);
+  };
+  row.querySelector('#bulk-qty-all')?.addEventListener('click', () => run('all'));
+  row.querySelector('#bulk-qty-ok')?.addEventListener('click', () => {
+    const v = parseInt(row.querySelector('#bulk-qty-input')?.value, 10);
+    if (!Number.isFinite(v) || v < 1) { showToast('Nhập số hợp lệ!', 'error'); return; }
+    run(v);
+  });
+  modal.classList.add('show');
+  setTimeout(() => row.querySelector('#bulk-qty-input')?.focus(), 80);
+}
+
+
 let bulkAction = null; // 'water' | 'fert' | 'harvest'
 let bulkFertId = null;
 
@@ -2405,11 +2471,21 @@ function renderShop() {
       grid.appendChild(card);
     });
     document.querySelectorAll('.btn-buy-protect').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const res = await Game.buyProtect(btn.dataset.id);
+      const buy = async (qty) => {
+        const n = qty === 'all' ? 99 : Math.max(1, parseInt(qty, 10) || 1);
+        const res = await Game.buyProtect(btn.dataset.id, n);
         showToast(res.msg, res.ok ? 'success' : 'error');
         updateCoins();
         renderShop();
+      };
+      bindPressHold(btn, {
+        onClick: () => buy(1),
+        onHold: () => openQtyPickModal({
+          title: 'Mua bao nhiêu bùa?',
+          hint: 'Nhập số lượng hoặc Tất cả (tối đa 99).',
+          confirmLabel: 'Mua',
+          onConfirm: (n) => buy(n)
+        })
       });
     });
     return;
@@ -2563,11 +2639,21 @@ function renderShop() {
     });
 
     document.querySelectorAll('.btn-buy-fert').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const res = await Game.buyFertilizer(btn.dataset.id);
+      const buy = async (qty) => {
+        const n = qty === 'all' ? 99 : Math.max(1, parseInt(qty, 10) || 1);
+        const res = await Game.buyFertilizer(btn.dataset.id, n);
         showToast(res.msg, res.ok ? 'success' : 'error');
         updateCoins();
         renderShop();
+      };
+      bindPressHold(btn, {
+        onClick: () => buy(1),
+        onHold: () => openQtyPickModal({
+          title: 'Mua bao nhiêu?',
+          hint: 'Nhập số lượng hoặc Tất cả (tối đa 99).',
+          confirmLabel: 'Mua',
+          onConfirm: (n) => buy(n)
+        })
       });
     });
     return;
@@ -2906,11 +2992,13 @@ function renderInventory() {
         const sel = id === selPlant ? ' selected' : '';
         return `<option value="${id}"${sel}>${pl.icon} ${pl.name} (x${seeds[id]})</option>`;
       }).join('');
-      let popts = `<option value=""${selProt === '' ? ' selected' : ''}>Không dùng bùa (25%)</option>` + pids.map(id => {
+      const baseRate = (Game.getMergeBaseRate && Game.getMergeBaseRate()) || 25;
+      let popts = `<option value=""${selProt === '' ? ' selected' : ''}>Không dùng bùa (${baseRate}%)</option>` + pids.map(id => {
         const item = Game.getProtect(id);
         if (!item) return '';
         const sel = id === selProt ? ' selected' : '';
-        return `<option value="${id}"${sel}>${item.name} — x${prots[id]}</option>`;
+        const eff = Game.getMergeSuccessRate ? Game.getMergeSuccessRate(id) : Math.min(100, baseRate + (item.rate || 0));
+        return `<option value="${id}"${sel}>${item.name} → ${eff}% — x${prots[id]}</option>`;
       }).join('');
       mergeEl.innerHTML = `
         <div class="merge-box">
@@ -2934,15 +3022,41 @@ function renderInventory() {
       window._mergeSel.plantId = plantSel?.value || selPlant;
       window._mergeSel.protectId = protSel?.value || selProt || null;
 
-      document.getElementById('btn-do-merge')?.addEventListener('click', async () => {
+      const doMerge = async (times) => {
         const pid = plantSel?.value;
         const pr = protSel?.value || null;
         window._mergeSel.plantId = pid || null;
         window._mergeSel.protectId = pr || null;
-        const res = await Game.mergeSeeds(pid, pr || null);
-        showToast(res.msg, res.success ? 'success' : (res.ok ? 'error' : 'error'));
+        if (!pid) { showToast('Chọn hạt!', 'error'); return; }
+        let n = times;
+        if (n === 'all') {
+          const have = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[pid]) || 0;
+          n = Math.floor(have / 2);
+          if (pr) {
+            const ph = (currentPlayer.inventory.protects && currentPlayer.inventory.protects[pr]) || 0;
+            n = Math.min(n, ph);
+          }
+        }
+        n = Math.max(1, parseInt(n, 10) || 1);
+        const res = await Game.mergeSeeds(pid, pr || null, n);
+        showToast(res.msg, res.ok ? (res.success ? 'success' : 'error') : 'error');
         updateCoins();
         renderInventory();
+      };
+      const mergeBtn = document.getElementById('btn-do-merge');
+      bindPressHold(mergeBtn, {
+        onClick: () => doMerge(1),
+        onHold: () => {
+          const pid = plantSel?.value;
+          const have = pid ? ((currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[pid]) || 0) : 0;
+          const maxN = Math.floor(have / 2);
+          openQtyPickModal({
+            title: 'Ghép bao nhiêu lần?',
+            hint: `Tối đa ~${maxN} lần với số hạt hiện có. Ấn giữ = chọn số / Tất cả.`,
+            confirmLabel: 'Ghép',
+            onConfirm: (n) => doMerge(n)
+          });
+        }
       });
       mountAllPillDropdowns(mergeEl);
     }

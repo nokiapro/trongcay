@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.6.9';
+const APP_VERSION = '1.7.1';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13104,22 +13104,24 @@ const DEFAULT_SETTINGS = {
   rainChance: 15,          // 1–50 (%)
   rainDurationMinutes: 0.25, // phút mưa liên tục (0.25 = 15 giây mặc định)
   plotPrice: 500,
+  /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
+  mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.6.9',
+  appVersion: '1.7.1',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
   forceUpdate: false
 };
 
-/** Bùa bảo hộ ghép hạt — tỉ lệ thành công % */
+/** Bùa bảo hộ ghép hạt — rate = % CỘNG THÊM vào tỉ lệ cơ bản (admin: mergeBaseRate) */
 const DEFAULT_PROTECTS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(rate => ({
   id: 'bao-' + rate,
   icon: rate >= 80 ? '🛡️' : rate >= 50 ? '🧿' : '🔮',
-  name: 'Bảo hộ ghép ' + rate + '%',
+  name: 'Bảo hộ +' + rate + '%',
   rate,
   price: Math.round(40 + rate * rate * 0.18),
-  desc: 'Dùng khi ghép hạt: tỉ lệ thành công ' + rate + '%.'
+  desc: 'Cộng thêm +' + rate + '% vào tỉ lệ ghép cơ bản (tối đa 100%, tối thiểu 1%).'
 }));
 
 /** Gói Tiên tự chăm vườn (ngày) */

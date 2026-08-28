@@ -241,7 +241,7 @@ document.getElementById('plant-form').addEventListener('submit', async (e) => {
     : [];
   const data = {
     id: id || ('plant-' + Date.now()),
-    icon: document.getElementById('p-icon').value.trim(),
+    icon: (document.getElementById('p-icon').value || '').trim().slice(0, 10),
     name: document.getElementById('p-name').value.trim(),
     type: document.getElementById('p-type').value,
     seedPrice: parseInt(document.getElementById('p-seed-price').value),
@@ -440,6 +440,12 @@ function renderSettings() {
     rainDurEl.value = Number(d);
   }
   const mOn = document.getElementById('set-maint-on');
+  const mb = document.getElementById('set-merge-base');
+  if (mb) {
+    let v = currentSettings.mergeBaseRate ?? 25;
+    v = Math.max(1, Math.min(100, Number(v) || 25));
+    mb.value = v;
+  }
   if (mOn) mOn.checked = !!currentSettings.maintenanceOn;
   const mMsg = document.getElementById('set-maint-msg');
   if (mMsg) mMsg.value = currentSettings.maintenanceMsg || '';
@@ -472,6 +478,12 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
     if (!Number.isFinite(d) || d <= 0) d = 0.25;
     // 0.1 phút (~6s) – 120 phút
     currentSettings.rainDurationMinutes = Math.max(0.1, Math.min(120, d));
+  }
+  const mbEl = document.getElementById('set-merge-base');
+  if (mbEl) {
+    let v = parseInt(mbEl.value, 10);
+    if (!Number.isFinite(v)) v = 25;
+    currentSettings.mergeBaseRate = Math.max(1, Math.min(100, v));
   }
   currentSettings.maintenanceOn = !!document.getElementById('set-maint-on')?.checked;
   currentSettings.maintenanceMsg = (document.getElementById('set-maint-msg')?.value || '').trim()

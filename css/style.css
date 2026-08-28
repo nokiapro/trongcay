@@ -6238,3 +6238,21 @@ html[data-theme="dark"] input[type="number"]:focus {
 html[data-theme="dark"] .merge-box .merge-sub {
   color: #a7c4b5;
 }
+
+
+/* Ghép hạt — khung rộng hơn */
+.merge-box {
+  max-width: min(440px, 100%) !important;
+  width: 100%;
+  margin: 0 auto;
+  padding: 16px 18px !important;
+  box-sizing: border-box;
+}
+#inv-merge .merge-box {
+  max-width: min(480px, 100%) !important;
+}
+#inv-merge select,
+#inv-merge .pill-dd-trigger {
+  width: 100%;
+  max-width: 100%;
+}

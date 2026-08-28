@@ -170,6 +170,9 @@
           <label>Thời lượng mưa liên tục (phút)</label>
           <input type="number" id="set-rain-duration" min="0.1" max="120" step="0.05" />
           <p style="font-size:0.85rem;color:#52796f;margin-top:4px">Ví dụ: 0.25 = 15 giây, 1 = 1 phút, 5 = 5 phút. Mưa rút ngắn ~12% thời gian còn lại của cây đang lớn. Tiên (nếu bật) tưới hết khi mưa.</p>
+          <label>Tỉ lệ ghép hạt cơ bản % (không dùng bùa, 1–100)</label>
+          <input type="number" id="set-merge-base" min="1" max="100" step="1" />
+          <p style="font-size:0.85rem;color:#52796f;margin-top:4px">Mặc định 25%. Bùa bảo hộ <strong>cộng thêm</strong> (vd +10% → 35%). Kết quả luôn trong khoảng 1–100%.</p>
         </div>
         <div class="admin-card maint-card" style="margin-top:16px">
           <div class="maint-card-head">
@@ -259,8 +262,8 @@
       <h2 id="form-title">Thêm cây mới</h2>
       <form id="plant-form">
         <input type="hidden" id="plant-id" />
-        <label>Icon (emoji)</label>
-        <input type="text" id="p-icon" maxlength="4" required placeholder="🌹" />
+        <label>Icon (emoji / text, tối đa 10 ký tự)</label>
+        <input type="text" id="p-icon" maxlength="10" required placeholder="🌹" title="Tối đa 10 ký tự (emoji / text)" />
         <label>Tên cây</label>
         <input type="text" id="p-name" required placeholder="Hoa hồng" />
         <label>Loại</label>
@@ -296,8 +299,8 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="../js/firebase-config.js?v=1.6.9"></script>
-  <script src="../js/data.js?v=1.6.9"></script>
-  <script src="../js/admin.js?v=1.6.9"></script>
+  <script src="../js/firebase-config.js?v=1.7.1"></script>
+  <script src="../js/data.js?v=1.7.1"></script>
+  <script src="../js/admin.js?v=1.7.1"></script>
 </body>
 </html>
