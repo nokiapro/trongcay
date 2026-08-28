@@ -4655,7 +4655,7 @@ html[data-theme="dark"] .mail-item {
 .bank-item .bank-timer {
   font-variant-numeric: tabular-nums !important;
   font-feature-settings: "tnum" 1;
-  font-family: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace !important;
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
   letter-spacing: 0.02em;
 }
 .btn-timer,
@@ -4874,16 +4874,16 @@ html[data-theme="dark"] .mail-actions .btn-mail-icon[title]:hover::after {
   width: min(420px, calc(100vw - 24px)) !important;
   max-width: calc(100vw - 24px) !important;
   box-sizing: border-box !important;
-  overflow-x: hidden !important;
+  overflow-x: visible !important;
+  overflow-y: auto !important;
   padding: 16px 14px !important;
 }
-#modal-plot .modal-content * {
-  max-width: 100%;
+#modal-plot .modal-content *:not(.pill-dd-menu):not(.pill-dd) {
   box-sizing: border-box;
 }
 #modal-plot .plot-upgrade-box {
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 #modal-plot .plot-upgrade-row {
   flex-direction: column;
@@ -4993,7 +4993,7 @@ html[data-theme="dark"] .plot-upgrade-box h4 {
 .bank-item .bank-timer {
   font-variant-numeric: tabular-nums !important;
   font-feature-settings: "tnum" 1;
-  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace !important;
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
   white-space: nowrap;
   display: inline-block;
   min-width: 7.5ch;
@@ -5036,7 +5036,7 @@ html, body, button, input, select, textarea {
 [data-role="bank-interest"],
 [data-role="bank-persec"],
 [data-role="bank-total"] {
-  font-family: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace !important;
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
   font-variant-numeric: tabular-nums !important;
   font-feature-settings: "tnum" 1;
 }
@@ -5341,4 +5341,146 @@ html, body, button, input, select, textarea {
 }
 html[data-theme="dark"] .garden-tools-menu .support-menu-status {
   color: #a7c4b5;
+}
+
+/* Nút Hỗ trợ — không nền */
+.btn-support-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 12px;
+  background: transparent !important;
+  color: var(--text, #1b4332);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+.btn-support-trigger:hover {
+  background: rgba(45, 106, 79, 0.08) !important;
+}
+html[data-theme="dark"] .btn-support-trigger {
+  color: #e8f5e9;
+}
+html[data-theme="dark"] .btn-support-trigger:hover {
+  background: rgba(82, 183, 136, 0.12) !important;
+}
+
+/* Menu hỗ trợ — pill màu như badge */
+.garden-support-menu {
+  min-width: min(320px, 92vw) !important;
+  padding: 8px !important;
+  gap: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  left: 0 !important;
+  transform: none !important;
+}
+.garden-support-menu .support-pill {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px 10px 14px !important;
+  border: none !important;
+  border-radius: 999px !important;
+  color: #fff !important;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+}
+.support-pill-fairy {
+  background: linear-gradient(90deg, #a78bfa, #ec4899) !important;
+}
+.support-pill-nyc {
+  background: linear-gradient(90deg, #fb7185, #f472b6) !important;
+}
+.support-pill-helper {
+  background: linear-gradient(90deg, #38bdf8, #818cf8) !important;
+}
+.support-pill-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+.support-pill-name {
+  max-width: 7.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.support-pill-sep {
+  opacity: 0.75;
+  font-weight: 600;
+}
+.support-pill-time {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.95;
+}
+.support-pill-gear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.28);
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+.garden-support-menu .support-pill:hover {
+  filter: brightness(1.06);
+}
+.support-pill.is-off {
+  opacity: 0.72;
+  filter: grayscale(0.15);
+}
+
+
+/* ===== FORCE ROBOTO CONDENSED TOÀN SITE ===== */
+html, body,
+button, input, select, textarea, option,
+.btn, .toast, .modal, .modal-content,
+.plot-timer, .bank-timer, .btn-timer,
+#global-timer-text, .support-pill, .support-pill-time,
+.pill-dd-trigger, .pill-dd-menu, .pill-dd-item,
+.fairy-badge, .nyc-badge, .helper-badge,
+.shop-card, .nav-btn, .header, .bottom-nav {
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
+}
+* {
+  font-family: inherit;
+}
+/* Thời gian / số: vẫn Roboto Condensed, tabular */
+.plot-timer, .bank-timer, .btn-timer, #global-timer-text,
+.support-pill-time, [data-role="timer"], [data-role="plot-remain"] {
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* Dropdown portal (gắn body) — không bị modal cắt */
+.pill-dd-menu.pill-dd-portal {
+  position: fixed !important;
+  z-index: 500 !important;
+  font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
+}
+.modal-content {
+  overflow-x: visible;
 }

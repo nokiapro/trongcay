@@ -504,13 +504,27 @@ auth.onAuthStateChanged(async (user) => {
       }
       if (typeof Features !== 'undefined') Features.ensureQuests();
       if (typeof listenPlayerTimers === 'function') listenPlayerTimers(); // no-op
-      // Chăm ngay 1 lần sau login (Tiên tưới/bón, không chờ mở trang vườn)
-      setTimeout(() => {
-        if (typeof tickGardenCare === 'function') tickGardenCare({ render: true });
-        else if (typeof Game !== 'undefined' && Game.resetExpiredBoosts) {
-          if (Game.resetExpiredBoosts() && typeof scheduleSavePlayer === 'function') scheduleSavePlayer(1000);
-        }
-      }, 600);
+      // Bù offline ngay khi vào lại (Firebase FREE — cây đã lớn theo giờ thật)
+      setTimeout(async () => {
+        try {
+          if (typeof Game !== 'undefined' && Game.catchUpOfflineCare) {
+            const r = await Game.catchUpOfflineCare();
+            if (r && r.changed) {
+              if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(800);
+              else if (typeof savePlayer === 'function') await savePlayer();
+              if (typeof updateCoins === 'function') updateCoins();
+              if (typeof renderGarden === 'function') {
+                const gp = document.getElementById('page-garden');
+                if (gp && gp.classList.contains('active')) renderGarden();
+              }
+              if (r.notes && r.notes.length && typeof showToast === 'function') {
+                showToast('⚡ ' + r.notes.join(' · '), 'success');
+              }
+            }
+          }
+        } catch (e) { console.warn('catchUp', e); }
+        if (typeof forceBackgroundCare === 'function') forceBackgroundCare('login');
+      }, 500);
       showApp();
       if (typeof loadPlayerMailbox === 'function') loadPlayerMailbox().catch(() => {});
     } catch (e) {
@@ -1226,31 +1240,51 @@ function closeAllPillMenus(except) {
   document.querySelectorAll('.pill-dd.open').forEach(dd => {
     if (except && dd === except) return;
     dd.classList.remove('open', 'drop-up');
-    const menu = dd.querySelector('.pill-dd-menu');
     const trigger = dd.querySelector('.pill-dd-trigger');
+    // menu có thể đã portal ra body
+    let menu = dd.querySelector('.pill-dd-menu');
+    if (!menu && dd._portalMenu) menu = dd._portalMenu;
     if (menu) {
       menu.hidden = true;
-      // reset fixed pos
+      menu.classList.remove('pill-dd-portal');
       menu.style.top = '';
       menu.style.left = '';
       menu.style.bottom = '';
       menu.style.right = '';
       menu.style.position = '';
       menu.style.minWidth = '';
+      menu.style.maxWidth = '';
+      menu.style.maxHeight = '';
       menu.style.zIndex = '';
+      // trả menu về wrap
+      if (menu.parentNode !== dd) {
+        const trig = dd.querySelector('.pill-dd-trigger');
+        if (trig && trig.nextSibling) dd.insertBefore(menu, trig.nextSibling);
+        else dd.appendChild(menu);
+      }
     }
+    dd._portalMenu = null;
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  });
+  // dọn menu portal sót
+  document.querySelectorAll('.pill-dd-menu.pill-dd-portal').forEach(m => {
+    m.hidden = true;
+    m.classList.remove('pill-dd-portal');
   });
 }
 
 if (!window.__pillDdDocBound) {
   window.__pillDdDocBound = true;
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.pill-dd')) closeAllPillMenus();
+    if (e.target.closest('.pill-dd') || e.target.closest('.pill-dd-menu')) return;
+    closeAllPillMenus();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeAllPillMenus();
   });
+  // khi scroll/resize — đóng menu portal để tránh lệch vị trí
+  window.addEventListener('scroll', () => closeAllPillMenus(), true);
+  window.addEventListener('resize', () => closeAllPillMenus());
 }
 
 /**
@@ -1337,37 +1371,53 @@ function mountPillDropdown(select, opts = {}) {
   };
 
   const positionMenu = () => {
-    // fixed để không bị modal overflow cắt; tự lật lên nếu thiếu chỗ dưới
+    // Portal ra body + fixed → không bị modal/overflow cắt (lỗi chi tiết ô)
+    if (menu.parentNode !== document.body) {
+      document.body.appendChild(menu);
+    }
+    wrap._portalMenu = menu;
+    menu.classList.add('pill-dd-portal');
     menu.style.position = 'fixed';
     menu.style.right = 'auto';
     menu.style.bottom = 'auto';
-    const tr = trigger.getBoundingClientRect();
-    const minW = Math.max(tr.width, wrap.classList.contains('pill-dd-block') ? tr.width : 0);
-    menu.style.minWidth = minW + 'px';
-    menu.style.maxWidth = Math.min(320, window.innerWidth - 16) + 'px';
-    // đo chiều cao sau khi hiện
     menu.hidden = false;
-    const mh = Math.min(menu.scrollHeight || 260, 280);
-    const spaceBelow = window.innerHeight - tr.bottom - 8;
-    const spaceAbove = tr.top - 8;
-    const openUp = spaceBelow < mh + 4 && spaceAbove > spaceBelow;
+
+    const tr = trigger.getBoundingClientRect();
+    const minW = Math.max(tr.width, 160);
+    menu.style.minWidth = minW + 'px';
+    menu.style.maxWidth = Math.min(Math.max(minW, 280), window.innerWidth - 16) + 'px';
+    menu.style.maxHeight = Math.min(280, window.innerHeight - 24) + 'px';
+    menu.style.overflowY = 'auto';
+    menu.style.zIndex = '500';
+
+    // đo sau khi hiện
+    const mh = Math.min(menu.scrollHeight || 200, 280);
+    const spaceBelow = window.innerHeight - tr.bottom - 10;
+    const spaceAbove = tr.top - 10;
+    const openUp = spaceBelow < Math.min(mh, 160) && spaceAbove > spaceBelow;
     wrap.classList.toggle('drop-up', openUp);
+
+    let left = tr.left;
+    if (left + minW > window.innerWidth - 8) left = Math.max(8, window.innerWidth - minW - 8);
+    if (left < 8) left = 8;
+
     if (openUp) {
       const top = Math.max(8, tr.top - mh - 6);
       menu.style.top = top + 'px';
-      menu.style.left = Math.min(tr.left, window.innerWidth - minW - 8) + 'px';
+      menu.style.left = left + 'px';
     } else {
       menu.style.top = (tr.bottom + 6) + 'px';
-      menu.style.left = Math.min(Math.max(8, tr.left), window.innerWidth - minW - 8) + 'px';
+      menu.style.left = left + 'px';
     }
-    menu.style.zIndex = '400';
   };
 
   trigger.addEventListener('click', (e) => {
     e.stopPropagation();
-    const willOpen = menu.hidden;
+    const willOpen = menu.hidden || menu.parentNode === document.body && !wrap.classList.contains('open');
+    // nếu đang mở trên wrap này → đóng
+    const isOpen = wrap.classList.contains('open');
     closeAllPillMenus();
-    if (willOpen) {
+    if (!isOpen) {
       rebuildMenu();
       trigger.setAttribute('aria-expanded', 'true');
       wrap.classList.add('open');
@@ -2053,27 +2103,39 @@ document.getElementById('btn-harvest-all')?.addEventListener('click', () => {
 
 function refreshSupportMenuStatus() {
   if (typeof Game === 'undefined') return;
-  const set = (id, active, text) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = text;
-    el.style.opacity = active ? '1' : '0.55';
+  const fill = (btnId, nameId, timeId, hasFn, remainFn, nameFn, fallbackName) => {
+    const btn = document.getElementById(btnId);
+    const nameEl = document.getElementById(nameId);
+    const timeEl = document.getElementById(timeId);
+    const active = typeof hasFn === 'function' && hasFn();
+    const name = (typeof nameFn === 'function' ? nameFn() : null) || fallbackName;
+    if (nameEl) nameEl.textContent = name;
+    if (timeEl) timeEl.textContent = active
+      ? Game.formatTime(typeof remainFn === 'function' ? remainFn() : 0)
+      : 'Chưa mua';
+    if (btn) btn.classList.toggle('is-off', !active);
   };
-  if (Game.hasFairy && Game.hasFairy()) {
-    set('support-status-fairy', true, Game.formatTime(Game.fairyRemainingSec()));
-  } else {
-    set('support-status-fairy', false, 'Chưa mua');
-  }
-  if (Game.hasNyc && Game.hasNyc()) {
-    set('support-status-nyc', true, Game.formatTime(Game.nycRemainingSec()));
-  } else {
-    set('support-status-nyc', false, 'Chưa mua');
-  }
-  if (Game.hasHelper && Game.hasHelper()) {
-    set('support-status-helper', true, Game.formatTime(Game.helperRemainingSec()));
-  } else {
-    set('support-status-helper', false, 'Chưa mua');
-  }
+  fill(
+    'btn-support-fairy', 'support-name-fairy', 'support-status-fairy',
+    () => Game.hasFairy && Game.hasFairy(),
+    () => Game.fairyRemainingSec(),
+    () => Game.getFairyDisplayName && Game.getFairyDisplayName(),
+    'Tiên'
+  );
+  fill(
+    'btn-support-nyc', 'support-name-nyc', 'support-status-nyc',
+    () => Game.hasNyc && Game.hasNyc(),
+    () => Game.nycRemainingSec(),
+    () => Game.getNycDisplayName && Game.getNycDisplayName(),
+    'NYC'
+  );
+  fill(
+    'btn-support-helper', 'support-name-helper', 'support-status-helper',
+    () => Game.hasHelper && Game.hasHelper(),
+    () => Game.helperRemainingSec(),
+    () => Game.getHelperDisplayName && Game.getHelperDisplayName(),
+    'Giúp việc'
+  );
 }
 
 
@@ -3001,6 +3063,12 @@ function tickGardenCare(opts) {
 function softUpdateGarden() {
   if (!currentPlayer) return;
   tickGardenCare({ render: false });
+  softUpdateGardenUI();
+}
+function softUpdateGardenUI() {
+  if (!currentPlayer) return;
+  const gardenPage = document.getElementById('page-garden');
+  if (gardenPage && !gardenPage.classList.contains('active')) return;
   const plots = Array.isArray(currentPlayer.plots) ? currentPlayer.plots : Object.values(currentPlayer.plots || {});
   let needFull = false;
   plots.forEach((plot, i) => {
@@ -3095,18 +3163,75 @@ function updateGlobalTimer() {
   }
 }
 
-// Live update: Tiên/NYC luôn tick; UI vườn chỉ khi đang mở trang vườn
+/**
+ * Chăm vườn nền — Tiên / NYC / Giúp việc chạy KỂ CẢ không mở trang Vườn.
+ * Chỉ cần đang đăng nhập + tab còn sống (hoặc vừa mở lại).
+ */
+function forceBackgroundCare(reason) {
+  if (!currentPlayer || typeof Game === 'undefined') return false;
+  try {
+    // Giúp việc: cho phép check ngay sau khi tab quay lại / login
+    if (reason === 'visible' || reason === 'login' || reason === 'focus' || reason === 'online') {
+      if (currentPlayer.lastHelperBuy && (Date.now() - currentPlayer.lastHelperBuy > 5000)) {
+        // giữ cooldown bình thường; không reset về 0 để tránh spam mua
+      }
+    }
+    const changed = tickGardenCare({ render: reason === 'login' || reason === 'visible' });
+    if (changed) {
+      if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(1200);
+    }
+    if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
+    return !!changed;
+  } catch (e) {
+    console.warn('[care]', reason, e);
+    return false;
+  }
+}
+
+// Live update mỗi 1s: luôn chăm nền; chỉ soft-update DOM khi đang ở trang vườn
 setInterval(() => {
   if (!currentPlayer) return;
+  // Không bỏ qua khi tab ẩn — browser throttle interval, nhưng khi chạy vẫn phải chăm
+  forceBackgroundCare('tick');
   const gardenPage = document.getElementById('page-garden');
   if (gardenPage && gardenPage.classList.contains('active')) {
-    softUpdateGarden();
-  } else {
-    // Vẫn cho Tiên tưới/bón + NYC thu/trồng khi đang ở shop/kho/...
-    tickGardenCare({ render: false });
+    // softUpdateGarden đã gọi tickGardenCare — tách phần UI
+    softUpdateGardenUI();
   }
   if (typeof softUpdateBank === 'function') softUpdateBank();
 }, 1000);
+
+// Tab quay lại / focus / online → chăm ngay (bù thời gian bị throttle)
+if (!window.__careVisibilityBound) {
+  window.__careVisibilityBound = true;
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && currentPlayer) {
+      forceBackgroundCare('visible');
+      // Tab mở lại sau lâu: bù offline (FREE)
+      if (typeof Game !== 'undefined' && Game.catchUpOfflineCare) {
+        const last = currentPlayer.lastCatchUpAt || 0;
+        if (Date.now() - last > 60000) {
+          Game.catchUpOfflineCare().then(r => {
+            if (r && r.changed) {
+              if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(1000);
+              if (typeof updateCoins === 'function') updateCoins();
+            }
+          }).catch(() => {});
+        }
+      }
+    }
+  });
+  window.addEventListener('focus', () => {
+    if (currentPlayer) forceBackgroundCare('focus');
+  });
+  window.addEventListener('online', () => {
+    if (currentPlayer) forceBackgroundCare('online');
+  });
+  // Mở app từ background (PWA / mobile)
+  document.addEventListener('resume', () => {
+    if (currentPlayer) forceBackgroundCare('visible');
+  }, false);
+}
 
 // Check rain every 45s when logged in
 setInterval(() => {

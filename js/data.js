@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.5.2';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13105,7 +13105,7 @@ const DEFAULT_SETTINGS = {
   rainDurationMinutes: 0.25, // phút mưa liên tục (0.25 = 15 giây mặc định)
   plotPrice: 500,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.4.1',
+  appVersion: '1.5.2',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13387,6 +13387,26 @@ async function savePlayer() {
   if (typeof currentPlayer.lastNycCare !== 'number') currentPlayer.lastNycCare = 0;
   currentPlayer.timersSyncedAt = Date.now();
   await db.ref('users/' + currentUser.uid).set(currentPlayer);
+  // Index cho Cloud Functions chăm khi offline
+  try {
+    const now = Date.now();
+    const hasAgent =
+      (currentPlayer.fairyUntil > now) ||
+      (currentPlayer.nycUntil > now) ||
+      (currentPlayer.helperUntil > now);
+    if (hasAgent) {
+      await db.ref('agentIndex/' + currentUser.uid).set({
+        fairyUntil: currentPlayer.fairyUntil || 0,
+        nycUntil: currentPlayer.nycUntil || 0,
+        helperUntil: currentPlayer.helperUntil || 0,
+        updatedAt: now
+      });
+    } else {
+      await db.ref('agentIndex/' + currentUser.uid).remove();
+    }
+  } catch (e) {
+    console.warn('agentIndex', e);
+  }
   if (typeof Game !== 'undefined' && Game.updateLeaderboard) {
     await Game.updateLeaderboard();
   }
