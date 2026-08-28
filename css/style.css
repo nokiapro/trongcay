@@ -5412,13 +5412,16 @@ html[data-theme="dark"] .btn-support-trigger:hover {
 
 /* Menu hỗ trợ — pill màu như badge */
 .garden-support-menu {
-  min-width: min(320px, 92vw) !important;
+  min-width: min(280px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 16px) !important;
   padding: 8px !important;
   gap: 8px !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  left: 0 !important;
+  /* Mở sang trái — nút Hỗ trợ sát mép phải mobile */
+  left: auto !important;
+  right: 0 !important;
   transform: none !important;
 }
 .garden-support-menu .support-pill {
@@ -6255,4 +6258,31 @@ html[data-theme="dark"] .merge-box .merge-sub {
 #inv-merge .pill-dd-trigger {
   width: 100%;
   max-width: 100%;
+}
+
+
+/* Dropdown Hỗ trợ — neo phải, menu xổ sang trái */
+.garden-support-dd {
+  position: relative !important;
+  z-index: 40;
+}
+.garden-support-dd.open {
+  z-index: 120;
+}
+.garden-support-dd .garden-support-menu,
+.garden-support-dd .garden-tools-menu.garden-support-menu {
+  left: auto !important;
+  right: 0 !important;
+  transform: none !important;
+}
+@media (max-width: 640px) {
+  .garden-support-menu {
+    right: 0 !important;
+    left: auto !important;
+    min-width: min(260px, calc(100vw - 20px)) !important;
+  }
+  /* Công cụ cũng neo trong viewport */
+  .garden-tools-dd.open {
+    z-index: 110;
+  }
 }
