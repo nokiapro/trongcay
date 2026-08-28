@@ -2882,35 +2882,63 @@ function renderInventory() {
     }
   }
 
-  // Ghép hạt
+  // Ghép hạt — giữ lựa chọn hạt + bùa sau mỗi lần ghép
   const mergeEl = document.getElementById('inv-merge');
   if (mergeEl) {
+    if (typeof window._mergeSel === 'undefined') {
+      window._mergeSel = { plantId: null, protectId: null };
+    }
     const mergeable = Object.keys(seeds).filter(id => (seeds[id] || 0) >= 2);
     const prots = (currentPlayer.inventory && currentPlayer.inventory.protects) || {};
     const pids = Object.keys(prots).filter(id => prots[id] > 0);
     if (!mergeable.length) {
       mergeEl.innerHTML = '<p class="empty-state">Cần ≥ 2 hạt <strong>thường</strong> cùng loại để ghép thành hạt ⭐ (+50% sản lượng & giá bán).</p>';
     } else {
+      // Ưu tiên lựa chọn trước đó nếu còn đủ hạt / còn bùa
+      let selPlant = window._mergeSel.plantId;
+      if (!selPlant || !mergeable.includes(selPlant)) selPlant = mergeable[0];
+      let selProt = window._mergeSel.protectId || '';
+      if (selProt && !pids.includes(selProt)) selProt = '';
+
       let opts = mergeable.map(id => {
-        const p = Game.getPlant(id);
-        return p ? `<option value="${id}">${p.icon} ${p.name} (x${seeds[id]})</option>` : '';
+        const pl = Game.getPlant(id);
+        if (!pl) return '';
+        const sel = id === selPlant ? ' selected' : '';
+        return `<option value="${id}"${sel}>${pl.icon} ${pl.name} (x${seeds[id]})</option>`;
       }).join('');
-      let popts = '<option value="">Không dùng bùa (25%)</option>' + pids.map(id => {
+      let popts = `<option value=""${selProt === '' ? ' selected' : ''}>Không dùng bùa (25%)</option>` + pids.map(id => {
         const item = Game.getProtect(id);
-        return item ? `<option value="${id}">${item.name} — x${prots[id]}</option>` : '';
+        if (!item) return '';
+        const sel = id === selProt ? ' selected' : '';
+        return `<option value="${id}"${sel}>${item.name} — x${prots[id]}</option>`;
       }).join('');
       mergeEl.innerHTML = `
         <div class="merge-box">
-          <p>Ghép <strong>2 hạt thường</strong> → <strong>1 hạt sao</strong>. Thất bại mất 1 hạt (+ bùa nếu có).</p>
+          <p class="merge-lead">Ghép <strong>2 hạt thường</strong> → <strong>1 hạt sao</strong></p>
+          <p class="merge-sub">Thất bại mất 1 hạt (+ bùa nếu có).</p>
           <label>Chọn hạt</label>
           <select id="merge-plant">${opts}</select>
           <label>Bùa bảo hộ (tuỳ chọn)</label>
           <select id="merge-protect">${popts}</select>
           <button id="btn-do-merge" class="btn btn-primary" style="margin-top:12px"><i class="fa-solid fa-flask-vial"></i> Ghép ngay</button>
         </div>`;
+      const plantSel = document.getElementById('merge-plant');
+      const protSel = document.getElementById('merge-protect');
+      plantSel?.addEventListener('change', () => {
+        window._mergeSel.plantId = plantSel.value || null;
+      });
+      protSel?.addEventListener('change', () => {
+        window._mergeSel.protectId = protSel.value || null;
+      });
+      // Ghi nhớ ngay giá trị đang hiện
+      window._mergeSel.plantId = plantSel?.value || selPlant;
+      window._mergeSel.protectId = protSel?.value || selProt || null;
+
       document.getElementById('btn-do-merge')?.addEventListener('click', async () => {
-        const pid = document.getElementById('merge-plant')?.value;
-        const pr = document.getElementById('merge-protect')?.value || null;
+        const pid = plantSel?.value;
+        const pr = protSel?.value || null;
+        window._mergeSel.plantId = pid || null;
+        window._mergeSel.protectId = pr || null;
         const res = await Game.mergeSeeds(pid, pr || null);
         showToast(res.msg, res.success ? 'success' : (res.ok ? 'error' : 'error'));
         updateCoins();
