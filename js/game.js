@@ -1961,7 +1961,7 @@ const Game = {
    * Trả về { ok, bought, cost, msg }
    */
   helperBuySilent(kind, id, qty) {
-    qty = Math.max(1, Math.min(99, parseInt(qty, 10) || 1));
+    qty = Math.max(1, Math.min(9999, parseInt(qty, 10) || 1));
     if (kind === 'seed') {
       const plant = this.getPlant(id);
       if (!plant) return { ok: false, bought: 0, cost: 0, msg: 'Không có hạt' };

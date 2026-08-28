@@ -4339,14 +4339,23 @@ function renderHelperRulesList() {
     `;
     host.appendChild(row);
   });
+  const syncDraftField = (inp) => {
+    const i = parseInt(inp.dataset.i, 10);
+    const f = inp.dataset.f;
+    if (!_helperRulesDraft[i]) return;
+    if (f === 'enabled') _helperRulesDraft[i].enabled = inp.checked;
+    else {
+      let v = parseInt(inp.value, 10);
+      if (!Number.isFinite(v)) v = 0;
+      if (f === 'buyQty') v = Math.max(1, Math.min(9999, v));
+      if (f === 'minStock') v = Math.max(0, Math.min(9999, v));
+      _helperRulesDraft[i][f] = v;
+    }
+  };
   host.querySelectorAll('input[data-f]').forEach(inp => {
-    inp.addEventListener('change', () => {
-      const i = parseInt(inp.dataset.i, 10);
-      const f = inp.dataset.f;
-      if (!_helperRulesDraft[i]) return;
-      if (f === 'enabled') _helperRulesDraft[i].enabled = inp.checked;
-      else _helperRulesDraft[i][f] = parseInt(inp.value, 10) || 0;
-    });
+    inp.addEventListener('change', () => syncDraftField(inp));
+    inp.addEventListener('input', () => syncDraftField(inp));
+    inp.addEventListener('blur', () => syncDraftField(inp));
   });
   host.querySelectorAll('[data-del]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -4403,6 +4412,20 @@ document.getElementById('btn-helper-add-rule')?.addEventListener('click', () => 
 
 document.getElementById('btn-save-helper-config')?.addEventListener('click', async () => {
   if (typeof Game === 'undefined') return;
+  // Đọc lại ô input trên form (tránh bấm Lưu khi chưa blur → vẫn 99 cũ)
+  document.querySelectorAll('#helper-rules-list input[data-f]').forEach(inp => {
+    const i = parseInt(inp.dataset.i, 10);
+    const f = inp.dataset.f;
+    if (!_helperRulesDraft[i]) return;
+    if (f === 'enabled') _helperRulesDraft[i].enabled = inp.checked;
+    else {
+      let v = parseInt(inp.value, 10);
+      if (!Number.isFinite(v)) v = f === 'buyQty' ? 1 : 0;
+      if (f === 'buyQty') v = Math.max(1, Math.min(9999, v));
+      if (f === 'minStock') v = Math.max(0, Math.min(9999, v));
+      _helperRulesDraft[i][f] = v;
+    }
+  });
   const res = Game.setHelperConfig({
     customName: document.getElementById('helper-custom-name')?.value || '',
     gender: document.querySelector('input[name="helper-gender"]:checked')?.value || 'female',
