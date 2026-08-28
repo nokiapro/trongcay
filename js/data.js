@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.7.1';
+const APP_VERSION = '1.7.5';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13107,7 +13107,7 @@ const DEFAULT_SETTINGS = {
   /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.7.1',
+  appVersion: '1.7.5',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13274,18 +13274,166 @@ async function initGlobalData() {
   }
 }
 
+/**
+ * Đồng bộ thời gian với Firebase (nhiều thiết bị chung 1 mốc giờ).
+ * nowMs() = Date.now() + serverOffset — dùng cho plantedAt / lastSeen / bù offline.
+ */
+let _serverTimeOffset = 0;
+let _serverTimeReady = false;
+const CLIENT_SESSION_ID = 's_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36);
+/** updatedAt lúc load / sau save thành công — để không đè bản mới hơn từ máy khác */
+let _playerBaseUpdatedAt = 0;
+let _playerDirty = false;
+let _pullRemoteBusy = false;
+
+function nowMs() {
+  // Không cộng lệch Firebase — dùng giờ máy (người chơi GMT+7)
+  return Date.now();
+}
+
+/** Múi giờ chuẩn game: GMT+7 (Việt Nam) */
+const GAME_TIMEZONE = 'Asia/Ho_Chi_Minh';
+const GAME_TZ_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+/** Date theo giờ VN từ timestamp ms */
+function dateInGameTz(ms) {
+  const t = (ms == null ? nowMs() : Number(ms));
+  // Dùng Intl để lấy Y/M/D/H theo Asia/Ho_Chi_Minh
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: GAME_TIMEZONE,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false
+    }).formatToParts(new Date(t));
+    const get = (type) => {
+      const p = parts.find(x => x.type === type);
+      return p ? parseInt(p.value, 10) : 0;
+    };
+    return {
+      year: get('year'),
+      month: get('month'),
+      day: get('day'),
+      hour: get('hour') % 24,
+      minute: get('minute'),
+      second: get('second')
+    };
+  } catch (_) {
+    const d = new Date(t + GAME_TZ_OFFSET_MS);
+    return {
+      year: d.getUTCFullYear(),
+      month: d.getUTCMonth() + 1,
+      day: d.getUTCDate(),
+      hour: d.getUTCHours(),
+      minute: d.getUTCMinutes(),
+      second: d.getUTCSeconds()
+    };
+  }
+}
+
+/** Chuỗi ngày "YYYY-MM-DD" theo GMT+7 — dùng điểm danh / daily */
+function gameDayKey(ms) {
+  const d = dateInGameTz(ms);
+  const pad = n => String(n).padStart(2, '0');
+  return d.year + '-' + pad(d.month) + '-' + pad(d.day);
+}
+
+/** toDateString tương đương nhưng cố định GMT+7 */
+function gameDateString(ms) {
+  const d = dateInGameTz(ms);
+  // Giống toDateString style cho so sánh daily cũ: dùng key ổn định
+  return gameDayKey(ms);
+}
+
+/** Format hiển thị vi-VN theo GMT+7 */
+function formatGameDateTime(ms, withSeconds) {
+  if (!ms) return '—';
+  try {
+    const opt = {
+      timeZone: GAME_TIMEZONE,
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+      hour12: false
+    };
+    if (withSeconds) opt.second = '2-digit';
+    return new Date(ms).toLocaleString('vi-VN', opt);
+  } catch (_) {
+    return new Date(ms).toLocaleString('vi-VN');
+  }
+}
+
+
+
+function markPlayerDirty() {
+  _playerDirty = true;
+}
+
+async function initServerTime() {
+  // ĐÃ TẮT: không đồng bộ lệch giờ Firebase (tránh lệch khỏi GMT+7 trên máy người chơi)
+  _serverTimeOffset = 0;
+  _serverTimeReady = true;
+  return 0;
+}
+
+/**
+ * Kéo bản remote CHỈ khi local không có thay đổi chưa lưu.
+ * Nếu đang dirty (chơi offline / vừa thao tác) → GIỮ local, đẩy lên Firebase.
+ * @returns {boolean} true nếu đã thay currentPlayer bằng bản remote
+ */
+async function pullRemotePlayerIfNewer() {
+  if (!db || !currentUser || !currentPlayer || _pullRemoteBusy) return false;
+  // Có tiến trình local chưa sync → không được đè mất
+  if (_playerDirty) {
+    try { await savePlayer(); } catch (_) {}
+    return false;
+  }
+  _pullRemoteBusy = true;
+  try {
+    const snap = await db.ref('users/' + currentUser.uid).once('value');
+    if (!snap.exists()) return false;
+    const remote = snap.val();
+    const rAt = Number(remote.updatedAt) || 0;
+    const lAt = Number(currentPlayer.updatedAt) || _playerBaseUpdatedAt || 0;
+    // Remote mới hơn rõ và local không dirty
+    if (rAt > lAt + 2000 && remote.sessionId && remote.sessionId !== CLIENT_SESSION_ID) {
+      currentPlayer = remote;
+      _playerBaseUpdatedAt = rAt;
+      _playerDirty = false;
+      if (typeof Game !== 'undefined' && Game.ensureGardens) {
+        try { Game.ensureGardens(); Game.syncActiveGarden(); } catch (_) {}
+      }
+      return true;
+    }
+    if (rAt > _playerBaseUpdatedAt) _playerBaseUpdatedAt = rAt;
+    return false;
+  } catch (e) {
+    console.warn('pullRemotePlayerIfNewer', e);
+    return false;
+  } finally {
+    _pullRemoteBusy = false;
+  }
+}
+
 async function loadPlayer(uid, email) {
+  if (typeof initServerTime === 'function') {
+    try { await initServerTime(); } catch (_) {}
+  }
   const snap = await db.ref('users/' + uid).once('value');
   if (!snap.exists()) {
     const usersSnap = await db.ref('users').once('value');
     const isFirst = !usersSnap.exists() || Object.keys(usersSnap.val() || {}).length === 0;
     const role = isFirst ? 'admin' : 'user';
     const data = createDefaultPlayerData(uid, email, role);
+    data.updatedAt = nowMs();
+    data.sessionId = CLIENT_SESSION_ID;
+    data.lastSeenAt = nowMs();
     await db.ref('users/' + uid).set(data);
     currentPlayer = data;
+    _playerBaseUpdatedAt = data.updatedAt;
     isAdmin = role === 'admin';
   } else {
     currentPlayer = snap.val();
+    _playerBaseUpdatedAt = Number(currentPlayer.updatedAt) || 0;
 
     if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {} };
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
@@ -13322,8 +13470,9 @@ async function loadPlayer(uid, email) {
     if (typeof currentPlayer.fairyUntil !== 'number') currentPlayer.fairyUntil = 0;
     if (typeof currentPlayer.lastFairyCare !== 'number') currentPlayer.lastFairyCare = 0;
     if (typeof currentPlayer.helperUntil !== 'number') currentPlayer.helperUntil = 0;
-    if (typeof currentPlayer.lastSeenAt !== 'number') currentPlayer.lastSeenAt = Date.now();
+    if (typeof currentPlayer.lastSeenAt !== 'number') currentPlayer.lastSeenAt = nowMs();
     if (typeof currentPlayer.lastCatchUpAt !== 'number') currentPlayer.lastCatchUpAt = 0;
+    if (typeof currentPlayer.updatedAt !== 'number') currentPlayer.updatedAt = _playerBaseUpdatedAt || nowMs();
     if (typeof currentPlayer.lastHelperBuy !== 'number') currentPlayer.lastHelperBuy = 0;
     if (!currentPlayer.fairyConfig || typeof currentPlayer.fairyConfig !== 'object') {
       currentPlayer.fairyConfig = {
@@ -13376,7 +13525,7 @@ async function loadPlayer(uid, email) {
 }
 
 async function savePlayer() {
-  if (!currentUser || !currentPlayer) return;
+  if (!currentUser || !currentPlayer || !db) return;
   // Đồng bộ multi-vườn trước khi ghi
   if (typeof Game !== 'undefined' && Game.ensureGardens) {
     try {
@@ -13384,18 +13533,42 @@ async function savePlayer() {
       Game.syncActiveGarden();
     } catch (_) {}
   }
-  // Đảm bảo mốc thời gian timer luôn có trên object trước khi ghi
   if (typeof currentPlayer.fairyUntil !== 'number') currentPlayer.fairyUntil = 0;
   if (typeof currentPlayer.lastFairyCare !== 'number') currentPlayer.lastFairyCare = 0;
   if (typeof currentPlayer.nycUntil !== 'number') currentPlayer.nycUntil = 0;
   if (typeof currentPlayer.lastNycCare !== 'number') currentPlayer.lastNycCare = 0;
-  currentPlayer.timersSyncedAt = Date.now();
-  await db.ref('users/' + currentUser.uid).set(currentPlayer);
+
+  const t = typeof nowMs === 'function' ? nowMs() : Date.now();
+  currentPlayer.timersSyncedAt = t;
+  currentPlayer.lastSeenAt = t;
+  currentPlayer.sessionId = CLIENT_SESSION_ID;
+  // updatedAt luôn tăng so với base → bản local offline không bị coi là cũ
+  const prev = Math.max(
+    Number(currentPlayer.updatedAt) || 0,
+    Number(_playerBaseUpdatedAt) || 0
+  );
+  currentPlayer.updatedAt = Math.max(t, prev + 1);
+  _playerDirty = true;
+
+  // Dùng set() (không transaction):
+  // - Transaction Firebase offline thường fail / hủy → mất tiến trình offline
+  // - set() được xếp hàng khi offline, lên mạng sẽ đẩy lên RTDB
+  try {
+    await db.ref('users/' + currentUser.uid).set(currentPlayer);
+    _playerBaseUpdatedAt = currentPlayer.updatedAt;
+    _playerDirty = false;
+  } catch (e) {
+    // Offline / lỗi mạng: giữ dirty để lần online sau lưu lại
+    console.warn('savePlayer (sẽ thử lại khi online)', e && e.message ? e.message : e);
+    _playerDirty = true;
+    return;
+  }
+
   if (typeof Game !== 'undefined' && Game.updateLeaderboard) {
-    await Game.updateLeaderboard();
+    try { await Game.updateLeaderboard(); } catch (_) {}
   }
   if (typeof Game !== 'undefined' && Game.publishPublicGarden) {
-    await Game.publishPublicGarden();
+    try { await Game.publishPublicGarden(); } catch (_) {}
   }
 }
 
@@ -13419,11 +13592,27 @@ async function syncTimersToFirebase() {
 let _savePlayerDebounceTimer = null;
 function scheduleSavePlayer(delayMs = 2500) {
   if (!currentUser || !currentPlayer) return;
+  _playerDirty = true;
   if (_savePlayerDebounceTimer) clearTimeout(_savePlayerDebounceTimer);
   _savePlayerDebounceTimer = setTimeout(() => {
     _savePlayerDebounceTimer = null;
     savePlayer().catch(e => console.warn('scheduleSavePlayer', e));
   }, delayMs);
+}
+
+/** Khi có mạng lại: ưu tiên đẩy local dirty lên Firebase */
+if (typeof window !== 'undefined' && !window.__vxOnlineSaveBound) {
+  window.__vxOnlineSaveBound = true;
+  window.addEventListener('online', () => {
+    if (_playerDirty && typeof savePlayer === 'function') {
+      savePlayer().catch(e => console.warn('online savePlayer', e));
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && _playerDirty && typeof savePlayer === 'function') {
+      savePlayer().catch(() => {});
+    }
+  });
 }
 
 /**

@@ -1,6 +1,9 @@
 // ===== GAME LOGIC (Firebase) =====
 
 const Game = {
+  /** Đồng hồ chuẩn Firebase (nowMs) */
+  now() { return (typeof nowMs === "function") ? nowMs() : Date.now(); },
+
   // Rain state (client)
   raining: false,
   rainUntil: 0,
@@ -126,7 +129,7 @@ const Game = {
 
   /** Còn hạn gói Tiên (không phụ thuộc bật/tắt trong hồ sơ) */
   hasFairy() {
-    return !!(currentPlayer && currentPlayer.fairyUntil && currentPlayer.fairyUntil > Date.now());
+    return !!(currentPlayer && currentPlayer.fairyUntil && currentPlayer.fairyUntil > (typeof nowMs==="function"?nowMs():Date.now()));
   },
 
   /** Tiên đang hoạt động: còn hạn + người chơi bật trong hồ sơ */
@@ -144,12 +147,12 @@ const Game = {
 
   fairyRemainingSec() {
     if (!this.hasFairy()) return 0;
-    return Math.max(0, Math.ceil((currentPlayer.fairyUntil - Date.now()) / 1000));
+    return Math.max(0, Math.ceil((currentPlayer.fairyUntil - (typeof nowMs==="function"?nowMs():Date.now())) / 1000));
   },
 
   /** Còn hạn gói NYC */
   hasNyc() {
-    return !!(currentPlayer && currentPlayer.nycUntil && currentPlayer.nycUntil > Date.now());
+    return !!(currentPlayer && currentPlayer.nycUntil && currentPlayer.nycUntil > (typeof nowMs==="function"?nowMs():Date.now()));
   },
 
   /** NYC đang hoạt động: còn hạn + bật trong hồ sơ */
@@ -159,7 +162,7 @@ const Game = {
 
   nycRemainingSec() {
     if (!this.hasNyc()) return 0;
-    return Math.max(0, Math.ceil((currentPlayer.nycUntil - Date.now()) / 1000));
+    return Math.max(0, Math.ceil((currentPlayer.nycUntil - (typeof nowMs==="function"?nowMs():Date.now())) / 1000));
   },
 
   getBuffPrefs() {
@@ -232,7 +235,7 @@ const Game = {
   /** Hệ số tốc độ ô: max(vĩnh viễn, tạm thời còn hạn) */
   getPlotSpeedMult(plot) {
     if (!plot) return 1;
-    const now = Date.now();
+    const now = (typeof nowMs==="function"?nowMs():Date.now());
     let perm = Number(plot.specialMultPermanent) || 0;
     if (!perm && plot.specialMult > 1 && !plot.specialMultUntil) {
       perm = Number(plot.specialMult) || 1;
@@ -246,7 +249,7 @@ const Game = {
   },
 
   getWeather() {
-    if (this.raining && Date.now() < this.rainUntil) {
+    if (this.raining && (typeof nowMs==="function"?nowMs():Date.now()) < this.rainUntil) {
       return { icon: '🌧️', text: 'Đang mưa!', mult: 1.25 };
     }
     const h = new Date().getHours();
@@ -263,7 +266,7 @@ const Game = {
   // Try trigger rain based on admin %
   // Try trigger rain based on admin % (1–50)
   tryTriggerRain() {
-    if (this.raining && Date.now() < this.rainUntil) return false;
+    if (this.raining && (typeof nowMs==="function"?nowMs():Date.now()) < this.rainUntil) return false;
     let chance = (currentSettings && currentSettings.rainChance) != null
       ? Number(currentSettings.rainChance)
       : 15;
@@ -290,7 +293,7 @@ const Game = {
   startRain() {
     this.raining = true;
     const durationMs = this.getRainDurationMs();
-    this.rainUntil = Date.now() + durationMs;
+    this.rainUntil = (typeof nowMs==="function"?nowMs():Date.now()) + durationMs;
     this.rainCollectCount = 0;
     // Apply rain boost to growing plots (shorten remaining like light fertilizer)
     if (currentPlayer && currentPlayer.plots) {
@@ -318,7 +321,7 @@ const Game = {
           if (plot && plot.plantId) {
             plot.watered = true;
             plot.waterCount = 3;
-            plot.lastWatered = Date.now();
+            plot.lastWatered = (typeof nowMs==="function"?nowMs():Date.now());
             wateredN++;
           }
         });
@@ -343,7 +346,7 @@ const Game = {
   /** Nhặt vật phẩm khi mưa (sâu / hạt rơi). Tối đa 8 lần / trận mưa */
   async collectRainItem(kind) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
-    if (!this.raining || Date.now() >= this.rainUntil) {
+    if (!this.raining || (typeof nowMs==="function"?nowMs():Date.now()) >= this.rainUntil) {
       return { ok: false, msg: 'Mưa đã tạnh!' };
     }
     this.rainCollectCount = (this.rainCollectCount || 0) + 1;
@@ -399,7 +402,7 @@ const Game = {
         level: currentPlayer.level || 1,
         plotCount: plots.length,
         plots,
-        updatedAt: Date.now()
+        updatedAt: (typeof nowMs==="function"?nowMs():Date.now())
       });
     } catch (e) {
       console.warn('publicGarden', e);
@@ -413,7 +416,7 @@ const Game = {
   async helpWaterFriend(friendUid) {
     if (!currentUser || !currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     if (!friendUid || friendUid === currentUser.uid) return { ok: false, msg: 'Không hợp lệ!' };
-    const today = new Date().toDateString();
+    const today = (typeof gameDateString === 'function') ? gameDateString() : new Date().toDateString();
     if (!currentPlayer.helpWaterLog) currentPlayer.helpWaterLog = {};
     if (currentPlayer.helpWaterLog[friendUid] === today) {
       return { ok: false, msg: 'Hôm nay bạn đã tưới giúp người này rồi!' };
@@ -422,7 +425,7 @@ const Game = {
       await db.ref('gardenHelps/' + friendUid + '/' + currentUser.uid).set({
         from: currentUser.uid,
         fromName: currentPlayer.displayName || (currentPlayer.email || '').split('@')[0] || 'Bạn',
-        at: Date.now(),
+        at: (typeof nowMs==="function"?nowMs():Date.now()),
         day: today
       });
     } catch (e) {
@@ -460,7 +463,7 @@ const Game = {
         if (plot) {
           plot.waterCount = (plot.waterCount || 0) + 1;
           plot.watered = true;
-          plot.lastWatered = Date.now();
+          plot.lastWatered = (typeof nowMs==="function"?nowMs():Date.now());
           applied++;
           if (h.fromName) names.push(h.fromName);
         }
@@ -520,7 +523,7 @@ const Game = {
 
   getElapsedEffective(plot) {
     if (!plot || !plot.plantId || !plot.plantedAt) return 0;
-    return (Date.now() - plot.plantedAt) / 1000;
+    return ((typeof nowMs==="function"?nowMs():Date.now()) - plot.plantedAt) / 1000;
   },
 
   getProgress(plot) {
@@ -603,7 +606,7 @@ const Game = {
   isPlantAvailable(plant) {
     if (!plant) return false;
     if (!this.isPlantLimited(plant)) return true;
-    const now = Date.now();
+    const now = (typeof nowMs==="function"?nowMs():Date.now());
     if (plant.availableFrom && now < Number(plant.availableFrom)) return false;
     if (plant.availableTo && now > Number(plant.availableTo)) return false;
     const months = plant.availableMonths;
@@ -617,7 +620,7 @@ const Game = {
   getLimitedEventLabel(plant) {
     if (!this.isPlantLimited(plant)) return '';
     if (plant.availableTo) {
-      const left = Math.max(0, Number(plant.availableTo) - Date.now());
+      const left = Math.max(0, Number(plant.availableTo) - (typeof nowMs==="function"?nowMs():Date.now()));
       if (left <= 0) return 'Hết sự kiện';
       return 'Còn ' + this.formatTime(Math.ceil(left / 1000));
     }
@@ -630,7 +633,7 @@ const Game = {
     if (!currentPlayer || !plantId) return;
     if (!currentPlayer.collection) currentPlayer.collection = {};
     if (!currentPlayer.collection[plantId]) {
-      currentPlayer.collection[plantId] = { at: Date.now() };
+      currentPlayer.collection[plantId] = { at: (typeof nowMs==="function"?nowMs():Date.now()) };
       return true;
     }
     return false;
@@ -674,7 +677,7 @@ const Game = {
       if (currentPlayer.achievements[a.id]) return;
       try {
         if (a.check(currentPlayer)) {
-          currentPlayer.achievements[a.id] = Date.now();
+          currentPlayer.achievements[a.id] = (typeof nowMs==="function"?nowMs():Date.now());
           const coins = (a.reward && a.reward.coins) || 0;
           const xp = (a.reward && a.reward.xp) || 0;
           if (coins) currentPlayer.coins = (currentPlayer.coins || 0) + coins;
@@ -758,7 +761,7 @@ const Game = {
       }
     }
     plot.plantId = plantId;
-    plot.plantedAt = Date.now();
+    plot.plantedAt = (typeof nowMs==="function"?nowMs():Date.now());
     plot.watered = false;
     plot.waterCount = 0;
     plot.lastWatered = null;
@@ -770,7 +773,7 @@ const Game = {
     if (this.isFairyActive() && (plot.waterCount || 0) < 3) {
       plot.waterCount = 3;
       plot.watered = true;
-      plot.lastWatered = Date.now();
+      plot.lastWatered = (typeof nowMs==="function"?nowMs():Date.now());
       fairyWatered = true;
       if (typeof Features !== 'undefined' && Features.trackQuest) Features.trackQuest('water', 3);
     }
@@ -801,7 +804,7 @@ const Game = {
       return { ok: false, msg: preferredKind === 'star' ? 'Không đủ hạt sao!' : (preferredKind === 'normal' ? 'Không đủ hạt thường!' : 'Không đủ hạt giống!') };
     }
     const n = Math.min(count, empty.length, seedCount);
-    const at = typeof sharedAt === 'number' ? sharedAt : Date.now();
+    const at = typeof sharedAt === 'number' ? sharedAt : (typeof nowMs==="function"?nowMs():Date.now());
     const fairyOn = this.isFairyActive();
     let planted = 0;
     let fairyWateredN = 0;
@@ -872,7 +875,7 @@ const Game = {
     // Tưới liên tục, không chờ giữa các lần
     plot.watered = true;
     plot.waterCount = count + 1;
-    plot.lastWatered = Date.now();
+    plot.lastWatered = (typeof nowMs==="function"?nowMs():Date.now());
     this.addActivity(`Tưới nước ô #${plotId + 1} (${plot.waterCount}/3)`);
     if (typeof Features !== 'undefined') Features.trackQuest('water', 1);
     await savePlayer();
@@ -893,7 +896,7 @@ const Game = {
     currentPlayer.inventory.fertilizers[fertId]--;
     if (currentPlayer.inventory.fertilizers[fertId] <= 0) delete currentPlayer.inventory.fertilizers[fertId];
     plot.fertilizerId = fertId;
-    plot.fertilizedAt = Date.now();
+    plot.fertilizedAt = (typeof nowMs==="function"?nowMs():Date.now());
     this.addActivity(`Bón ${fert.name} ô #${plotId + 1}`);
     await savePlayer();
     return { ok: true, msg: `Đã bón ${fert.name}!` };
@@ -911,7 +914,7 @@ const Game = {
         while ((plot.waterCount || 0) < 3) {
           plot.watered = true;
           plot.waterCount = (plot.waterCount || 0) + 1;
-          plot.lastWatered = Date.now();
+          plot.lastWatered = (typeof nowMs==="function"?nowMs():Date.now());
           actions++;
         }
         plotsDone++;
@@ -952,7 +955,7 @@ const Game = {
       stock[fert.id]--;
       if (stock[fert.id] <= 0) delete stock[fert.id];
       plot.fertilizerId = fert.id;
-      plot.fertilizedAt = Date.now();
+      plot.fertilizedAt = (typeof nowMs==="function"?nowMs():Date.now());
       count++;
     }
     if (count > 0) {
@@ -968,24 +971,24 @@ const Game = {
   BOOST_PREVIEW_MS: 10 * 1000,
 
   /** ms còn lại hiệu lực tưới (0 = hết / chưa tưới) */
-  getWaterBoostRemainingMs(plot, now = Date.now()) {
+  getWaterBoostRemainingMs(plot, now = (typeof nowMs==="function"?nowMs():Date.now())) {
     if (!plot || !(plot.waterCount > 0) || !plot.lastWatered) return 0;
     return Math.max(0, (plot.lastWatered + this.BOOST_MS) - now);
   },
 
   /** ms còn lại hiệu lực phân (0 = hết / chưa bón) */
-  getFertBoostRemainingMs(plot, now = Date.now()) {
+  getFertBoostRemainingMs(plot, now = (typeof nowMs==="function"?nowMs():Date.now())) {
     if (!plot || !plot.fertilizerId || !plot.fertilizedAt) return 0;
     return Math.max(0, (plot.fertilizedAt + this.BOOST_MS) - now);
   },
 
   /** Tưới còn hiệu lực thật (chưa về 0) */
-  isWaterBoostActive(plot, now = Date.now()) {
+  isWaterBoostActive(plot, now = (typeof nowMs==="function"?nowMs():Date.now())) {
     return this.getWaterBoostRemainingMs(plot, now) > 0;
   },
 
   /** Phân còn hiệu lực thật */
-  isFertBoostActive(plot, now = Date.now()) {
+  isFertBoostActive(plot, now = (typeof nowMs==="function"?nowMs():Date.now())) {
     return this.getFertBoostRemainingMs(plot, now) > 0;
   },
 
@@ -994,7 +997,7 @@ const Game = {
    * - 10 giây cuối hoặc đã hết → "Chưa tưới nước"
    * - còn hiệu lực → "3/3 💧" (1 lượt tưới đủ)
    */
-  getWaterDisplayState(plot, now = Date.now()) {
+  getWaterDisplayState(plot, now = (typeof nowMs==="function"?nowMs():Date.now())) {
     const rem = this.getWaterBoostRemainingMs(plot, now);
     if (rem <= 0 || rem <= this.BOOST_PREVIEW_MS) {
       return {
@@ -1020,7 +1023,7 @@ const Game = {
    * - 10 giây cuối hoặc đã hết → "Chưa bón phân"
    * - còn hiệu lực → tên phân
    */
-  getFertDisplayState(plot, now = Date.now()) {
+  getFertDisplayState(plot, now = (typeof nowMs==="function"?nowMs():Date.now())) {
     const rem = this.getFertBoostRemainingMs(plot, now);
     if (rem <= 0 || rem <= this.BOOST_PREVIEW_MS || !plot.fertilizerId) {
       return {
@@ -1045,7 +1048,7 @@ const Game = {
   /** Giây còn lại đến khi hết hiệu lực nước/phân (mốc sớm nhất). null nếu không có boost */
   getBoostResetRemaining(plot) {
     if (!plot) return null;
-    const now = Date.now();
+    const now = (typeof nowMs==="function"?nowMs():Date.now());
     let ends = [];
     const w = this.getWaterBoostRemainingMs(plot, now);
     if (w > 0) ends.push(now + w);
@@ -1081,7 +1084,7 @@ const Game = {
     const THREE_H = 3 * 60 * 60 * 1000;
     const last = currentPlayer.lastFairyCare || 0;
     const next = last + THREE_H;
-    return Math.max(0, Math.ceil((next - Date.now()) / 1000));
+    return Math.max(0, Math.ceil((next - (typeof nowMs==="function"?nowMs():Date.now())) / 1000));
   },
 
   /** Cấu hình mặc định Tiên chăm */
@@ -1223,7 +1226,7 @@ const Game = {
    * - Tưới: KHÔNG giới hạn — tưới hết mọi ô có cây (mọi nguồn / mọi vườn được bật)
    * - Bón: tắt / bất kỳ loại trong kho / 1 loại chỉ định; bón hết ô cần bón; trừ kho, hết thì dừng
    */
-  runFairyCare(now = Date.now()) {
+  runFairyCare(now = (typeof nowMs==="function"?nowMs():Date.now())) {
     if (!currentPlayer || !currentPlayer.plots) return false;
     let wateredN = 0;
     let fertN = 0;
@@ -1244,7 +1247,7 @@ const Game = {
     }
 
     // 2) Bón phân từ kho — chưa bón hoặc đã hết hạn 3h tại mốc `now`; hết kho thì dừng
-    // Dùng isReadyAt/isFertBoostActive(…, now) để bù offline đúng giờ (không dùng Date.now() lệch)
+    // Dùng isReadyAt/isFertBoostActive(…, now) để bù offline đúng giờ (không dùng (typeof nowMs==="function"?nowMs():Date.now()) lệch)
     if (cfg.useFertilizer) {
       const needFert = plots.filter(p => {
         if (!p || !p.plantId) return false;
@@ -1284,7 +1287,7 @@ const Game = {
    * - chưa đủ 3/3, HOẶC đồng hồ 3h về 0 (hết lượt tưới)
    * → set 3/3 + lastWatered = now. Không giới hạn số ô.
    */
-  fairyEnsureWatered(now = Date.now()) {
+  fairyEnsureWatered(now = (typeof nowMs==="function"?nowMs():Date.now())) {
     if (!this.isFairyActive() || !currentPlayer || !currentPlayer.plots) return false;
     const plots = Array.isArray(currentPlayer.plots)
       ? currentPlayer.plots
@@ -1315,7 +1318,7 @@ const Game = {
    * - chưa bón, HOẶC hết hạn 3h phân (đồng hồ về 0)
    * Theo fairyConfig (loại phân / any); hết kho thì dừng, không bón nữa.
    */
-  fairyEnsureFertilized(now = Date.now()) {
+  fairyEnsureFertilized(now = (typeof nowMs==="function"?nowMs():Date.now())) {
     if (!this.isFairyActive() || !currentPlayer || !currentPlayer.plots) return false;
     const cfg = this.getFairyConfig();
     if (!cfg.useFertilizer) return false;
@@ -1353,7 +1356,7 @@ const Game = {
   resetExpiredBoosts() {
     if (!currentPlayer) return false;
     this.ensureGardens();
-    const now = Date.now();
+    const now = (typeof nowMs==="function"?nowMs():Date.now());
     let changed = false;
     const fairy = this.isFairyActive();
 
@@ -1562,7 +1565,7 @@ const Game = {
   async simulateOfflineCare() {
     if (!currentPlayer) return { ok: false, changed: false, notes: [] };
     this.ensureGardens();
-    const now = Date.now();
+    const now = (typeof nowMs==="function"?nowMs():Date.now());
     const from = Math.min(
       now,
       Math.max(
@@ -1812,13 +1815,13 @@ const Game = {
     if (currentPlayer.coins < pack.price) return { ok: false, msg: 'Không đủ tiền!' };
     currentPlayer.coins -= pack.price;
     currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + pack.price;
-    const base = Math.max(Date.now(), currentPlayer.fairyUntil || 0);
+    const base = Math.max((typeof nowMs==="function"?nowMs():Date.now()), currentPlayer.fairyUntil || 0);
     const wasActive = this.hasFairy();
     currentPlayer.fairyUntil = base + pack.days * 24 * 60 * 60 * 1000;
     // Mới kích hoạt / hết hạn trước đó: chăm ngay 1 lần rồi đếm 3 giờ
     if (!wasActive || !currentPlayer.lastFairyCare) {
       this.ensureGardens();
-      const now = Date.now();
+      const now = (typeof nowMs==="function"?nowMs():Date.now());
       this.forEachGarden((plots, gi) => {
         if (this.isFairyGardenEnabled(gi)) this.runFairyCare(now);
       });
@@ -1836,11 +1839,11 @@ const Game = {
     if (currentPlayer.coins < pack.price) return { ok: false, msg: 'Không đủ tiền!' };
     currentPlayer.coins -= pack.price;
     currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + pack.price;
-    const base = Math.max(Date.now(), currentPlayer.nycUntil || 0);
+    const base = Math.max((typeof nowMs==="function"?nowMs():Date.now()), currentPlayer.nycUntil || 0);
     const wasActive = this.hasNyc();
     currentPlayer.nycUntil = base + pack.days * 24 * 60 * 60 * 1000;
     if (!wasActive || !currentPlayer.lastNycCare) {
-      await this.runNycCare(Date.now());
+      await this.runNycCare((typeof nowMs==="function"?nowMs():Date.now()));
     }
     this.addActivity(`Mua ${pack.name} (-${pack.price}🪙)`);
     await savePlayer();
@@ -1849,14 +1852,14 @@ const Game = {
 
   // ===== NGƯỜI GIÚP VIỆC (tự mua cửa hàng theo mốc) =====
   hasHelper() {
-    return !!(currentPlayer && currentPlayer.helperUntil && currentPlayer.helperUntil > Date.now());
+    return !!(currentPlayer && currentPlayer.helperUntil && currentPlayer.helperUntil > (typeof nowMs==="function"?nowMs():Date.now()));
   },
   isHelperActive() {
     return this.hasHelper() && this.getBuffPrefs().helperEnabled !== false;
   },
   helperRemainingSec() {
     if (!this.hasHelper()) return 0;
-    return Math.max(0, Math.ceil((currentPlayer.helperUntil - Date.now()) / 1000));
+    return Math.max(0, Math.ceil((currentPlayer.helperUntil - (typeof nowMs==="function"?nowMs():Date.now())) / 1000));
   },
   getHelperEmoji() {
     const g = (this.getHelperConfig().gender === 'male') ? 'male' : 'female';
@@ -2000,7 +2003,7 @@ const Game = {
    * Tick giúp việc: với mỗi rule, nếu kho < minStock thì mua buyQty (nếu đủ tiền).
    * Tối đa 1 lần / ~20s để tránh spam.
    */
-  tickHelperBuy(now = Date.now()) {
+  tickHelperBuy(now = (typeof nowMs==="function"?nowMs():Date.now())) {
     if (!this.isHelperActive() || !currentPlayer) return false;
     const last = currentPlayer.lastHelperBuy || 0;
     if (now - last < 12000) return false; // 12s
@@ -2042,10 +2045,10 @@ const Game = {
     if (currentPlayer.coins < pack.price) return { ok: false, msg: 'Không đủ tiền!' };
     currentPlayer.coins -= pack.price;
     currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + pack.price;
-    const base = Math.max(Date.now(), currentPlayer.helperUntil || 0);
+    const base = Math.max((typeof nowMs==="function"?nowMs():Date.now()), currentPlayer.helperUntil || 0);
     currentPlayer.helperUntil = base + pack.days * 24 * 60 * 60 * 1000;
     // Mua xong chạy 1 lần ngay nếu đã có rule
-    this.tickHelperBuy(Date.now());
+    this.tickHelperBuy((typeof nowMs==="function"?nowMs():Date.now()));
     this.addActivity(`Mua ${pack.name} (-${pack.price}🪙)`);
     await savePlayer();
     return { ok: true, msg: `Đã kích hoạt ${pack.name}! Còn ${this.formatTime(this.helperRemainingSec())}` };
@@ -2084,7 +2087,7 @@ const Game = {
   async runNycCare(now, gardenIndex) {
     if (!currentPlayer || !currentPlayer.plots) return false;
     // Mốc giờ riêng cho vườn này
-    now = now || Date.now();
+    now = now || (typeof nowMs==="function"?nowMs():Date.now());
     const gLabel = (typeof gardenIndex === 'number') ? (gardenIndex + 1) : ((currentPlayer.activeGarden || 0) + 1);
 
     // Chỉ xét cửa sổ 10s trong vườn hiện tại
@@ -2213,7 +2216,7 @@ const Game = {
         // Việc + cửa sổ 10s chỉ xét plots của vườn i
         if (this.nycHasWork()) {
           // Mốc giờ RIÊNG cho vườn này (không dùng chung với vườn khác)
-          const gardenNow = Date.now();
+          const gardenNow = (typeof nowMs==="function"?nowMs():Date.now());
           const did = await this.runNycCare(gardenNow, i);
           if (did) any = true;
         }
@@ -2548,8 +2551,10 @@ const Game = {
 
   async claimDaily() {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
-    const today = new Date().toDateString();
-    if (currentPlayer.lastDaily === today) {
+    const today = (typeof gameDateString === 'function') ? gameDateString() : new Date().toDateString();
+    // Chấp nhận cả key cũ (toDateString máy local) trong cùng ngày
+    const legacy = new Date().toDateString();
+    if (currentPlayer.lastDaily === today || currentPlayer.lastDaily === legacy) {
       return { ok: false, msg: 'Bạn đã nhận thưởng hôm nay rồi!' };
     }
     const reward = 150 + (currentPlayer.level || 1) * 20;
@@ -2564,7 +2569,9 @@ const Game = {
 
   hasClaimedDaily() {
     if (!currentPlayer) return false;
-    return currentPlayer.lastDaily === new Date().toDateString();
+    const today = (typeof gameDateString === 'function') ? gameDateString() : new Date().toDateString();
+    const legacy = new Date().toDateString();
+    return currentPlayer.lastDaily === today || currentPlayer.lastDaily === legacy;
   },
 
   emptyPlotCount() {
@@ -2575,7 +2582,7 @@ const Game = {
   addActivity(text) {
     if (!currentPlayer) return;
     if (!currentPlayer.activity) currentPlayer.activity = [];
-    currentPlayer.activity.unshift({ text, time: new Date().toLocaleString('vi-VN') });
+    currentPlayer.activity.unshift({ text, time: (typeof formatGameDateTime === 'function') ? formatGameDateTime(typeof nowMs === 'function' ? nowMs() : Date.now()) : new Date().toLocaleString('vi-VN') });
     if (currentPlayer.activity.length > 30) currentPlayer.activity = currentPlayer.activity.slice(0, 30);
   },
 
@@ -2636,7 +2643,7 @@ const Game = {
     if ((currentPlayer.coins || 0) < pet.price) return { ok: false, msg: 'Không đủ xu!' };
     currentPlayer.coins -= pet.price;
     currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + pet.price;
-    currentPlayer.pets[petId] = { id: petId, boughtAt: Date.now(), active: true };
+    currentPlayer.pets[petId] = { id: petId, boughtAt: (typeof nowMs==="function"?nowMs():Date.now()), active: true };
     this.addActivity(`Nhận pet ${pet.name} (-${pet.price}🪙)`);
     await savePlayer();
     return { ok: true, msg: `Đã mua ${pet.icon} ${pet.name}!` };
@@ -2728,7 +2735,7 @@ const Game = {
         harvested: (currentPlayer.stats && currentPlayer.stats.harvested) || 0,
         level: currentPlayer.level || 1,
         collection: this.collectionCount(),
-        updatedAt: Date.now()
+        updatedAt: (typeof nowMs==="function"?nowMs():Date.now())
       });
     } catch (e) { console.warn('leaderboard', e); }
   }

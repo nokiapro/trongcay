@@ -504,9 +504,19 @@ auth.onAuthStateChanged(async (user) => {
       }
       if (typeof Features !== 'undefined') Features.ensureQuests();
       if (typeof listenPlayerTimers === 'function') listenPlayerTimers(); // no-op
-      // Bù offline có tính giờ (NYC thu/trồng đúng mốc, Tiên, Giúp việc)
+      // Bù offline — trước hết kéo bản Firebase mới hơn (tránh 2 máy bù đè nhau)
       setTimeout(async () => {
         try {
+          if (typeof pullRemotePlayerIfNewer === 'function') {
+            const pulled = await pullRemotePlayerIfNewer();
+            if (pulled) {
+              if (typeof updateCoins === 'function') updateCoins();
+              if (typeof renderGarden === 'function') {
+                const gp = document.getElementById('page-garden');
+                if (gp && gp.classList.contains('active')) renderGarden();
+              }
+            }
+          }
           if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
             const r = await Game.simulateOfflineCare();
             if (r && r.changed) {
@@ -758,7 +768,7 @@ async function openVisitGarden(friendUid, friendName) {
   modal.classList.add('show');
   helpBtn.dataset.uid = friendUid;
   helpBtn.dataset.name = friendName || '';
-  const today = new Date().toDateString();
+  const today = (typeof gameDateString === 'function') ? gameDateString() : new Date().toDateString();
   const already = currentPlayer && currentPlayer.helpWaterLog && currentPlayer.helpWaterLog[friendUid] === today;
   helpBtn.disabled = !!already;
   helpBtn.innerHTML = already
@@ -774,7 +784,7 @@ async function openVisitGarden(friendUid, friendName) {
     const data = snap.val();
     const plots = Array.isArray(data.plots) ? data.plots : Object.values(data.plots || {});
     if (meta) {
-      const updated = data.updatedAt ? new Date(data.updatedAt).toLocaleString('vi-VN') : '—';
+      const updated = data.updatedAt ? (typeof formatGameDateTime==='function'?formatGameDateTime(data.updatedAt):new Date(data.updatedAt).toLocaleString('vi-VN')) : '—';
       meta.textContent = `Lv.${data.level || 1} · ${plots.length} ô · Cập nhật: ${updated}`;
     }
     if (!plots.length) {
@@ -927,7 +937,7 @@ async function openChat(uid, name) {
     box.innerHTML = msgs.map(m => {
       const me = m.from === currentUser.uid;
       const fullTime = m.at
-        ? new Date(m.at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        ? (typeof formatGameDateTime==='function'?formatGameDateTime(m.at, true):new Date(m.at).toLocaleString('vi-VN'))
         : '';
       const av = me ? myAv : friendAv;
       const avHtml = av
@@ -978,14 +988,14 @@ async function bumpChatStreak(friendUid) {
   if (!currentUser || !friendUid) return;
   const key = chatId(currentUser.uid, friendUid);
   const ref = db.ref('chatStreaks/' + key);
-  const today = new Date().toDateString();
+  const today = (typeof gameDateString === 'function') ? gameDateString() : new Date().toDateString();
   const snap = await ref.once('value');
   const s = snap.val() || { count: 0, lastDay: '' };
   if (s.lastDay === today) {
     await updateChatStreakDisplay(friendUid);
     return;
   }
-  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  const yesterday = (typeof gameDateString === 'function') ? gameDateString((typeof nowMs==='function'?nowMs():Date.now()) - 86400000) : new Date(Date.now() - 86400000).toDateString();
   const next = (s.lastDay === yesterday) ? (s.count || 0) + 1 : 1;
   await ref.set({ count: next, lastDay: today });
   if (currentPlayer) {
@@ -3405,17 +3415,34 @@ if (!window.__careVisibilityBound) {
   window.__careVisibilityBound = true;
   function markLastSeen() {
     if (!currentPlayer) return;
-    currentPlayer.lastSeenAt = Date.now();
+    const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
+    currentPlayer.lastSeenAt = t;
     if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(1500);
   }
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       markLastSeen();
     } else if (currentPlayer) {
-      forceBackgroundCare('visible');
-      const away = currentPlayer.lastSeenAt ? (Date.now() - currentPlayer.lastSeenAt) : 0;
-      if (away >= 5 * 60 * 1000 && typeof Game !== 'undefined' && Game.simulateOfflineCare) {
-          Game.simulateOfflineCare().then(r => {
+      (async () => {
+        // Kéo bản Firebase nếu máy khác đã lưu mới hơn
+        if (typeof pullRemotePlayerIfNewer === 'function') {
+          try {
+            const pulled = await pullRemotePlayerIfNewer();
+            if (pulled) {
+              if (typeof updateCoins === 'function') updateCoins();
+              if (typeof renderGarden === 'function') {
+                const gp = document.getElementById('page-garden');
+                if (gp && gp.classList.contains('active')) renderGarden();
+              }
+            }
+          } catch (_) {}
+        }
+        forceBackgroundCare('visible');
+        const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
+        const away = currentPlayer.lastSeenAt ? (t - currentPlayer.lastSeenAt) : 0;
+        if (away >= 5 * 60 * 1000 && typeof Game !== 'undefined' && Game.simulateOfflineCare) {
+          try {
+            const r = await Game.simulateOfflineCare();
             if (r && r.changed) {
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(800);
               if (typeof updateCoins === 'function') updateCoins();
@@ -3427,20 +3454,39 @@ if (!window.__careVisibilityBound) {
                 showToast('⚡ ' + r.notes.join(' · '), 'success');
               }
             }
-          }).catch(() => {});
-      } else {
-        // Vắng < 5 phút: không bù offline, đồng hồ 3h chạy tiếp
-        currentPlayer.lastSeenAt = Date.now();
-      }
+          } catch (_) {}
+        } else {
+          currentPlayer.lastSeenAt = t;
+        }
+      })();
     }
   });
   window.addEventListener('pagehide', markLastSeen);
   window.addEventListener('beforeunload', markLastSeen);
   window.addEventListener('focus', () => {
-    if (currentPlayer) forceBackgroundCare('focus');
+    if (currentPlayer) {
+      if (typeof pullRemotePlayerIfNewer === 'function') {
+        pullRemotePlayerIfNewer().then(pulled => {
+          if (pulled) {
+            if (typeof updateCoins === 'function') updateCoins();
+            if (typeof renderGarden === 'function') {
+              const gp = document.getElementById('page-garden');
+              if (gp && gp.classList.contains('active')) renderGarden();
+            }
+          }
+          forceBackgroundCare('focus');
+        }).catch(() => forceBackgroundCare('focus'));
+      } else {
+        forceBackgroundCare('focus');
+      }
+    }
   });
   window.addEventListener('online', () => {
-    if (currentPlayer) forceBackgroundCare('online');
+    if (currentPlayer) {
+      if (typeof pullRemotePlayerIfNewer === 'function') {
+        pullRemotePlayerIfNewer().then(() => forceBackgroundCare('online')).catch(() => forceBackgroundCare('online'));
+      } else forceBackgroundCare('online');
+    }
   });
   document.addEventListener('resume', () => {
     if (currentPlayer) forceBackgroundCare('visible');
@@ -3998,7 +4044,7 @@ async function loadPlayerMailbox() {
       <div class="mail-item ${m.read ? '' : 'unread'}" data-mid="${m.id}">
         <div class="mail-item-main">
           <div class="mail-title">${escapeHtml(m.title || 'Thư hệ thống')}</div>
-          <div class="mail-meta">${m.at ? new Date(m.at).toLocaleString('vi-VN') : ''} · ${m.type === 'birthday' ? '🎂 Sinh nhật' : (m.from || 'Hệ thống')}</div>
+          <div class="mail-meta">${m.at ? (typeof formatGameDateTime==='function'?formatGameDateTime(m.at):new Date(m.at).toLocaleString('vi-VN')) : ''} · ${m.type === 'birthday' ? '🎂 Sinh nhật' : (m.from || 'Hệ thống')}</div>
           <div class="mail-body">${escapeHtml(m.body || '')}</div>
         </div>
         <div class="mail-actions">
@@ -4044,9 +4090,12 @@ async function maybeSendBirthdayMailLocal() {
   if (!currentUser || !currentPlayer || !currentPlayer.birthday) return;
   const { day, month } = currentPlayer.birthday;
   if (!day || !month) return;
-  const now = new Date();
-  if (now.getDate() !== day || (now.getMonth() + 1) !== month) return;
-  const year = now.getFullYear();
+  // Sinh nhật theo GMT+7 (không phụ thuộc múi giờ máy)
+  const g = (typeof dateInGameTz === 'function') ? dateInGameTz() : null;
+  const gDay = g ? g.day : new Date().getDate();
+  const gMonth = g ? g.month : (new Date().getMonth() + 1);
+  const year = g ? g.year : new Date().getFullYear();
+  if (gDay !== day || gMonth !== month) return;
   if (currentPlayer.birthdayMailYear === year) return;
   const mid = 'bday_' + year;
   try {

@@ -130,13 +130,33 @@ const Features = {
     { id: 'w_market', title: 'Giao dịch chợ 3 lần', type: 'market', target: 3, reward: 350, xp: 35 }
   ],
 
-  dayKey(d = new Date()) {
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  dayKey(d) {
+    // Luôn theo GMT+7 (Asia/Ho_Chi_Minh)
+    if (typeof gameDateString === 'function') {
+      const ms = (d instanceof Date) ? d.getTime() : (typeof nowMs === 'function' ? nowMs() : Date.now());
+      return gameDateString(ms);
+    }
+    const x = d instanceof Date ? d : new Date();
+    return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
   },
-  weekKey(d = new Date()) {
-    const t = new Date(d);
+  weekKey(d) {
+    // Thứ 2 đầu tuần theo GMT+7
+    if (typeof dateInGameTz === 'function') {
+      const ms = (d instanceof Date) ? d.getTime() : (typeof nowMs === 'function' ? nowMs() : Date.now());
+      const g = dateInGameTz(ms);
+      // Tìm Monday: dùng UTC+7 noon rồi lùi
+      const noon = Date.UTC(g.year, g.month - 1, g.day, 5, 0, 0); // approx
+      const tmp = new Date(ms);
+      // day of week in VN
+      const wd = new Date(ms).toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'short' });
+      const map = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+      const off = map[wd] != null ? map[wd] : 0;
+      const mondayMs = ms - off * 86400000;
+      return this.dayKey(new Date(mondayMs));
+    }
+    const t = new Date(d || Date.now());
     t.setHours(0, 0, 0, 0);
-    t.setDate(t.getDate() - ((t.getDay() + 6) % 7)); // Monday
+    t.setDate(t.getDate() - ((t.getDay() + 6) % 7));
     return this.dayKey(t);
   },
 
