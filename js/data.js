@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.8.0';
+const APP_VERSION = '1.8.1';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13107,7 +13107,7 @@ const DEFAULT_SETTINGS = {
   /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.8.0',
+  appVersion: '1.8.1',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13623,13 +13623,37 @@ async function loadPlayer(uid, email) {
   return currentPlayer;
 }
 
+/** Toast kết quả lưu Firebase — success có debounce nhẹ để tránh spam */
+let _lastSaveOkToastAt = 0;
+function notifyFirebaseSave(ok, msg, opts) {
+  if (typeof showToast !== 'function') return;
+  const silent = opts && opts.silent;
+  try {
+    if (ok) {
+      if (silent) return;
+      const now = Date.now();
+      // Cùng 1 chuỗi thao tác (≤1.2s) chỉ báo 1 lần
+      if (now - _lastSaveOkToastAt < 1200) return;
+      _lastSaveOkToastAt = now;
+      showToast('☁️ Đã lưu lên Firebase', 'success');
+    } else {
+      // Lỗi luôn báo (kể cả silent background)
+      showToast('⚠️ Chưa lên Firebase' + (msg ? ': ' + msg : '') + ' — F5 có thể mất tiến trình', 'error');
+    }
+  } catch (_) {}
+}
+
 /**
  * Lưu player lên Firebase + backup máy.
+ * @param {{ silent?: boolean }} opts silent=true: không toast khi thành công (ẩn tab…)
  * @returns {{ ok: boolean, msg?: string }}
  */
-async function savePlayer() {
+async function savePlayer(opts) {
+  opts = opts || {};
   if (!currentUser || !currentPlayer || !db) {
-    return { ok: false, msg: 'Chưa đăng nhập / chưa có DB' };
+    const r = { ok: false, msg: 'Chưa đăng nhập / chưa có DB' };
+    notifyFirebaseSave(false, r.msg, opts);
+    return r;
   }
   if (typeof Game !== 'undefined' && Game.ensureGardens) {
     try {
@@ -13677,6 +13701,7 @@ async function savePlayer() {
       try {
         if (typeof Game !== 'undefined' && Game.publishPublicGarden) await Game.publishPublicGarden();
       } catch (_) {}
+      notifyFirebaseSave(true, null, opts);
       return { ok: true };
     } catch (e) {
       lastErr = e;
@@ -13687,9 +13712,7 @@ async function savePlayer() {
   _playerDirty = true;
   const msg = (lastErr && lastErr.message) ? lastErr.message : 'Lỗi lưu Firebase';
   console.error('savePlayer FAILED', msg);
-  if (typeof showToast === 'function') {
-    try { showToast('⚠️ Chưa lưu lên server — F5 sẽ mất tiến trình. ' + msg, 'error'); } catch (_) {}
-  }
+  notifyFirebaseSave(false, msg, opts);
   return { ok: false, msg };
 }
 
@@ -13730,7 +13753,8 @@ function flushSavePlayer() {
     _savePlayerDebounceTimer = null;
   }
   backupPlayerLocal();
-  return savePlayer().catch(e => console.warn('flushSavePlayer', e));
+  // Ẩn tab: silent success (không spam toast), lỗi vẫn báo
+  return savePlayer({ silent: true }).catch(e => console.warn('flushSavePlayer', e));
 }
 
 /** Khi có mạng / ẩn-hiện tab: backup + đẩy Firebase */
