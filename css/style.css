@@ -7354,735 +7354,120 @@ html[data-theme="dark"] .header {
 
 
 /* ==========================================================================
-   Avatar frame shop + profile frame (v1.9.6) — animated ring
+   Avatar frame + companion + LVL (v1.9.15 — clean rewrite)
    ========================================================================== */
 @keyframes avatar-frame-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-@keyframes avatar-frame-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+
+.profile-avatar-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 auto 18px;
+  padding: 8px 4px 0;
+  overflow: visible;
 }
 
 .profile-avatar-wrap {
-  width: 104px;
-  height: 104px;
+  width: 100px;
+  height: 100px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  padding: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  overflow: visible;
-}
-.profile-avatar-wrap.has-frame {
-  padding: 4px;
-  box-sizing: border-box;
-  background: var(--avatar-frame-grad, linear-gradient(135deg, #22c55e, #a855f7, #f43f5e, #22c55e));
-  background-size: 300% 300%;
-  animation: avatar-frame-shift 2.5s linear infinite;
-  border-radius: 50%;
-}
-.profile-avatar-wrap.has-frame::before,
-.profile-avatar-wrap.has-frame::after {
-  display: none !important;
-  content: none !important;
-}
-.profile-avatar-wrap.has-frame .profile-avatar,
-.profile-avatar-wrap.has-frame .profile-avatar-fallback {
-  width: 100% !important;
-  height: 100% !important;
-  border-radius: 50%;
-  position: relative;
-  z-index: 2;
-  object-fit: cover;
-  border: none !important;
-}
-.profile-avatar-wrap.has-frame .profile-avatar-fallback {
-  background: var(--card, #1c2820);
-}
-.profile-avatar-wrap:not(.has-frame) .profile-avatar,
-.profile-avatar-wrap:not(.has-frame) .profile-avatar-fallback {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  position: relative;
-  z-index: 2;
-}
-.profile-avatar-wrap .profile-avatar-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.profile-avatar-wrap:not(.has-frame) .profile-avatar,
-.profile-avatar-wrap:not(.has-frame) .profile-avatar-fallback {
-  border: 2px solid var(--border);
-}
-
-.profile-avatar-ring { display: none !important; }
-
-/* LVL tag dùng cùng gradient khung khi đã gắn */
-/* has-frame-grad handled in v1.9.11 */
-
-
-html[data-theme="dark"] /* has-frame-grad handled in v1.9.11 */
-html[data-theme="dark"] 
-
-/* Shop preview — vòng xoay */
-.avatar-frame-preview {
-  width: 72px !important;
-  height: 72px !important;
-  border-radius: 50% !important;
-  margin: 0 auto 8px;
-  padding: 0 !important;
-  background: transparent !important;
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  box-shadow: none !important;
-  overflow: visible;
-}
-.avatar-frame-preview::before {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: var(--af-grad);
-  background-size: 200% 200%;
-  animation: avatar-frame-spin 3.5s linear infinite;
-  z-index: 0;
-}
-.avatar-frame-preview .af-inner {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--card, #fff);
-  display: block;
-  position: relative;
-  z-index: 1;
-}
-html[data-theme="dark"] .avatar-frame-preview .af-inner {
-  background: var(--surface, #15241c);
-}
-
-.shop-card-frame.rarity-rare { box-shadow: 0 0 0 1px color-mix(in srgb, #3b82f6 40%, transparent); }
-.shop-card-frame.rarity-epic { box-shadow: 0 0 0 1px color-mix(in srgb, #a855f7 45%, transparent); }
-.shop-card-frame.rarity-legendary { box-shadow: 0 0 0 1px color-mix(in srgb, #f59e0b 50%, transparent); }
-
-/* Modal trồng — hết scrollbar ngang, title gọn */
-#modal-plant .modal-content {
-  overflow-x: hidden !important;
-  max-width: min(440px, 96vw);
-  width: 100%;
-  box-sizing: border-box;
-}
-#modal-plant .modal-plant-title {
-  font-size: 1.15rem;
-  line-height: 1.35;
-  margin: 0 0 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  word-break: break-word;
-  color: var(--text);
-}
-#modal-plant .modal-plant-title i {
-  color: var(--primary);
   flex-shrink: 0;
 }
-#modal-plant .seed-list,
-#modal-plant #plant-seed-list {
-  overflow-x: hidden !important;
-  max-width: 100%;
-}
-#modal-plant .seed-option,
-#modal-plant .seed-option-compact {
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  flex-wrap: wrap;
-}
-#modal-plant .plot-upgrade-box,
-#modal-plant .plot-upgrade-row {
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-}
-#modal-plant select,
-#modal-plant input {
-  max-width: 100%;
-  box-sizing: border-box;
-}
 
-/* Ẩn hàng preset level nếu còn sót */
-.level-preset-row { display: none !important; }
-
-
-/* ==========================================================================
-   Mobile nav scroll fix (v1.9.5)
-   Menu side drawer must scroll when many items (Level, Hoạt động, …)
-   ========================================================================== */
-@media (max-width: 768px) {
-  #bottom-nav.bottom-nav,
-  .bottom-nav {
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    overscroll-behavior: contain;
-    touch-action: pan-y;
-    max-height: 100dvh !important;
-    max-height: 100vh !important;
-    height: 100% !important;
-  }
-  #bottom-nav.bottom-nav .nav-btn,
-  .bottom-nav .nav-btn {
-    flex: 0 0 auto !important;
-    flex-shrink: 0 !important;
-  }
-}
-
-
-/* ==========================================================================
-   Theme palette refresh (v1.9.7) — light lá non / dark rừng sâu
-   ========================================================================== */
-.theme-bg { background-color: var(--bg-main); }
-.theme-text { color: var(--text-main); }
-.theme-text-muted { color: var(--text-muted); }
-.theme-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-card);
-}
-
-.plot.empty,
-.plot[data-empty="1"] {
-  background-color: var(--soil-bg) !important;
-  border: 2px dashed var(--soil-border) !important;
-}
-
-.header {
-  background: linear-gradient(135deg, var(--primary-dark), var(--primary)) !important;
-}
-
-html[data-theme="dark"] .header {
-  background: linear-gradient(135deg, #022c22, #064e3b, #047857) !important;
-  border-bottom-color: var(--border-color);
-}
-
-.bottom-nav {
-  background: var(--bg-card) !important;
-  border-color: var(--border-color) !important;
-}
-
-.stat-card,
-.shop-card,
-.profile-card,
-.modal-content,
-.card-panel {
-  background: var(--bg-card) !important;
-  color: var(--text-main) !important;
-  box-shadow: var(--shadow-card);
-}
-
-input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
-select,
-textarea,
-.ux-select {
-  background-color: var(--input-bg) !important;
-  border: 2px solid var(--border-color) !important;
-  color: var(--text-main) !important;
-}
-input:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2) !important;
-}
-html[data-theme="dark"] input:focus,
-html[data-theme="dark"] select:focus,
-html[data-theme="dark"] textarea:focus {
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
-}
-
-.page-header h1,
-.section-title {
-  color: var(--text-main) !important;
-}
-.page-header p,
-.empty-state {
-  color: var(--text-muted) !important;
-}
-
-.nav-btn.active,
-.bottom-nav .nav-btn.active {
-  color: var(--primary) !important;
-  background: color-mix(in srgb, var(--primary) 14%, transparent) !important;
-}
-
-.login-screen {
-  background: linear-gradient(145deg, #14532d 0%, #16a34a 45%, #22c55e 100%);
-}
-html[data-theme="dark"] .login-screen {
-  background: linear-gradient(145deg, #022c22 0%, #064e3b 50%, #047857 100%);
-}
-
-
-/* ==========================================================================
-   UI polish v1.9.8
-   ========================================================================== */
-
-/* Bán hết / warning buttons — chữ trắng light */
-:root:not([data-theme="dark"]) .btn-warning,
-html[data-theme="light"] .btn-warning,
-.btn-warning {
-  color: #ffffff !important;
-}
-.btn-sell-seed.btn-primary,
-.btn-sell-hv.btn-primary,
-.btn-sell-fert.btn-primary {
-  color: #ffffff !important;
-}
-
-/* Quest blocks — bo góc + shadow theo bo góc */
-#quests-daily,
-#quests-weekly,
-.quest-block {
-  border-radius: 20px !important;
-  overflow: hidden !important;
-  background: color-mix(in srgb, var(--primary-dark, #14532d) 88%, #000) !important;
-  box-shadow: 0 12px 32px color-mix(in srgb, var(--primary) 22%, transparent) !important;
-  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent) !important;
-  padding: 16px 18px !important;
-  margin-bottom: 18px !important;
-}
-html[data-theme="dark"] #quests-daily,
-html[data-theme="dark"] #quests-weekly {
-  background: color-mix(in srgb, var(--bg-card) 92%, #000) !important;
-}
-#quests-daily > h3,
-#quests-weekly > h3 {
-  color: #ecfdf5 !important;
-  margin: 0 0 12px !important;
-  font-size: 1.05rem;
-}
-.quest-card {
-  border-radius: 14px !important;
-  margin: 8px 0 !important;
-  background: color-mix(in srgb, #fff 8%, transparent) !important;
-  box-shadow: none !important;
-  border: none !important;
-  color: #ecfdf5 !important;
-}
-.quest-card .q-title,
-.quest-card small {
-  color: #ecfdf5 !important;
-}
-.quest-card .q-prog {
-  background: rgba(0,0,0,0.25) !important;
-  border-radius: 99px !important;
-}
-.quest-card .q-prog > i {
-  background: linear-gradient(90deg, var(--primary), var(--primary-light)) !important;
-  border-radius: 99px !important;
-}
-
-/* Profile LVL */
-.profile-avatar-block {
-  overflow: visible !important;
-  padding-bottom: 4px;
-}
-.profile-card {
-  overflow: visible !important;
-}
-.profile-level-tag {
-  margin-top: -10px !important;
-  position: relative;
-  z-index: 5;
-  overflow: visible;
-  /* tránh bị cắt mép trái */
-  margin-left: 0;
-  padding-left: 16px;
-  padding-right: 16px;
-  max-width: none;
-  box-sizing: border-box;
-}
-/* has-frame-grad handled in v1.9.11 */
-
-
-html[data-theme="dark"] /* has-frame-grad handled in v1.9.11 */
-html[data-theme="dark"] 
-html[data-theme="dark"] /* has-frame-grad handled in v1.9.11 */
-
-
-html[data-theme="dark"] /* has-frame-grad handled in v1.9.11 */
-html[data-theme="dark"] 
-
-/* Khi có frame: LVL nằm gọn dưới, không bị clip */
-.profile-avatar-wrap.has-frame {
-  overflow: visible;
-  margin-bottom: 2px;
-}
-
-/* MENU title trên nav mobile */
-.nav-menu-title {
-  display: none;
-}
-@media (max-width: 768px) {
-  .nav-menu-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 800;
-    font-size: 0.95rem;
-    letter-spacing: 0.08em;
-    color: var(--text-main, var(--text));
-    padding: 4px 16px 12px;
-    margin-bottom: 4px;
-    border-bottom: 1px solid var(--border-color, var(--border));
-    flex: 0 0 auto;
-  }
-  .nav-menu-title i {
-    color: var(--primary);
-    font-size: 1.1rem;
-  }
-  .bottom-nav {
-    padding-top: 56px !important;
-  }
-}
-
-/* Soften remaining heavy black shadows */
-.stat-card,
-.shop-card,
-.profile-card,
-.modal-content {
-  box-shadow: var(--shadow-card) !important;
-}
-
-
-/* ==========================================================================
-   v1.9.9 polish — toolbar chips, companion, album, chat frames
-   ========================================================================== */
-.garden-controls-main .weather,
-.garden-controls-main .fertilizer-info,
-.garden-controls-main .garden-cycle-chip,
-#btn-global-timer.weather,
-#btn-global-timer.garden-cycle-chip {
-  padding: 7px 12px !important;
-  font-size: 0.82rem !important;
-  min-height: 34px !important;
-  border-radius: 10px !important;
-  display: inline-flex !important;
-  align-items: center;
-  gap: 6px;
-  box-sizing: border-box;
-  line-height: 1.25;
-}
-#btn-global-timer {
-  background: var(--card) !important;
-  color: var(--text) !important;
-  box-shadow: var(--shadow);
-  font-weight: 600;
-  border: none;
-  cursor: default;
-}
-
-/* Support same green as neighbors (reinforce) */
-#btn-support-menu.btn-primary {
-  background: linear-gradient(135deg, var(--primary-hover), var(--primary)) !important;
-  color: #fff !important;
-}
-
-/* LVL spinning border */
-.profile-level-tag {
-  margin-top: -10px !important;
-  position: relative;
-  z-index: 6;
-  isolation: isolate;
-}
-/* has-frame-grad handled in v1.9.11 */
-
-
-html[data-theme="dark"] /* has-frame-grad handled in v1.9.11 */
-html[data-theme="dark"] 
-html[data-theme="dark"] /* has-frame-grad handled in v1.9.11 */
-
-
-html[data-theme="dark"] /* has-frame-grad handled in v1.9.11 */
-html[data-theme="dark"] 
-
-/* Companion on avatar top-right */
-.profile-companion {
-  display: none;
-  position: absolute;
-  top: -6px;
-  right: -8px;
-  z-index: 8;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--bg-card, #fff);
-  border: 2px solid var(--border-color, var(--border));
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  line-height: 1;
-}
-html[data-theme="dark"] .profile-companion {
-  background: var(--bg-card, #064e3b);
-}
-
-/* Album PC grid 11 cols */
-.collection-album.album-pc-grid {
-  grid-template-columns: repeat(11, minmax(0, 1fr)) !important;
-  gap: 8px;
-}
-.album-pager {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 12px;
-  padding-top: 8px;
-}
-.album-page-info {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-/* Chat frame preview in shop */
-
-.chat-bubble.has-chat-frame {
-  border: none;
-}
-
-@media (max-width: 899px) {
-  .collection-album.album-pc-grid {
-    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)) !important;
-  }
-}
-
-
-/* ==========================================================================
-   v1.9.10 FIXES
-   ========================================================================== */
-/* 1) Hỗ trợ = Vườn/Công cụ gradient xanh */
-#btn-support-menu,
-#btn-support-menu.btn,
-#btn-support-menu.btn-primary,
-.garden-support-dd #btn-support-menu,
-.garden-support-dd #btn-support-menu.btn-primary,
-#btn-tools-menu,
-#btn-tools-menu.btn-primary,
-.garden-switcher .pill-dd-trigger,
-#garden-switcher .pill-dd-trigger {
-  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
-  background-image: linear-gradient(135deg, #16a34a, #22c55e) !important;
-  border: none !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.32) !important;
-  font-weight: 700 !important;
-}
-#btn-support-menu:hover,
-#btn-tools-menu:hover,
-.garden-switcher .pill-dd-trigger:hover {
-  background: linear-gradient(135deg, #22c55e, #4ade80) !important;
-  background-image: linear-gradient(135deg, #22c55e, #4ade80) !important;
-  color: #fff !important;
-  transform: translateY(-2px) !important;
-}
-html[data-theme="dark"] #btn-support-menu,
-html[data-theme="dark"] #btn-tools-menu,
-html[data-theme="dark"] .garden-switcher .pill-dd-trigger {
-  background: linear-gradient(135deg, #059669, #10b981) !important;
-  background-image: linear-gradient(135deg, #059669, #10b981) !important;
-  color: #fff !important;
-}
-
-/* Chat bubble shapes */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* Admin settings stack safely */
-.settings-duo {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 16px !important;
-}
-@media (min-width: 1100px) {
-  .settings-duo {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-  }
-}
-
-
-/* ==========================================================================
-   v1.9.14 — avatar centered, companion top-right, LVL static color only
-   ========================================================================== */
-@keyframes avatar-frame-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.profile-avatar-block {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  overflow: visible !important;
-  padding: 14px 12px 6px !important;
-  text-align: center !important;
-}
-
-.profile-avatar-wrap {
-  width: 108px !important;
-  height: 108px !important;
-  position: relative !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  margin: 0 auto !important;
-  border-radius: 50% !important;
-  padding: 0 !important;
-  background: transparent !important;
-  overflow: visible !important;
-  box-sizing: border-box !important;
-  animation: none !important;
-}
-
-.profile-avatar-wrap.has-frame {
-  background: transparent !important;
-  background-image: none !important;
-  animation: none !important;
-  padding: 0 !important;
-}
-
+/* Vòng khung mua trong shop — conic xoay */
 .profile-avatar-wrap.has-frame::before {
-  content: '' !important;
-  display: block !important;
-  position: absolute !important;
-  inset: -5px !important;
-  border-radius: 50% !important;
-  background: var(--avatar-frame-conic, conic-gradient(#22c55e, #06b6d4, #a855f7, #f43f5e, #eab308, #22c55e)) !important;
-  z-index: 0 !important;
-  animation: avatar-frame-spin 3s linear infinite !important;
-  -webkit-mask: none !important;
-  mask: none !important;
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--avatar-frame-conic, conic-gradient(#22c55e, #06b6d4, #a855f7, #f43f5e, #eab308, #22c55e));
+  z-index: 0;
+  animation: avatar-frame-spin 3s linear infinite;
 }
 
 .profile-avatar-wrap.has-frame::after {
-  content: '' !important;
-  display: block !important;
-  position: absolute !important;
-  inset: 0 !important;
-  border-radius: 50% !important;
-  background: var(--bg-main, #022c22) !important;
-  z-index: 1 !important;
-}
-
-html[data-theme="light"] .profile-avatar-wrap.has-frame::after,
-html:not([data-theme="dark"]) .profile-avatar-wrap.has-frame::after {
-  background: var(--bg-card, #ffffff) !important;
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--card, #1c2820);
+  z-index: 1;
 }
 
 .profile-avatar-wrap .profile-avatar,
 .profile-avatar-wrap .profile-avatar-fallback {
-  position: relative !important;
-  z-index: 2 !important;
-  width: 100% !important;
-  height: 100% !important;
-  border-radius: 50% !important;
-  object-fit: cover !important;
-  object-position: center !important;
-  border: none !important;
-  display: block !important;
-  margin: 0 auto !important;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  position: relative;
+  z-index: 2;
+  object-fit: cover;
+  object-position: center;
 }
 
-.profile-avatar-wrap:not(.has-frame) .profile-avatar,
-.profile-avatar-wrap:not(.has-frame) .profile-avatar-fallback {
-  width: 96px !important;
-  height: 96px !important;
-  border: 2px solid var(--border-color, var(--border)) !important;
-}
-
+.profile-avatar-wrap.has-frame .profile-avatar,
 .profile-avatar-wrap.has-frame .profile-avatar-fallback {
-  background: var(--bg-card, #1c2820) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  width: 92px;
+  height: 92px;
 }
 
-/* Sao / thú cưng: góc trên-phải */
+.profile-avatar-wrap .profile-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--primary) 14%, var(--card));
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.profile-avatar-ring {
+  display: none !important;
+}
+
+/* Thú cưng — góc trên phải */
 .profile-companion {
   display: none;
-  position: absolute !important;
-  top: -4px !important;
-  right: -6px !important;
-  left: auto !important;
-  bottom: auto !important;
-  z-index: 8 !important;
-  width: 34px !important;
-  height: 34px !important;
-  border-radius: 50% !important;
-  background: var(--bg-card, #fff) !important;
-  border: 2px solid var(--border-color, var(--border)) !important;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.18) !important;
-  align-items: center !important;
-  justify-content: center !important;
-  font-size: 1.15rem !important;
-  line-height: 1 !important;
-  margin: 0 !important;
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  z-index: 5;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--card, #fff);
+  border: 2px solid var(--border, #bbf7d0);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  line-height: 1;
 }
 html[data-theme="dark"] .profile-companion {
-  background: var(--bg-card, #064e3b) !important;
+  background: var(--card, #1c2820);
 }
 
-/* LVL: chỉ màu tĩnh, không animation */
+/* LVL — màu theo tier, viền tĩnh khi có khung (không animation) */
 .profile-level-tag {
-  margin-top: -8px !important;
-  z-index: 6 !important;
-  position: relative !important;
-  display: inline-block !important;
+  margin-top: -10px;
+  position: relative;
+  z-index: 4;
+  padding: 3px 16px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 .profile-level-tag.has-frame-grad {
-  border: 2px solid var(--frame-border-color, #a855f7) !important;
-  background: var(--bg-card, #fff) !important;
-  background-image: none !important;
-  animation: none !important;
-  color: var(--text-main, #14532d) !important;
-  text-shadow: none !important;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.15) !important;
+  border-color: var(--frame-border-color, #a855f7);
+  /* giữ nền theo tier-tree-*, không animation */
 }
-html[data-theme="dark"] .profile-level-tag.has-frame-grad {
-  background: var(--bg-card, #064e3b) !important;
-  background-image: none !important;
-  animation: none !important;
-  color: #ecfdf5 !important;
-  border-color: var(--frame-border-color, #a855f7) !important;
-}
+
