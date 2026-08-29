@@ -7506,3 +7506,40 @@ html[data-theme="dark"] .profile-companion {
   background: var(--card, #1c2820);
   display: block;
 }
+
+
+/* Tab chọn vườn — cấu hình Tiên / NYC từng vườn */
+.agent-garden-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+.agent-garden-tab {
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  background: color-mix(in srgb, var(--card) 90%, var(--primary));
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.agent-garden-tab small {
+  display: block;
+  font-weight: 500;
+  opacity: 0.75;
+  font-size: 0.68rem;
+}
+.agent-garden-tab.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light, #34d399));
+  color: #fff;
+  border-color: transparent;
+}
+.agent-garden-tab.off {
+  opacity: 0.55;
+}
+.agent-garden-enable {
+  margin-bottom: 8px;
+}
