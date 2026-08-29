@@ -429,19 +429,41 @@ const Features = {
       if (!currentPlayer.inventory.harvestBought) currentPlayer.inventory.harvestBought = {};
       currentPlayer.inventory.harvestBought[L.itemId] = (currentPlayer.inventory.harvestBought[L.itemId] || 0) + L.qty;
     }
-    // Cộng tiền người bán: chỉ coins + activity (khớp Firebase Rules)
+    // Trả tiền người bán qua marketCredits — seller claim khi vào game / save
+    // (không ghi thẳng users/seller: rule chỉ cho tự ghi; và savePlayer sẽ đè mất)
+    const buyerName = currentPlayer.displayName || (currentPlayer.email || '').split('@')[0] || 'Người mua';
+    const payNote = `Chợ: bán ${L.qty} ${L.itemName || L.itemId} +${cost}🪙 (từ ${buyerName})`;
     try {
-      const coinRef = db.ref('users/' + L.sellerUid + '/coins');
-      await coinRef.transaction(cur => (typeof cur === 'number' ? cur : 0) + cost);
-      const actRef = db.ref('users/' + L.sellerUid + '/activity');
-      const actSnap = await actRef.once('value');
-      let act = actSnap.val();
-      if (!Array.isArray(act)) act = [];
-      act.unshift({ text: `Chợ: bán ${L.qty} ${L.itemName} +${cost}🪙`, time: new Date().toLocaleString('vi-VN') });
-      if (act.length > 50) act = act.slice(0, 50);
-      await actRef.set(act);
+      const creditId = db.ref('marketCredits/' + L.sellerUid).push().key;
+      await db.ref('marketCredits/' + L.sellerUid + '/' + creditId).set({
+        id: creditId,
+        fromUid: currentUser.uid,
+        fromName: buyerName,
+        toUid: L.sellerUid,
+        amount: cost,
+        qty: L.qty,
+        itemId: L.itemId,
+        itemName: L.itemName || L.itemId,
+        note: payNote,
+        at: Date.now(),
+        listingId: listingId
+      });
     } catch (e) {
-      console.warn('pay seller', e);
+      console.warn('marketCredits push', e);
+      // Fallback cũ: cộng coins trực tiếp (cần rule coins cho phép tăng)
+      try {
+        await db.ref('users/' + L.sellerUid + '/coins').transaction(cur =>
+          (typeof cur === 'number' ? cur : 0) + cost
+        );
+        await db.ref('users/' + L.sellerUid + '/activity').transaction(act => {
+          if (!Array.isArray(act)) act = act ? Object.values(act) : [];
+          act.unshift({ text: payNote, time: new Date().toLocaleString('vi-VN') });
+          if (act.length > 50) act = act.slice(0, 50);
+          return act;
+        });
+      } catch (e2) {
+        console.warn('pay seller fallback', e2);
+      }
     }
     this.trackQuest('market', 1);
     if (typeof Game !== 'undefined' && Game.addActivity) {
@@ -450,6 +472,66 @@ const Features = {
     await savePlayer();
     if (typeof updateCoins === 'function') updateCoins();
     return { ok: true, msg: `Đã mua ${L.qty} ${L.itemName}!` };
+  },
+
+  /**
+   * Người bán nhận tiền chợ đang treo (marketCredits).
+   * Cộng coins + ghi nhật ký + xóa credit đã nhận.
+   */
+  async claimMarketCredits() {
+    if (!currentUser || !currentPlayer || !db) return { ok: false, claimed: 0, amount: 0 };
+    let claimed = 0;
+    let total = 0;
+    try {
+      const snap = await db.ref('marketCredits/' + currentUser.uid).once('value');
+      if (!snap.exists()) return { ok: true, claimed: 0, amount: 0 };
+      const all = snap.val() || {};
+      const ids = Object.keys(all);
+      if (!ids.length) return { ok: true, claimed: 0, amount: 0 };
+      if (!Array.isArray(currentPlayer.activity)) currentPlayer.activity = [];
+      if (!currentPlayer._claimedMarketCreditIds) currentPlayer._claimedMarketCreditIds = {};
+
+      for (const id of ids) {
+        const c = all[id];
+        if (!c || currentPlayer._claimedMarketCreditIds[id]) {
+          try { await db.ref('marketCredits/' + currentUser.uid + '/' + id).remove(); } catch (_) {}
+          continue;
+        }
+        const amount = Math.floor(Number(c.amount) || 0);
+        if (amount > 0) {
+          currentPlayer.coins = (Number(currentPlayer.coins) || 0) + amount;
+          total += amount;
+        }
+        const note = c.note || `Chợ: bán hàng +${amount}🪙`;
+        const time = c.at ? new Date(c.at).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN');
+        const exists = currentPlayer.activity.some(a => a && a.text === note);
+        if (!exists) {
+          currentPlayer.activity.unshift({ text: note, time });
+          if (currentPlayer.activity.length > 50) currentPlayer.activity = currentPlayer.activity.slice(0, 50);
+        }
+        currentPlayer._claimedMarketCreditIds[id] = true;
+        claimed++;
+        try { await db.ref('marketCredits/' + currentUser.uid + '/' + id).remove(); } catch (_) {}
+      }
+      const keys = Object.keys(currentPlayer._claimedMarketCreditIds);
+      if (keys.length > 80) {
+        const keep = keys.slice(-40);
+        const next = {};
+        keep.forEach(k => { next[k] = true; });
+        currentPlayer._claimedMarketCreditIds = next;
+      }
+      if (claimed > 0) {
+        if (typeof _playerDirty !== 'undefined') _playerDirty = true;
+        if (typeof updateCoins === 'function') updateCoins();
+        if (typeof Game !== 'undefined' && Game.addActivity && total > 0) {
+          // đã ghi activity chi tiết từng credit; toast tổng
+        }
+      }
+      return { ok: true, claimed, amount: total };
+    } catch (e) {
+      console.warn('claimMarketCredits', e);
+      return { ok: false, claimed: 0, amount: 0, msg: e.message || String(e) };
+    }
   },
 
   async cancelMarketItem(listingId) {

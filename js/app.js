@@ -1065,7 +1065,6 @@ function applyProfileCompanion() {
 
 function applyProfileAvatarFrame() {
   const wrap = document.getElementById('profile-avatar-wrap');
-  const lvlTag = document.getElementById('profile-level-tag');
   if (!wrap) return;
   const frameId = currentPlayer && currentPlayer.avatarFrameId;
   const frame = (frameId && typeof Game !== 'undefined' && Game.getAvatarFrame)
@@ -1082,23 +1081,10 @@ function applyProfileAvatarFrame() {
       conic = 'conic-gradient(from 0deg, ' + conic + ', ' + conic + ')';
     }
     wrap.style.setProperty('--avatar-frame-conic', conic);
-    // Badge LVL dưới avatar: màu từ khung shop đã mua
-    if (lvlTag) {
-      lvlTag.classList.add('has-frame-grad');
-      lvlTag.style.setProperty('--avatar-frame-grad', frame.gradient);
-      lvlTag.style.removeProperty('background');
-      lvlTag.style.removeProperty('color');
-    }
   } else {
     wrap.classList.remove('has-frame');
     wrap.style.removeProperty('--avatar-frame-grad');
     wrap.style.removeProperty('--avatar-frame-conic');
-    if (lvlTag) {
-      lvlTag.classList.remove('has-frame-grad');
-      lvlTag.style.removeProperty('--avatar-frame-grad');
-      lvlTag.style.removeProperty('background');
-      lvlTag.style.removeProperty('color');
-    }
   }
 }
 
@@ -1137,10 +1123,6 @@ function renderProfile() {
     img.style.display = 'none';
     fb.style.display = 'flex';
   }
-  // Cấp dưới avatar
-  const myLv = Math.min(1000, Math.max(1, parseInt(currentPlayer.level, 10) || 1));
-  const lvlNum = document.getElementById('profile-level-num');
-  if (lvlNum) lvlNum.textContent = myLv;
   applyProfileAvatarFrame();
   applyProfileCompanion();
   const prefs = Game.getBuffPrefs();

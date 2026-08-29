@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.9.26';
+const APP_VERSION = '1.9.28';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13107,7 +13107,7 @@ const DEFAULT_SETTINGS = {
   /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.9.26',
+  appVersion: '1.9.28',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13983,6 +13983,14 @@ async function loadPlayer(uid, email) {
     if (typeof Game !== 'undefined' && Game.ensureGardens) {
       try { Game.ensureGardens(); } catch (_) {}
     }
+    // Nhận tiền chợ đang treo (nếu có)
+    try {
+      if (typeof Features !== 'undefined' && Features.claimMarketCredits) {
+        const cr = await Features.claimMarketCredits();
+        if (cr && cr.claimed > 0) _playerDirty = true;
+      }
+    } catch (_) {}
+
     // CHỈ ghi Firebase khi local dirty (restore backup) — tránh mỗi lần F5 / bản mới ghi đè
     if (_playerDirty) {
       try { await savePlayer(); } catch (_) {}
@@ -14026,6 +14034,12 @@ async function savePlayer(opts) {
     notifyFirebaseSave(false, r.msg, opts);
     return r;
   }
+  // Nhận tiền chợ trước khi ghi (tránh mất credit)
+  try {
+    if (typeof Features !== 'undefined' && Features.claimMarketCredits) {
+      await Features.claimMarketCredits();
+    }
+  } catch (_) {}
   // Ghi nhật ký thao tác (trừ các lần sync nền lặp lại)
   if (opts.action && opts.action !== 'enter-sync') {
     try { recordPlayerAction(opts.action, opts.detail || null); } catch (_) {}
