@@ -7462,7 +7462,7 @@ html[data-theme="dark"] .profile-companion {
 .profile-card {
   overflow: visible !important;
   contain: none !important;
-  padding-top: 20px !important;
+  padding-top: 8px !important;
   padding-bottom: 24px !important;
 }
 
@@ -7472,8 +7472,8 @@ html[data-theme="dark"] .profile-companion {
   align-items: center !important;
   overflow: visible !important;
   contain: none !important;
-  padding: 8px 20px 12px !important;
-  margin: 0 auto 8px !important;
+  padding: 0 20px 12px !important;
+  margin: -20px auto 8px !important;
   min-height: 0 !important;
   gap: 10px !important;
 }
@@ -7483,7 +7483,9 @@ html[data-theme="dark"] .profile-companion {
   contain: none !important;
   flex-shrink: 0 !important;
   z-index: 1 !important;
-  margin-top: -20px !important;
+  margin-top: 0 !important;
+  /* dịch lên chắc chắn (flex đôi khi nuốt margin âm) */
+  transform: translateY(-20px) !important;
 }
 
 .profile-avatar-wrap.has-frame::before {
@@ -7509,7 +7511,7 @@ html[data-theme="dark"] .profile-companion {
 /* ===== Badge LVL dưới avatar (v1.9.23) — kiểu pill mềm như mock ===== */
 .profile-level-tag,
 #profile-level-tag {
-  margin-top: -20 !important;
+  margin-top: 0 !important;
   margin-bottom: 0 !important;
   padding: 4px 14px !important;
   position: relative !important;
