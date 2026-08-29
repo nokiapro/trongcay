@@ -7509,7 +7509,7 @@ html[data-theme="dark"] .profile-companion {
 /* ===== Badge LVL dưới avatar (v1.9.23) — kiểu pill mềm như mock ===== */
 .profile-level-tag,
 #profile-level-tag {
-  margin-top: 0 !important;
+  margin-top: -20 !important;
   margin-bottom: 0 !important;
   padding: 4px 14px !important;
   position: relative !important;
