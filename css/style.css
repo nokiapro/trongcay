@@ -7942,7 +7942,7 @@ html[data-theme="dark"] .garden-switcher .pill-dd-trigger {
 
 
 /* ==========================================================================
-   v1.9.13 — FULL conic ring around avatar (no partial arc)
+   v1.9.14 — avatar centered, companion top-right, LVL static color only
    ========================================================================== */
 @keyframes avatar-frame-spin {
   from { transform: rotate(0deg); }
@@ -7953,8 +7953,10 @@ html[data-theme="dark"] .garden-switcher .pill-dd-trigger {
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
+  justify-content: center !important;
   overflow: visible !important;
-  padding: 12px 8px 4px !important;
+  padding: 14px 12px 6px !important;
+  text-align: center !important;
 }
 
 .profile-avatar-wrap {
@@ -7964,10 +7966,10 @@ html[data-theme="dark"] .garden-switcher .pill-dd-trigger {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  margin: 0 auto !important;
   border-radius: 50% !important;
   padding: 0 !important;
   background: transparent !important;
-  background-image: none !important;
   overflow: visible !important;
   box-sizing: border-box !important;
   animation: none !important;
@@ -7980,7 +7982,6 @@ html[data-theme="dark"] .garden-switcher .pill-dd-trigger {
   padding: 0 !important;
 }
 
-/* Vòng gradient xoay FULL quanh avatar */
 .profile-avatar-wrap.has-frame::before {
   content: '' !important;
   display: block !important;
@@ -7992,10 +7993,8 @@ html[data-theme="dark"] .garden-switcher .pill-dd-trigger {
   animation: avatar-frame-spin 3s linear infinite !important;
   -webkit-mask: none !important;
   mask: none !important;
-  filter: none !important;
 }
 
-/* Lớp nền che giữa vòng */
 .profile-avatar-wrap.has-frame::after {
   content: '' !important;
   display: block !important;
@@ -8017,11 +8016,12 @@ html:not([data-theme="dark"]) .profile-avatar-wrap.has-frame::after {
   z-index: 2 !important;
   width: 100% !important;
   height: 100% !important;
-  max-width: 108px !important;
-  max-height: 108px !important;
   border-radius: 50% !important;
   object-fit: cover !important;
+  object-position: center !important;
   border: none !important;
+  display: block !important;
+  margin: 0 auto !important;
 }
 
 .profile-avatar-wrap:not(.has-frame) .profile-avatar,
@@ -8033,33 +8033,56 @@ html:not([data-theme="dark"]) .profile-avatar-wrap.has-frame::after {
 
 .profile-avatar-wrap.has-frame .profile-avatar-fallback {
   background: var(--bg-card, #1c2820) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
+/* Sao / thú cưng: góc trên-phải */
 .profile-companion {
-  z-index: 5 !important;
+  display: none;
+  position: absolute !important;
+  top: -4px !important;
+  right: -6px !important;
+  left: auto !important;
+  bottom: auto !important;
+  z-index: 8 !important;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  background: var(--bg-card, #fff) !important;
+  border: 2px solid var(--border-color, var(--border)) !important;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.18) !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.15rem !important;
+  line-height: 1 !important;
+  margin: 0 !important;
+}
+html[data-theme="dark"] .profile-companion {
+  background: var(--bg-card, #064e3b) !important;
 }
 
-/* LVL: full gradient border */
+/* LVL: chỉ màu tĩnh, không animation */
 .profile-level-tag {
   margin-top: -8px !important;
   z-index: 6 !important;
   position: relative !important;
+  display: inline-block !important;
 }
 .profile-level-tag.has-frame-grad {
-  border: 3px solid transparent !important;
-  background-image:
-    linear-gradient(var(--bg-card, #fff), var(--bg-card, #fff)),
-    var(--avatar-frame-grad, linear-gradient(135deg, #22c55e, #a855f7, #f43f5e)) !important;
-  background-origin: padding-box, border-box !important;
-  background-clip: padding-box, border-box !important;
-  background-size: auto, 200% 200% !important;
-  animation: avatar-frame-shift 2.5s linear infinite !important;
+  border: 2px solid var(--frame-border-color, #a855f7) !important;
+  background: var(--bg-card, #fff) !important;
+  background-image: none !important;
+  animation: none !important;
   color: var(--text-main, #14532d) !important;
   text-shadow: none !important;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.15) !important;
 }
 html[data-theme="dark"] .profile-level-tag.has-frame-grad {
-  background-image:
-    linear-gradient(var(--bg-card, #064e3b), var(--bg-card, #064e3b)),
-    var(--avatar-frame-grad, linear-gradient(135deg, #22c55e, #a855f7, #f43f5e)) !important;
+  background: var(--bg-card, #064e3b) !important;
+  background-image: none !important;
+  animation: none !important;
   color: #ecfdf5 !important;
+  border-color: var(--frame-border-color, #a855f7) !important;
 }
