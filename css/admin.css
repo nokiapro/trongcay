@@ -1577,11 +1577,16 @@ html[data-theme="dark"] #sec-dashboard {
    v1.9.15 — Admin layout fix (clean)
    ========================================================================== */
 
-/* Settings: 3 cards full width, stacked */
+/* Settings: full width when active — KHÔNG ép display:block khi ẩn */
 #sec-settings {
-  display: block;
   width: 100%;
   max-width: 820px;
+}
+#sec-settings.admin-section {
+  display: none;
+}
+#sec-settings.admin-section.active {
+  display: block;
 }
 #sec-settings .admin-card,
 #sec-settings .settings-form,
@@ -1599,9 +1604,15 @@ html[data-theme="dark"] #sec-dashboard {
   margin-top: 16px;
 }
 
-/* Announce / mail full width */
+/* Announce */
 #sec-announce {
   max-width: 820px;
+}
+#sec-announce.admin-section {
+  display: none;
+}
+#sec-announce.admin-section.active {
+  display: block;
 }
 #sec-announce .announce-card,
 #sec-announce .admin-card {
@@ -1609,6 +1620,15 @@ html[data-theme="dark"] #sec-dashboard {
   max-width: 100%;
   box-sizing: border-box;
 }
+
+/* Guard: mọi section chỉ hiện khi .active */
+.admin-section {
+  display: none !important;
+}
+.admin-section.active {
+  display: block !important;
+}
+
 
 /* Mail search list */
 .mail-target-wrap {
