@@ -1990,14 +1990,24 @@ const Game = {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const item = this.getProtect(protectId);
     if (!item) return { ok: false, msg: 'Không tìm thấy bảo hộ!' };
-    qty = Math.max(1, Math.min(99, parseInt(qty, 10) || 1));
-    const cost = item.price * qty;
-    if (currentPlayer.coins < cost) return { ok: false, msg: 'Không đủ tiền!' };
+    const price = Math.max(1, Number(item.price) || 1);
+    const maxAfford = Math.max(1, Math.floor((Number(currentPlayer.coins) || 0) / price));
+    if (qty === 'all' || qty === 'max') {
+      qty = maxAfford;
+    } else {
+      qty = Math.max(1, parseInt(qty, 10) || 1);
+      // Không giới hạn 99 — chỉ giới hạn bởi số xu
+      if (qty > maxAfford) qty = maxAfford;
+    }
+    if (qty < 1) return { ok: false, msg: 'Không đủ tiền!' };
+    const cost = price * qty;
+    if ((currentPlayer.coins || 0) < cost) return { ok: false, msg: 'Không đủ tiền!' };
     currentPlayer.coins -= cost;
+    currentPlayer.stats = currentPlayer.stats || {};
     currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
     if (!currentPlayer.inventory.protects) currentPlayer.inventory.protects = {};
     currentPlayer.inventory.protects[protectId] = (currentPlayer.inventory.protects[protectId] || 0) + qty;
-    this.addActivity(`Mua ${qty} ${item.name} (-${cost}🪙)`);
+    this.addActivity(`Mua ${qty} ${item.name} (-${cost.toLocaleString()}🪙)`);
     await savePlayer();
     return { ok: true, msg: `Đã mua ${qty} ${item.name}!` };
   },

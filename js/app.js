@@ -2449,6 +2449,29 @@ function renderShop() {
     const gCount = typeof Game.getGardenCount === 'function' ? Game.getGardenCount() : 1;
     if (countEl) countEl.textContent = 'Mở rộng Vườn ' + gIdx;
     document.getElementById('shop-pager').innerHTML = '';
+    // Ước tính chi phí nâng hết ô → x50
+    let upgradeAllNeed = 0;
+    let upgradeAllCount = 0;
+    try {
+      if (typeof Features !== 'undefined' && Features.getPlotUpgradeCost) {
+        const gardens = (currentPlayer.gardens && currentPlayer.gardens.length)
+          ? currentPlayer.gardens
+          : [currentPlayer.plots || []];
+        gardens.forEach(g => {
+          const arr = Array.isArray(g) ? g : Object.values(g || {});
+          arr.forEach(pl => {
+            if (!pl) return;
+            const base = Number(pl.specialMultPermanent) || 1;
+            if (base >= 50) return;
+            const c = Features.getPlotUpgradeCost(base, 50);
+            if (c != null && c >= 0) {
+              upgradeAllNeed += c;
+              upgradeAllCount++;
+            }
+          });
+        });
+      }
+    } catch (_) {}
     grid.innerHTML = `
       <div class="shop-card shop-plot-card" style="grid-column: 1 / -1; max-width: 360px;">
         <div class="shop-icon">🟫</div>
@@ -2460,6 +2483,17 @@ function renderShop() {
           <input type="number" id="plot-qty-input" class="qty-input" min="1" max="20" value="1" />
           <button class="btn btn-warning" id="btn-buy-plot"><i class="fa-solid fa-cart-plus"></i> Mua ô</button>
         </div>
+      </div>
+      <div class="shop-card shop-plot-card" style="grid-column: 1 / -1; max-width: 360px;">
+        <div class="shop-icon">⚡</div>
+        <div class="shop-name">Nâng tất cả ô → x50 vĩnh viễn</div>
+        <span class="shop-type">Mọi vườn · chỉ ô dưới x50</span>
+        <div class="shop-desc">Nâng vĩnh viễn hệ số tốc độ mọi ô đất (mọi vườn) lên x50. Ô đã ≥ x50 bỏ qua.</div>
+        <div class="shop-meta"><span>${upgradeAllCount ? (upgradeAllCount + ' ô cần nâng') : 'Đã đủ x50'}</span></div>
+        <div class="shop-price">${upgradeAllCount ? (upgradeAllNeed.toLocaleString() + ' 🪙') : '—'}</div>
+        <button class="btn btn-warning" id="btn-upgrade-all-x50" ${upgradeAllCount ? '' : 'disabled'}>
+          <i class="fa-solid fa-bolt"></i> Nâng hết → x50
+        </button>
       </div>`;
     document.getElementById('btn-buy-plot')?.addEventListener('click', async () => {
       const q = parseInt(document.getElementById('plot-qty-input')?.value || '1', 10);
@@ -2467,6 +2501,15 @@ function renderShop() {
       showToast(res.msg, res.ok ? 'success' : 'error');
       updateCoins();
       renderShop();
+    });
+    document.getElementById('btn-upgrade-all-x50')?.addEventListener('click', async () => {
+      if (!upgradeAllCount) return;
+      if (!confirm('Nâng ' + upgradeAllCount + ' ô (mọi vườn) → x50 vĩnh viễn?\nChi phí: ' + upgradeAllNeed.toLocaleString() + ' 🪙')) return;
+      const res = await Features.upgradeAllPlotsTo(50);
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      updateCoins();
+      renderShop();
+      if (res.ok && typeof renderGarden === 'function') renderGarden();
     });
     return;
   }
@@ -2537,8 +2580,7 @@ function renderShop() {
     });
     document.querySelectorAll('.btn-buy-protect').forEach(btn => {
       const buy = async (qty) => {
-        const n = qty === 'all' ? 99 : Math.max(1, parseInt(qty, 10) || 1);
-        const res = await Game.buyProtect(btn.dataset.id, n);
+        const res = await Game.buyProtect(btn.dataset.id, qty);
         showToast(res.msg, res.ok ? 'success' : 'error');
         updateCoins();
         renderShop();
@@ -2547,7 +2589,7 @@ function renderShop() {
         onClick: () => buy(1),
         onHold: () => openQtyPickModal({
           title: 'Mua bao nhiêu bùa?',
-          hint: 'Nhập số lượng hoặc Tất cả (tối đa 99).',
+          hint: 'Nhập số lượng bất kỳ, hoặc Tất cả = mua tối đa theo số xu hiện có (không giới hạn 99).',
           confirmLabel: 'Mua',
           onConfirm: (n) => buy(n)
         })

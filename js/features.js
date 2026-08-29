@@ -38,7 +38,7 @@ const Features = {
     }
     const plot = currentPlayer.plots[plotId];
     if (!plot) return { ok: false, msg: 'Ô không tồn tại!' };
-    const cur = Number(plot.specialMult) || 1;
+    const cur = Number(plot.specialMultPermanent) || Number(plot.specialMult) || 1;
     const tgt = Number(targetMult);
     if (!(tgt > cur)) return { ok: false, msg: 'Chọn mức cao hơn hiện tại!' };
     const cost = this.getPlotUpgradeCost(cur, tgt);
@@ -46,10 +46,13 @@ const Features = {
     if ((currentPlayer.coins || 0) < cost) return { ok: false, msg: 'Không đủ xu! Cần ' + cost.toLocaleString() + '🪙' };
     currentPlayer.coins -= cost;
     plot.specialMultPermanent = tgt;
-    plot.specialMult = tgt;
+    // Giữ boost tạm nếu đang cao hơn; không thì đặt permanent
+    const now = Date.now();
+    const tempOn = plot.specialMultUntil && plot.specialMultUntil > now;
+    const tempM = Number(plot.specialMultTemp) || 0;
+    plot.specialMult = Math.max(tgt, tempOn ? tempM : 0, 1);
     plot.specialName = 'Ô x' + tgt + ' (vĩnh viễn)';
     plot.specialId = 'upgrade-perm-' + tgt;
-    // Không đụng boost tạm
     currentPlayer.stats = currentPlayer.stats || {};
     currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
     if (typeof Game !== 'undefined' && Game.addActivity) {
@@ -58,6 +61,82 @@ const Features = {
     await savePlayer();
     if (typeof updateCoins === 'function') updateCoins();
     return { ok: true, msg: 'Ô #' + (plotId + 1) + ' đã lên x' + tgt + '!' };
+  },
+
+  /**
+   * Nâng tất cả ô (mọi vườn) lên targetMult vĩnh viễn (mặc định x50).
+   * Chỉ tính các ô đang dưới mức đích; giá = tổng chi phí từng ô.
+   */
+  async upgradeAllPlotsTo(targetMult = 50) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    if (typeof Game !== 'undefined' && Game.ensureGardens) {
+      try { Game.ensureGardens(); Game.syncActiveGarden(); } catch (_) {}
+    }
+    const tgt = Number(targetMult) || 50;
+    const tierOk = this.PLOT_UPGRADE_TIERS.some(t => t.mult === tgt);
+    if (!tierOk) return { ok: false, msg: 'Mức không hợp lệ!' };
+
+    const gardens = Array.isArray(currentPlayer.gardens) && currentPlayer.gardens.length
+      ? currentPlayer.gardens
+      : [currentPlayer.plots];
+    const jobs = [];
+    let totalCost = 0;
+    gardens.forEach((g, gi) => {
+      const plots = Array.isArray(g) ? g : Object.values(g || {});
+      if (!Array.isArray(g)) gardens[gi] = plots;
+      plots.forEach((plot, pi) => {
+        if (!plot) return;
+        const base = Number(plot.specialMultPermanent) || 1;
+        if (base >= tgt) return;
+        const cost = this.getPlotUpgradeCost(base, tgt);
+        if (cost == null || cost < 0) return;
+        jobs.push({ gi, pi, plot, base, cost });
+        totalCost += cost;
+      });
+    });
+
+    if (!jobs.length) {
+      return { ok: true, msg: 'Tất cả ô đã đạt x' + tgt + ' (vĩnh viễn).', upgraded: 0, cost: 0 };
+    }
+    if ((currentPlayer.coins || 0) < totalCost) {
+      return {
+        ok: false,
+        msg: 'Không đủ xu! Cần ' + totalCost.toLocaleString() + '🪙 để nâng ' + jobs.length + ' ô → x' + tgt,
+        need: totalCost,
+        count: jobs.length
+      };
+    }
+
+    currentPlayer.coins -= totalCost;
+    currentPlayer.stats = currentPlayer.stats || {};
+    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + totalCost;
+    const now = Date.now();
+    jobs.forEach(({ plot }) => {
+      plot.specialMultPermanent = tgt;
+      const tempOn = plot.specialMultUntil && plot.specialMultUntil > now;
+      const tempM = Number(plot.specialMultTemp) || 0;
+      plot.specialMult = Math.max(tgt, tempOn ? tempM : 0, 1);
+      plot.specialName = 'Ô x' + tgt + ' (vĩnh viễn)';
+      plot.specialId = 'upgrade-perm-' + tgt;
+    });
+    // Đồng bộ plots đang active
+    if (typeof Game !== 'undefined' && Game.syncActiveGarden) {
+      try { Game.syncActiveGarden(); } catch (_) {}
+    } else if (Array.isArray(currentPlayer.gardens) && typeof currentPlayer.activeGarden === 'number') {
+      currentPlayer.plots = currentPlayer.gardens[currentPlayer.activeGarden] || currentPlayer.plots;
+    }
+
+    if (typeof Game !== 'undefined' && Game.addActivity) {
+      Game.addActivity('Nâng ' + jobs.length + ' ô (mọi vườn) → x' + tgt + ' vĩnh viễn (-' + totalCost.toLocaleString() + '🪙)');
+    }
+    await savePlayer();
+    if (typeof updateCoins === 'function') updateCoins();
+    return {
+      ok: true,
+      msg: 'Đã nâng ' + jobs.length + ' ô → x' + tgt + ' vĩnh viễn (-' + totalCost.toLocaleString() + '🪙)!',
+      upgraded: jobs.length,
+      cost: totalCost
+    };
   },
 
   
