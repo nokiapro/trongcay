@@ -1106,6 +1106,17 @@ const Game = {
     return Math.max(0, Math.ceil((soonest - now) / 1000));
   },
 
+  /** Tổng số phân còn trong kho (mọi loại) */
+  countFertilizerInBag() {
+    if (!currentPlayer || !currentPlayer.inventory) return 0;
+    const bag = currentPlayer.inventory.fertilizers || {};
+    let n = 0;
+    Object.keys(bag).forEach(id => {
+      n += Math.max(0, Math.floor(Number(bag[id]) || 0));
+    });
+    return n;
+  },
+
   /** Chọn phân tốt nhất còn trong kho (theo timeReduce), hoặc null nếu hết */
   pickBestFertilizerFromBag() {
     if (!currentPlayer || !currentPlayer.inventory || !currentPlayer.inventory.fertilizers) return null;
@@ -1113,10 +1124,11 @@ const Game = {
     let best = null;
     let bestReduce = -1;
     Object.keys(bag).forEach(id => {
-      if ((bag[id] || 0) < 1) return;
+      const qty = Math.floor(Number(bag[id]) || 0);
+      if (qty < 1) return;
       const fert = this.getFertilizer(id);
       if (!fert) return;
-      const r = fert.timeReduce || 0;
+      const r = Number(fert.timeReduce) || 0;
       if (r > bestReduce) {
         bestReduce = r;
         best = fert;
@@ -1251,19 +1263,34 @@ const Game = {
 
   /** Lấy 1 phân từ kho theo cấu hình; null nếu hết / không có */
   takeFertFromBagForFairy(cfg) {
-    if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
+    if (!currentPlayer.inventory) currentPlayer.inventory = {};
+    if (!currentPlayer.inventory.fertilizers || typeof currentPlayer.inventory.fertilizers !== 'object') {
+      currentPlayer.inventory.fertilizers = {};
+    }
     const bag = currentPlayer.inventory.fertilizers;
     if (cfg.fertSource === 'specific') {
       const id = cfg.fertId;
-      if (!id || (bag[id] || 0) < 1) return null;
-      bag[id]--;
+      const qty = Math.floor(Number(bag[id]) || 0);
+      if (!id || qty < 1) {
+        // Hết loại chỉ định → fallback mọi loại trong kho (tránh báo hết khi kho vẫn còn loại khác)
+        const best = this.pickBestFertilizerFromBag();
+        if (!best) return null;
+        const q = Math.floor(Number(bag[best.id]) || 0);
+        if (q < 1) return null;
+        bag[best.id] = q - 1;
+        if (bag[best.id] <= 0) delete bag[best.id];
+        return best.id;
+      }
+      bag[id] = qty - 1;
       if (bag[id] <= 0) delete bag[id];
       return id;
     }
     // any: chọn loại tốt nhất còn trong kho
     const best = this.pickBestFertilizerFromBag();
     if (!best) return null;
-    bag[best.id]--;
+    const q = Math.floor(Number(bag[best.id]) || 0);
+    if (q < 1) return null;
+    bag[best.id] = q - 1;
     if (bag[best.id] <= 0) delete bag[best.id];
     return best.id;
   },
@@ -1295,12 +1322,15 @@ const Game = {
 
     // 2) Bón phân từ kho — chưa bón hoặc đã hết hạn 3h tại mốc `now`; hết kho thì dừng
     // Dùng isReadyAt/isFertBoostActive(…, now) để bù offline đúng giờ (không dùng (typeof nowMs==="function"?nowMs():Date.now()) lệch)
+    let needFertN = 0;
+    let stoppedNoFert = false;
     if (cfg.useFertilizer) {
       const needFert = plots.filter(p => {
         if (!p || !p.plantId) return false;
         if (typeof this.isReadyAt === 'function' ? this.isReadyAt(p, now) : this.isReady(p)) return false;
         return !this.isFertBoostActive(p, now);
       });
+      needFertN = needFert.length;
       for (let i = 0; i < needFert.length; i++) {
         const plot = needFert[i];
         if (plot.fertilizerId) {
@@ -1308,7 +1338,10 @@ const Game = {
           plot.fertilizedAt = null;
         }
         const fertId = this.takeFertFromBagForFairy(cfg);
-        if (!fertId) break; // hết phân → dừng
+        if (!fertId) {
+          stoppedNoFert = true;
+          break; // hết phân → dừng
+        }
         plot.fertilizerId = fertId;
         plot.fertilizedAt = now; // mốc tưới/bón = careAt khi bù offline
         fertN++;
@@ -1316,10 +1349,29 @@ const Game = {
     }
 
     currentPlayer.lastFairyCare = now;
-    if (wateredN > 0 || fertN > 0) {
-      let msg = `🧚 Tiên chăm: tưới ${wateredN} ô`;
-      if (cfg.useFertilizer) msg += fertN ? `, bón ${fertN} ô` : ' (hết / không đủ phân)';
-      else msg += ' (không bón phân)';
+    if (wateredN > 0 || fertN > 0 || (cfg.useFertilizer && needFertN > 0)) {
+      const emoji = this.getFairyEmoji ? this.getFairyEmoji() : '🧚';
+      const name = this.getFairyDisplayName ? this.getFairyDisplayName() : 'Tiên';
+      let msg = `${emoji} ${name} chăm: tưới ${wateredN} ô`;
+      if (cfg.useFertilizer) {
+        if (fertN > 0) {
+          msg += `, bón ${fertN} ô`;
+          if (stoppedNoFert && fertN < needFertN) {
+            msg += ` (hết phân giữa chừng, còn ${this.countFertilizerInBag()} trong kho)`;
+          }
+        } else if (needFertN === 0) {
+          // Có phân trong kho nhưng không ô nào cần bón (đã bón / đã chín)
+          msg += ' (không ô cần bón)';
+        } else {
+          // Thật sự không lấy được phân từ kho
+          const left = this.countFertilizerInBag();
+          msg += left > 0
+            ? ` (không bón được · kho còn ${left} — kiểm tra loại phân cấu hình)`
+            : ' (hết phân trong kho)';
+        }
+      } else {
+        msg += ' (không bón phân)';
+      }
       this.addActivity(msg, { type: 'fairy_care', at: now });
       // Tiên tưới cũng tính nhiệm vụ tưới (mỗi ô = 3 lần tưới)
       if (wateredN > 0 && typeof Features !== 'undefined' && Features.trackQuest) {
