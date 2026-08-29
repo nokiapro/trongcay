@@ -7300,3 +7300,281 @@ html[data-theme="dark"] .rank-tab.active {
   color: #0b1612;
   font-weight: 700;
 }
+
+
+/* ==========================================================================
+   LIGHT THEME — gradient border hồng→tím (v1.9.2)
+   linear-gradient(135deg, rgb(255,0,64), rgb(140,0,255), rgb(255,0,64)) / 200% 200%
+   ========================================================================== */
+:root {
+  --vx-grad-border: linear-gradient(135deg, rgb(255, 0, 64), rgb(140, 0, 255), rgb(255, 0, 64));
+}
+
+/* Chỉ áp cho light (không có data-theme=dark) */
+html:not([data-theme="dark"]) .btn,
+html:not([data-theme="dark"]) button.btn,
+html:not([data-theme="dark"]) .btn-sm,
+html:not([data-theme="dark"]) .btn-primary,
+html:not([data-theme="dark"]) .btn-secondary,
+html:not([data-theme="dark"]) .btn-success,
+html:not([data-theme="dark"]) .btn-danger,
+html:not([data-theme="dark"]) .btn-warning,
+html:not([data-theme="dark"]) .btn-purple,
+html:not([data-theme="dark"]) .btn-timer,
+html:not([data-theme="dark"]) .btn-block,
+html:not([data-theme="dark"]) .pill-dd-trigger,
+html:not([data-theme="dark"]) #btn-tools-menu,
+html:not([data-theme="dark"]) #btn-support-menu,
+html:not([data-theme="dark"]) .shop-tab,
+html:not([data-theme="dark"]) .rank-tab,
+html:not([data-theme="dark"]) .tab-btn,
+html:not([data-theme="dark"]) .level-preset,
+html:not([data-theme="dark"]) .qty-stepper button,
+html:not([data-theme="dark"]) .buy-qty .btn {
+  border: 2px solid transparent !important;
+  background-clip: padding-box, border-box !important;
+  background-origin: padding-box, border-box !important;
+  box-decoration-break: clone;
+}
+
+/* Primary — giữ fill xanh + viền gradient */
+html:not([data-theme="dark"]) .btn-primary,
+html:not([data-theme="dark"]) #btn-tools-menu.btn-primary,
+html:not([data-theme="dark"]) #btn-support-menu.btn-primary {
+  background-image:
+    linear-gradient(135deg, #1b4332, #2d6a4f),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  color: #fff !important;
+}
+
+html:not([data-theme="dark"]) .btn-success {
+  background-image:
+    linear-gradient(135deg, #21867a, #2a9d8f),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  color: #fff !important;
+}
+
+html:not([data-theme="dark"]) .btn-danger {
+  background-image:
+    linear-gradient(135deg, #d62828, #e63946),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  color: #fff !important;
+}
+
+html:not([data-theme="dark"]) .btn-warning {
+  background-image:
+    linear-gradient(135deg, #d97706, #e9c46a),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  color: #1b4332 !important;
+}
+
+html:not([data-theme="dark"]) .btn-purple {
+  background-image:
+    linear-gradient(135deg, #6d28d9, #7c3aed),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  color: #fff !important;
+}
+
+html:not([data-theme="dark"]) .btn-secondary,
+html:not([data-theme="dark"]) .pill-dd-trigger,
+html:not([data-theme="dark"]) .qty-stepper button,
+html:not([data-theme="dark"]) .buy-qty .btn {
+  background-image:
+    linear-gradient(135deg, #e8f5e9, #f0faf4),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  color: #1b4332 !important;
+}
+
+html:not([data-theme="dark"]) .btn-timer {
+  background-image:
+    linear-gradient(135deg, #1e3a5f, #3b82f6),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  color: #fff !important;
+}
+
+html:not([data-theme="dark"]) .btn-timer.ready {
+  background-image:
+    linear-gradient(135deg, #15803d, #22c55e),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+}
+
+html:not([data-theme="dark"]) .shop-tab,
+html:not([data-theme="dark"]) .rank-tab,
+html:not([data-theme="dark"]) .tab-btn {
+  background-image:
+    linear-gradient(135deg, #e8f5e9, #ffffff),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  color: #1b4332 !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box, border-box !important;
+  background-origin: padding-box, border-box !important;
+}
+
+html:not([data-theme="dark"]) .shop-tab.active,
+html:not([data-theme="dark"]) .rank-tab.active,
+html:not([data-theme="dark"]) .tab-btn.active {
+  background-image:
+    linear-gradient(135deg, #1b4332, #2d6a4f),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  color: #fff !important;
+}
+
+html:not([data-theme="dark"]) .level-preset {
+  background-image:
+    linear-gradient(135deg, #ffffff, #f3fbf6),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box, border-box !important;
+  background-origin: padding-box, border-box !important;
+  color: #1b4332 !important;
+}
+
+html:not([data-theme="dark"]) .level-preset-max {
+  background-image:
+    linear-gradient(135deg, #f59e0b, #10b981, #f43f5e),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  color: #fff !important;
+}
+
+/* Inputs / selects / textareas */
+html:not([data-theme="dark"]) input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+html:not([data-theme="dark"]) select,
+html:not([data-theme="dark"]) textarea,
+html:not([data-theme="dark"]) .ux-select,
+html:not([data-theme="dark"]) .input-group input,
+html:not([data-theme="dark"]) .profile-field input,
+html:not([data-theme="dark"]) .chat-input-row input,
+html:not([data-theme="dark"]) .friends-add input,
+html:not([data-theme="dark"]) .plant-qty-input {
+  border: 2px solid transparent !important;
+  background-image:
+    linear-gradient(#ffffff, #ffffff),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  background-clip: padding-box, border-box !important;
+  background-origin: padding-box, border-box !important;
+  color: #1b4332 !important;
+}
+
+html:not([data-theme="dark"]) input:not([type="range"]):focus,
+html:not([data-theme="dark"]) select:focus,
+html:not([data-theme="dark"]) textarea:focus,
+html:not([data-theme="dark"]) .input-group input:focus {
+  box-shadow: 0 0 0 3px rgba(140, 0, 255, 0.18) !important;
+  outline: none !important;
+}
+
+/* Cards / panels / frames */
+html:not([data-theme="dark"]) .stat-card,
+html:not([data-theme="dark"]) .shop-card,
+html:not([data-theme="dark"]) .profile-card,
+html:not([data-theme="dark"]) .card-panel,
+html:not([data-theme="dark"]) .activity-section,
+html:not([data-theme="dark"]) #page-activity .activity-section,
+html:not([data-theme="dark"]) .quest-block,
+html:not([data-theme="dark"]) .quest-card,
+html:not([data-theme="dark"]) .rank-item,
+html:not([data-theme="dark"]) .friend-item,
+html:not([data-theme="dark"]) .inv-item,
+html:not([data-theme="dark"]) .ach-item,
+html:not([data-theme="dark"]) .album-item,
+html:not([data-theme="dark"]) .market-sell-box,
+html:not([data-theme="dark"]) .bank-stat,
+html:not([data-theme="dark"]) .plot-detail-card,
+html:not([data-theme="dark"]) .seed-option,
+html:not([data-theme="dark"]) .modal-content,
+html:not([data-theme="dark"]) .login-card,
+html:not([data-theme="dark"]) .level-badge-showcase,
+html:not([data-theme="dark"]) .friends-panel,
+html:not([data-theme="dark"]) .chat-panel {
+  border: 2px solid transparent !important;
+  background-image:
+    linear-gradient(var(--card, #ffffff), var(--card, #ffffff)),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  background-clip: padding-box, border-box !important;
+  background-origin: padding-box, border-box !important;
+}
+
+/* Level showcase giữ soft fill + gradient border */
+html:not([data-theme="dark"]) .level-badge-showcase {
+  background-image:
+    radial-gradient(ellipse at 50% 12%, rgba(149, 213, 178, 0.45) 0%, transparent 50%),
+    linear-gradient(180deg, #f3fbf6 0%, #ffffff 55%, #eef7f2 100%),
+    var(--vx-grad-border) !important;
+  background-size: auto, auto, 200% 200% !important;
+  background-position: 0 0, 0 0, 0% 0% !important;
+  background-clip: padding-box, padding-box, border-box !important;
+  background-origin: padding-box, padding-box, border-box !important;
+}
+
+/* Plot cells */
+html:not([data-theme="dark"]) .plot {
+  border: 2px solid transparent !important;
+  background-image:
+    linear-gradient(var(--card, #ffffff), var(--card, #ffffff)),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  background-clip: padding-box, border-box !important;
+  background-origin: padding-box, border-box !important;
+}
+
+html:not([data-theme="dark"]) .plot.empty {
+  background-image:
+    linear-gradient(#f7fffc, #f7fffc),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  background-clip: padding-box, border-box !important;
+  background-origin: padding-box, border-box !important;
+}
+
+/* Range slider track accent still green; thumb border gradient via box-shadow */
+html:not([data-theme="dark"]) .level-range {
+  border: 2px solid transparent !important;
+  background-image:
+    linear-gradient(#e0efe8, #e0efe8),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  background-clip: padding-box, border-box !important;
+  background-origin: padding-box, border-box !important;
+}
+
+html:not([data-theme="dark"]) .level-progress-bar {
+  border: 2px solid transparent !important;
+  background-image:
+    linear-gradient(#e0efe8, #e0efe8),
+    var(--vx-grad-border) !important;
+  background-size: auto, 200% 200% !important;
+  background-position: 0 0, 0% 0% !important;
+  background-clip: padding-box, border-box !important;
+  background-origin: padding-box, border-box !important;
+}
