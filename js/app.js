@@ -1084,9 +1084,9 @@ function applyProfileAvatarFrame() {
     wrap.style.setProperty('--avatar-frame-conic', conic);
     if (lvlTag) {
       lvlTag.classList.add('has-frame-grad');
-      // Nền LVL = gradient tĩnh của khung (không animation)
+      // Viền + nền LVL dùng CSS (padding-box / border-box) — không set inline background
       lvlTag.style.setProperty('--avatar-frame-grad', frame.gradient);
-      lvlTag.style.background = frame.gradient;
+      lvlTag.style.removeProperty('background');
       lvlTag.style.color = '#fff';
     }
   } else {
@@ -1097,11 +1097,12 @@ function applyProfileAvatarFrame() {
       lvlTag.classList.remove('has-frame-grad');
       lvlTag.style.removeProperty('--avatar-frame-grad');
       lvlTag.style.removeProperty('--frame-border-color');
-      lvlTag.style.background = '';
+      lvlTag.style.removeProperty('background');
       lvlTag.style.color = '';
     }
   }
 }
+
 
 function renderProfile() {
   if (!currentUser || !currentPlayer) return;

@@ -7381,11 +7381,11 @@ html[data-theme="dark"] .header {
   flex-shrink: 0;
 }
 
-/* Vòng khung mua trong shop — conic xoay */
+/* Vòng khung mua trong shop — conic xoay (v1.9.20: khung rộng hơn) */
 .profile-avatar-wrap.has-frame::before {
   content: '';
   position: absolute;
-  inset: -4px;
+  inset: -12px;
   border-radius: 50%;
   background: var(--avatar-frame-conic, conic-gradient(#22c55e, #06b6d4, #a855f7, #f43f5e, #eab308, #22c55e));
   z-index: 0;
@@ -7395,7 +7395,7 @@ html[data-theme="dark"] .header {
 .profile-avatar-wrap.has-frame::after {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: 2px;
   border-radius: 50%;
   background: var(--card, #1c2820);
   z-index: 1;
@@ -7469,13 +7469,7 @@ html[data-theme="dark"] .profile-companion {
   display: inline-block;
   overflow: visible;
 }
-.profile-level-tag.has-frame-grad {
-  background: var(--avatar-frame-grad, linear-gradient(135deg, #a855f7, #06b6d4)) !important;
-  border: 2px solid rgba(255, 255, 255, 0.35) !important;
-  color: #fff !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  animation: none !important;
-}
+/* (has-frame-grad chi tiết ở block v1.9.21 bên dưới) */
 
 
 
@@ -7511,11 +7505,11 @@ html[data-theme="dark"] .profile-companion {
   align-items: center !important;
   overflow: visible !important;
   contain: none !important;
-  padding: 8px 24px 16px !important;
+  padding: 16px 28px 16px !important;
   margin: 0 auto 8px !important;
   min-height: 0 !important;
-  /* khoảng trống dưới avatar cho LVL */
-  gap: 12px !important;
+  /* khoảng trống dưới avatar cho LVL + khung rộng */
+  gap: 18px !important;
 }
 
 .profile-avatar-wrap {
@@ -7524,6 +7518,11 @@ html[data-theme="dark"] .profile-companion {
   flex-shrink: 0 !important;
   /* không tạo stacking che LVL */
   z-index: 1 !important;
+}
+
+.profile-avatar-wrap.has-frame {
+  /* chừa chỗ cho vòng khung dày hơn (±12px) */
+  margin: 4px 0 !important;
 }
 
 .profile-avatar-wrap.has-frame::before {
@@ -7551,7 +7550,7 @@ html[data-theme="dark"] .profile-companion {
 #profile-level-tag {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
-  padding: 7px 22px !important;
+  padding: 8px 26px !important;
   position: relative !important;
   z-index: 20 !important;
   overflow: visible !important;
@@ -7567,12 +7566,44 @@ html[data-theme="dark"] .profile-companion {
   box-sizing: border-box !important;
 }
 
+/* LVL + khung: viền gradient dày rõ 2 đầu capsule, không lẹm (v1.9.21) */
 .profile-level-tag.has-frame-grad {
-  background: var(--avatar-frame-grad, linear-gradient(135deg, #a855f7, #06b6d4)) !important;
-  border: 2px solid rgba(255, 255, 255, 0.45) !important;
+  /* fill = gradient khung; border = cùng gradient (hiện ở vùng 4px transparent) */
+  background:
+    var(--avatar-frame-grad, linear-gradient(135deg, #a855f7, #14b8a6, #3b82f6)) padding-box,
+    var(--avatar-frame-grad, linear-gradient(135deg, #a855f7, #14b8a6, #3b82f6, #f59e0b, #f472b6)) border-box !important;
+  border: 4px solid transparent !important;
   color: #fff !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.45);
   animation: none !important;
-  background-clip: border-box !important;
-  -webkit-background-clip: border-box !important;
+  background-clip: padding-box, border-box !important;
+  -webkit-background-clip: padding-box, border-box !important;
+  /* viền sáng mỏng ngoài + bóng — giúp 2 đầu capsule không bị “cắt” */
+  box-shadow:
+    0 0 0 1.5px rgba(255,255,255,0.35),
+    0 4px 16px rgba(0,0,0,0.4) !important;
+  padding: 8px 28px !important;
+  overflow: visible !important;
+  border-radius: 999px !important;
+}
+
+/* Shop preview khung avatar */
+.avatar-frame-preview {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--af-grad, linear-gradient(135deg, #94a3b8, #e2e8f0));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 6px;
+  position: relative;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+.avatar-frame-preview .af-inner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--card, #1c2820);
+  display: block;
 }
