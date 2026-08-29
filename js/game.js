@@ -24,8 +24,7 @@ const Game = {
   getAvatarFrame(id) { return this.getAvatarFrames().find(f => f.id === id); },
   getCompanions() { return typeof getCompanions === 'function' ? getCompanions() : (typeof DEFAULT_COMPANIONS !== 'undefined' ? DEFAULT_COMPANIONS : []); },
   getCompanion(id) { return this.getCompanions().find(c => c.id === id); },
-  getChatFrames() { return typeof getChatFrames === 'function' ? getChatFrames() : (typeof DEFAULT_CHAT_FRAMES !== 'undefined' ? DEFAULT_CHAT_FRAMES : []); },
-  getChatFrame(id) { return this.getChatFrames().find(f => f.id === id); },
+
 
   getPet(id) { return this.getPets().find(p => p.id === id); },
   getRecipes() { return typeof getKitchenRecipes === 'function' ? getKitchenRecipes() : []; },
@@ -2911,29 +2910,7 @@ const Game = {
     const c = this.getCompanion(id);
     return { ok: true, msg: 'Đã gắn ' + ((c && c.name) || id) };
   },
-  async buyChatFrame(id) {
-    const item = this.getChatFrame(id);
-    if (!item) return { ok: false, msg: 'Không tìm thấy khung chat!' };
-    if (!currentPlayer.chatFrames) currentPlayer.chatFrames = {};
-    if (currentPlayer.chatFrames[id]) return { ok: false, msg: 'Đã sở hữu!' };
-    const price = Number(item.price) || 0;
-    if ((currentPlayer.coins || 0) < price) return { ok: false, msg: 'Không đủ xu!' };
-    currentPlayer.coins -= price;
-    currentPlayer.chatFrames[id] = { id, boughtAt: (typeof nowMs === 'function' ? nowMs() : Date.now()) };
-    if (!currentPlayer.chatFrameId) currentPlayer.chatFrameId = id;
-    this.addActivity('Mua khung chat ' + item.name + ' (-' + price + '🪙)');
-    currentPlayer.stats = currentPlayer.stats || {};
-    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + price;
-    return { ok: true, msg: 'Đã mua khung ' + item.name + '!' };
-  },
-  equipChatFrame(id) {
-    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập' };
-    if (!id || id === 'none') { currentPlayer.chatFrameId = null; return { ok: true, msg: 'Đã gỡ khung chat' }; }
-    if (!currentPlayer.chatFrames || !currentPlayer.chatFrames[id]) return { ok: false, msg: 'Chưa sở hữu!' };
-    currentPlayer.chatFrameId = id;
-    const f = this.getChatFrame(id);
-    return { ok: true, msg: 'Đã gắn khung ' + ((f && f.name) || id) };
-  },
+
 
   async buyAvatarFrame(frameId) {
     const frame = this.getAvatarFrame(frameId);

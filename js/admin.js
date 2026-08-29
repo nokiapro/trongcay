@@ -859,39 +859,85 @@ document.getElementById('btn-save-update-meta')?.addEventListener('click', async
   }
 });
 
+let _mailUsersCache = null;
 
-async function fillMailTargetSelect() {
-  const sel = document.getElementById('mail-target');
-  if (!sel || typeof db === 'undefined' || !db) return;
-  const cur = sel.value || 'all';
-  sel.innerHTML = '<option value="all">🌐 Tất cả người chơi</option>';
+async function loadMailUsersCache() {
+  if (_mailUsersCache) return _mailUsersCache;
   const map = {};
+  if (typeof db === 'undefined' || !db) return map;
   try {
     const uSnap = await db.ref('users').once('value');
     const users = uSnap.val() || {};
     Object.keys(users).forEach(uid => {
       const u = users[uid] || {};
-      map[uid] = { name: u.name || u.displayName || '', email: u.email || '' };
+      map[uid] = { uid, name: u.name || u.displayName || '', email: u.email || '' };
     });
-  } catch (e) { console.warn(e); }
+  } catch (e) { console.warn('users', e); }
   try {
     const pSnap = await db.ref('players').once('value');
     const players = pSnap.val() || {};
     Object.keys(players).forEach(uid => {
       const p = players[uid] || {};
-      if (!map[uid]) map[uid] = {};
+      if (!map[uid]) map[uid] = { uid, name: '', email: '' };
       map[uid].name = map[uid].name || p.name || p.displayName || '';
       map[uid].email = map[uid].email || p.email || '';
     });
-  } catch (e) { console.warn(e); }
-  Object.keys(map).sort((a, b) => (map[a].name || map[a].email || a).localeCompare(map[b].name || map[b].email || b, 'vi')).forEach(uid => {
-    const p = map[uid];
-    const label = (p.name || p.email || uid).toString();
-    const opt = document.createElement('option');
-    opt.value = uid;
-    opt.textContent = '👤 ' + label + (p.email && p.name ? ' · ' + p.email : '');
-    sel.appendChild(opt);
-  });
-  if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
-  else sel.value = 'all';
+  } catch (e) { console.warn('players', e); }
+  _mailUsersCache = map;
+  return map;
 }
+
+function setMailTarget(uid, label) {
+  const hid = document.getElementById('mail-target');
+  const lab = document.getElementById('mail-target-label');
+  if (hid) hid.value = uid || 'all';
+  if (lab) lab.textContent = 'Đang chọn: ' + (label || (uid === 'all' ? 'Tất cả' : uid));
+  document.querySelectorAll('#mail-target-list .mail-user-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.uid === uid);
+  });
+}
+
+async function fillMailTargetSelect() {
+  const list = document.getElementById('mail-target-list');
+  const search = document.getElementById('mail-target-search');
+  if (!list) return;
+  const map = await loadMailUsersCache();
+  const q = ((search && search.value) || '').trim().toLowerCase();
+  let rows = Object.values(map);
+  if (q) {
+    rows = rows.filter(p =>
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.email || '').toLowerCase().includes(q) ||
+      (p.uid || '').toLowerCase().includes(q)
+    );
+  } else {
+    rows = rows.slice(0, 50);
+  }
+  rows.sort((a, b) => (a.name || a.email || a.uid).localeCompare(b.name || b.email || b.uid, 'vi'));
+  if (!rows.length) {
+    list.innerHTML = '<div class="mail-user-item" style="cursor:default;opacity:0.7">Không tìm thấy người chơi</div>';
+    return;
+  }
+  list.innerHTML = rows.map(p => {
+    const label = (p.name || p.email || p.uid).toString();
+    return `<div class="mail-user-item" data-uid="${p.uid}" data-label="${label.replace(/"/g, '&quot;')}">
+      <span>👤 ${label}</span>
+      <small>${p.email && p.name ? p.email : (p.uid.slice(0, 8) + '…')}</small>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.mail-user-item[data-uid]').forEach(el => {
+    el.addEventListener('click', () => setMailTarget(el.dataset.uid, el.dataset.label));
+  });
+}
+
+document.getElementById('mail-target-all')?.addEventListener('click', () => {
+  setMailTarget('all', 'Tất cả người chơi');
+  const s = document.getElementById('mail-target-search');
+  if (s) s.value = '';
+  fillMailTargetSelect();
+});
+document.getElementById('mail-target-search')?.addEventListener('input', () => {
+  clearTimeout(window._mailSearchT);
+  window._mailSearchT = setTimeout(fillMailTargetSelect, 200);
+});
+

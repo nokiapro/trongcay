@@ -954,21 +954,12 @@ async function openChat(uid, name) {
         ? `<img class="chat-av" src="${escapeHtml(av)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><span class="chat-av-fb" style="display:none"><i class="fa-solid fa-user"></i></span>`
         : `<span class="chat-av-fb"><i class="fa-solid fa-user"></i></span>`;
       const tip = fullTime ? ` title="${escapeHtml(fullTime)}"` : '';
-      let frameStyle = '';
-      let frameCls = '';
-      const frId = me ? (currentPlayer && currentPlayer.chatFrameId) : (m.chatFrameId || null);
-      const fr = frId && Game.getChatFrame ? Game.getChatFrame(frId) : null;
-      if (fr) {
-        frameStyle = ` style="background:${fr.bg || fr.gradient || ''};color:${fr.textColor || '#14532d'}"`;
-        frameCls = ' has-chat-frame' + (fr.shape ? (' ' + fr.shape) : '');
-      }
       return `<div class="chat-row ${me ? 'me' : 'them'}">
         <div class="chat-av-wrap">${avHtml}</div>
-        <div class="chat-bubble ${me ? 'me' : 'them'}${frameCls}"${tip}${frameStyle}>${escapeHtml(m.text || '')}<span class="chat-time-tip">${escapeHtml(fullTime)}</span></div>
+        <div class="chat-bubble ${me ? 'me' : 'them'}"${tip}>${escapeHtml(m.text || '')}<span class="chat-time-tip">${escapeHtml(fullTime)}</span></div>
       </div>`;
     }).join('');
     box.scrollTop = box.scrollHeight;
-    if (typeof applyChatFrameStyles === 'function') applyChatFrameStyles(box);
   });
 }
 
@@ -1043,7 +1034,7 @@ async function sendChat() {
   const cid = chatId(currentUser.uid, chatFriendUid);
   try {
     await db.ref('messages/' + cid).push({
-      from: currentUser.uid, chatFrameId: (currentPlayer && currentPlayer.chatFrameId) || null,
+      from: currentUser.uid,
       text,
       at: Date.now()
     });
@@ -1056,25 +1047,6 @@ async function sendChat() {
 
 // ===== PROFILE =====
 
-function applyChatFrameStyles(root) {
-  const scope = root || document;
-  const frameId = currentPlayer && currentPlayer.chatFrameId;
-  const fr = frameId && Game.getChatFrame ? Game.getChatFrame(frameId) : null;
-  const shapeClasses = ['cf-shape-pill','cf-shape-round','cf-shape-soft','cf-shape-sharp','cf-shape-ticket','cf-shape-blob','cf-shape-cloud','cf-shape-heart','cf-shape-tail','cf-shape-diamond','cf-shape-wave','cf-shape-star','cf-shape-double'];
-  scope.querySelectorAll('.chat-bubble.me, .chat-row.me .chat-bubble').forEach(el => {
-    shapeClasses.forEach(c => el.classList.remove(c));
-    el.classList.remove('has-chat-frame');
-    if (fr) {
-      el.style.background = fr.bg || fr.gradient || '';
-      el.style.color = fr.textColor || '#14532d';
-      if (fr.shape) el.classList.add(fr.shape);
-      el.classList.add('has-chat-frame');
-    } else {
-      el.style.background = '';
-      el.style.color = '';
-    }
-  });
-}
 
 function applyProfileCompanion() {
   const el = document.getElementById('profile-companion');
@@ -2803,44 +2775,6 @@ function renderShop() {
     return;
   }
 
-  if (currentShopTab === 'chatframe') {
-    const countEl = document.getElementById('shop-count');
-    document.getElementById('shop-pager').innerHTML = '';
-    const items = (Game.getChatFrames && Game.getChatFrames()) || [];
-    if (countEl) countEl.textContent = items.length + ' khung tin nhắn · hiện với bạn bè';
-    const owned = (currentPlayer && currentPlayer.chatFrames) || {};
-    const eq = (currentPlayer && currentPlayer.chatFrameId) || null;
-    const none = document.createElement('div');
-    none.className = 'shop-card';
-    none.innerHTML = `<div class="shop-icon chat-frame-preview" style="--cf-grad:linear-gradient(135deg,#e8f5e9,#fff)"></div><div class="shop-name">Mặc định</div><button class="btn btn-secondary btn-equip-cf" data-id="none">Gỡ khung</button>`;
-    grid.appendChild(none);
-    items.forEach(it => {
-      const have = !!owned[it.id];
-      const on = eq === it.id;
-      const card = document.createElement('div');
-      card.className = 'shop-card';
-      card.innerHTML = `<div class="shop-icon chat-frame-preview ${it.shape||''}" style="background:${it.bg||it.gradient||'#e8f5e9'};color:${it.textColor||'#14532d'}">Xin chào!</div>
-        <div class="shop-name">${it.name}</div>
-        <span class="shop-type">${(it.desc||it.rarity||'')}</span>
-        <div class="shop-owned">${on ? '✅ Đang dùng' : (have ? 'Đã có' : 'Chưa có')}</div>
-        <div class="shop-price">${(it.price||0).toLocaleString()} 🪙</div>
-        ${have ? `<button class="btn ${on?'btn-secondary':'btn-primary'} btn-equip-cf" data-id="${it.id}">${on?'Đang dùng':'Dùng'}</button>`
-               : `<button class="btn btn-primary btn-buy-cf" data-id="${it.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>`}`;
-      grid.appendChild(card);
-    });
-    grid.querySelectorAll('.btn-buy-cf').forEach(btn => btn.addEventListener('click', async () => {
-      const res = await Game.buyChatFrame(btn.dataset.id);
-      showToast(res.msg, res.ok ? 'success' : 'error'); updateCoins(); renderShop();
-    }));
-    grid.querySelectorAll('.btn-equip-cf').forEach(btn => btn.addEventListener('click', () => {
-      const res = Game.equipChatFrame(btn.dataset.id);
-      showToast(res.msg, res.ok ? 'success' : 'error');
-      if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
-      renderShop();
-    }));
-    return;
-  }
-
   if (currentShopTab === 'khung') {
     const countEl = document.getElementById('shop-count');
     document.getElementById('shop-pager').innerHTML = '';
@@ -2947,7 +2881,7 @@ function renderShop() {
 
   // Banner limited đang mở
   const activeLimited = Game.getPlants().filter(p => Game.isPlantLimited(p) && Game.isPlantAvailable(p));
-  if (activeLimited.length && currentShopTab !== 'odat' && currentShopTab !== 'phan' && currentShopTab !== 'baoho' && currentShopTab !== 'tien' && currentShopTab !== 'nyc' && currentShopTab !== 'helper' && currentShopTab !== 'khung' && currentShopTab !== 'companion' && currentShopTab !== 'chatframe') {
+  if (activeLimited.length && currentShopTab !== 'odat' && currentShopTab !== 'phan' && currentShopTab !== 'baoho' && currentShopTab !== 'tien' && currentShopTab !== 'nyc' && currentShopTab !== 'helper' && currentShopTab !== 'khung' && currentShopTab !== 'companion') {
     const banner = document.createElement('div');
     banner.className = 'shop-event-banner';
     banner.innerHTML = `<i class="fa-solid fa-bolt"></i> <strong>${activeLimited.length} hạt Limited</strong> đang mở bán — nhanh tay trước khi hết sự kiện!`;

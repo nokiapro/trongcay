@@ -158,7 +158,7 @@
         </div>
       </section>
 
-      <section id="sec-settings" class="admin-section">
+      <section id="sec-settings" class="admin-section" style="max-width:720px">
         <style>
           .admin-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
           @media (max-width: 900px) { .admin-settings-grid { grid-template-columns: 1fr; } }
@@ -179,7 +179,7 @@
           <input type="number" id="set-merge-base" min="1" max="100" step="1" />
           <p style="font-size:0.85rem;color:#52796f;margin-top:4px">Mặc định 25%. Bùa bảo hộ <strong>cộng thêm</strong> (vd +10% → 35%). Kết quả luôn trong khoảng 1–100%.</p>
         </div>
-        <div class="settings-duo" style="margin-top:16px">
+        <div class="settings-duo">
         <div class="admin-card maint-card" style="margin-top:0">
           <div class="maint-card-head">
             <span class="maint-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span>
@@ -236,13 +236,18 @@
               <p style="margin:4px 0 0;font-size:0.88rem;color:#52796f">Chọn <strong>Tất cả</strong> hoặc <strong>từng người</strong> trong danh sách bên dưới.</p>
             </div>
           </div>
+          <div class="mail-target-wrap">
+            <label>Gửi tới</label>
+            <input type="hidden" id="mail-target" value="all" />
+            <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+              <button type="button" class="btn btn-primary btn-sm" id="mail-target-all">🌐 Tất cả người chơi</button>
+              <span id="mail-target-label" style="align-self:center;font-size:0.88rem;color:#95d5b2">Đang chọn: Tất cả</span>
+            </div>
+            <input type="search" id="mail-target-search" placeholder="Tìm người chơi theo tên / email / uid..." autocomplete="off" />
+            <div id="mail-target-list"></div>
+          </div>
           <label>Tiêu đề thư</label>
-          <label style="display:block;margin-bottom:6px;font-weight:600">Gửi tới
-            <select id="mail-target" style="width:100%;margin-top:4px;padding:8px 10px;border-radius:10px">
-              <option value="all">Tất cả người chơi</option>
-            </select>
-          </label>
-          <input type="text" id="mail-title" placeholder="VD: Chào mừng sự kiện mới" style="width:100%;margin-bottom:10px;margin-top:10px" />
+          <input type="text" id="mail-title" placeholder="VD: Chào mừng sự kiện mới" style="width:100%;margin-bottom:10px;margin-top:6px" />
           <label>Nội dung thư</label>
           <textarea id="announce-text" rows="4" placeholder="Nội dung gửi tới hộp thư người chơi..."></textarea>
           <label class="checkbox-row" style="margin-top:10px;display:flex;gap:8px;align-items:center">
