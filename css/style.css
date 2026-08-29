@@ -7381,27 +7381,33 @@ html[data-theme="dark"] .header {
   overflow: visible;
 }
 .profile-avatar-wrap.has-frame {
-  padding: 0;
-  background: transparent;
-}
-.profile-avatar-wrap.has-frame::before {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
+  padding: 4px;
+  box-sizing: border-box;
   background: var(--avatar-frame-grad, linear-gradient(135deg, #22c55e, #a855f7, #f43f5e, #22c55e));
   background-size: 300% 300%;
-  animation: avatar-frame-shift 3s linear infinite;
-  z-index: 0;
-  /* chỉ còn vòng viền, không xoay cả khối */
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3.5px));
+  animation: avatar-frame-shift 2.5s linear infinite;
+  border-radius: 50%;
 }
+.profile-avatar-wrap.has-frame::before,
 .profile-avatar-wrap.has-frame::after {
-  display: none;
+  display: none !important;
+  content: none !important;
 }
-.profile-avatar-wrap .profile-avatar,
-.profile-avatar-wrap .profile-avatar-fallback {
+.profile-avatar-wrap.has-frame .profile-avatar,
+.profile-avatar-wrap.has-frame .profile-avatar-fallback {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50%;
+  position: relative;
+  z-index: 2;
+  object-fit: cover;
+  border: none !important;
+}
+.profile-avatar-wrap.has-frame .profile-avatar-fallback {
+  background: var(--card, #1c2820);
+}
+.profile-avatar-wrap:not(.has-frame) .profile-avatar,
+.profile-avatar-wrap:not(.has-frame) .profile-avatar-fallback {
   width: 96px;
   height: 96px;
   border-radius: 50%;
@@ -7932,4 +7938,39 @@ html[data-theme="dark"] .garden-switcher .pill-dd-trigger {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
   }
+}
+
+
+/* ==========================================================================
+   v1.9.12 — avatar ring + LVL border + admin stack
+   ========================================================================== */
+.profile-avatar-wrap {
+  width: 104px !important;
+  height: 104px !important;
+  overflow: visible !important;
+}
+.profile-avatar-wrap.has-frame {
+  padding: 4px !important;
+  box-sizing: border-box !important;
+  background-image: var(--avatar-frame-grad, linear-gradient(135deg, #22c55e, #a855f7, #f43f5e, #22c55e)) !important;
+  background-size: 300% 300% !important;
+  animation: avatar-frame-shift 2.5s linear infinite !important;
+  border-radius: 50% !important;
+}
+.profile-level-tag.has-frame-grad {
+  border: 3px solid transparent !important;
+  background-image:
+    linear-gradient(var(--bg-card, #ffffff), var(--bg-card, #ffffff)),
+    var(--avatar-frame-grad, linear-gradient(135deg, #22c55e, #a855f7, #f43f5e, #22c55e)) !important;
+  background-origin: padding-box, border-box !important;
+  background-clip: padding-box, border-box !important;
+  background-size: auto, 300% 300% !important;
+  animation: avatar-frame-shift 2.5s linear infinite !important;
+  color: var(--text-main, #14532d) !important;
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad {
+  background-image:
+    linear-gradient(var(--bg-card, #064e3b), var(--bg-card, #064e3b)),
+    var(--avatar-frame-grad, linear-gradient(135deg, #22c55e, #a855f7, #f43f5e, #22c55e)) !important;
+  color: #ecfdf5 !important;
 }

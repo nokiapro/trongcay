@@ -158,14 +158,10 @@
         </div>
       </section>
 
-      <section id="sec-settings" class="admin-section" style="max-width:720px">
-        <style>
-          .admin-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-          @media (max-width: 900px) { .admin-settings-grid { grid-template-columns: 1fr; } }
-        </style>
-        <div class="admin-settings-grid">
+      <section id="sec-settings" class="admin-section">
         <h1>⚙️ Cài đặt hệ thống</h1>
-        <div class="admin-card settings-form">
+
+        <div class="admin-card settings-form" style="width:100%;max-width:100%;box-sizing:border-box">
           <label>Số ô đất mặc định (cho user mới)</label>
           <input type="number" id="set-plots" min="4" max="36" />
           <label>Tiền khởi đầu (cho user mới)</label>
@@ -179,8 +175,8 @@
           <input type="number" id="set-merge-base" min="1" max="100" step="1" />
           <p style="font-size:0.85rem;color:#52796f;margin-top:4px">Mặc định 25%. Bùa bảo hộ <strong>cộng thêm</strong> (vd +10% → 35%). Kết quả luôn trong khoảng 1–100%.</p>
         </div>
-        <div class="settings-duo">
-        <div class="admin-card maint-card" style="margin-top:0">
+
+        <div class="admin-card maint-card" style="width:100%;max-width:100%;box-sizing:border-box;margin-top:16px">
           <div class="maint-card-head">
             <span class="maint-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span>
             <div>
@@ -196,7 +192,8 @@
           <textarea id="set-maint-msg" rows="3" placeholder="Hệ thống đang bảo trì đến 22:00. Xin lỗi vì sự bất tiện!"></textarea>
           <button id="btn-save-settings" class="btn btn-primary" style="margin-top:14px"><i class="fa-solid fa-floppy-disk"></i> Lưu cài đặt</button>
         </div>
-        <div class="admin-card maint-card" style="margin-top:0">
+
+        <div class="admin-card maint-card" style="width:100%;max-width:100%;box-sizing:border-box;margin-top:16px">
           <div class="maint-card-head">
             <span class="maint-icon"><i class="fa-solid fa-cloud-arrow-down"></i></span>
             <div>
@@ -222,7 +219,6 @@
               <i class="fa-solid fa-floppy-disk"></i> Lưu ghi chú / bắt buộc
             </button>
           </div>
-        </div>
         </div>
       </section>
 

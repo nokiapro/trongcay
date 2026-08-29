@@ -1568,3 +1568,26 @@ html[data-theme="dark"] .admin-section,
 html[data-theme="dark"] #sec-dashboard {
   background: transparent !important;
 }
+
+
+/* v1.9.12 — settings full width stack */
+#sec-settings {
+  display: block !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+#sec-settings .admin-card,
+#sec-settings .settings-form,
+#sec-settings .maint-card {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  float: none !important;
+  grid-column: auto !important;
+}
+.admin-settings-grid,
+.settings-duo {
+  display: block !important;
+  width: 100% !important;
+}
