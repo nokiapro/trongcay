@@ -590,31 +590,41 @@ async function renderAnnounce() {
 
 document.getElementById('btn-send-announce')?.addEventListener('click', async () => {
   const text = (document.getElementById('announce-text')?.value || '').trim();
+  const mailTarget = document.getElementById('mail-target')?.value || 'all';
   const title = (document.getElementById('mail-title')?.value || '').trim() || 'Thư từ Vườn Xanh';
   if (!text) {
     showToast('Nhập nội dung thư!', 'error');
     return;
   }
   const status = document.getElementById('mail-send-status');
-  if (status) status.textContent = 'Đang gửi thư tới toàn bộ người chơi...';
+  if (status) status.textContent = mailTarget === 'all' ? 'Đang gửi thư tới toàn bộ người chơi...' : 'Đang gửi thư riêng...';
   try {
     const alsoBanner = !!document.getElementById('mail-also-banner')?.checked;
-    if (alsoBanner) {
+    if (alsoBanner && mailTarget === 'all') {
       await db.ref('announcements/latest').set({
         text: title + (text ? (' — ' + text) : ''),
         at: Date.now(),
         by: (currentUser && currentUser.email) || 'admin'
       });
     }
-    const usersSnap = await db.ref('users').once('value');
-    const users = usersSnap.val() || {};
-    const uids = Object.keys(users);
-    const mid = 'broadcast_' + Date.now();
+    let uids = [];
+    if (mailTarget === 'all') {
+      const usersSnap = await db.ref('users').once('value');
+      const users = usersSnap.val() || {};
+      uids = Object.keys(users);
+      if (!uids.length) {
+        const pSnap = await db.ref('players').once('value');
+        uids = Object.keys(pSnap.val() || {});
+      }
+    } else {
+      uids = [mailTarget];
+    }
+    const mid = (mailTarget === 'all' ? 'broadcast_' : 'direct_') + Date.now();
     const mailPayload = {
       title,
       body: text,
       from: 'Admin',
-      type: 'broadcast',
+      type: mailTarget === 'all' ? 'broadcast' : 'direct',
       at: Date.now(),
       read: false
     };
@@ -625,11 +635,12 @@ document.getElementById('btn-send-announce')?.addEventListener('click', async ()
     if (Object.keys(updates).length) {
       await db.ref().update(updates);
     }
-    showToast(`Đã gửi thư tới ${uids.length} người chơi!`, 'success');
-    if (status) status.textContent = `Đã gửi: ${uids.length} hộp thư` + (alsoBanner ? ' + banner web' : '');
+    showToast(mailTarget === 'all' ? `Đã gửi thư tới ${uids.length} người chơi!` : 'Đã gửi thư riêng!', 'success');
+    if (status) status.textContent = `Đã gửi: ${uids.length} hộp thư` + (alsoBanner && mailTarget === 'all' ? ' + banner web' : '');
     document.getElementById('announce-text').value = '';
     if (document.getElementById('mail-title')) document.getElementById('mail-title').value = '';
-    renderAnnounce();
+    if (typeof renderAnnounce === 'function') renderAnnounce();
+    if (typeof fillMailTargetSelect === 'function') fillMailTargetSelect();
   } catch (e) {
     showToast('Lỗi: ' + e.message + ' (cập nhật Rules mail + users read?)', 'error');
     if (status) status.textContent = 'Lỗi: ' + e.message;
@@ -847,3 +858,27 @@ document.getElementById('btn-save-update-meta')?.addEventListener('click', async
     showToast('Lỗi lưu: ' + (e.message || e), 'error');
   }
 });
+
+
+async function fillMailTargetSelect() {
+  const sel = document.getElementById('mail-target');
+  if (!sel || !db) return;
+  const cur = sel.value || 'all';
+  sel.innerHTML = '<option value="all">Tất cả người chơi</option>';
+  try {
+    const snap = await db.ref('players').once('value');
+    const val = snap.val() || {};
+    Object.keys(val).forEach(uid => {
+      const p = val[uid] || {};
+      const label = (p.name || p.displayName || p.email || uid).toString();
+      const opt = document.createElement('option');
+      opt.value = uid;
+      opt.textContent = label + (p.email ? ' · ' + p.email : '');
+      sel.appendChild(opt);
+    });
+  } catch (e) { console.warn(e); }
+  sel.value = cur;
+  if (![...sel.options].some(o => o.value === cur)) sel.value = 'all';
+}
+
+document.getElementById('mail-target') && fillMailTargetSelect();

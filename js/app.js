@@ -954,12 +954,16 @@ async function openChat(uid, name) {
         ? `<img class="chat-av" src="${escapeHtml(av)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><span class="chat-av-fb" style="display:none"><i class="fa-solid fa-user"></i></span>`
         : `<span class="chat-av-fb"><i class="fa-solid fa-user"></i></span>`;
       const tip = fullTime ? ` title="${escapeHtml(fullTime)}"` : '';
+      const frameStyle = (me && currentPlayer && currentPlayer.chatFrameId && Game.getChatFrame)
+        ? (() => { const fr = Game.getChatFrame(currentPlayer.chatFrameId); return fr ? ` style="background:${fr.gradient};color:${fr.textColor||'#14532d'}"` : ''; })()
+        : (m.chatFrameId && Game.getChatFrame ? (() => { const fr = Game.getChatFrame(m.chatFrameId); return fr ? ` style="background:${fr.gradient};color:${fr.textColor||'#14532d'}"` : ''; })() : '');
       return `<div class="chat-row ${me ? 'me' : 'them'}">
         <div class="chat-av-wrap">${avHtml}</div>
-        <div class="chat-bubble ${me ? 'me' : 'them'}"${tip}>${escapeHtml(m.text || '')}<span class="chat-time-tip">${escapeHtml(fullTime)}</span></div>
+        <div class="chat-bubble ${me ? 'me' : 'them'}"${tip}${frameStyle}>${escapeHtml(m.text || '')}<span class="chat-time-tip">${escapeHtml(fullTime)}</span></div>
       </div>`;
     }).join('');
     box.scrollTop = box.scrollHeight;
+    if (typeof applyChatFrameStyles === 'function') applyChatFrameStyles(box);
   });
 }
 
@@ -1034,7 +1038,7 @@ async function sendChat() {
   const cid = chatId(currentUser.uid, chatFriendUid);
   try {
     await db.ref('messages/' + cid).push({
-      from: currentUser.uid,
+      from: currentUser.uid, chatFrameId: (currentPlayer && currentPlayer.chatFrameId) || null,
       text,
       at: Date.now()
     });
@@ -1046,6 +1050,38 @@ async function sendChat() {
 }
 
 // ===== PROFILE =====
+
+function applyChatFrameStyles(root) {
+  const scope = root || document;
+  const frameId = currentPlayer && currentPlayer.chatFrameId;
+  const fr = frameId && Game.getChatFrame ? Game.getChatFrame(frameId) : null;
+  scope.querySelectorAll('.chat-bubble.me, .chat-row.me .chat-bubble').forEach(el => {
+    if (fr && fr.gradient) {
+      el.style.background = fr.gradient;
+      el.style.color = fr.textColor || '#14532d';
+      el.classList.add('has-chat-frame');
+    } else {
+      el.style.background = '';
+      el.style.color = '';
+      el.classList.remove('has-chat-frame');
+    }
+  });
+}
+
+function applyProfileCompanion() {
+  const el = document.getElementById('profile-companion');
+  if (!el) return;
+  const id = currentPlayer && currentPlayer.companionId;
+  const c = id && Game.getCompanion ? Game.getCompanion(id) : null;
+  if (c) {
+    el.textContent = c.icon || '🐾';
+    el.style.display = 'flex';
+    el.title = c.name || '';
+  } else {
+    el.textContent = '';
+    el.style.display = 'none';
+  }
+}
 
 function applyProfileAvatarFrame() {
   const wrap = document.getElementById('profile-avatar-wrap');
@@ -1118,6 +1154,7 @@ function renderProfile() {
   }
   if (lvlNum) lvlNum.textContent = myLv;
   applyProfileAvatarFrame();
+  applyProfileCompanion();
   const prefs = Game.getBuffPrefs();
   const fEl = document.getElementById('pref-fairy-enabled');
   const nEl = document.getElementById('pref-nyc-enabled');
@@ -2719,6 +2756,83 @@ function renderShop() {
 
 
 
+
+  if (currentShopTab === 'companion') {
+    const countEl = document.getElementById('shop-count');
+    document.getElementById('shop-pager').innerHTML = '';
+    const items = (Game.getCompanions && Game.getCompanions()) || [];
+    if (countEl) countEl.textContent = items.length + ' thú cưng · hiện góc avatar';
+    const owned = (currentPlayer && currentPlayer.companions) || {};
+    const eq = (currentPlayer && currentPlayer.companionId) || null;
+    const none = document.createElement('div');
+    none.className = 'shop-card';
+    none.innerHTML = `<div class="shop-icon" style="font-size:2rem">🚫</div><div class="shop-name">Không thú</div><div class="shop-owned">${!eq ? '✅ Đang dùng' : ''}</div><button class="btn btn-secondary btn-equip-cp" data-id="none">Gỡ</button>`;
+    grid.appendChild(none);
+    items.forEach(it => {
+      const have = !!owned[it.id];
+      const on = eq === it.id;
+      const card = document.createElement('div');
+      card.className = 'shop-card';
+      card.innerHTML = `<div class="shop-icon" style="font-size:2.2rem">${it.icon}</div>
+        <div class="shop-name">${it.name}</div>
+        <span class="shop-type">${it.rarity || 'common'}</span>
+        <div class="shop-owned">${on ? '✅ Đang gắn' : (have ? 'Đã có' : 'Chưa có')}</div>
+        <div class="shop-price">${(it.price||0).toLocaleString()} 🪙</div>
+        ${have ? `<button class="btn ${on?'btn-secondary':'btn-primary'} btn-equip-cp" data-id="${it.id}">${on?'Đang gắn':'Gắn'}</button>`
+               : `<button class="btn btn-primary btn-buy-cp" data-id="${it.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>`}`;
+      grid.appendChild(card);
+    });
+    grid.querySelectorAll('.btn-buy-cp').forEach(btn => btn.addEventListener('click', async () => {
+      const res = await Game.buyCompanion(btn.dataset.id);
+      showToast(res.msg, res.ok ? 'success' : 'error'); updateCoins(); renderShop(); applyProfileCompanion();
+    }));
+    grid.querySelectorAll('.btn-equip-cp').forEach(btn => btn.addEventListener('click', () => {
+      const res = Game.equipCompanion(btn.dataset.id);
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
+      renderShop(); applyProfileCompanion();
+    }));
+    return;
+  }
+
+  if (currentShopTab === 'chatframe') {
+    const countEl = document.getElementById('shop-count');
+    document.getElementById('shop-pager').innerHTML = '';
+    const items = (Game.getChatFrames && Game.getChatFrames()) || [];
+    if (countEl) countEl.textContent = items.length + ' khung tin nhắn · hiện với bạn bè';
+    const owned = (currentPlayer && currentPlayer.chatFrames) || {};
+    const eq = (currentPlayer && currentPlayer.chatFrameId) || null;
+    const none = document.createElement('div');
+    none.className = 'shop-card';
+    none.innerHTML = `<div class="shop-icon chat-frame-preview" style="--cf-grad:linear-gradient(135deg,#e8f5e9,#fff)"></div><div class="shop-name">Mặc định</div><button class="btn btn-secondary btn-equip-cf" data-id="none">Gỡ khung</button>`;
+    grid.appendChild(none);
+    items.forEach(it => {
+      const have = !!owned[it.id];
+      const on = eq === it.id;
+      const card = document.createElement('div');
+      card.className = 'shop-card';
+      card.innerHTML = `<div class="shop-icon chat-frame-preview" style="--cf-grad:${it.gradient};color:${it.textColor||'#14532d'}"><span style="font-size:0.7rem;font-weight:700">Xin chào!</span></div>
+        <div class="shop-name">${it.name}</div>
+        <span class="shop-type">${it.rarity||''}</span>
+        <div class="shop-owned">${on ? '✅ Đang dùng' : (have ? 'Đã có' : 'Chưa có')}</div>
+        <div class="shop-price">${(it.price||0).toLocaleString()} 🪙</div>
+        ${have ? `<button class="btn ${on?'btn-secondary':'btn-primary'} btn-equip-cf" data-id="${it.id}">${on?'Đang dùng':'Dùng'}</button>`
+               : `<button class="btn btn-primary btn-buy-cf" data-id="${it.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>`}`;
+      grid.appendChild(card);
+    });
+    grid.querySelectorAll('.btn-buy-cf').forEach(btn => btn.addEventListener('click', async () => {
+      const res = await Game.buyChatFrame(btn.dataset.id);
+      showToast(res.msg, res.ok ? 'success' : 'error'); updateCoins(); renderShop();
+    }));
+    grid.querySelectorAll('.btn-equip-cf').forEach(btn => btn.addEventListener('click', () => {
+      const res = Game.equipChatFrame(btn.dataset.id);
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
+      renderShop();
+    }));
+    return;
+  }
+
   if (currentShopTab === 'khung') {
     const countEl = document.getElementById('shop-count');
     document.getElementById('shop-pager').innerHTML = '';
@@ -2825,7 +2939,7 @@ function renderShop() {
 
   // Banner limited đang mở
   const activeLimited = Game.getPlants().filter(p => Game.isPlantLimited(p) && Game.isPlantAvailable(p));
-  if (activeLimited.length && currentShopTab !== 'odat' && currentShopTab !== 'phan' && currentShopTab !== 'baoho' && currentShopTab !== 'tien' && currentShopTab !== 'nyc' && currentShopTab !== 'helper' && currentShopTab !== 'khung') {
+  if (activeLimited.length && currentShopTab !== 'odat' && currentShopTab !== 'phan' && currentShopTab !== 'baoho' && currentShopTab !== 'tien' && currentShopTab !== 'nyc' && currentShopTab !== 'helper' && currentShopTab !== 'khung' && currentShopTab !== 'companion' && currentShopTab !== 'chatframe') {
     const banner = document.createElement('div');
     banner.className = 'shop-event-banner';
     banner.innerHTML = `<i class="fa-solid fa-bolt"></i> <strong>${activeLimited.length} hạt Limited</strong> đang mở bán — nhanh tay trước khi hết sự kiện!`;
@@ -3254,18 +3368,32 @@ function renderStats() {
     </div>
   `;
 
-  // Album
+  // Album — full + pagination PC 5 hàng × 11 cột = 55/trang
   const albumEl = document.getElementById('collection-album');
   if (albumEl) {
     const plants = Game.getPlants() || [];
     const col = currentPlayer.collection || {};
-    albumEl.innerHTML = plants.slice(0, 200).map(p => {
+    const isPc = window.matchMedia('(min-width: 900px)').matches;
+    const pageSize = isPc ? 55 : 30;
+    if (typeof window._albumPage !== 'number') window._albumPage = 0;
+    const totalPages = Math.max(1, Math.ceil(plants.length / pageSize));
+    if (window._albumPage >= totalPages) window._albumPage = totalPages - 1;
+    const page = window._albumPage;
+    const slice = plants.slice(page * pageSize, (page + 1) * pageSize);
+    albumEl.className = 'collection-album' + (isPc ? ' album-pc-grid' : '');
+    albumEl.innerHTML = slice.map(p => {
       const unlocked = !!col[p.id];
       return `<div class="album-item ${unlocked ? 'unlocked' : 'locked'}" title="${unlocked ? p.name : '???'}">
         <span class="album-icon">${unlocked ? p.icon : '❔'}</span>
         <span class="album-name">${unlocked ? p.name : 'Chưa mở'}</span>
       </div>`;
-    }).join('') + (plants.length > 200 ? `<p class="empty-state">… và ${plants.length - 200} loại khác</p>` : '');
+    }).join('') + `<div class="album-pager">
+      <button type="button" class="btn btn-secondary btn-sm" id="album-prev" ${page<=0?'disabled':''}><i class="fa-solid fa-chevron-left"></i></button>
+      <span class="album-page-info">Trang ${page+1}/${totalPages} · ${plants.length} loại</span>
+      <button type="button" class="btn btn-secondary btn-sm" id="album-next" ${page>=totalPages-1?'disabled':''}><i class="fa-solid fa-chevron-right"></i></button>
+    </div>`;
+    document.getElementById('album-prev')?.addEventListener('click', () => { window._albumPage = Math.max(0, page - 1); renderStats(); });
+    document.getElementById('album-next')?.addEventListener('click', () => { window._albumPage = Math.min(totalPages - 1, page + 1); renderStats(); });
   }
 
   // Achievements list
@@ -3954,7 +4082,7 @@ function renderBank() {
             <span class="bank-stat-val" data-role="bank-total">${formatBankInterest(totalNow)}</span>
           </div>
         </div>
-        <div class="bank-timer plot-timer" data-role="bank-remain">${matured ? '✅ Đáo hạn — nhận ' + fullPayout.toLocaleString() + '🪙' : '⏳ ' + Game.formatTime(remain)}</div>
+        <div class="bank-timer plot-timer" data-role="bank-remain">${matured ? '<i class="fa-solid fa-circle-check"></i> Đáo hạn — nhận ' + fullPayout.toLocaleString() + '🪙' : '<i class="fa-regular fa-clock"></i> ' + Game.formatTime(remain)}</div>
       </div>
       <div class="bank-item-actions">
         ${!matured ? `<button class="btn btn-primary btn-sm btn-bank-topup" data-id="${d.id}"><i class="fa-solid fa-plus"></i> Gửi thêm</button>` : ''}

@@ -7794,3 +7794,124 @@ html[data-theme="dark"] .profile-level-tag.has-frame-grad {
 .modal-content {
   box-shadow: var(--shadow-card) !important;
 }
+
+
+/* ==========================================================================
+   v1.9.9 polish — toolbar chips, companion, album, chat frames
+   ========================================================================== */
+.garden-controls-main .weather,
+.garden-controls-main .fertilizer-info,
+.garden-controls-main .garden-cycle-chip,
+#btn-global-timer.weather,
+#btn-global-timer.garden-cycle-chip {
+  padding: 7px 12px !important;
+  font-size: 0.82rem !important;
+  min-height: 34px !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  line-height: 1.25;
+}
+#btn-global-timer {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  box-shadow: var(--shadow);
+  font-weight: 600;
+  border: none;
+  cursor: default;
+}
+
+/* Support same green as neighbors (reinforce) */
+#btn-support-menu.btn-primary {
+  background: linear-gradient(135deg, var(--primary-hover), var(--primary)) !important;
+  color: #fff !important;
+}
+
+/* LVL spinning border */
+.profile-level-tag {
+  margin-top: -10px !important;
+  position: relative;
+  z-index: 6;
+  isolation: isolate;
+}
+.profile-level-tag.has-frame-grad {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(var(--bg-card, #fff), var(--bg-card, #fff)) padding-box,
+    var(--avatar-frame-grad) border-box !important;
+  background-size: auto, 300% 300% !important;
+  animation: avatar-frame-shift 2.5s linear infinite !important;
+  color: var(--text-main, #14532d) !important;
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad {
+  background:
+    linear-gradient(var(--bg-card, #064e3b), var(--bg-card, #064e3b)) padding-box,
+    var(--avatar-frame-grad) border-box !important;
+  color: #ecfdf5 !important;
+}
+
+/* Companion on avatar top-right */
+.profile-companion {
+  display: none;
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  z-index: 8;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-card, #fff);
+  border: 2px solid var(--border-color, var(--border));
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+html[data-theme="dark"] .profile-companion {
+  background: var(--bg-card, #064e3b);
+}
+
+/* Album PC grid 11 cols */
+.collection-album.album-pc-grid {
+  grid-template-columns: repeat(11, minmax(0, 1fr)) !important;
+  gap: 8px;
+}
+.album-pager {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 8px;
+}
+.album-page-info {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Chat frame preview in shop */
+.chat-frame-preview {
+  width: 100% !important;
+  min-height: 48px !important;
+  border-radius: 12px !important;
+  background: var(--cf-grad) !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 8px !important;
+  margin-bottom: 8px;
+}
+.chat-bubble.has-chat-frame {
+  border: none;
+}
+
+@media (max-width: 899px) {
+  .collection-album.album-pc-grid {
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)) !important;
+  }
+}
