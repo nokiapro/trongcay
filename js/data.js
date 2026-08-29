@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.9.24';
+const APP_VERSION = '1.9.26';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13107,7 +13107,7 @@ const DEFAULT_SETTINGS = {
   /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.9.24',
+  appVersion: '1.9.26',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13721,6 +13721,67 @@ function playerProgressScore(p) {
 }
 
 /**
+ * Gộp quà/sửa từ admin trên remote vào currentPlayer (không đè tiến trình chơi local).
+ * - coins remote cao hơn → giữ coins remote (admin cộng tiền)
+ * - plots remote dài hơn → nối thêm ô cuối (admin + ô)
+ * - role / banned lấy theo remote nếu remote mới hơn
+ */
+function mergeRemoteAdminGifts(remote) {
+  if (!remote || !currentPlayer) return false;
+  let changed = false;
+  const rCoins = Number(remote.coins) || 0;
+  const lCoins = Number(currentPlayer.coins) || 0;
+  if (rCoins > lCoins) {
+    currentPlayer.coins = rCoins;
+    changed = true;
+  }
+  let rPlots = remote.plots;
+  if (rPlots && !Array.isArray(rPlots)) rPlots = Object.values(rPlots);
+  if (Array.isArray(rPlots) && Array.isArray(currentPlayer.plots) && rPlots.length > currentPlayer.plots.length) {
+    for (let i = currentPlayer.plots.length; i < rPlots.length; i++) {
+      const p = rPlots[i] || {};
+      currentPlayer.plots.push({
+        id: i,
+        plantId: p.plantId || null,
+        plantedAt: p.plantedAt || null,
+        watered: !!p.watered,
+        waterCount: typeof p.waterCount === 'number' ? p.waterCount : 0,
+        lastWatered: p.lastWatered || null,
+        fertilizerId: p.fertilizerId || null,
+        fertilizedAt: p.fertilizedAt || null,
+        specialMult: p.specialMult,
+        specialId: p.specialId,
+        specialName: p.specialName
+      });
+    }
+    changed = true;
+  }
+  if (remote.role && remote.role !== currentPlayer.role) {
+    currentPlayer.role = remote.role;
+    changed = true;
+  }
+  if (remote.banned != null && !!remote.banned !== !!currentPlayer.banned) {
+    currentPlayer.banned = !!remote.banned;
+    currentPlayer.banReason = remote.banReason || null;
+    changed = true;
+  }
+  // activity: giữ dòng Admin mới từ remote
+  if (Array.isArray(remote.activity) && remote.activity.length) {
+    if (!Array.isArray(currentPlayer.activity)) currentPlayer.activity = [];
+    const head = remote.activity[0];
+    if (head && head.text && String(head.text).indexOf('Admin') === 0) {
+      const exists = currentPlayer.activity.some(a => a && a.text === head.text && a.time === head.time);
+      if (!exists) {
+        currentPlayer.activity.unshift(head);
+        if (currentPlayer.activity.length > 30) currentPlayer.activity = currentPlayer.activity.slice(0, 30);
+        changed = true;
+      }
+    }
+  }
+  return changed;
+}
+
+/**
  * Chỉ lấy backup local khi:
  * - backup mới hơn remote theo updatedAt, VÀ
  * - tiến trình backup không kém hơn remote rõ rệt (không đè bản Firebase giàu bằng bản local trống)
@@ -13741,6 +13802,8 @@ function restorePlayerLocalIfNewer(remotePlayer) {
       currentPlayer = payload.player;
       _playerBaseUpdatedAt = bAt;
       _playerDirty = true;
+      // Vẫn gộp quà admin trên Firebase (tiền / ô) để F5 không làm mất
+      try { mergeRemoteAdminGifts(remotePlayer); } catch (_) {}
       return true;
     }
     // Remote tốt hơn → giữ Firebase, có thể xóa backup cũ lỗi
@@ -13779,15 +13842,22 @@ async function pullRemotePlayerIfNewer() {
     const remote = snap.val();
     const rAt = Number(remote.updatedAt) || 0;
     const lAt = Number(currentPlayer.updatedAt) || _playerBaseUpdatedAt || 0;
-    // Remote mới hơn rõ và local không dirty
-    if (rAt > lAt + 2000 && remote.sessionId && remote.sessionId !== CLIENT_SESSION_ID) {
-      currentPlayer = remote;
-      _playerBaseUpdatedAt = rAt;
-      _playerDirty = false;
-      if (typeof Game !== 'undefined' && Game.ensureGardens) {
-        try { Game.ensureGardens(); Game.syncActiveGarden(); } catch (_) {}
+    // Remote mới hơn rõ — máy khác: lấy full; cùng máy / admin: chỉ merge quà
+    if (rAt > lAt + 1500) {
+      if (remote.sessionId && remote.sessionId !== CLIENT_SESSION_ID) {
+        currentPlayer = remote;
+        _playerBaseUpdatedAt = rAt;
+        _playerDirty = false;
+        if (typeof Game !== 'undefined' && Game.ensureGardens) {
+          try { Game.ensureGardens(); Game.syncActiveGarden(); } catch (_) {}
+        }
+        return true;
       }
-      return true;
+      // Cùng session nhưng remote mới (admin cộng khi user đang online)
+      if (mergeRemoteAdminGifts(remote)) {
+        _playerBaseUpdatedAt = Math.max(_playerBaseUpdatedAt, rAt);
+        return true;
+      }
     }
     if (rAt > _playerBaseUpdatedAt) _playerBaseUpdatedAt = rAt;
     return false;
@@ -13989,6 +14059,28 @@ async function savePlayer(opts) {
 
   const ref = db.ref('users/' + currentUser.uid);
   let lastErr = null;
+  // Trước khi ghi: nếu remote có quà admin mới hơn base → gộp vào, tránh đè mất
+  try {
+    const pre = await ref.once('value');
+    if (pre.exists()) {
+      const remote = pre.val();
+      const rAt = Number(remote.updatedAt) || 0;
+      if (rAt > (Number(_playerBaseUpdatedAt) || 0)) {
+        mergeRemoteAdminGifts(remote);
+        // đồng bộ mốc base để không merge lặp
+        if (rAt > (Number(_playerBaseUpdatedAt) || 0)) {
+          _playerBaseUpdatedAt = rAt;
+        }
+        // updatedAt payload phải mới hơn remote
+        currentPlayer.updatedAt = Math.max(
+          Number(currentPlayer.updatedAt) || 0,
+          rAt + 1,
+          typeof nowMs === 'function' ? nowMs() : Date.now()
+        );
+      }
+    }
+  } catch (_) {}
+
   // Clone plain JSON — tránh Firebase từ chối undefined / function
   let payload;
   try {

@@ -334,21 +334,36 @@ async function renderUsers() {
     `;
   }).join('') || '<tr><td colspan="6">Chưa có người chơi.</td></tr>';
 
+  /** Admin sửa user: luôn bump updatedAt để client F5/save không đè mất bằng backup local cũ */
+  function adminTouchUpdatedAt(u) {
+    const t = Date.now();
+    u.updatedAt = Math.max(Number(u.updatedAt) || 0, t) + 1;
+    return u;
+  }
+
   document.querySelectorAll('.btn-add-coins').forEach(btn => {
     btn.addEventListener('click', async () => {
       const amount = parseInt(prompt('Số tiền cộng thêm:', '500'));
       if (!amount || amount <= 0) return;
       const ref = db.ref('users/' + btn.dataset.uid);
-      const snap = await ref.once('value');
-      const u = snap.val();
-      if (!u) return;
-      u.coins = (u.coins || 0) + amount;
-      if (!u.activity) u.activity = [];
-      u.activity.unshift({ text: `Admin cộng ${amount}🪙`, time: new Date().toLocaleString('vi-VN') });
-      if (u.activity.length > 30) u.activity = u.activity.slice(0, 30);
-      await ref.set(u);
-      showToast(`Đã cộng ${amount}🪙!`, 'success');
-      renderUsers();
+      try {
+        const tx = await ref.transaction(u => {
+          if (!u) return u;
+          u.coins = (u.coins || 0) + amount;
+          if (!u.activity) u.activity = [];
+          u.activity.unshift({ text: `Admin cộng ${amount}🪙`, time: new Date().toLocaleString('vi-VN') });
+          if (u.activity.length > 30) u.activity = u.activity.slice(0, 30);
+          return adminTouchUpdatedAt(u);
+        });
+        if (!tx.committed) {
+          showToast('Không ghi được (user đang lưu đồng thời). Thử lại!', 'error');
+          return;
+        }
+        showToast(`Đã cộng ${amount}🪙!`, 'success');
+        renderUsers();
+      } catch (e) {
+        showToast('Lỗi cộng tiền: ' + (e.message || e), 'error');
+      }
     });
   });
 
@@ -357,23 +372,34 @@ async function renderUsers() {
       const n = parseInt(prompt('Số ô đất thường thêm:', '1'), 10);
       if (!n || n < 1) return;
       const ref = db.ref('users/' + btn.dataset.uid);
-      const snap = await ref.once('value');
-      const u = snap.val();
-      if (!u) return;
-      if (!Array.isArray(u.plots)) u.plots = Object.values(u.plots || {});
-      for (let i = 0; i < n; i++) {
-        u.plots.push({
-          id: u.plots.length, plantId: null, plantedAt: null,
-          watered: false, waterCount: 0, lastWatered: null,
-          fertilizerId: null, fertilizedAt: null
+      try {
+        const tx = await ref.transaction(u => {
+          if (!u) return u;
+          if (!Array.isArray(u.plots)) u.plots = Object.values(u.plots || {});
+          for (let i = 0; i < n; i++) {
+            u.plots.push({
+              id: u.plots.length, plantId: null, plantedAt: null,
+              watered: false, waterCount: 0, lastWatered: null,
+              fertilizerId: null, fertilizedAt: null
+            });
+          }
+          if (!u.activity) u.activity = [];
+          u.activity.unshift({ text: `Admin thêm ${n} ô đất thường`, time: new Date().toLocaleString('vi-VN') });
+          if (u.activity.length > 30) u.activity = u.activity.slice(0, 30);
+          return adminTouchUpdatedAt(u);
         });
+        if (!tx.committed) {
+          showToast('Không ghi được. Thử lại!', 'error');
+          return;
+        }
+        const len = (tx.snapshot && tx.snapshot.val() && tx.snapshot.val().plots)
+          ? (Array.isArray(tx.snapshot.val().plots) ? tx.snapshot.val().plots.length : Object.keys(tx.snapshot.val().plots).length)
+          : '?';
+        showToast(`Đã thêm ${n} ô thường (tổng ${len} ô)!`, 'success');
+        renderUsers();
+      } catch (e) {
+        showToast('Lỗi thêm ô: ' + (e.message || e), 'error');
       }
-      if (!u.activity) u.activity = [];
-      u.activity.unshift({ text: `Admin thêm ${n} ô đất thường`, time: new Date().toLocaleString('vi-VN') });
-      if (u.activity.length > 30) u.activity = u.activity.slice(0, 30);
-      await ref.set(u);
-      showToast(`Đã thêm ${n} ô thường (tổng ${u.plots.length} ô)!`, 'success');
-      renderUsers();
     });
   });
 
@@ -385,33 +411,41 @@ async function renderUsers() {
       const mult = parseFloat(multStr);
       if (!mult || mult < 1.1) { showToast('Hệ số không hợp lệ!', 'error'); return; }
       const ref = db.ref('users/' + btn.dataset.uid);
-      const snap = await ref.once('value');
-      const u = snap.val();
-      if (!u) return;
-      if (!Array.isArray(u.plots)) u.plots = Object.values(u.plots || {});
-      for (let i = 0; i < n; i++) {
-        u.plots.push({
-          id: u.plots.length, plantId: null, plantedAt: null,
-          watered: false, waterCount: 0, lastWatered: null,
-          fertilizerId: null, fertilizedAt: null,
-          specialMult: mult,
-          specialId: 'admin-boost-' + mult,
-          specialName: 'Ô đặc biệt x' + mult
+      try {
+        const tx = await ref.transaction(u => {
+          if (!u) return u;
+          if (!Array.isArray(u.plots)) u.plots = Object.values(u.plots || {});
+          for (let i = 0; i < n; i++) {
+            u.plots.push({
+              id: u.plots.length, plantId: null, plantedAt: null,
+              watered: false, waterCount: 0, lastWatered: null,
+              fertilizerId: null, fertilizedAt: null,
+              specialMult: mult,
+              specialId: 'admin-boost-' + mult,
+              specialName: 'Ô đặc biệt x' + mult
+            });
+          }
+          if (!u.activity) u.activity = [];
+          u.activity.unshift({ text: `Admin thêm ${n} ô đặc biệt x${mult}`, time: new Date().toLocaleString('vi-VN') });
+          if (u.activity.length > 30) u.activity = u.activity.slice(0, 30);
+          return adminTouchUpdatedAt(u);
         });
+        if (!tx.committed) {
+          showToast('Không ghi được. Thử lại!', 'error');
+          return;
+        }
+        showToast(`Đã thêm ${n} ô đặc biệt x${mult}!`, 'success');
+        renderUsers();
+      } catch (e) {
+        showToast('Lỗi thêm ô đặc biệt: ' + (e.message || e), 'error');
       }
-      if (!u.activity) u.activity = [];
-      u.activity.unshift({ text: `Admin thêm ${n} ô đặc biệt x${mult}`, time: new Date().toLocaleString('vi-VN') });
-      if (u.activity.length > 30) u.activity = u.activity.slice(0, 30);
-      await ref.set(u);
-      showToast(`Đã thêm ${n} ô đặc biệt x${mult}!`, 'success');
-      renderUsers();
     });
   });
 
   document.querySelectorAll('.btn-make-admin').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Cấp quyền Admin cho user này?')) return;
-      await db.ref('users/' + btn.dataset.uid + '/role').set('admin');
+      await db.ref('users/' + btn.dataset.uid).update({ role: 'admin', updatedAt: Date.now() });
       showToast('Đã cấp Admin!', 'success');
       renderUsers();
     });
@@ -420,7 +454,7 @@ async function renderUsers() {
   document.querySelectorAll('.btn-remove-admin').forEach(btn => {
     btn.addEventListener('click', async () => {
       if (!confirm('Gỡ quyền Admin?')) return;
-      await db.ref('users/' + btn.dataset.uid + '/role').set('user');
+      await db.ref('users/' + btn.dataset.uid).update({ role: 'user', updatedAt: Date.now() });
       showToast('Đã gỡ Admin!', 'success');
       renderUsers();
     });
@@ -430,14 +464,14 @@ async function renderUsers() {
     btn.addEventListener('click', async () => {
       const reason = prompt('Lý do ban:', 'Vi phạm quy định') || 'Bị khóa bởi admin';
       if (!confirm('Ban tài khoản này?')) return;
-      await db.ref('users/' + btn.dataset.uid).update({ banned: true, banReason: reason });
+      await db.ref('users/' + btn.dataset.uid).update({ banned: true, banReason: reason, updatedAt: Date.now() });
       showToast('Đã ban user!', 'success');
       renderUsers();
     });
   });
   document.querySelectorAll('.btn-unban').forEach(btn => {
     btn.addEventListener('click', async () => {
-      await db.ref('users/' + btn.dataset.uid).update({ banned: false, banReason: null });
+      await db.ref('users/' + btn.dataset.uid).update({ banned: false, banReason: null, updatedAt: Date.now() });
       showToast('Đã gỡ ban!', 'success');
       renderUsers();
     });
