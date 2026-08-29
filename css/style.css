@@ -2250,7 +2250,7 @@ html[data-theme="dark"] .plot-progress {
   color: var(--primary);
 }
 .profile-level-tag {
-  margin-top: -10px;
+  margin-top: 0;
   position: relative;
   z-index: 5;
   padding: 3px 16px;
@@ -7455,16 +7455,19 @@ html[data-theme="dark"] .profile-companion {
 
 /* LVL — màu theo tier, viền tĩnh khi có khung (không animation) */
 .profile-level-tag {
-  margin-top: -10px;
+  margin-top: 0;
   position: relative;
-  z-index: 4;
-  padding: 3px 16px;
+  z-index: 10;
+  padding: 6px 20px;
   border-radius: 999px;
   font-weight: 800;
   font-size: 0.78rem;
   letter-spacing: 0.04em;
   border: 2px solid rgba(255, 255, 255, 0.28);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  line-height: 1.2;
+  display: inline-block;
+  overflow: visible;
 }
 .profile-level-tag.has-frame-grad {
   background: var(--avatar-frame-grad, linear-gradient(135deg, #a855f7, #06b6d4)) !important;
@@ -7479,26 +7482,97 @@ html[data-theme="dark"] .profile-companion {
 .nav-menu-title { display: none !important; height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; }
 
 
-/* v1.9.17 — LVL không bị cắt + padding rộng */
-.profile-avatar-block {
+
+
+
+
+/* ==========================================================================
+   v1.9.19 — LVL không bị cắt mép (overflow chain)
+   ========================================================================== */
+
+/* Tắt transform animation trên trang profile — transform tạo containing/clip */
+#page-profile.page,
+#page-profile.page.active {
   overflow: visible !important;
-  padding: 12px 16px 8px !important;
+  transform: none !important;
+  animation: none !important;
 }
-.profile-avatar-wrap {
-  overflow: visible !important;
-}
+
 .profile-card {
   overflow: visible !important;
+  contain: none !important;
+  padding-top: 20px !important;
+  padding-bottom: 24px !important;
 }
-.profile-level-tag {
-  padding: 5px 20px !important;
-  margin-top: -8px !important;
+
+.profile-avatar-block {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
   overflow: visible !important;
+  contain: none !important;
+  padding: 8px 24px 16px !important;
+  margin: 0 auto 8px !important;
+  min-height: 0 !important;
+  /* khoảng trống dưới avatar cho LVL */
+  gap: 12px !important;
 }
+
+.profile-avatar-wrap {
+  overflow: visible !important;
+  contain: none !important;
+  flex-shrink: 0 !important;
+  /* không tạo stacking che LVL */
+  z-index: 1 !important;
+}
+
+.profile-avatar-wrap.has-frame::before {
+  z-index: 0 !important;
+  /* vòng chỉ quanh avatar, không kéo dài che LVL */
+  pointer-events: none !important;
+}
+
+.profile-avatar-wrap.has-frame::after {
+  z-index: 1 !important;
+  pointer-events: none !important;
+}
+
+.profile-avatar-wrap .profile-avatar,
+.profile-avatar-wrap .profile-avatar-fallback {
+  z-index: 2 !important;
+}
+
+.profile-companion {
+  z-index: 5 !important;
+}
+
+/* LVL: tách rõ khỏi avatar, không margin âm, không clip */
+.profile-level-tag,
+#profile-level-tag {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 7px 22px !important;
+  position: relative !important;
+  z-index: 20 !important;
+  overflow: visible !important;
+  contain: none !important;
+  transform: none !important;
+  clip: auto !important;
+  clip-path: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  line-height: 1.25 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
+}
+
 .profile-level-tag.has-frame-grad {
   background: var(--avatar-frame-grad, linear-gradient(135deg, #a855f7, #06b6d4)) !important;
-  border: 2px solid rgba(255, 255, 255, 0.4) !important;
+  border: 2px solid rgba(255, 255, 255, 0.45) !important;
   color: #fff !important;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
   animation: none !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
 }
