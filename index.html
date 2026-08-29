@@ -444,9 +444,13 @@
           <p>Đổi tên, avatar, gift code và buff</p>
         </div>
         <div class="profile-card">
-          <div class="profile-avatar-wrap">
-            <img id="profile-avatar-img" class="profile-avatar" src="" alt="Avatar" style="display:none" />
-            <div id="profile-avatar-fallback" class="profile-avatar-fallback"><i class="fa-solid fa-user"></i></div>
+          <div class="profile-avatar-block">
+            <div class="profile-avatar-wrap tier-tree-1" id="profile-avatar-wrap">
+              <div class="profile-avatar-ring" aria-hidden="true"></div>
+              <img id="profile-avatar-img" class="profile-avatar" src="" alt="Avatar" style="display:none" />
+              <div id="profile-avatar-fallback" class="profile-avatar-fallback"><i class="fa-solid fa-user"></i></div>
+            </div>
+            <div class="profile-level-tag tier-tree-1" id="profile-level-tag">LVL <span id="profile-level-num">1</span></div>
           </div>
           <div class="profile-field">
             <label>Tên hiển thị</label>
@@ -752,10 +756,10 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.8.7"></script>
-  <script src="js/data.js?v=1.8.7"></script>
-  <script src="js/game.js?v=1.8.7"></script>
-  <script src="js/features.js?v=1.8.7"></script>
-  <script src="js/app.js?v=1.8.7"></script>
+  <script src="js/firebase-config.js?v=1.8.8"></script>
+  <script src="js/data.js?v=1.8.8"></script>
+  <script src="js/game.js?v=1.8.8"></script>
+  <script src="js/features.js?v=1.8.8"></script>
+  <script src="js/app.js?v=1.8.8"></script>
 </body>
 </html>

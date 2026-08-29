@@ -1080,6 +1080,21 @@ function renderProfile() {
     img.style.display = 'none';
     fb.style.display = 'flex';
   }
+  // Avatar ring + LVL theo tier cây
+  const myLv = Math.min(1000, Math.max(1, parseInt(currentPlayer.level, 10) || 1));
+  const tier = (typeof getTreeTier === 'function') ? getTreeTier(myLv) : { class: 'tier-tree-1' };
+  const wrap = document.getElementById('profile-avatar-wrap');
+  const lvlTag = document.getElementById('profile-level-tag');
+  const lvlNum = document.getElementById('profile-level-num');
+  if (wrap && typeof TREE_TIERS !== 'undefined') {
+    TREE_TIERS.forEach(t => wrap.classList.remove(t.class));
+    wrap.classList.add(tier.class);
+  }
+  if (lvlTag && typeof TREE_TIERS !== 'undefined') {
+    TREE_TIERS.forEach(t => lvlTag.classList.remove(t.class));
+    lvlTag.classList.add(tier.class);
+  }
+  if (lvlNum) lvlNum.textContent = myLv;
   const prefs = Game.getBuffPrefs();
   const fEl = document.getElementById('pref-fairy-enabled');
   const nEl = document.getElementById('pref-nyc-enabled');
