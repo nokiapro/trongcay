@@ -1082,12 +1082,12 @@ function applyProfileAvatarFrame() {
       conic = 'conic-gradient(from 0deg, ' + conic + ', ' + conic + ')';
     }
     wrap.style.setProperty('--avatar-frame-conic', conic);
+    // Badge CẤP dưới avatar: màu từ khung shop đã mua
     if (lvlTag) {
       lvlTag.classList.add('has-frame-grad');
-      // Viền + nền LVL dùng CSS (padding-box / border-box) — không set inline background
       lvlTag.style.setProperty('--avatar-frame-grad', frame.gradient);
       lvlTag.style.removeProperty('background');
-      lvlTag.style.color = '#fff';
+      lvlTag.style.removeProperty('color');
     }
   } else {
     wrap.classList.remove('has-frame');
@@ -1096,9 +1096,8 @@ function applyProfileAvatarFrame() {
     if (lvlTag) {
       lvlTag.classList.remove('has-frame-grad');
       lvlTag.style.removeProperty('--avatar-frame-grad');
-      lvlTag.style.removeProperty('--frame-border-color');
       lvlTag.style.removeProperty('background');
-      lvlTag.style.color = '';
+      lvlTag.style.removeProperty('color');
     }
   }
 }
@@ -1138,16 +1137,9 @@ function renderProfile() {
     img.style.display = 'none';
     fb.style.display = 'flex';
   }
-  // LVL theo tier cây (không còn viền tier quanh avatar)
+  // Cấp dưới avatar
   const myLv = Math.min(1000, Math.max(1, parseInt(currentPlayer.level, 10) || 1));
-  const tier = (typeof getTreeTier === 'function') ? getTreeTier(myLv) : { class: 'tier-tree-1' };
-  const wrap = document.getElementById('profile-avatar-wrap');
-  const lvlTag = document.getElementById('profile-level-tag');
   const lvlNum = document.getElementById('profile-level-num');
-  if (lvlTag && typeof TREE_TIERS !== 'undefined') {
-    TREE_TIERS.forEach(t => lvlTag.classList.remove(t.class));
-    lvlTag.classList.add(tier.class);
-  }
   if (lvlNum) lvlNum.textContent = myLv;
   applyProfileAvatarFrame();
   applyProfileCompanion();

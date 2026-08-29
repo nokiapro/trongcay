@@ -2249,79 +2249,63 @@ html[data-theme="dark"] .plot-progress {
   font-size: 2rem;
   color: var(--primary);
 }
+/* Badge CẤP dưới avatar — pill mềm giống mock */
 .profile-level-tag {
   margin-top: 0;
   position: relative;
   z-index: 5;
-  padding: 3px 16px;
+  padding: 4px 14px;
   border-radius: 999px;
-  font-weight: 800;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  border: 2px solid rgba(255, 255, 255, 0.28);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  background: linear-gradient(135deg, #855335, #3a2215);
-  color: #fef08a;
-  transition: background 0.4s ease, color 0.4s ease;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+  background: linear-gradient(135deg, #c084fc, #a855f7, #9333ea);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: background 0.35s ease, border-color 0.35s ease;
+  line-height: 1.25;
+  display: inline-block;
+  white-space: nowrap;
 }
 
-/* Avatar ring + LVL colors by tree tier */
+/* Avatar ring (legacy, đang ẩn bằng display:none) */
 .profile-avatar-wrap.tier-tree-1 .profile-avatar-ring {
   border-color: #855335;
   box-shadow: 0 0 0 3px rgba(133, 83, 53, 0.22), 0 0 16px rgba(133, 83, 53, 0.4);
 }
-.profile-level-tag.tier-tree-1 { background: linear-gradient(135deg, #855335, #3a2215); color: #fef08a; }
-
 .profile-avatar-wrap.tier-tree-2 .profile-avatar-ring {
   border-color: #4ade80;
   box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25), 0 0 18px rgba(74, 222, 128, 0.5);
 }
-.profile-level-tag.tier-tree-2 { background: linear-gradient(135deg, #16a34a, #065f46); color: #fff; }
-
 .profile-avatar-wrap.tier-tree-3 .profile-avatar-ring {
   border-color: #38bdf8;
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25), 0 0 18px rgba(56, 189, 248, 0.55);
 }
-.profile-level-tag.tier-tree-3 { background: linear-gradient(135deg, #0284c7, #0f766e); color: #e0f2fe; }
-
 .profile-avatar-wrap.tier-tree-4 .profile-avatar-ring {
   border-color: #facc15;
   box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.28), 0 0 20px rgba(250, 204, 21, 0.55);
 }
-.profile-level-tag.tier-tree-4 { background: linear-gradient(135deg, #eab308, #854d0e); color: #fff; border-color: #fef08a; }
-
 .profile-avatar-wrap.tier-tree-5 .profile-avatar-ring {
   border-color: #f472b6;
   box-shadow: 0 0 0 3px rgba(244, 114, 182, 0.28), 0 0 22px rgba(244, 114, 182, 0.55);
 }
-.profile-level-tag.tier-tree-5 { background: linear-gradient(135deg, #ec4899, #059669); color: #fff; }
-
 .profile-avatar-wrap.tier-tree-6 .profile-avatar-ring {
   border-color: #22d3ee;
   box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.3), 0 0 24px rgba(0, 242, 254, 0.65);
 }
-.profile-level-tag.tier-tree-6 { background: linear-gradient(135deg, #00f2fe, #0369a1); color: #fff; }
-
 .profile-avatar-wrap.tier-tree-7 .profile-avatar-ring {
   border-color: #f59e0b;
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3), 0 0 24px rgba(245, 158, 11, 0.65);
 }
-.profile-level-tag.tier-tree-7 { background: linear-gradient(135deg, #f59e0b, #047857); color: #fef08a; border-color: #fef08a; }
-
 .profile-avatar-wrap.tier-tree-8 .profile-avatar-ring {
   border-color: #c084fc;
   box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.32), 0 0 26px rgba(192, 132, 252, 0.7);
 }
-.profile-level-tag.tier-tree-8 { background: linear-gradient(135deg, #a855f7, #14b8a6, #3b82f6); color: #fff; }
-
 .profile-avatar-wrap.tier-tree-9 .profile-avatar-ring {
   border-color: #f43f5e;
   box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.35), 0 0 28px rgba(244, 63, 94, 0.75), 0 0 40px rgba(16, 185, 129, 0.4);
-}
-.profile-level-tag.tier-tree-9 {
-  background: linear-gradient(135deg, #f43f5e, #f59e0b, #10b981);
-  color: #fff;
-  border-color: #fef08a;
 }
 .profile-field { margin-bottom: 14px; }
 .profile-field label {
@@ -7453,23 +7437,6 @@ html[data-theme="dark"] .profile-companion {
   background: var(--card, #1c2820);
 }
 
-/* LVL — màu theo tier, viền tĩnh khi có khung (không animation) */
-.profile-level-tag {
-  margin-top: 0;
-  position: relative;
-  z-index: 10;
-  padding: 6px 20px;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  border: 2px solid rgba(255, 255, 255, 0.28);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  line-height: 1.2;
-  display: inline-block;
-  overflow: visible;
-}
-/* (has-frame-grad chi tiết ở block v1.9.21 bên dưới) */
 
 
 
@@ -7538,12 +7505,12 @@ html[data-theme="dark"] .profile-companion {
   z-index: 5 !important;
 }
 
-/* LVL dưới avatar — gọn như cũ */
+/* ===== Badge CẤP dưới avatar (v1.9.23) — kiểu pill mềm như mock ===== */
 .profile-level-tag,
 #profile-level-tag {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
-  padding: 5px 16px !important;
+  padding: 4px 14px !important;
   position: relative !important;
   z-index: 20 !important;
   overflow: visible !important;
@@ -7551,33 +7518,30 @@ html[data-theme="dark"] .profile-companion {
   transform: none !important;
   clip: auto !important;
   clip-path: none !important;
-  -webkit-mask-image: none !important;
-  mask-image: none !important;
-  line-height: 1.2 !important;
+  line-height: 1.25 !important;
   display: inline-block !important;
   vertical-align: middle !important;
   box-sizing: border-box !important;
-  font-size: 0.78rem !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
   border-radius: 999px !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22) !important;
+  background: linear-gradient(135deg, #c084fc, #a855f7, #9333ea) !important;
+  color: #fff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25) !important;
+  white-space: nowrap !important;
 }
 
-/* LVL + khung: viền gradient mỏng, đủ rõ 2 đầu capsule (v1.9.22) */
+/* Khi gắn khung shop — màu badge = gradient khung đã mua */
 .profile-level-tag.has-frame-grad {
-  background:
-    var(--avatar-frame-grad, linear-gradient(135deg, #a855f7, #14b8a6, #3b82f6)) padding-box,
-    var(--avatar-frame-grad, linear-gradient(135deg, #a855f7, #14b8a6, #3b82f6, #f59e0b, #f472b6)) border-box !important;
-  border: 2.5px solid transparent !important;
+  background: var(--avatar-frame-grad, linear-gradient(135deg, #c084fc, #a855f7, #9333ea)) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.45) !important;
   color: #fff !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
   animation: none !important;
-  background-clip: padding-box, border-box !important;
-  -webkit-background-clip: padding-box, border-box !important;
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.28),
-    0 3px 10px rgba(0,0,0,0.3) !important;
-  padding: 5px 18px !important;
-  overflow: visible !important;
-  border-radius: 999px !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28) !important;
 }
 
 /* Shop preview khung avatar */
