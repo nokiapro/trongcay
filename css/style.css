@@ -111,7 +111,7 @@ body {
 
 .login-hint {
   font-size: 0.8rem;
-  color: #999;
+  color: var(--text-muted);
   margin-top: 18px;
   line-height: 1.5;
 }
@@ -939,7 +939,7 @@ button.btn,
 
 .empty-state {
   text-align: center;
-  color: #999;
+  color: var(--text-muted);
   padding: 50px 20px;
   font-size: 1.05rem;
 }
@@ -994,7 +994,7 @@ button.btn,
 
 .activity-list li {
   padding: 10px 0;
-  border-bottom: 1px solid #eef2f0;
+  border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
   font-size: 0.92rem;
   display: flex;
   gap: 12px;
@@ -2172,7 +2172,7 @@ html[data-theme="dark"] .plot-progress {
   border: none;
 }
 .profile-avatar-fallback {
-  background: #e8f5e9;
+  background: color-mix(in srgb, var(--primary) 14%, var(--card));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6398,11 +6398,13 @@ html[data-theme="dark"] .merge-box .merge-sub {
   margin: 0 auto 1.5rem;
   max-width: 720px;
   border-radius: 1.5rem;
-  background: linear-gradient(180deg, rgba(6, 40, 24, 0.9), rgba(4, 20, 12, 0.75));
-  border: 1px solid rgba(52, 211, 153, 0.25);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 12%, var(--card)), color-mix(in srgb, var(--primary-dark) 8%, var(--bg)));
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  box-shadow: var(--shadow);
   overflow: hidden;
   min-height: 520px;
   perspective: 1000px;
+  color: var(--text);
 }
 .level-badge-ambient {
   position: absolute;
@@ -6671,7 +6673,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
   text-align: center;
   font-size: 0.9rem;
   font-weight: 700;
-  color: var(--text, #ecfdf5);
+  color: var(--text);
 }
 .level-slider-label-center label {
   cursor: default;
@@ -6704,15 +6706,18 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .level-preset {
   padding: 0.35rem 0.65rem;
   border-radius: 0.55rem;
-  border: 1px solid rgba(52, 211, 153, 0.3);
-  background: rgba(6, 40, 24, 0.6);
-  color: #d1fae5;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  color: var(--text);
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
 }
-.level-preset:hover { background: rgba(16, 185, 129, 0.35); border-color: #34d399; }
+.level-preset:hover {
+  background: color-mix(in srgb, var(--primary) 22%, var(--card));
+  border-color: var(--primary-light);
+}
 .level-preset-max {
   background: linear-gradient(135deg, #f59e0b, #10b981, #f43f5e);
   border: none;
@@ -6803,8 +6808,10 @@ html[data-theme="dark"] .merge-box .merge-sub {
   width: 100%;
   padding: 1.25rem 1.5rem;
   border-radius: 1rem;
-  background: rgba(6, 30, 18, 0.45);
-  border: 1px solid rgba(52, 211, 153, 0.18);
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+  box-shadow: var(--shadow);
+  color: var(--text);
 }
 #page-activity .activity-list {
   margin: 0;
@@ -6827,7 +6834,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
   flex-shrink: 0;
   width: 1.35rem;
   text-align: center;
-  color: #34d399;
+  color: var(--primary);
   margin-top: 0.1rem;
 }
 .activity-list .act-text {
@@ -6845,7 +6852,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
   font-size: 0.85em;
 }
 .activity-list .activity-empty {
-  color: #999;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -6860,4 +6867,222 @@ html[data-theme="dark"] .merge-box .merge-sub {
   .tier-tree-8 .tree-icon { font-size: 4.5rem; }
   .tier-tree-7 .tree-emblem-orb { width: 140px; height: 140px; }
   .tier-tree-7 .tree-icon { font-size: 4.2rem; }
+}
+
+
+/* ==========================================================================
+   THEME POLISH — dark / light consistency (v1.9.0)
+   ========================================================================== */
+:root {
+  --border-soft: #e0efe8;
+  --border-faint: #eef2f0;
+  --surface-soft: #e8f5e9;
+  --surface-softer: #f7fffc;
+  --surface-muted: #f5faf7;
+  --input-bg: #ffffff;
+}
+
+html[data-theme="dark"] {
+  --border-soft: #2d6a4f;
+  --border-faint: #243d32;
+  --surface-soft: #243d32;
+  --surface-softer: #15241c;
+  --surface-muted: #0f1a14;
+  --input-bg: #15241c;
+}
+
+.empty-state,
+.login-hint {
+  color: var(--text-muted);
+}
+
+input,
+select,
+textarea,
+.ux-select {
+  background: var(--input-bg);
+  color: var(--text);
+  border-color: var(--border-soft);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+.friend-item:hover,
+.friend-item.active {
+  background: var(--surface-soft);
+}
+
+.chat-bubble.them {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.chat-av-fb,
+.rank-av-fb {
+  background: var(--surface-soft);
+  color: var(--primary);
+}
+
+.plot.empty {
+  background: var(--surface-softer);
+  border-color: color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+.nav-btn {
+  color: var(--text-muted);
+}
+
+.section-title,
+.page-header h1 {
+  color: var(--text);
+}
+
+.page-header p {
+  color: var(--text-muted);
+}
+
+.uid-row code {
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .level-badge-showcase {
+  background: linear-gradient(180deg, rgba(6, 40, 24, 0.95), rgba(4, 20, 12, 0.88));
+  border-color: rgba(52, 211, 153, 0.28);
+}
+
+html[data-theme="dark"] .level-range,
+html[data-theme="dark"] .level-progress-bar {
+  background: rgba(0, 0, 0, 0.45);
+  border-color: rgba(52, 211, 153, 0.28);
+}
+
+html[data-theme="dark"] .level-progress-labels,
+html[data-theme="dark"] .level-tier-meta {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .level-tier-meta strong {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .activity-section,
+html[data-theme="dark"] .stat-card,
+html[data-theme="dark"] .card-panel {
+  background: var(--card);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .activity-list li {
+  border-bottom-color: var(--border-faint);
+}
+
+html[data-theme="dark"] .shop-card,
+html[data-theme="dark"] .inv-item,
+html[data-theme="dark"] .quest-card,
+html[data-theme="dark"] .quest-block,
+html[data-theme="dark"] .album-item,
+html[data-theme="dark"] .ach-item {
+  background: var(--card);
+  border-color: var(--border-soft);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .shop-tab,
+html[data-theme="dark"] .rank-tab {
+  background: var(--surface-softer);
+  color: var(--text-muted);
+  border-color: var(--border-soft);
+}
+
+html[data-theme="dark"] .shop-icon,
+html[data-theme="dark"] .inv-item .icon {
+  background: var(--surface-soft);
+}
+
+html[data-theme="dark"] .modal-content {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--border-soft);
+}
+
+html[data-theme="dark"] .modal-close {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .empty-state,
+html[data-theme="dark"] .section-sub,
+html[data-theme="dark"] .login-hint {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .market-sell-box,
+html[data-theme="dark"] .kitchen-panel {
+  background: var(--card);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .profile-field label {
+  color: var(--text-muted);
+}
+
+html[data-theme="dark"] .profile-avatar-fallback {
+  background: var(--surface-soft);
+  color: var(--primary-light);
+}
+
+html[data-theme="dark"] .rank-item {
+  background: var(--card);
+  border-color: var(--border-soft);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .rank-val {
+  color: var(--primary-light);
+}
+
+html[data-theme="dark"] .friends-panel,
+html[data-theme="dark"] .chat-panel {
+  background: var(--card);
+  border-color: var(--border-soft);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .chat-with {
+  border-bottom-color: var(--border-faint);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .chat-input-row {
+  border-top-color: var(--border-faint);
+}
+
+html[data-theme="dark"] .btn-secondary {
+  background: var(--surface-soft);
+  color: var(--text);
+  border-color: var(--border-soft);
+}
+
+html[data-theme="dark"] .btn-secondary:hover {
+  background: color-mix(in srgb, var(--primary) 18%, var(--surface-soft));
+}
+
+html[data-theme="dark"] .checkbox-row,
+html[data-theme="dark"] .profile-field label,
+html[data-theme="dark"] .garden-cycle-chip,
+html[data-theme="dark"] .weather {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .app-version-badge {
+  color: var(--text-muted);
+  border-color: var(--border-soft);
+}
+
+html[data-theme="dark"] #page-activity .activity-list::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--primary) 40%, transparent);
 }
