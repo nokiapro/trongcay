@@ -1074,6 +1074,14 @@ function applyProfileAvatarFrame() {
   if (frame && frame.gradient) {
     wrap.classList.add('has-frame');
     wrap.style.setProperty('--avatar-frame-grad', frame.gradient);
+    // linear → conic để vòng FULL quanh avatar
+    let conic = frame.gradient;
+    if (/linear-gradient/i.test(conic)) {
+      conic = conic.replace(/linear-gradient\s*\(\s*[^,]+,/i, 'conic-gradient(from 0deg,');
+    } else if (!/conic-gradient/i.test(conic)) {
+      conic = 'conic-gradient(from 0deg, ' + conic + ', ' + conic + ')';
+    }
+    wrap.style.setProperty('--avatar-frame-conic', conic);
     if (lvlTag) {
       lvlTag.classList.add('has-frame-grad');
       lvlTag.style.setProperty('--avatar-frame-grad', frame.gradient);
@@ -1081,6 +1089,7 @@ function applyProfileAvatarFrame() {
   } else {
     wrap.classList.remove('has-frame');
     wrap.style.removeProperty('--avatar-frame-grad');
+    wrap.style.removeProperty('--avatar-frame-conic');
     if (lvlTag) {
       lvlTag.classList.remove('has-frame-grad');
       lvlTag.style.removeProperty('--avatar-frame-grad');
