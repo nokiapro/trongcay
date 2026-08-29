@@ -20,6 +20,9 @@ const Game = {
   getHelperPacks() { return (typeof DEFAULT_HELPER_PACKS !== 'undefined') ? DEFAULT_HELPER_PACKS : []; },
   getNycPacks() { return DEFAULT_NYC_PACKS; },
   getPets() { return typeof getPets === 'function' ? getPets() : (typeof DEFAULT_PETS !== 'undefined' ? DEFAULT_PETS : []); },
+  getAvatarFrames() { return typeof getAvatarFrames === 'function' ? getAvatarFrames() : (typeof DEFAULT_AVATAR_FRAMES !== 'undefined' ? DEFAULT_AVATAR_FRAMES : []); },
+  getAvatarFrame(id) { return this.getAvatarFrames().find(f => f.id === id); },
+
   getPet(id) { return this.getPets().find(p => p.id === id); },
   getRecipes() { return typeof getKitchenRecipes === 'function' ? getKitchenRecipes() : []; },
   getRecipe(id) { return this.getRecipes().find(r => r.id === id); },
@@ -2857,6 +2860,37 @@ const Game = {
 
 
   /** Mua pet dạo vườn */
+
+  async buyAvatarFrame(frameId) {
+    const frame = this.getAvatarFrame(frameId);
+    if (!frame) return { ok: false, msg: 'Không tìm thấy khung!' };
+    if (!currentPlayer.avatarFrames) currentPlayer.avatarFrames = {};
+    if (currentPlayer.avatarFrames[frameId]) return { ok: false, msg: 'Bạn đã sở hữu khung này!' };
+    const price = Number(frame.price) || 0;
+    if ((currentPlayer.coins || 0) < price) return { ok: false, msg: 'Không đủ xu!' };
+    currentPlayer.coins -= price;
+    currentPlayer.avatarFrames[frameId] = { id: frameId, boughtAt: (typeof nowMs === 'function' ? nowMs() : Date.now()) };
+    if (!currentPlayer.avatarFrameId) currentPlayer.avatarFrameId = frameId;
+    this.addActivity('Mua khung avatar ' + frame.name + ' (-' + price + '🪙)');
+    currentPlayer.stats = currentPlayer.stats || {};
+    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + price;
+    return { ok: true, msg: 'Đã mua khung ' + frame.name + '!' };
+  },
+
+  equipAvatarFrame(frameId) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập' };
+    if (frameId === '' || frameId === 'none' || frameId == null) {
+      currentPlayer.avatarFrameId = null;
+      return { ok: true, msg: 'Đã gỡ khung avatar' };
+    }
+    if (!currentPlayer.avatarFrames || !currentPlayer.avatarFrames[frameId]) {
+      return { ok: false, msg: 'Bạn chưa sở hữu khung này!' };
+    }
+    const frame = this.getAvatarFrame(frameId);
+    currentPlayer.avatarFrameId = frameId;
+    return { ok: true, msg: 'Đã gắn khung ' + ((frame && frame.name) || frameId) };
+  },
+
   async buyPet(petId) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const pet = this.getPet(petId);

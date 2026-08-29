@@ -1046,6 +1046,23 @@ async function sendChat() {
 }
 
 // ===== PROFILE =====
+
+function applyProfileAvatarFrame() {
+  const wrap = document.getElementById('profile-avatar-wrap');
+  if (!wrap) return;
+  const frameId = currentPlayer && currentPlayer.avatarFrameId;
+  const frame = (frameId && typeof Game !== 'undefined' && Game.getAvatarFrame)
+    ? Game.getAvatarFrame(frameId)
+    : null;
+  if (frame && frame.gradient) {
+    wrap.classList.add('has-frame');
+    wrap.style.setProperty('--avatar-frame-grad', frame.gradient);
+  } else {
+    wrap.classList.remove('has-frame');
+    wrap.style.removeProperty('--avatar-frame-grad');
+  }
+}
+
 function renderProfile() {
   if (!currentUser || !currentPlayer) return;
   document.getElementById('profile-uid').textContent = currentUser.uid;
@@ -1080,21 +1097,18 @@ function renderProfile() {
     img.style.display = 'none';
     fb.style.display = 'flex';
   }
-  // Avatar ring + LVL theo tier cây
+  // LVL theo tier cây (không còn viền tier quanh avatar)
   const myLv = Math.min(1000, Math.max(1, parseInt(currentPlayer.level, 10) || 1));
   const tier = (typeof getTreeTier === 'function') ? getTreeTier(myLv) : { class: 'tier-tree-1' };
   const wrap = document.getElementById('profile-avatar-wrap');
   const lvlTag = document.getElementById('profile-level-tag');
   const lvlNum = document.getElementById('profile-level-num');
-  if (wrap && typeof TREE_TIERS !== 'undefined') {
-    TREE_TIERS.forEach(t => wrap.classList.remove(t.class));
-    wrap.classList.add(tier.class);
-  }
   if (lvlTag && typeof TREE_TIERS !== 'undefined') {
     TREE_TIERS.forEach(t => lvlTag.classList.remove(t.class));
     lvlTag.classList.add(tier.class);
   }
   if (lvlNum) lvlNum.textContent = myLv;
+  applyProfileAvatarFrame();
   const prefs = Game.getBuffPrefs();
   const fEl = document.getElementById('pref-fairy-enabled');
   const nEl = document.getElementById('pref-nyc-enabled');
@@ -2695,6 +2709,68 @@ function renderShop() {
   }
 
 
+
+  if (currentShopTab === 'khung') {
+    const countEl = document.getElementById('shop-count');
+    document.getElementById('shop-pager').innerHTML = '';
+    const frames = (Game.getAvatarFrames && Game.getAvatarFrames()) || [];
+    if (countEl) countEl.textContent = frames.length + ' khung viền gradient · càng đẹp càng đắt';
+    const owned = (currentPlayer && currentPlayer.avatarFrames) || {};
+    const equipped = (currentPlayer && currentPlayer.avatarFrameId) || null;
+    // Gỡ khung
+    const noneCard = document.createElement('div');
+    noneCard.className = 'shop-card';
+    noneCard.innerHTML = `
+      <div class="shop-icon avatar-frame-preview" style="--af-grad:linear-gradient(135deg,#94a3b8,#e2e8f0)"><span class="af-inner"></span></div>
+      <div class="shop-name">Không khung</div>
+      <span class="shop-type">Mặc định</span>
+      <div class="shop-owned">${!equipped ? '✅ Đang dùng' : 'Chưa gắn'}</div>
+      <div class="shop-price">Miễn phí</div>
+      <button class="btn btn-secondary btn-equip-frame" data-id="none">${!equipped ? 'Đang dùng' : 'Gỡ khung'}</button>`;
+    grid.appendChild(noneCard);
+    const rarityOrder = { common: 0, rare: 1, epic: 2, legendary: 3 };
+    const sorted = frames.slice().sort((a, b) => (a.price || 0) - (b.price || 0) || (rarityOrder[a.rarity] || 0) - (rarityOrder[b.rarity] || 0));
+    sorted.forEach(fr => {
+      const have = !!owned[fr.id];
+      const on = equipped === fr.id;
+      const rarityLabel = fr.rarity === 'legendary' ? 'Huyền thoại' : fr.rarity === 'epic' ? 'Sử thi' : fr.rarity === 'rare' ? 'Hiếm' : 'Thường';
+      const card = document.createElement('div');
+      card.className = 'shop-card shop-card-frame rarity-' + (fr.rarity || 'common');
+      card.innerHTML = `
+        <div class="shop-icon avatar-frame-preview" style="--af-grad:${fr.gradient}"><span class="af-inner"></span></div>
+        <div class="shop-name">${fr.name}</div>
+        <span class="shop-type">Khung · ${rarityLabel}</span>
+        <div class="shop-meta"><span>${fr.desc || ''}</span></div>
+        <div class="shop-owned">${on ? '✅ Đang gắn' : (have ? 'Đã sở hữu' : 'Chưa có')}</div>
+        <div class="shop-price">${(fr.price || 0).toLocaleString()} 🪙</div>
+        ${have
+          ? `<button class="btn ${on ? 'btn-secondary' : 'btn-primary'} btn-equip-frame" data-id="${fr.id}">${on ? 'Đang gắn' : 'Gắn khung'}</button>`
+          : `<button class="btn btn-primary btn-buy-frame" data-id="${fr.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>`}
+      `;
+      grid.appendChild(card);
+    });
+    grid.querySelectorAll('.btn-buy-frame').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const res = await Game.buyAvatarFrame(btn.dataset.id);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        updateCoins();
+        renderShop();
+        if (typeof applyProfileAvatarFrame === 'function') applyProfileAvatarFrame();
+      });
+    });
+    grid.querySelectorAll('.btn-equip-frame').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const res = Game.equipAvatarFrame(btn.dataset.id);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
+        else if (typeof savePlayer === 'function') savePlayer();
+        renderShop();
+        if (typeof applyProfileAvatarFrame === 'function') applyProfileAvatarFrame();
+      });
+    });
+    return;
+  }
+
   if (currentShopTab === 'pet') {
     const countEl = document.getElementById('shop-count');
     document.getElementById('shop-pager').innerHTML = '';
@@ -2740,7 +2816,7 @@ function renderShop() {
 
   // Banner limited đang mở
   const activeLimited = Game.getPlants().filter(p => Game.isPlantLimited(p) && Game.isPlantAvailable(p));
-  if (activeLimited.length && currentShopTab !== 'odat' && currentShopTab !== 'phan' && currentShopTab !== 'baoho' && currentShopTab !== 'tien' && currentShopTab !== 'nyc' && currentShopTab !== 'helper') {
+  if (activeLimited.length && currentShopTab !== 'odat' && currentShopTab !== 'phan' && currentShopTab !== 'baoho' && currentShopTab !== 'tien' && currentShopTab !== 'nyc' && currentShopTab !== 'helper' && currentShopTab !== 'khung') {
     const banner = document.createElement('div');
     banner.className = 'shop-event-banner';
     banner.innerHTML = `<i class="fa-solid fa-bolt"></i> <strong>${activeLimited.length} hạt Limited</strong> đang mở bán — nhanh tay trước khi hết sự kiện!`;
