@@ -2249,7 +2249,7 @@ html[data-theme="dark"] .plot-progress {
   font-size: 2rem;
   color: var(--primary);
 }
-/* Badge CẤP dưới avatar — pill mềm giống mock */
+/* Badge LVL dưới avatar — pill mềm giống mock */
 .profile-level-tag {
   margin-top: 0;
   position: relative;
@@ -7483,6 +7483,7 @@ html[data-theme="dark"] .profile-companion {
   contain: none !important;
   flex-shrink: 0 !important;
   z-index: 1 !important;
+  margin-top: -20px !important;
 }
 
 .profile-avatar-wrap.has-frame::before {
@@ -7505,7 +7506,7 @@ html[data-theme="dark"] .profile-companion {
   z-index: 5 !important;
 }
 
-/* ===== Badge CẤP dưới avatar (v1.9.23) — kiểu pill mềm như mock ===== */
+/* ===== Badge LVL dưới avatar (v1.9.23) — kiểu pill mềm như mock ===== */
 .profile-level-tag,
 #profile-level-tag {
   margin-top: 0 !important;

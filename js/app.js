@@ -1082,7 +1082,7 @@ function applyProfileAvatarFrame() {
       conic = 'conic-gradient(from 0deg, ' + conic + ', ' + conic + ')';
     }
     wrap.style.setProperty('--avatar-frame-conic', conic);
-    // Badge CẤP dưới avatar: màu từ khung shop đã mua
+    // Badge LVL dưới avatar: màu từ khung shop đã mua
     if (lvlTag) {
       lvlTag.classList.add('has-frame-grad');
       lvlTag.style.setProperty('--avatar-frame-grad', frame.gradient);
