@@ -2587,6 +2587,28 @@ const Game = {
   },
 
   /** Bán hạt giống từ kho. kind: 'normal' | 'star' | 'all' */
+
+  async sellFertilizer(fertId, qty = 1) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    const fert = this.getFertilizer(fertId);
+    if (!fert) return { ok: false, msg: 'Phân bón không hợp lệ!' };
+    qty = Math.max(1, parseInt(qty, 10) || 1);
+    if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
+    const have = currentPlayer.inventory.fertilizers[fertId] || 0;
+    if (have < qty) return { ok: false, msg: 'Không đủ phân bón!' };
+    const unit = Math.max(1, Math.floor((Number(fert.price) || 10) * 0.5));
+    const earn = unit * qty;
+    currentPlayer.inventory.fertilizers[fertId] -= qty;
+    if (currentPlayer.inventory.fertilizers[fertId] <= 0) delete currentPlayer.inventory.fertilizers[fertId];
+    currentPlayer.coins = (currentPlayer.coins || 0) + earn;
+    currentPlayer.stats = currentPlayer.stats || {};
+    currentPlayer.stats.earned = (currentPlayer.stats.earned || 0) + earn;
+    if (typeof Features !== 'undefined' && Features.trackQuest) Features.trackQuest('earn', earn);
+    this.addActivity('Bán ' + qty + ' ' + fert.name + ' (+' + earn + '🪙)');
+    await savePlayer();
+    return { ok: true, msg: 'Bán ' + qty + ' ' + fert.name + ', nhận ' + earn + '🪙!' };
+  },
+
   async sellSeed(plantId, qty = 1, kind = 'normal') {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const plant = this.getPlant(plantId);

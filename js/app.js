@@ -1049,6 +1049,7 @@ async function sendChat() {
 
 function applyProfileAvatarFrame() {
   const wrap = document.getElementById('profile-avatar-wrap');
+  const lvlTag = document.getElementById('profile-level-tag');
   if (!wrap) return;
   const frameId = currentPlayer && currentPlayer.avatarFrameId;
   const frame = (frameId && typeof Game !== 'undefined' && Game.getAvatarFrame)
@@ -1057,9 +1058,17 @@ function applyProfileAvatarFrame() {
   if (frame && frame.gradient) {
     wrap.classList.add('has-frame');
     wrap.style.setProperty('--avatar-frame-grad', frame.gradient);
+    if (lvlTag) {
+      lvlTag.classList.add('has-frame-grad');
+      lvlTag.style.setProperty('--avatar-frame-grad', frame.gradient);
+    }
   } else {
     wrap.classList.remove('has-frame');
     wrap.style.removeProperty('--avatar-frame-grad');
+    if (lvlTag) {
+      lvlTag.classList.remove('has-frame-grad');
+      lvlTag.style.removeProperty('--avatar-frame-grad');
+    }
   }
 }
 
@@ -2981,7 +2990,7 @@ function renderInventory() {
     });
   }
 
-  // Fertilizers
+  // Fertilizers — có thể bán
   const fertEl = document.getElementById('inv-fert');
   const fertIds = Object.keys(ferts).filter(id => ferts[id] > 0);
   if (fertIds.length === 0) {
@@ -2990,14 +2999,31 @@ function renderInventory() {
     fertEl.innerHTML = '<div class="inv-grid">' + fertIds.map(id => {
       const fert = Game.getFertilizer(id);
       if (!fert) return '';
+      const unit = Math.max(1, Math.floor((Number(fert.price) || 10) * 0.5));
       return `
         <div class="inv-item">
           <div class="icon">${fert.icon}</div>
           <div class="name">${fert.name}</div>
-          <div class="qty">x${ferts[id]} · −${Math.round(fert.timeReduce * 100)}% TG</div>
+          <div class="qty">x${ferts[id]} · −${Math.round((fert.timeReduce || 0) * 100)}% TG · ${unit}🪙/cái</div>
+          <div class="actions">
+            <button class="btn btn-success btn-sell-fert" data-id="${id}" data-qty="1">Bán 1</button>
+            <button class="btn btn-primary btn-sell-fert" data-id="${id}" data-qty="all">Bán hết</button>
+          </div>
         </div>
       `;
     }).join('') + '</div>';
+    fertEl.querySelectorAll('.btn-sell-fert').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        let qty = btn.dataset.qty;
+        if (qty === 'all') qty = (currentPlayer.inventory.fertilizers && currentPlayer.inventory.fertilizers[id]) || 0;
+        else qty = 1;
+        const res = await Game.sellFertilizer(id, qty);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        updateCoins();
+        renderInventory();
+      });
+    });
   }
 
   // Harvest — tách 3 nguồn: thu hoạch / mua / ghép sao
@@ -3364,9 +3390,6 @@ function bindLevelPageControls() {
   _levelPageBound = true;
   const range = document.getElementById('levelInputRange');
   range?.addEventListener('input', e => updateTreeLevelUI(e.target.value));
-  document.querySelectorAll('.level-preset').forEach(btn => {
-    btn.addEventListener('click', () => updateTreeLevelUI(btn.dataset.lvl));
-  });
   document.getElementById('btn-level-my')?.addEventListener('click', () => {
     const lv = (currentPlayer && currentPlayer.level) ? currentPlayer.level : 1;
     updateTreeLevelUI(lv);

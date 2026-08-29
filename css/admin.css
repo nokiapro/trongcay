@@ -1556,3 +1556,15 @@ html[data-theme="dark"] .admin-menu-btn {
   color: #64748b;
   font-size: 0.9em;
 }
+
+
+/* v1.9.6 — sec-dashboard / admin-section không nền riêng */
+#sec-dashboard,
+.admin-section,
+.admin-section.active {
+  background: transparent !important;
+}
+html[data-theme="dark"] .admin-section,
+html[data-theme="dark"] #sec-dashboard {
+  background: transparent !important;
+}

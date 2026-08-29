@@ -7119,13 +7119,16 @@ textarea::placeholder {
 .plot-detail-card,
 .seed-option,
 .modal-content,
-.friends-panel,
-.chat-panel,
 .level-badge-showcase {
   background: var(--card) !important;
   color: var(--text) !important;
-  border: 1px solid var(--border) !important;
   box-shadow: var(--shadow);
+}
+/* Không ép border panel chat/friends — layout tự xử lý */
+.friends-panel,
+.chat-panel {
+  border: none !important;
+  box-shadow: none;
 }
 
 .friend-item {
@@ -7330,8 +7333,18 @@ html[data-theme="dark"] .header {
 
 
 /* ==========================================================================
-   Avatar frame shop + profile frame (v1.9.4)
+   Avatar frame shop + profile frame (v1.9.6) — animated ring
    ========================================================================== */
+@keyframes avatar-frame-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes avatar-frame-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 .profile-avatar-wrap {
   width: 104px;
   height: 104px;
@@ -7344,19 +7357,41 @@ html[data-theme="dark"] .header {
   background: transparent;
   border: none;
   box-shadow: none;
+  overflow: visible;
 }
 .profile-avatar-wrap.has-frame {
-  padding: 4px;
+  padding: 0;
+  background: transparent;
+}
+.profile-avatar-wrap.has-frame::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
   background: var(--avatar-frame-grad, linear-gradient(135deg, #94a3b8, #e2e8f0));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 40%, transparent),
-              0 6px 18px color-mix(in srgb, var(--primary) 20%, transparent);
+  background-size: 200% 200%;
+  animation: avatar-frame-spin 4s linear infinite;
+  z-index: 0;
+  filter: saturate(1.15);
+}
+.profile-avatar-wrap.has-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--card, #fff);
+  z-index: 1;
+}
+html[data-theme="dark"] .profile-avatar-wrap.has-frame::after {
+  background: var(--card, #1c2820);
 }
 .profile-avatar-wrap .profile-avatar,
 .profile-avatar-wrap .profile-avatar-fallback {
-  width: 100%;
-  height: 100%;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
-  display: block;
+  position: relative;
+  z-index: 2;
 }
 .profile-avatar-wrap .profile-avatar-fallback {
   display: flex;
@@ -7365,41 +7400,111 @@ html[data-theme="dark"] .header {
 }
 .profile-avatar-wrap:not(.has-frame) .profile-avatar,
 .profile-avatar-wrap:not(.has-frame) .profile-avatar-fallback {
-  width: 96px;
-  height: 96px;
   border: 2px solid var(--border);
 }
 
-/* Hide old ring element if present */
 .profile-avatar-ring { display: none !important; }
 
-/* Shop preview */
+/* LVL tag dùng cùng gradient khung khi đã gắn */
+.profile-level-tag.has-frame-grad {
+  background: var(--avatar-frame-grad) !important;
+  background-size: 200% 200% !important;
+  animation: avatar-frame-shift 3s ease infinite;
+  border-color: rgba(255,255,255,0.35) !important;
+  color: #fff !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+}
+
+/* Shop preview — vòng xoay */
 .avatar-frame-preview {
   width: 72px !important;
   height: 72px !important;
   border-radius: 50% !important;
   margin: 0 auto 8px;
-  padding: 4px !important;
-  background: var(--af-grad) !important;
+  padding: 0 !important;
+  background: transparent !important;
   display: flex !important;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+  position: relative;
+  box-shadow: none !important;
+  overflow: visible;
+}
+.avatar-frame-preview::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: var(--af-grad);
+  background-size: 200% 200%;
+  animation: avatar-frame-spin 3.5s linear infinite;
+  z-index: 0;
 }
 .avatar-frame-preview .af-inner {
-  width: 100%;
-  height: 100%;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: var(--card, #fff);
   display: block;
+  position: relative;
+  z-index: 1;
 }
 html[data-theme="dark"] .avatar-frame-preview .af-inner {
   background: var(--surface, #15241c);
 }
 
-.shop-card-frame.rarity-rare { border-color: color-mix(in srgb, #3b82f6 45%, var(--border)) !important; }
-.shop-card-frame.rarity-epic { border-color: color-mix(in srgb, #a855f7 50%, var(--border)) !important; }
-.shop-card-frame.rarity-legendary { border-color: color-mix(in srgb, #f59e0b 55%, var(--border)) !important; }
+.shop-card-frame.rarity-rare { box-shadow: 0 0 0 1px color-mix(in srgb, #3b82f6 40%, transparent); }
+.shop-card-frame.rarity-epic { box-shadow: 0 0 0 1px color-mix(in srgb, #a855f7 45%, transparent); }
+.shop-card-frame.rarity-legendary { box-shadow: 0 0 0 1px color-mix(in srgb, #f59e0b 50%, transparent); }
+
+/* Modal trồng — hết scrollbar ngang, title gọn */
+#modal-plant .modal-content {
+  overflow-x: hidden !important;
+  max-width: min(440px, 96vw);
+  width: 100%;
+  box-sizing: border-box;
+}
+#modal-plant .modal-plant-title {
+  font-size: 1.15rem;
+  line-height: 1.35;
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  word-break: break-word;
+  color: var(--text);
+}
+#modal-plant .modal-plant-title i {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+#modal-plant .seed-list,
+#modal-plant #plant-seed-list {
+  overflow-x: hidden !important;
+  max-width: 100%;
+}
+#modal-plant .seed-option,
+#modal-plant .seed-option-compact {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+#modal-plant .plot-upgrade-box,
+#modal-plant .plot-upgrade-row {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+#modal-plant select,
+#modal-plant input {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Ẩn hàng preset level nếu còn sót */
+.level-preset-row { display: none !important; }
 
 
 /* ==========================================================================
