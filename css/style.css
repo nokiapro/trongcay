@@ -320,29 +320,32 @@ button.btn,
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--primary-light));
-  color: white;
-  box-shadow: 0 4px 14px rgba(45, 106, 79, 0.3);
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: #fff;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(45, 106, 79, 0.4);
+  filter: brightness(1.06);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--primary) 45%, transparent);
 }
 
 .btn-success {
-  background: linear-gradient(135deg, #21867a, var(--success));
-  color: white;
-  box-shadow: 0 4px 14px rgba(42, 157, 143, 0.3);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--success) 85%, #0f766e), var(--success));
+  color: #fff;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--success) 35%, transparent);
 }
 
 .btn-success:hover {
   transform: translateY(-2px);
+  filter: brightness(1.06);
 }
 
 .btn-danger {
-  background: linear-gradient(135deg, #d62828, var(--danger));
-  color: white;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--danger) 80%, #7f1d1d), var(--danger));
+  color: #fff;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
 .btn-danger:hover {
@@ -350,27 +353,33 @@ button.btn,
 }
 
 .btn-secondary {
-  background: #e8f5e9;
+  background: var(--surface-soft, #e8f5e9);
   color: var(--primary-dark);
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+  box-shadow: none;
 }
 
 .btn-secondary:hover {
-  background: #c8e6c9;
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface-soft, #e8f5e9));
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
 }
 
 .btn-warning {
-  background: linear-gradient(135deg, #d97706, #f59e0b);
-  color: white;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+  background: linear-gradient(135deg, #d97706, var(--warning));
+  color: #1b4332;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--warning) 40%, transparent);
+  font-weight: 700;
 }
 
 .btn-warning:hover {
   transform: translateY(-2px);
+  filter: brightness(1.05);
 }
 
 .btn-purple {
-  background: linear-gradient(135deg, #6d28d9, var(--purple));
-  color: white;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--purple) 80%, #4c1d95), var(--purple));
+  color: #fff;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--purple) 35%, transparent);
 }
 
 .btn-purple:hover {
@@ -6398,9 +6407,11 @@ html[data-theme="dark"] .merge-box .merge-sub {
   margin: 0 auto 1.5rem;
   max-width: 720px;
   border-radius: 1.5rem;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 12%, var(--card)), color-mix(in srgb, var(--primary-dark) 8%, var(--bg)));
-  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
-  box-shadow: var(--shadow);
+  background:
+    radial-gradient(ellipse at 50% 18%, color-mix(in srgb, var(--primary) 22%, transparent) 0%, transparent 55%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 35%, var(--card)), var(--card));
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
   min-height: 520px;
   perspective: 1000px;
@@ -6683,18 +6694,25 @@ html[data-theme="dark"] .merge-box .merge-sub {
   height: 0.65rem;
   appearance: none;
   border-radius: 999px;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(52, 211, 153, 0.25);
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface-muted, #eef2f0));
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
   cursor: pointer;
-  accent-color: #34d399;
+  accent-color: var(--primary);
 }
 .level-range::-webkit-slider-thumb {
   appearance: none;
   width: 18px; height: 18px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #34d399, #fbbf24);
-  border: 2px solid #ecfdf5;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  background: linear-gradient(135deg, var(--primary-light), var(--warning));
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 40%, transparent);
+  cursor: pointer;
+}
+.level-range::-moz-range-thumb {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary-light), var(--warning));
+  border: 2px solid #fff;
   cursor: pointer;
 }
 .level-preset-row {
@@ -6735,15 +6753,15 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .level-progress-bar {
   height: 0.55rem;
   border-radius: 999px;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(52, 211, 153, 0.2);
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface-muted, #eef2f0));
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
   overflow: hidden;
   padding: 1px;
 }
 .level-progress-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #10b981, #2dd4bf, #fbbf24);
+  background: linear-gradient(90deg, var(--primary), var(--success), var(--warning));
   transition: width 0.25s ease;
 }
 .level-my-btn { margin-top: 0.25rem; }
@@ -7085,4 +7103,200 @@ html[data-theme="dark"] .app-version-badge {
 
 html[data-theme="dark"] #page-activity .activity-list::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+
+/* ==========================================================================
+   BUTTONS + LEVEL LIGHT/DARK polish (v1.9.1)
+   ========================================================================== */
+html[data-theme="dark"] .btn-primary {
+  background: linear-gradient(135deg, #2d6a4f, var(--primary));
+  color: #0b1612;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(107, 207, 154, 0.28);
+}
+
+html[data-theme="dark"] .btn-primary:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 22px rgba(107, 207, 154, 0.4);
+}
+
+html[data-theme="dark"] .btn-success {
+  background: linear-gradient(135deg, #1a7a6a, var(--success));
+  color: #06201b;
+  font-weight: 700;
+}
+
+html[data-theme="dark"] .btn-danger {
+  background: linear-gradient(135deg, #b91c1c, var(--danger));
+  color: #fff;
+}
+
+html[data-theme="dark"] .btn-secondary {
+  background: var(--surface-soft);
+  color: var(--text);
+  border: 1px solid var(--border-soft);
+}
+
+html[data-theme="dark"] .btn-secondary:hover {
+  background: color-mix(in srgb, var(--primary) 18%, var(--surface-soft));
+  color: var(--text);
+}
+
+html[data-theme="dark"] .btn-warning {
+  background: linear-gradient(135deg, #b45309, var(--warning));
+  color: #1a1205;
+  font-weight: 700;
+}
+
+html[data-theme="dark"] .btn-purple {
+  background: linear-gradient(135deg, #6d28d9, var(--purple));
+  color: #fff;
+}
+
+html[data-theme="dark"] .btn-timer {
+  background: linear-gradient(135deg, #1e3a5f, #3b82f6);
+  color: #fff;
+}
+
+html[data-theme="dark"] .btn-timer.ready {
+  background: linear-gradient(135deg, #15803d, #22c55e);
+  color: #fff;
+}
+
+/* Light: primary stays white text on deep green */
+:root:not([data-theme="dark"]) .btn-primary,
+html[data-theme="light"] .btn-primary {
+  background: linear-gradient(135deg, #1b4332, #2d6a4f);
+  color: #fff;
+}
+
+:root:not([data-theme="dark"]) .btn-success,
+html[data-theme="light"] .btn-success {
+  color: #fff;
+}
+
+:root:not([data-theme="dark"]) .btn-secondary,
+html[data-theme="light"] .btn-secondary {
+  background: #e8f5e9;
+  color: #1b4332;
+  border: 1px solid #b7e4c7;
+}
+
+:root:not([data-theme="dark"]) .btn-secondary:hover,
+html[data-theme="light"] .btn-secondary:hover {
+  background: #d8f3e4;
+}
+
+/* Level page — light theme softer greens + readable text */
+:root:not([data-theme="dark"]) .level-badge-showcase,
+html[data-theme="light"] .level-badge-showcase {
+  background:
+    radial-gradient(ellipse at 50% 12%, rgba(149, 213, 178, 0.55) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(64, 145, 108, 0.12) 0%, transparent 45%),
+    linear-gradient(180deg, #f3fbf6 0%, #ffffff 55%, #eef7f2 100%);
+  border: 1px solid #b7e4c7;
+  box-shadow: 0 12px 40px rgba(27, 67, 50, 0.1);
+}
+
+:root:not([data-theme="dark"]) .level-badge-ambient,
+html[data-theme="light"] .level-badge-ambient {
+  opacity: 0.35;
+}
+
+:root:not([data-theme="dark"]) .level-tier-meta strong,
+html[data-theme="light"] .level-tier-meta strong {
+  color: #1b4332;
+}
+
+:root:not([data-theme="dark"]) .level-slider-label-center,
+html[data-theme="light"] .level-slider-label-center {
+  color: #1b4332;
+}
+
+:root:not([data-theme="dark"]) .level-preset,
+html[data-theme="light"] .level-preset {
+  background: #fff;
+  border: 1px solid #b7e4c7;
+  color: #1b4332;
+  box-shadow: 0 2px 8px rgba(27, 67, 50, 0.06);
+}
+
+:root:not([data-theme="dark"]) .level-preset:hover,
+html[data-theme="light"] .level-preset:hover {
+  background: #e8f5e9;
+  border-color: #40916c;
+}
+
+:root:not([data-theme="dark"]) .level-range,
+html[data-theme="light"] .level-range {
+  background: #e0efe8;
+  border-color: #95d5b2;
+}
+
+:root:not([data-theme="dark"]) .level-progress-bar,
+html[data-theme="light"] .level-progress-bar {
+  background: #e0efe8;
+  border-color: #b7e4c7;
+}
+
+/* Dark level keeps depth */
+html[data-theme="dark"] .level-badge-showcase {
+  background:
+    radial-gradient(ellipse at 50% 15%, rgba(107, 207, 154, 0.22) 0%, transparent 50%),
+    linear-gradient(180deg, rgba(8, 32, 22, 0.98), rgba(4, 18, 12, 0.95));
+  border-color: rgba(107, 207, 154, 0.28);
+}
+
+html[data-theme="dark"] .level-preset {
+  background: rgba(15, 35, 25, 0.85);
+  border-color: rgba(107, 207, 154, 0.3);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .level-preset:hover {
+  background: rgba(45, 106, 79, 0.45);
+}
+
+html[data-theme="dark"] .level-range {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(107, 207, 154, 0.3);
+}
+
+html[data-theme="dark"] .level-range::-webkit-slider-thumb {
+  border-color: #0f1a14;
+}
+
+html[data-theme="dark"] .level-progress-bar {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: rgba(107, 207, 154, 0.25);
+}
+
+/* Shop tabs / rank tabs as soft buttons */
+.shop-tab,
+.rank-tab {
+  background: var(--surface-soft, #e8f5e9);
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.shop-tab.active,
+.rank-tab.active {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: #fff;
+  border-color: transparent;
+}
+
+html[data-theme="dark"] .shop-tab,
+html[data-theme="dark"] .rank-tab {
+  background: var(--surface-softer);
+  color: var(--text-muted);
+  border-color: var(--border-soft);
+}
+
+html[data-theme="dark"] .shop-tab.active,
+html[data-theme="dark"] .rank-tab.active {
+  background: linear-gradient(135deg, #2d6a4f, var(--primary));
+  color: #0b1612;
+  font-weight: 700;
 }
