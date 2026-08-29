@@ -1084,16 +1084,10 @@ function applyProfileAvatarFrame() {
     wrap.style.setProperty('--avatar-frame-conic', conic);
     if (lvlTag) {
       lvlTag.classList.add('has-frame-grad');
-      // Lấy màu đầu trong gradient làm viền tĩnh cho LVL
-      let borderColor = '#a855f7';
-      const m = String(frame.gradient || '').match(/#([0-9a-fA-F]{3,8})/);
-      if (m) borderColor = '#' + m[1];
-      else {
-        const rgb = String(frame.gradient || '').match(/rgb[a]?\([^)]+\)/);
-        if (rgb) borderColor = rgb[0];
-      }
-      lvlTag.style.setProperty('--frame-border-color', borderColor);
-      lvlTag.style.removeProperty('--avatar-frame-grad');
+      // Nền LVL = gradient tĩnh của khung (không animation)
+      lvlTag.style.setProperty('--avatar-frame-grad', frame.gradient);
+      lvlTag.style.background = frame.gradient;
+      lvlTag.style.color = '#fff';
     }
   } else {
     wrap.classList.remove('has-frame');
@@ -1103,6 +1097,8 @@ function applyProfileAvatarFrame() {
       lvlTag.classList.remove('has-frame-grad');
       lvlTag.style.removeProperty('--avatar-frame-grad');
       lvlTag.style.removeProperty('--frame-border-color');
+      lvlTag.style.background = '';
+      lvlTag.style.color = '';
     }
   }
 }

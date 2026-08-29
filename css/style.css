@@ -7467,7 +7467,13 @@ html[data-theme="dark"] .profile-companion {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 .profile-level-tag.has-frame-grad {
-  border-color: var(--frame-border-color, #a855f7);
-  /* giữ nền theo tier-tree-*, không animation */
+  background: var(--avatar-frame-grad, linear-gradient(135deg, #a855f7, #06b6d4)) !important;
+  border: 2px solid rgba(255, 255, 255, 0.35) !important;
+  color: #fff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  animation: none !important;
 }
 
+
+
+.nav-menu-title { display: none !important; height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; }

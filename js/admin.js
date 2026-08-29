@@ -52,7 +52,10 @@ document.querySelectorAll('.side-btn').forEach(btn => {
     if (btn.dataset.section === 'users') renderUsers();
     if (btn.dataset.section === 'giftcodes') renderGiftCodes();
     if (btn.dataset.section === 'settings') renderSettings();
-    if (btn.dataset.section === 'announce') renderAnnounce();
+    if (btn.dataset.section === 'announce') {
+      renderAnnounce();
+      if (typeof fillMailTargetSelect === 'function') fillMailTargetSelect();
+    }
   });
 });
 

@@ -735,8 +735,8 @@
 }
 .maint-card,
 .announce-card {
-  max-width: 100%;
   width: 100%;
+  max-width: 100%;
   margin-top: 16px;
   border: 1px solid #e8f0ec;
   border-radius: 16px;
@@ -1573,46 +1573,115 @@ html[data-theme="dark"] #sec-dashboard {
 }
 
 
-
-
 /* ==========================================================================
-   v1.9.13 — Admin settings: 3 cards FULL WIDTH vertical (no grid, no side-by-side)
+   v1.9.15 — Admin layout fix (clean)
    ========================================================================== */
-#sec-settings.admin-section,
-#sec-settings.admin-section.active {
-  display: block !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-#sec-settings > * {
-  display: block !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  float: none !important;
-  clear: both !important;
-  box-sizing: border-box !important;
+
+/* Settings: 3 cards full width, stacked */
+#sec-settings {
+  display: block;
+  width: 100%;
+  max-width: 820px;
 }
 #sec-settings .admin-card,
 #sec-settings .settings-form,
-#sec-settings .maint-card,
-#sec-settings .admin-card.maint-card {
-  display: block !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  float: none !important;
-  grid-column: 1 / -1 !important;
-  box-sizing: border-box !important;
+#sec-settings .maint-card {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  float: none;
+  clear: both;
+  margin-left: 0;
+  margin-right: 0;
 }
-#sec-settings .admin-settings-grid,
-#sec-settings .settings-duo {
-  display: block !important;
-  width: 100% !important;
-  grid-template-columns: none !important;
+#sec-settings .maint-card {
+  margin-top: 16px;
 }
-#sec-settings h1 {
-  width: 100% !important;
-  margin-bottom: 16px !important;
+
+/* Announce / mail full width */
+#sec-announce {
+  max-width: 820px;
+}
+#sec-announce .announce-card,
+#sec-announce .admin-card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Mail search list */
+.mail-target-wrap {
+  margin-bottom: 14px;
+}
+.mail-target-wrap > label {
+  font-weight: 700;
+  display: block;
+  margin-bottom: 6px;
+}
+#mail-target-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(45, 106, 79, 0.28);
+  background: rgba(45, 106, 79, 0.04);
+  color: var(--text, #1b4332);
+  margin-bottom: 8px;
+  font-family: inherit;
+  font-weight: 600;
+}
+#mail-target-list {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1.5px solid rgba(45, 106, 79, 0.2);
+  border-radius: 10px;
+  background: rgba(45, 106, 79, 0.03);
+}
+#mail-target-list .mail-user-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(45, 106, 79, 0.1);
+  font-size: 0.9rem;
+  color: var(--text, #1b4332);
+}
+#mail-target-list .mail-user-item:last-child {
+  border-bottom: none;
+}
+#mail-target-list .mail-user-item:hover,
+#mail-target-list .mail-user-item.active {
+  background: rgba(45, 106, 79, 0.12);
+}
+#mail-target-list .mail-user-item small {
+  margin-left: auto;
+  color: #52796f;
+  font-size: 0.8rem;
+}
+html[data-theme="dark"] #mail-target-search,
+html[data-theme="dark"] #mail-target-list {
+  background: rgba(149, 213, 178, 0.06);
+  border-color: rgba(149, 213, 178, 0.25);
+  color: #e8f5e9;
+}
+html[data-theme="dark"] #mail-target-list .mail-user-item {
+  color: #e8f5e9;
+  border-bottom-color: rgba(149, 213, 178, 0.12);
+}
+html[data-theme="dark"] #mail-target-list .mail-user-item:hover,
+html[data-theme="dark"] #mail-target-list .mail-user-item.active {
+  background: rgba(149, 213, 178, 0.14);
+}
+html[data-theme="dark"] #mail-target-list .mail-user-item small {
+  color: #a7c4b5;
+}
+html[data-theme="dark"] #mail-target-label {
+  color: #95d5b2 !important;
+}
+
+/* Admin main content readable width */
+.admin-main {
+  box-sizing: border-box;
 }
