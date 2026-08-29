@@ -622,6 +622,8 @@ function goToPage(page) {
   if (page === 'market') renderMarket();
   if (page === 'bank') renderBank();
   if (page === 'stats') renderStats();
+  if (page === 'level') renderLevelPage();
+  if (page === 'activity') renderActivityPage();
   if (page === 'rank') renderRank();
   if (page === 'friends') renderFriends();
   if (page === 'profile') renderProfile();
@@ -3166,16 +3168,146 @@ function renderStats() {
     }).join('');
   }
 
+}
+
+// ===== ACTIVITY PAGE =====
+function renderActivityPage() {
+  if (!currentPlayer) return;
   const actList = document.getElementById('activity-list');
+  if (!actList) return;
   const acts = currentPlayer.activity || [];
   if (acts.length === 0) {
     actList.innerHTML = '<li style="color:#999">Chưa có hoạt động nào.</li>';
   } else {
-    actList.innerHTML = acts.slice(0, 30).map(a =>
+    actList.innerHTML = acts.slice(0, 50).map(a =>
       `<li><span class="time">${a.time || ''}</span><span>${a.text}</span></li>`
     ).join('');
   }
 }
+
+// ===== LEVEL / TREE BADGE PAGE =====
+const TREE_TIERS = [
+  { min: 1, max: 49, class: 'tier-tree-1', title: 'Mầm Cây Trong Chậu Đất', icon: 'fa-seedling', desc: 'Hạt giống nhỏ vừa vươn mầm khỏi chậu đất sét nâu tròn', glow: 'rgba(133, 83, 53, 0.4)' },
+  { min: 50, max: 149, class: 'tier-tree-2', title: 'Chồi Xanh Lục Ngọc', icon: 'fa-plant-wilt', desc: 'Mầm chồi non vươn cao với những chiếc lá lục bảo bóng mượt', glow: 'rgba(74, 222, 128, 0.45)' },
+  { min: 150, max: 299, class: 'tier-tree-3', title: 'Thân Cây Bích Nguyệt', icon: 'fa-leaf', desc: 'Thân cây con tỏa sắc lam ngọc huyền ảo dưới ánh trăng', glow: 'rgba(56, 189, 248, 0.5)' },
+  { min: 300, max: 499, class: 'tier-tree-4', title: 'Đại Thụ Kim Ngân', icon: 'fa-tree', desc: 'Thân gỗ vững chãi tỏa tán lá vàng kim rực rỡ phú quý', glow: 'rgba(250, 204, 21, 0.55)' },
+  { min: 500, max: 699, class: 'tier-tree-5', title: 'Thần Hoa Sinh Thái', icon: 'fa-spa', desc: 'Thần cây trổ những bông hoa tỏa hương thơm ngọt ngào', glow: 'rgba(244, 114, 182, 0.6)' },
+  { min: 700, max: 849, class: 'tier-tree-6', title: 'Rừng Dạ Quang', icon: 'fa-clover', desc: 'Cây phát sáng dạ quang xanh lơ rực rỡ giữa không gian', glow: 'rgba(0, 242, 254, 0.7)' },
+  { min: 750, max: 949, class: 'tier-tree-7', title: 'Thái Dương Cổ Thụ', icon: 'fa-sun', desc: 'Cổ thụ hấp thụ ánh sáng mặt trời quay vòng hào quang', glow: 'rgba(245, 158, 11, 0.75)' },
+  { min: 950, max: 999, class: 'tier-tree-8', title: 'Vệ Binh Gaia Tối Cao', icon: 'fa-earth-americas', desc: 'Cây linh hồn tím huyền bí bảo hộ cho đại địa thiên nhiên', glow: 'rgba(192, 132, 252, 0.85)' },
+  { min: 1000, max: 1000, class: 'tier-tree-9', title: 'Thần Cây Vũ Trụ Yggdrasil', icon: 'fa-tree', desc: 'Đỉnh cao tiến hóa - Cây Thế Giới kết nối ngàn sao vũ trụ', glow: 'rgba(244, 63, 94, 0.95)' }
+];
+
+function getTreeTier(level) {
+  return TREE_TIERS.find(t => level >= t.min && level <= t.max) || TREE_TIERS[0];
+}
+
+let _levelPageBound = false;
+
+function updateTreeLevelUI(val) {
+  const level = Math.min(1000, Math.max(1, parseInt(val, 10) || 1));
+  const tier = getTreeTier(level);
+
+  const range = document.getElementById('levelInputRange');
+  const num = document.getElementById('levelInputNumber');
+  if (range) range.value = level;
+  if (num) num.value = level;
+
+  const titleEl = document.getElementById('tierTitleText');
+  const cssEl = document.getElementById('cssClassText');
+  if (titleEl) titleEl.textContent = tier.title;
+  if (cssEl) cssEl.textContent = '.' + tier.class;
+
+  const progress = (level / 1000) * 100;
+  const bar = document.getElementById('levelProgressBar');
+  const pct = document.getElementById('xpPercentText');
+  if (bar) bar.style.width = progress + '%';
+  if (pct) pct.textContent = Math.round(progress) + '%';
+
+  const glow = document.getElementById('levelAmbientGlow');
+  if (glow) glow.style.background = tier.glow;
+
+  const wrapper = document.getElementById('activeTreeWrapper');
+  const pill = document.getElementById('activePillBadge');
+  TREE_TIERS.forEach(t => {
+    wrapper?.classList.remove(t.class);
+    pill?.classList.remove(t.class);
+  });
+  wrapper?.classList.add(tier.class);
+  pill?.classList.add(tier.class);
+
+  const icon = document.getElementById('activeTreeIcon');
+  const lvlNum = document.getElementById('activeTreeLvlNum');
+  const pillIcon = document.getElementById('activePillIcon');
+  const pillText = document.getElementById('activePillText');
+  if (icon) icon.className = 'fa-solid ' + tier.icon + ' tree-icon';
+  if (lvlNum) lvlNum.textContent = level;
+  if (pillIcon) pillIcon.className = 'fa-solid ' + tier.icon;
+  if (pillText) pillText.textContent = 'LVL ' + level + ' • ' + tier.title;
+}
+
+function renderTreeTiersGrid() {
+  const container = document.getElementById('treeTiersGrid');
+  if (!container) return;
+  container.innerHTML = TREE_TIERS.map(t => `
+    <button type="button" class="level-tier-card" data-lvl="${t.min}">
+      <div class="level-tier-card-top">
+        <div>
+          <span class="level-tier-range">Level ${t.min} – ${t.max}</span>
+          <strong class="level-tier-name">${t.title}</strong>
+        </div>
+        <div class="tree-badge-wrapper ${t.class} level-tier-mini">
+          <div class="tree-badge-container">
+            <div class="tree-emblem-orb"><i class="fa-solid ${t.icon} tree-icon"></i></div>
+          </div>
+        </div>
+      </div>
+      <p class="level-tier-desc">${t.desc}</p>
+    </button>
+  `).join('');
+  container.querySelectorAll('[data-lvl]').forEach(btn => {
+    btn.addEventListener('click', () => updateTreeLevelUI(btn.dataset.lvl));
+  });
+}
+
+function bindLevelPageControls() {
+  if (_levelPageBound) return;
+  _levelPageBound = true;
+  const range = document.getElementById('levelInputRange');
+  const num = document.getElementById('levelInputNumber');
+  range?.addEventListener('input', e => updateTreeLevelUI(e.target.value));
+  num?.addEventListener('change', e => updateTreeLevelUI(e.target.value));
+  document.querySelectorAll('.level-preset').forEach(btn => {
+    btn.addEventListener('click', () => updateTreeLevelUI(btn.dataset.lvl));
+  });
+  document.getElementById('btn-level-my')?.addEventListener('click', () => {
+    const lv = (currentPlayer && currentPlayer.level) ? currentPlayer.level : 1;
+    updateTreeLevelUI(lv);
+  });
+  const showcase = document.getElementById('level-badge-showcase');
+  const container = document.getElementById('activeTreeContainer');
+  if (showcase && container) {
+    showcase.addEventListener('mousemove', e => {
+      const rect = showcase.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      const rotateX = (-y / rect.height) * 18;
+      const rotateY = (x / rect.width) * 18;
+      container.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+    });
+    showcase.addEventListener('mouseleave', () => {
+      container.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+    });
+  }
+}
+
+function renderLevelPage() {
+  bindLevelPageControls();
+  renderTreeTiersGrid();
+  const myLv = (currentPlayer && currentPlayer.level) ? currentPlayer.level : 1;
+  updateTreeLevelUI(myLv);
+}
+
 
 // ===== MODALS =====
 function closeModals() {

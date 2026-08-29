@@ -92,6 +92,8 @@
       <button class="nav-btn" data-page="market"><i class="fa-solid fa-store"></i><span>Chợ</span></button>
       <button class="nav-btn" data-page="bank"><i class="fa-solid fa-building-columns"></i><span>Ngân hàng</span></button>
       <button class="nav-btn" data-page="stats"><i class="fa-solid fa-chart-simple"></i><span>Thống kê</span></button>
+      <button class="nav-btn" data-page="level"><i class="fa-solid fa-tree"></i><span>Level</span></button>
+      <button class="nav-btn" data-page="activity"><i class="fa-solid fa-clock-rotate-left"></i><span>Hoạt động</span></button>
       <button class="nav-btn" data-page="rank"><i class="fa-solid fa-trophy"></i><span>Xếp hạng</span></button>
       <button class="nav-btn" data-page="friends"><i class="fa-solid fa-user-group"></i><span>Bạn bè</span></button>
       <button class="nav-btn" data-page="mail" id="nav-btn-mail"><i class="fa-solid fa-envelope"></i><span>Thư</span><span class="nav-mail-badge" id="nav-mail-badge"></span></button>
@@ -264,8 +266,78 @@
           <p class="section-sub">Mở khóa khi thu hoạch từng loại cây lần đầu</p>
           <div id="collection-album" class="collection-album"></div>
         </div>
+      </section>
+
+      <!-- LEVEL / TREE BADGE -->
+      <section id="page-level" class="page">
+        <div class="page-header">
+          <h1><i class="fa-solid fa-tree"></i> Level &amp; Badge Cây</h1>
+          <p>Badge tiến hóa theo cấp độ (1 – 1000) · Kéo thanh để xem trước</p>
+        </div>
+        <div class="level-badge-showcase" id="level-badge-showcase">
+          <div class="level-badge-ambient" id="levelAmbientGlow"></div>
+          <div id="activeTreeWrapper" class="tree-badge-wrapper tier-tree-1">
+            <div id="activeTreeContainer" class="tree-badge-container">
+              <div class="orbit-halo-ring"></div>
+              <div class="tree-emblem-orb">
+                <i id="activeTreeIcon" class="fa-solid fa-seedling tree-icon"></i>
+              </div>
+            </div>
+            <div id="activeTreeTag" class="tree-level-tag">LVL <span id="activeTreeLvlNum">1</span></div>
+          </div>
+          <div id="activePillBadge" class="eco-pill-badge tier-tree-1">
+            <i id="activePillIcon" class="fa-solid fa-seedling"></i>
+            <span id="activePillText">LVL 1 • Mầm Cây Trong Chậu Đất</span>
+          </div>
+          <div class="level-tier-meta">
+            <span class="level-tier-label">Giai đoạn</span>
+            <strong id="tierTitleText">Mầm Cây Trong Chậu Đất</strong>
+            <code id="cssClassText" class="level-tier-code">.tier-tree-1</code>
+          </div>
+          <div class="level-slider-block">
+            <div class="level-slider-row">
+              <label for="levelInputRange">Xem trước Level</label>
+              <div class="level-slider-value">
+                <span class="level-slider-prefix">LEVEL</span>
+                <input type="number" id="levelInputNumber" min="1" max="1000" value="1" />
+              </div>
+            </div>
+            <input type="range" id="levelInputRange" min="1" max="1000" value="1" class="level-range" />
+            <div class="level-preset-row">
+              <button type="button" class="level-preset" data-lvl="1">1</button>
+              <button type="button" class="level-preset" data-lvl="50">50</button>
+              <button type="button" class="level-preset" data-lvl="150">150</button>
+              <button type="button" class="level-preset" data-lvl="300">300</button>
+              <button type="button" class="level-preset" data-lvl="500">500</button>
+              <button type="button" class="level-preset" data-lvl="700">700</button>
+              <button type="button" class="level-preset" data-lvl="750">750</button>
+              <button type="button" class="level-preset" data-lvl="950">950</button>
+              <button type="button" class="level-preset level-preset-max" data-lvl="1000">1000</button>
+            </div>
+            <div class="level-progress-wrap">
+              <div class="level-progress-labels">
+                <span>Tiến trình sinh trưởng</span>
+                <span id="xpPercentText">0%</span>
+              </div>
+              <div class="level-progress-bar">
+                <div id="levelProgressBar" class="level-progress-fill" style="width:0%"></div>
+              </div>
+            </div>
+            <button type="button" id="btn-level-my" class="btn btn-primary btn-block level-my-btn">
+              <i class="fa-solid fa-user"></i> Xem level của tôi
+            </button>
+          </div>
+        </div>
+        <div class="level-tiers-grid" id="treeTiersGrid"></div>
+      </section>
+
+      <!-- ACTIVITY -->
+      <section id="page-activity" class="page">
+        <div class="page-header">
+          <h1><i class="fa-solid fa-clock-rotate-left"></i> Hoạt động gần đây</h1>
+          <p>Nhật ký hành động trong vườn của bạn</p>
+        </div>
         <div class="activity-section">
-          <h3 class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> Hoạt động gần đây</h3>
           <ul id="activity-list" class="activity-list"></ul>
         </div>
       </section>
@@ -686,10 +758,10 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.8.5"></script>
-  <script src="js/data.js?v=1.8.5"></script>
-  <script src="js/game.js?v=1.8.5"></script>
-  <script src="js/features.js?v=1.8.5"></script>
-  <script src="js/app.js?v=1.8.5"></script>
+  <script src="js/firebase-config.js?v=1.8.6"></script>
+  <script src="js/data.js?v=1.8.6"></script>
+  <script src="js/game.js?v=1.8.6"></script>
+  <script src="js/features.js?v=1.8.6"></script>
+  <script src="js/app.js?v=1.8.6"></script>
 </body>
 </html>
