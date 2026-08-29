@@ -954,12 +954,17 @@ async function openChat(uid, name) {
         ? `<img class="chat-av" src="${escapeHtml(av)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><span class="chat-av-fb" style="display:none"><i class="fa-solid fa-user"></i></span>`
         : `<span class="chat-av-fb"><i class="fa-solid fa-user"></i></span>`;
       const tip = fullTime ? ` title="${escapeHtml(fullTime)}"` : '';
-      const frameStyle = (me && currentPlayer && currentPlayer.chatFrameId && Game.getChatFrame)
-        ? (() => { const fr = Game.getChatFrame(currentPlayer.chatFrameId); return fr ? ` style="background:${fr.gradient};color:${fr.textColor||'#14532d'}"` : ''; })()
-        : (m.chatFrameId && Game.getChatFrame ? (() => { const fr = Game.getChatFrame(m.chatFrameId); return fr ? ` style="background:${fr.gradient};color:${fr.textColor||'#14532d'}"` : ''; })() : '');
+      let frameStyle = '';
+      let frameCls = '';
+      const frId = me ? (currentPlayer && currentPlayer.chatFrameId) : (m.chatFrameId || null);
+      const fr = frId && Game.getChatFrame ? Game.getChatFrame(frId) : null;
+      if (fr) {
+        frameStyle = ` style="background:${fr.bg || fr.gradient || ''};color:${fr.textColor || '#14532d'}"`;
+        frameCls = ' has-chat-frame' + (fr.shape ? (' ' + fr.shape) : '');
+      }
       return `<div class="chat-row ${me ? 'me' : 'them'}">
         <div class="chat-av-wrap">${avHtml}</div>
-        <div class="chat-bubble ${me ? 'me' : 'them'}"${tip}${frameStyle}>${escapeHtml(m.text || '')}<span class="chat-time-tip">${escapeHtml(fullTime)}</span></div>
+        <div class="chat-bubble ${me ? 'me' : 'them'}${frameCls}"${tip}${frameStyle}>${escapeHtml(m.text || '')}<span class="chat-time-tip">${escapeHtml(fullTime)}</span></div>
       </div>`;
     }).join('');
     box.scrollTop = box.scrollHeight;
@@ -1055,15 +1060,18 @@ function applyChatFrameStyles(root) {
   const scope = root || document;
   const frameId = currentPlayer && currentPlayer.chatFrameId;
   const fr = frameId && Game.getChatFrame ? Game.getChatFrame(frameId) : null;
+  const shapeClasses = ['cf-shape-pill','cf-shape-round','cf-shape-soft','cf-shape-sharp','cf-shape-ticket','cf-shape-blob','cf-shape-cloud','cf-shape-heart','cf-shape-tail','cf-shape-diamond','cf-shape-wave','cf-shape-star','cf-shape-double'];
   scope.querySelectorAll('.chat-bubble.me, .chat-row.me .chat-bubble').forEach(el => {
-    if (fr && fr.gradient) {
-      el.style.background = fr.gradient;
+    shapeClasses.forEach(c => el.classList.remove(c));
+    el.classList.remove('has-chat-frame');
+    if (fr) {
+      el.style.background = fr.bg || fr.gradient || '';
       el.style.color = fr.textColor || '#14532d';
+      if (fr.shape) el.classList.add(fr.shape);
       el.classList.add('has-chat-frame');
     } else {
       el.style.background = '';
       el.style.color = '';
-      el.classList.remove('has-chat-frame');
     }
   });
 }
@@ -2811,9 +2819,9 @@ function renderShop() {
       const on = eq === it.id;
       const card = document.createElement('div');
       card.className = 'shop-card';
-      card.innerHTML = `<div class="shop-icon chat-frame-preview" style="--cf-grad:${it.gradient};color:${it.textColor||'#14532d'}"><span style="font-size:0.7rem;font-weight:700">Xin chào!</span></div>
+      card.innerHTML = `<div class="shop-icon chat-frame-preview ${it.shape||''}" style="background:${it.bg||it.gradient||'#e8f5e9'};color:${it.textColor||'#14532d'}">Xin chào!</div>
         <div class="shop-name">${it.name}</div>
-        <span class="shop-type">${it.rarity||''}</span>
+        <span class="shop-type">${(it.desc||it.rarity||'')}</span>
         <div class="shop-owned">${on ? '✅ Đang dùng' : (have ? 'Đã có' : 'Chưa có')}</div>
         <div class="shop-price">${(it.price||0).toLocaleString()} 🪙</div>
         ${have ? `<button class="btn ${on?'btn-secondary':'btn-primary'} btn-equip-cf" data-id="${it.id}">${on?'Đang dùng':'Dùng'}</button>`
@@ -4135,7 +4143,7 @@ function softUpdateBank() {
     if (matured) {
       if (intEl) intEl.textContent = '+' + formatBankInterest(d.amount * (d.rate || 0));
       if (totEl) totEl.textContent = fullPayout.toLocaleString();
-      if (remEl) remEl.textContent = '✅ Đáo hạn — nhận ' + fullPayout.toLocaleString() + '🪙';
+      if (remEl) remEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Đáo hạn — nhận ' + fullPayout.toLocaleString() + '🪙';
       const btn = el.querySelector('.btn-bank-wd');
       if (btn && !btn.classList.contains('btn-success')) {
         btn.className = 'btn btn-success btn-sm btn-bank-wd';
@@ -4145,7 +4153,7 @@ function softUpdateBank() {
       if (intEl) intEl.textContent = '+' + formatBankInterest(interest);
       if (psEl) psEl.textContent = '+' + formatBankInterest(perSec);
       if (totEl) totEl.textContent = formatBankInterest(totalNow);
-      if (remEl) remEl.textContent = '⏳ ' + Game.formatTime(remain);
+      if (remEl) remEl.innerHTML = '<i class="fa-regular fa-clock"></i> ' + Game.formatTime(remain);
     }
   });
 }

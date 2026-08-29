@@ -862,23 +862,36 @@ document.getElementById('btn-save-update-meta')?.addEventListener('click', async
 
 async function fillMailTargetSelect() {
   const sel = document.getElementById('mail-target');
-  if (!sel || !db) return;
+  if (!sel || typeof db === 'undefined' || !db) return;
   const cur = sel.value || 'all';
-  sel.innerHTML = '<option value="all">Tất cả người chơi</option>';
+  sel.innerHTML = '<option value="all">🌐 Tất cả người chơi</option>';
+  const map = {};
   try {
-    const snap = await db.ref('players').once('value');
-    const val = snap.val() || {};
-    Object.keys(val).forEach(uid => {
-      const p = val[uid] || {};
-      const label = (p.name || p.displayName || p.email || uid).toString();
-      const opt = document.createElement('option');
-      opt.value = uid;
-      opt.textContent = label + (p.email ? ' · ' + p.email : '');
-      sel.appendChild(opt);
+    const uSnap = await db.ref('users').once('value');
+    const users = uSnap.val() || {};
+    Object.keys(users).forEach(uid => {
+      const u = users[uid] || {};
+      map[uid] = { name: u.name || u.displayName || '', email: u.email || '' };
     });
   } catch (e) { console.warn(e); }
-  sel.value = cur;
-  if (![...sel.options].some(o => o.value === cur)) sel.value = 'all';
+  try {
+    const pSnap = await db.ref('players').once('value');
+    const players = pSnap.val() || {};
+    Object.keys(players).forEach(uid => {
+      const p = players[uid] || {};
+      if (!map[uid]) map[uid] = {};
+      map[uid].name = map[uid].name || p.name || p.displayName || '';
+      map[uid].email = map[uid].email || p.email || '';
+    });
+  } catch (e) { console.warn(e); }
+  Object.keys(map).sort((a, b) => (map[a].name || map[a].email || a).localeCompare(map[b].name || map[b].email || b, 'vi')).forEach(uid => {
+    const p = map[uid];
+    const label = (p.name || p.email || uid).toString();
+    const opt = document.createElement('option');
+    opt.value = uid;
+    opt.textContent = '👤 ' + label + (p.email && p.name ? ' · ' + p.email : '');
+    sel.appendChild(opt);
+  });
+  if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  else sel.value = 'all';
 }
-
-document.getElementById('mail-target') && fillMailTargetSelect();

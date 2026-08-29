@@ -5586,11 +5586,7 @@ html, body, button, input, select, textarea {
   gap: 8px;
 }
 .garden-support-dd #btn-support-menu {
-  background: linear-gradient(135deg, #6366f1, #0ea5e9) !important;
-  border: none !important;
-}
-.garden-support-dd #btn-support-menu:hover {
-  filter: brightness(1.08);
+  /* overridden in v1.9.10 block */
 }
 .garden-tools-menu .support-menu-status {
   margin-left: auto;
@@ -6012,24 +6008,7 @@ html[data-theme="dark"] .gsb-time { color: #a7c4b5; }
   text-overflow: ellipsis;
 }
 
-/* FORCE: Hỗ trợ = Công cụ (không nền xanh) */
-#btn-support-menu,
-#btn-support-menu.btn,
-#btn-support-menu.btn-primary,
-.garden-support-dd #btn-support-menu,
-.garden-support-dd #btn-support-menu.btn-primary {
-  background: transparent !important;
-  background-image: none !important;
-  border: 1.5px solid rgba(45, 106, 79, 0.35) !important;
-  color: var(--text, #1b4332) !important;
-  box-shadow: none !important;
-}
-html[data-theme="dark"] #btn-support-menu,
-html[data-theme="dark"] .garden-support-dd #btn-support-menu {
-  background: transparent !important;
-  border-color: rgba(149, 213, 178, 0.35) !important;
-  color: #e8f5e9 !important;
-}
+/* FORCE removed — Hỗ trợ dùng cùng gradient với Công cụ (v1.9.10) */
 /* Ẩn status bar nếu còn sót */
 .garden-status-bar { display: none !important; }
 
@@ -7449,12 +7428,38 @@ html[data-theme="dark"] .profile-avatar-wrap.has-frame::after {
 
 /* LVL tag dùng cùng gradient khung khi đã gắn */
 .profile-level-tag.has-frame-grad {
-  background: var(--avatar-frame-grad) !important;
-  background-size: 200% 200% !important;
-  animation: avatar-frame-shift 3s ease infinite;
-  border-color: rgba(255,255,255,0.35) !important;
-  color: #fff !important;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.45);
+  position: relative;
+  z-index: 6;
+  overflow: visible;
+  background: var(--bg-card, #fff) !important;
+  color: var(--text-main, #14532d) !important;
+  border: none !important;
+  text-shadow: none !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.profile-level-tag.has-frame-grad::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  background: var(--avatar-frame-grad, linear-gradient(135deg,#22c55e,#a855f7,#f43f5e,#22c55e));
+  background-size: 300% 300%;
+  z-index: -1;
+  animation: avatar-frame-spin 3s linear infinite;
+}
+.profile-level-tag.has-frame-grad::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--bg-card, #fff);
+  z-index: -1;
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad {
+  color: #ecfdf5 !important;
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad::after {
+  background: var(--bg-card, #064e3b);
 }
 
 /* Shop preview — vòng xoay */
@@ -7738,20 +7743,72 @@ html[data-theme="dark"] #quests-weekly {
   box-sizing: border-box;
 }
 .profile-level-tag.has-frame-grad {
-  border: 2px solid transparent !important;
-  background:
-    linear-gradient(var(--bg-card, #fff), var(--bg-card, #fff)) padding-box,
-    var(--avatar-frame-grad) border-box !important;
-  background-size: auto, 200% 200% !important;
-  animation: avatar-frame-shift 3s ease infinite;
+  position: relative;
+  z-index: 6;
+  overflow: visible;
+  background: var(--bg-card, #fff) !important;
   color: var(--text-main, #14532d) !important;
-  text-shadow: none;
+  border: none !important;
+  text-shadow: none !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.profile-level-tag.has-frame-grad::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  background: var(--avatar-frame-grad, linear-gradient(135deg,#22c55e,#a855f7,#f43f5e,#22c55e));
+  background-size: 300% 300%;
+  z-index: -1;
+  animation: avatar-frame-spin 3s linear infinite;
+}
+.profile-level-tag.has-frame-grad::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--bg-card, #fff);
+  z-index: -1;
 }
 html[data-theme="dark"] .profile-level-tag.has-frame-grad {
-  background:
-    linear-gradient(var(--bg-card, #064e3b), var(--bg-card, #064e3b)) padding-box,
-    var(--avatar-frame-grad) border-box !important;
-  color: #fff !important;
+  color: #ecfdf5 !important;
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad::after {
+  background: var(--bg-card, #064e3b);
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad {
+  position: relative;
+  z-index: 6;
+  overflow: visible;
+  background: var(--bg-card, #fff) !important;
+  color: var(--text-main, #14532d) !important;
+  border: none !important;
+  text-shadow: none !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.profile-level-tag.has-frame-grad::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  background: var(--avatar-frame-grad, linear-gradient(135deg,#22c55e,#a855f7,#f43f5e,#22c55e));
+  background-size: 300% 300%;
+  z-index: -1;
+  animation: avatar-frame-spin 3s linear infinite;
+}
+.profile-level-tag.has-frame-grad::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--bg-card, #fff);
+  z-index: -1;
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad {
+  color: #ecfdf5 !important;
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad::after {
+  background: var(--bg-card, #064e3b);
 }
 
 /* Khi có frame: LVL nằm gọn dưới, không bị clip */
@@ -7837,19 +7894,72 @@ html[data-theme="dark"] .profile-level-tag.has-frame-grad {
   isolation: isolate;
 }
 .profile-level-tag.has-frame-grad {
-  border: 2px solid transparent !important;
-  background:
-    linear-gradient(var(--bg-card, #fff), var(--bg-card, #fff)) padding-box,
-    var(--avatar-frame-grad) border-box !important;
-  background-size: auto, 300% 300% !important;
-  animation: avatar-frame-shift 2.5s linear infinite !important;
+  position: relative;
+  z-index: 6;
+  overflow: visible;
+  background: var(--bg-card, #fff) !important;
   color: var(--text-main, #14532d) !important;
+  border: none !important;
+  text-shadow: none !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.profile-level-tag.has-frame-grad::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  background: var(--avatar-frame-grad, linear-gradient(135deg,#22c55e,#a855f7,#f43f5e,#22c55e));
+  background-size: 300% 300%;
+  z-index: -1;
+  animation: avatar-frame-spin 3s linear infinite;
+}
+.profile-level-tag.has-frame-grad::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--bg-card, #fff);
+  z-index: -1;
 }
 html[data-theme="dark"] .profile-level-tag.has-frame-grad {
-  background:
-    linear-gradient(var(--bg-card, #064e3b), var(--bg-card, #064e3b)) padding-box,
-    var(--avatar-frame-grad) border-box !important;
   color: #ecfdf5 !important;
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad::after {
+  background: var(--bg-card, #064e3b);
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad {
+  position: relative;
+  z-index: 6;
+  overflow: visible;
+  background: var(--bg-card, #fff) !important;
+  color: var(--text-main, #14532d) !important;
+  border: none !important;
+  text-shadow: none !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.profile-level-tag.has-frame-grad::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  background: var(--avatar-frame-grad, linear-gradient(135deg,#22c55e,#a855f7,#f43f5e,#22c55e));
+  background-size: 300% 300%;
+  z-index: -1;
+  animation: avatar-frame-spin 3s linear infinite;
+}
+.profile-level-tag.has-frame-grad::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--bg-card, #fff);
+  z-index: -1;
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad {
+  color: #ecfdf5 !important;
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad::after {
+  background: var(--bg-card, #064e3b);
 }
 
 /* Companion on avatar top-right */
@@ -7913,5 +8023,114 @@ html[data-theme="dark"] .profile-companion {
 @media (max-width: 899px) {
   .collection-album.album-pc-grid {
     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)) !important;
+  }
+}
+
+
+/* ==========================================================================
+   v1.9.10 FIXES
+   ========================================================================== */
+/* 1) Hỗ trợ = Vườn/Công cụ gradient xanh */
+#btn-support-menu,
+#btn-support-menu.btn,
+#btn-support-menu.btn-primary,
+.garden-support-dd #btn-support-menu,
+.garden-support-dd #btn-support-menu.btn-primary,
+#btn-tools-menu,
+#btn-tools-menu.btn-primary,
+.garden-switcher .pill-dd-trigger,
+#garden-switcher .pill-dd-trigger {
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  background-image: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.32) !important;
+  font-weight: 700 !important;
+}
+#btn-support-menu:hover,
+#btn-tools-menu:hover,
+.garden-switcher .pill-dd-trigger:hover {
+  background: linear-gradient(135deg, #22c55e, #4ade80) !important;
+  background-image: linear-gradient(135deg, #22c55e, #4ade80) !important;
+  color: #fff !important;
+  transform: translateY(-2px) !important;
+}
+html[data-theme="dark"] #btn-support-menu,
+html[data-theme="dark"] #btn-tools-menu,
+html[data-theme="dark"] .garden-switcher .pill-dd-trigger {
+  background: linear-gradient(135deg, #059669, #10b981) !important;
+  background-image: linear-gradient(135deg, #059669, #10b981) !important;
+  color: #fff !important;
+}
+
+/* Chat bubble shapes */
+.chat-bubble.me.cf-shape-pill { border-radius: 999px !important; }
+.chat-bubble.me.cf-shape-round { border-radius: 18px !important; }
+.chat-bubble.me.cf-shape-soft { border-radius: 16px 16px 4px 16px !important; }
+.chat-bubble.me.cf-shape-sharp { border-radius: 6px !important; }
+.chat-bubble.me.cf-shape-ticket { border-radius: 4px 16px 4px 16px !important; }
+.chat-bubble.me.cf-shape-blob { border-radius: 40% 60% 50% 50% / 50% 40% 60% 50% !important; }
+.chat-bubble.me.cf-shape-cloud {
+  border-radius: 24px !important;
+  box-shadow: 8px 8px 0 -4px currentColor, -6px 10px 0 -5px currentColor;
+}
+.chat-bubble.me.cf-shape-heart {
+  border-radius: 20px 20px 20px 4px !important;
+  transform: rotate(-2deg);
+}
+.chat-bubble.me.cf-shape-tail {
+  border-radius: 16px 16px 4px 16px !important;
+  position: relative;
+}
+.chat-bubble.me.cf-shape-tail::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  bottom: 6px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+.chat-bubble.me.cf-shape-diamond {
+  border-radius: 8px !important;
+  clip-path: polygon(6% 0, 100% 0, 94% 100%, 0 100%);
+}
+.chat-bubble.me.cf-shape-wave {
+  border-radius: 20px 8px 20px 8px !important;
+}
+.chat-bubble.me.cf-shape-star {
+  border-radius: 12px !important;
+  outline: 2px dashed rgba(255,255,255,0.5);
+  outline-offset: 3px;
+}
+.chat-bubble.me.cf-shape-double {
+  border-radius: 14px !important;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,0.35);
+}
+.chat-bubble.me.has-chat-frame {
+  border: 2px solid rgba(0,0,0,0.08);
+}
+
+.chat-frame-preview {
+  min-height: 52px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 8px 12px !important;
+}
+
+/* Admin settings stack safely */
+.settings-duo {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+@media (min-width: 1100px) {
+  .settings-duo {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
   }
 }
