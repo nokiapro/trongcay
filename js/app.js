@@ -173,11 +173,14 @@ function updateHelperBadge() {
 
 function openNycConfigModal() {
   if (!currentPlayer) return;
+  const base = Game.getNycConfig();
+  const gi = getSelectedAgentGarden('nyc');
+  const cfg = Game.getNycConfigForGarden ? Game.getNycConfigForGarden(gi) : base;
+  renderAgentGardenToggles('nyc-garden-toggles', base.gardensEnabled, 'nyc');
   const sel = document.getElementById('nyc-plant-select');
   if (!sel) return;
   const seeds = (currentPlayer.inventory && currentPlayer.inventory.seeds) || {};
   const stars = (currentPlayer.inventory && currentPlayer.inventory.seedsStar) || {};
-  const cfg = Game.getNycConfig();
   const opts = ['<option value="">— Chưa chọn hạt —</option>'];
   Object.keys(seeds).filter(id => (seeds[id] || 0) > 0).forEach(id => {
     const p = Game.getPlant(id);
@@ -216,10 +219,9 @@ function openNycConfigModal() {
     if (modeAll) modeAll.checked = true;
     if (countInp) countInp.style.display = 'none';
   }
-  renderAgentGardenToggles('nyc-garden-toggles', cfg.gardensEnabled);
   const nycNameInp = document.getElementById('nyc-custom-name');
-  if (nycNameInp) nycNameInp.value = cfg.customName || '';
-  const ng = cfg.gender === 'male' ? 'male' : 'female';
+  if (nycNameInp) nycNameInp.value = base.customName || '';
+  const ng = base.gender === 'male' ? 'male' : 'female';
   const ngEl = document.querySelector(`input[name="nyc-gender"][value="${ng}"]`);
   if (ngEl) ngEl.checked = true;
   document.getElementById('modal-nyc-config')?.classList.add('show');
@@ -250,17 +252,27 @@ function bindNycConfigUI() {
     }
     const mode = document.querySelector('input[name="nyc-mode"]:checked')?.value || 'all';
     const count = parseInt(document.getElementById('nyc-count-input')?.value, 10) || 1;
-    const res = Game.setNycConfig({ plantId: plantId || null, seedKind, mode, count ,
-      gardensEnabled: readAgentGardenToggles('nyc-garden-toggles'),
+    const gi = getSelectedAgentGarden('nyc');
+    const enEl = document.getElementById('nyc-garden-enabled');
+    const baseGe = Object.assign({}, (Game.getNycConfig().gardensEnabled || {}));
+    if (enEl) baseGe[String(gi)] = !!enEl.checked;
+    const res = Game.setNycConfig({
+      gardenIndex: gi,
+      gardenEnabled: enEl ? !!enEl.checked : true,
+      gardensEnabled: baseGe,
+      plantId: plantId || null,
+      seedKind,
+      mode,
+      count,
       customName: (document.getElementById('nyc-custom-name')?.value || '').trim().slice(0, 20),
       gender: document.querySelector('input[name="nyc-gender"]:checked')?.value || 'female'
     });
     if (res.ok) {
       await savePlayer();
       showToast(res.msg, 'success');
-      closeModals();
+      openNycConfigModal();
       updateNycBadge();
-  updateHelperBadge();
+      updateHelperBadge();
     } else {
       showToast(res.msg, 'error');
     }
@@ -286,34 +298,57 @@ function syncFairyConfigFormVisibility() {
 }
 
 
-/** Render toggle vườn trong modal Tiên / NYC */
-function renderAgentGardenToggles(hostId, gardensEnabled) {
+/** Tab chọn vườn + bật/tắt từng vườn (Tiên / NYC) */
+window._agentGardenTab = window._agentGardenTab || { fairy: 0, nyc: 0 };
+
+function renderAgentGardenToggles(hostId, gardensEnabled, kind) {
   const host = document.getElementById(hostId);
   if (!host) return;
   if (typeof Game.ensureGardens === 'function') Game.ensureGardens();
   const n = typeof Game.getGardenCount === 'function' ? Game.getGardenCount() : 1;
   const ge = gardensEnabled && typeof gardensEnabled === 'object' ? gardensEnabled : {};
-  let html = '';
+  const k = kind || 'fairy';
+  let sel = Number(window._agentGardenTab[k]) || 0;
+  if (sel < 0 || sel >= n) sel = 0;
+  window._agentGardenTab[k] = sel;
+  let html = '<div class="agent-garden-tabs">';
   for (let i = 0; i < n; i++) {
     const on = !(ge[i] === false || ge[String(i)] === false);
     const plots = (currentPlayer && currentPlayer.gardens && currentPlayer.gardens[i]) || [];
     const count = plots.length || 0;
     const maxP = Game.MAX_PLOTS_PER_GARDEN || 99;
-    html += `<label class="garden-toggle-row">
-      <span class="garden-toggle-label"><i class="fa-solid fa-house-chimney-window"></i> Vườn ${i + 1} <small>(${count}/${maxP} ô)</small></span>
-      <input type="checkbox" class="garden-toggle-switch" data-garden="${i}" ${on ? 'checked' : ''} />
-    </label>`;
+    html += `<button type="button" class="agent-garden-tab ${i === sel ? 'active' : ''} ${on ? '' : 'off'}" data-garden="${i}" data-kind="${k}">
+      Vườn ${i + 1}<small>${count}/${maxP}</small>${on ? '' : ' · tắt'}
+    </button>`;
   }
-  if (n < 1) {
-    html = '<p class="bulk-hint">Chưa có vườn.</p>';
+  html += '</div>';
+  if (n >= 1) {
+    const on = !(ge[sel] === false || ge[String(sel)] === false);
+    html += `<label class="garden-toggle-row agent-garden-enable">
+      <span class="garden-toggle-label"><i class="fa-solid fa-power-off"></i> Bật trên Vườn ${sel + 1}</span>
+      <input type="checkbox" class="garden-toggle-switch" id="${k}-garden-enabled" data-garden="${sel}" ${on ? 'checked' : ''} />
+    </label>
+    <p class="bulk-hint">Đang cấu hình <strong>Vườn ${sel + 1}</strong> — mỗi vườn có cấu hình riêng.</p>`;
+  } else {
+    html += '<p class="bulk-hint">Chưa có vườn.</p>';
   }
   host.innerHTML = html;
+  host.querySelectorAll('.agent-garden-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.garden, 10) || 0;
+      const kk = btn.dataset.kind || k;
+      window._agentGardenTab[kk] = i;
+      if (kk === 'fairy') openFairyConfigModal();
+      else if (kk === 'nyc') openNycConfigModal();
+    });
+  });
 }
 
 function readAgentGardenToggles(hostId) {
   const host = document.getElementById(hostId);
   const ge = {};
   if (!host) return ge;
+  // Giữ trạng thái các vườn từ data hiện tại + ô đang sửa
   host.querySelectorAll('.garden-toggle-switch').forEach(inp => {
     const i = inp.dataset.garden;
     ge[i] = !!inp.checked;
@@ -321,11 +356,20 @@ function readAgentGardenToggles(hostId) {
   return ge;
 }
 
+function getSelectedAgentGarden(kind) {
+  const n = typeof Game.getGardenCount === 'function' ? Game.getGardenCount() : 1;
+  let sel = Number(window._agentGardenTab[kind]) || 0;
+  if (sel < 0 || sel >= n) sel = 0;
+  return sel;
+}
+
 
 function openFairyConfigModal() {
   if (!currentPlayer) return;
-  const cfg = Game.getFairyConfig();
-  renderAgentGardenToggles('fairy-garden-toggles', cfg.gardensEnabled);
+  const base = Game.getFairyConfig();
+  const gi = getSelectedAgentGarden('fairy');
+  const cfg = Game.getFairyConfigForGarden ? Game.getFairyConfigForGarden(gi) : base;
+  renderAgentGardenToggles('fairy-garden-toggles', base.gardensEnabled, 'fairy');
 
   const wAll = document.querySelector('input[name="fairy-water-mode"][value="all"]');
   const wCnt = document.querySelector('input[name="fairy-water-mode"][value="count"]');
@@ -364,8 +408,8 @@ function openFairyConfigModal() {
   if (fInp) fInp.value = cfg.fertCount || 12;
 
   const nameInp = document.getElementById('fairy-custom-name');
-  if (nameInp) nameInp.value = cfg.customName || '';
-  const fg = cfg.gender === 'male' ? 'male' : 'female';
+  if (nameInp) nameInp.value = base.customName || '';
+  const fg = base.gender === 'male' ? 'male' : 'female';
   const fgEl = document.querySelector(`input[name="fairy-gender"][value="${fg}"]`);
   if (fgEl) fgEl.checked = true;
   syncFairyConfigFormVisibility();
@@ -383,7 +427,15 @@ function bindFairyConfigUI() {
     });
   });
   document.getElementById('btn-save-fairy-config')?.addEventListener('click', async () => {
+    const gi = getSelectedAgentGarden('fairy');
+    const enEl = document.getElementById('fairy-garden-enabled');
+    const baseGe = Object.assign({}, (Game.getFairyConfig().gardensEnabled || {}));
+    // Giữ trạng thái bật/tắt các vườn khác
+    if (enEl) baseGe[String(gi)] = !!enEl.checked;
     const res = Game.setFairyConfig({
+      gardenIndex: gi,
+      gardenEnabled: enEl ? !!enEl.checked : true,
+      gardensEnabled: baseGe,
       waterMode: document.querySelector('input[name="fairy-water-mode"]:checked')?.value || 'all',
       waterCount: parseInt(document.getElementById('fairy-water-count')?.value, 10) || 12,
       useFertilizer: document.querySelector('input[name="fairy-fert-on"]:checked')?.value !== '0',
@@ -391,14 +443,13 @@ function bindFairyConfigUI() {
       fertId: document.getElementById('fairy-fert-id')?.value || null,
       fertMode: document.querySelector('input[name="fairy-fert-mode"]:checked')?.value || 'all',
       fertCount: parseInt(document.getElementById('fairy-fert-count')?.value, 10) || 12,
-      gardensEnabled: readAgentGardenToggles('fairy-garden-toggles'),
       customName: (document.getElementById('fairy-custom-name')?.value || '').trim().slice(0, 20),
       gender: document.querySelector('input[name="fairy-gender"]:checked')?.value || 'female'
     });
     if (res.ok) {
       await savePlayer();
       showToast(res.msg, 'success');
-      closeModals();
+      openFairyConfigModal(); // giữ modal, refresh tab
       updateFairyBadge();
     } else {
       showToast(res.msg, 'error');

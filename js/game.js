@@ -215,7 +215,7 @@ const Game = {
   },
 
   getNycConfig() {
-    const def = { plantId: null, seedKind: 'normal', mode: 'all', count: 1, gardensEnabled: {}, customName: '', gender: 'female' };
+    const def = { plantId: null, seedKind: 'normal', mode: 'all', count: 1, gardensEnabled: {}, byGarden: {}, customName: '', gender: 'female' };
     if (!currentPlayer) return { ...def };
     if (!currentPlayer.nycConfig || typeof currentPlayer.nycConfig !== 'object') {
       currentPlayer.nycConfig = { ...def };
@@ -224,6 +224,9 @@ const Game = {
     if (!currentPlayer.nycConfig.gardensEnabled || typeof currentPlayer.nycConfig.gardensEnabled !== 'object') {
       currentPlayer.nycConfig.gardensEnabled = {};
     }
+    if (!currentPlayer.nycConfig.byGarden || typeof currentPlayer.nycConfig.byGarden !== 'object') {
+      currentPlayer.nycConfig.byGarden = {};
+    }
     if (typeof currentPlayer.nycConfig.customName !== 'string') currentPlayer.nycConfig.customName = '';
     if (currentPlayer.nycConfig.gender !== 'male' && currentPlayer.nycConfig.gender !== 'female') {
       currentPlayer.nycConfig.gender = 'female';
@@ -231,23 +234,54 @@ const Game = {
     return currentPlayer.nycConfig;
   },
 
+  /** NYC config cho 1 vườn (global + byGarden override) */
+  getNycConfigForGarden(gardenIndex) {
+    const base = this.getNycConfig();
+    const key = String(gardenIndex);
+    const ov = (base.byGarden && (base.byGarden[key] || base.byGarden[gardenIndex])) || null;
+    if (!ov || typeof ov !== 'object') return { ...base, _gardenIndex: gardenIndex };
+    return {
+      ...base,
+      plantId: ov.plantId !== undefined ? ov.plantId : base.plantId,
+      seedKind: ov.seedKind === 'star' ? 'star' : (ov.seedKind === 'normal' ? 'normal' : base.seedKind),
+      mode: ov.mode === 'count' ? 'count' : (ov.mode === 'all' ? 'all' : base.mode),
+      count: typeof ov.count === 'number' ? ov.count : base.count,
+      _gardenIndex: gardenIndex
+    };
+  },
+
   setNycConfig(cfg) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    const prev = this.getNycConfig();
     const ge = {};
     if (cfg && cfg.gardensEnabled && typeof cfg.gardensEnabled === 'object') {
       Object.keys(cfg.gardensEnabled).forEach(k => { ge[k] = !!cfg.gardensEnabled[k]; });
+    } else {
+      Object.assign(ge, prev.gardensEnabled || {});
+    }
+    const byGarden = Object.assign({}, prev.byGarden || {});
+    const slice = {
+      plantId: (cfg && cfg.plantId) || null,
+      seedKind: cfg && cfg.seedKind === 'star' ? 'star' : 'normal',
+      mode: cfg && cfg.mode === 'count' ? 'count' : 'all',
+      count: Math.max(1, Math.min(99, parseInt(cfg && cfg.count, 10) || 1))
+    };
+    const gIdx = cfg && (cfg.gardenIndex !== undefined && cfg.gardenIndex !== null)
+      ? String(cfg.gardenIndex) : null;
+    if (gIdx !== null) {
+      byGarden[gIdx] = slice;
+      if (cfg && typeof cfg.gardenEnabled === 'boolean') ge[gIdx] = cfg.gardenEnabled;
     }
     const next = {
-      plantId: cfg.plantId || null,
-      seedKind: cfg.seedKind === 'star' ? 'star' : 'normal',
-      mode: cfg.mode === 'count' ? 'count' : 'all',
-      count: Math.max(1, Math.min(99, parseInt(cfg.count, 10) || 1)),
+      ...slice,
       gardensEnabled: ge,
-      customName: (cfg && typeof cfg.customName === 'string') ? cfg.customName.trim().slice(0, 20) : (this.getNycConfig().customName || ''),
+      byGarden,
+      customName: (cfg && typeof cfg.customName === 'string') ? cfg.customName.trim().slice(0, 20) : (prev.customName || ''),
       gender: cfg && cfg.gender === 'male' ? 'male' : 'female'
     };
     currentPlayer.nycConfig = next;
-    return { ok: true, msg: 'Đã lưu cấu hình NYC!' };
+    const label = gIdx !== null ? ('Vườn ' + (Number(gIdx) + 1) + ' · ') : '';
+    return { ok: true, msg: 'Đã lưu NYC · ' + label + (slice.plantId || 'chưa chọn hạt') };
   },
 
   /** Hệ số tốc độ ô: max(vĩnh viễn, tạm thời còn hạn) */
@@ -1156,7 +1190,8 @@ const Game = {
       fertId: null,
       fertMode: 'all',       // all | count — số ô bón
       fertCount: 12,
-      gardensEnabled: {}     // { 0: true, 1: false, ... } thiếu key = bật
+      gardensEnabled: {},    // { 0: true, 1: false, ... } thiếu key = bật
+      byGarden: {}           // { "0": { waterMode, useFertilizer, ... } } cấu hình riêng từng vườn
     };
   },
 
@@ -1175,9 +1210,29 @@ const Game = {
     if (c.fertMode !== 'count') c.fertMode = 'all';
     if (typeof c.fertCount !== 'number' || c.fertCount < 1) c.fertCount = def.fertCount;
     if (!c.gardensEnabled || typeof c.gardensEnabled !== 'object') c.gardensEnabled = {};
+    if (!c.byGarden || typeof c.byGarden !== 'object') c.byGarden = {};
     if (typeof c.customName !== 'string') c.customName = '';
     if (c.gender !== 'male' && c.gender !== 'female') c.gender = 'female';
     return c;
+  },
+
+  /** Cấu hình Tiên áp dụng cho 1 vườn (global + override byGarden) */
+  getFairyConfigForGarden(gardenIndex) {
+    const base = this.getFairyConfig();
+    const key = String(gardenIndex);
+    const ov = (base.byGarden && base.byGarden[key]) || (base.byGarden && base.byGarden[gardenIndex]) || null;
+    if (!ov || typeof ov !== 'object') return { ...base, _gardenIndex: gardenIndex };
+    return {
+      ...base,
+      waterMode: ov.waterMode === 'count' ? 'count' : (ov.waterMode === 'all' ? 'all' : base.waterMode),
+      waterCount: typeof ov.waterCount === 'number' ? ov.waterCount : base.waterCount,
+      useFertilizer: typeof ov.useFertilizer === 'boolean' ? ov.useFertilizer : base.useFertilizer,
+      fertSource: ov.fertSource === 'specific' ? 'specific' : (ov.fertSource === 'any' ? 'any' : base.fertSource),
+      fertId: ov.fertId !== undefined ? ov.fertId : base.fertId,
+      fertMode: ov.fertMode === 'count' ? 'count' : (ov.fertMode === 'all' ? 'all' : base.fertMode),
+      fertCount: typeof ov.fertCount === 'number' ? ov.fertCount : base.fertCount,
+      _gardenIndex: gardenIndex
+    };
   },
 
   getFairyDisplayName() {
@@ -1225,36 +1280,56 @@ const Game = {
   setFairyConfig(cfg) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const def = this.defaultFairyConfig();
+    const prev = this.getFairyConfig();
     const ge = {};
     if (cfg && cfg.gardensEnabled && typeof cfg.gardensEnabled === 'object') {
       Object.keys(cfg.gardensEnabled).forEach(k => {
         ge[k] = !!cfg.gardensEnabled[k];
       });
+    } else {
+      Object.assign(ge, prev.gardensEnabled || {});
     }
-    const next = {
+    // Giữ byGarden cũ; cập nhật 1 vườn nếu cfg.gardenIndex được truyền
+    const byGarden = Object.assign({}, prev.byGarden || {});
+    const gIdx = cfg && (cfg.gardenIndex !== undefined && cfg.gardenIndex !== null)
+      ? String(cfg.gardenIndex) : null;
+    const careSlice = {
       waterMode: cfg && cfg.waterMode === 'count' ? 'count' : 'all',
       waterCount: Math.max(1, Math.min(99, parseInt(cfg && cfg.waterCount, 10) || def.waterCount)),
       useFertilizer: !!(cfg && cfg.useFertilizer),
       fertSource: cfg && cfg.fertSource === 'specific' ? 'specific' : 'any',
       fertId: (cfg && cfg.fertId) || null,
       fertMode: cfg && cfg.fertMode === 'count' ? 'count' : 'all',
-      fertCount: Math.max(1, Math.min(99, parseInt(cfg && cfg.fertCount, 10) || def.fertCount)),
-      gardensEnabled: ge,
-      customName: (cfg && typeof cfg.customName === 'string') ? cfg.customName.trim().slice(0, 20) : (this.getFairyConfig().customName || ''),
-      gender: cfg && cfg.gender === 'male' ? 'male' : 'female'
+      fertCount: Math.max(1, Math.min(99, parseInt(cfg && cfg.fertCount, 10) || def.fertCount))
     };
-    if (next.fertSource === 'specific' && next.fertId && !this.getFertilizer(next.fertId)) {
+    if (careSlice.fertSource === 'specific' && careSlice.fertId && !this.getFertilizer(careSlice.fertId)) {
       return { ok: false, msg: 'Loại phân không hợp lệ!' };
     }
+    if (gIdx !== null) {
+      byGarden[gIdx] = careSlice;
+      // đồng bộ gardensEnabled cho vườn đang sửa nếu truyền enabled
+      if (cfg && typeof cfg.gardenEnabled === 'boolean') {
+        ge[gIdx] = cfg.gardenEnabled;
+      }
+    }
+    const next = {
+      // global defaults (dùng khi vườn chưa có override)
+      ...careSlice,
+      gardensEnabled: ge,
+      byGarden,
+      customName: (cfg && typeof cfg.customName === 'string') ? cfg.customName.trim().slice(0, 20) : (prev.customName || ''),
+      gender: cfg && cfg.gender === 'male' ? 'male' : 'female'
+    };
     currentPlayer.fairyConfig = next;
     const parts = [];
-    parts.push(next.waterMode === 'all' ? 'tưới hết ô' : `tưới ${next.waterCount} ô`);
-    if (next.useFertilizer) {
-      const src = next.fertSource === 'specific'
-        ? ((this.getFertilizer(next.fertId) || {}).name || next.fertId)
+    if (gIdx !== null) parts.push('Vườn ' + (Number(gIdx) + 1));
+    parts.push(careSlice.waterMode === 'all' ? 'tưới hết ô' : `tưới ${careSlice.waterCount} ô`);
+    if (careSlice.useFertilizer) {
+      const src = careSlice.fertSource === 'specific'
+        ? ((this.getFertilizer(careSlice.fertId) || {}).name || careSlice.fertId)
         : 'mọi loại trong kho';
-      const n = next.fertMode === 'all' ? 'hết ô' : `${next.fertCount} ô`;
-      parts.push(`bón ${src} · ${n} (trừ kho, hết thì dừng)`);
+      const n = careSlice.fertMode === 'all' ? 'hết ô' : `${careSlice.fertCount} ô`;
+      parts.push(`bón ${src} · ${n}`);
     } else {
       parts.push('không bón phân');
     }
@@ -1308,10 +1383,15 @@ const Game = {
       ? currentPlayer.plots
       : Object.values(currentPlayer.plots || {});
     if (!Array.isArray(currentPlayer.plots)) currentPlayer.plots = plots;
-    const cfg = this.getFairyConfig();
+    const gi = typeof currentPlayer.activeGarden === 'number' ? currentPlayer.activeGarden : 0;
+    if (!this.isFairyGardenEnabled(gi)) return false;
+    const cfg = this.getFairyConfigForGarden(gi);
 
-    // 1) Tưới hết — không giới hạn số ô
-    const needWater = plots.filter(p => p && p.plantId);
+    // 1) Tưới — theo cấu hình vườn này (all | count)
+    let needWater = plots.filter(p => p && p.plantId);
+    if (cfg.waterMode === 'count') {
+      needWater = needWater.slice(0, Math.max(1, Number(cfg.waterCount) || 12));
+    }
     for (let i = 0; i < needWater.length; i++) {
       const plot = needWater[i];
       plot.waterCount = 3;
@@ -1320,16 +1400,18 @@ const Game = {
       wateredN++;
     }
 
-    // 2) Bón phân từ kho — chưa bón hoặc đã hết hạn 3h tại mốc `now`; hết kho thì dừng
-    // Dùng isReadyAt/isFertBoostActive(…, now) để bù offline đúng giờ (không dùng (typeof nowMs==="function"?nowMs():Date.now()) lệch)
+    // 2) Bón phân từ kho — theo cấu hình vườn; hết kho thì dừng
     let needFertN = 0;
     let stoppedNoFert = false;
     if (cfg.useFertilizer) {
-      const needFert = plots.filter(p => {
+      let needFert = plots.filter(p => {
         if (!p || !p.plantId) return false;
         if (typeof this.isReadyAt === 'function' ? this.isReadyAt(p, now) : this.isReady(p)) return false;
         return !this.isFertBoostActive(p, now);
       });
+      if (cfg.fertMode === 'count') {
+        needFert = needFert.slice(0, Math.max(1, Number(cfg.fertCount) || 12));
+      }
       needFertN = needFert.length;
       for (let i = 0; i < needFert.length; i++) {
         const plot = needFert[i];
@@ -1760,17 +1842,19 @@ const Game = {
     events.sort((a, b) => a.t - b.t || (a.type === 'rain' ? -1 : 1));
     let evIdx = 0;
 
-    const cfg = this.isNycActive() ? this.getNycConfig() : null;
+    const nycOn = this.isNycActive();
     const activeGarden = currentPlayer.activeGarden || 0;
     this.syncActiveGarden();
 
-    // NYC: ô trống lúc bắt đầu offline → trồng từ mốc `from`
-    if (cfg && cfg.plantId) {
+    // NYC: ô trống lúc bắt đầu offline → trồng theo cấu hình TỪNG vườn
+    if (nycOn) {
       for (let gi = 0; gi < currentPlayer.gardens.length; gi++) {
         if (!this.isNycGardenEnabled(gi)) continue;
+        const gcfg = this.getNycConfigForGarden(gi);
+        if (!gcfg.plantId) continue;
         currentPlayer.activeGarden = gi;
         currentPlayer.plots = currentPlayer.gardens[gi];
-        const n = this._nycPlantEmptiesAt(currentPlayer.plots, cfg, from);
+        const n = this._nycPlantEmptiesAt(currentPlayer.plots, gcfg, from);
         if (n > 0) {
           totalPlant += n;
           changed = true;
@@ -1781,9 +1865,10 @@ const Game = {
 
     /** Thu mọi ô chín tại mốc t (readyAt ≤ t) trên vườn NYC bật, trồng lại tại t */
     const nycHarvestReplantAt = (t) => {
-      if (!cfg) return;
+      if (!nycOn) return;
       for (let gi = 0; gi < currentPlayer.gardens.length; gi++) {
         if (!this.isNycGardenEnabled(gi)) continue;
+        const cfg = this.getNycConfigForGarden(gi);
         currentPlayer.activeGarden = gi;
         currentPlayer.plots = currentPlayer.gardens[gi];
         const plots = currentPlayer.plots;
@@ -2344,8 +2429,9 @@ const Game = {
       if (typeof Features !== 'undefined' && Features.trackQuest) Features.trackQuest('harvest', harvested);
     }
 
-    // 2) Trồng lại chỉ trên ô trống của vườn này — cùng plantedAt
-    const cfg = this.getNycConfig();
+    // 2) Trồng lại chỉ trên ô trống của vườn này — theo cấu hình vườn
+    const gIdx = typeof currentPlayer.activeGarden === 'number' ? currentPlayer.activeGarden : 0;
+    const cfg = this.getNycConfigForGarden(gIdx);
     if (cfg.plantId) {
       const kind = cfg.seedKind === 'star' ? 'star' : 'normal';
       const seeds = (currentPlayer.inventory && currentPlayer.inventory.seeds) || {};
@@ -2388,7 +2474,9 @@ const Game = {
       const remain = this.getRemainingSeconds(plot);
       if (remain > 0 && remain <= win) return true;
     }
-    const cfg = this.getNycConfig();
+    const gIdx = typeof currentPlayer.activeGarden === 'number' ? currentPlayer.activeGarden : 0;
+    if (!this.isNycGardenEnabled(gIdx)) return false;
+    const cfg = this.getNycConfigForGarden(gIdx);
     if (!cfg.plantId) return false;
     const kind = cfg.seedKind === 'star' ? 'star' : 'normal';
     const seeds = (currentPlayer.inventory && currentPlayer.inventory.seeds) || {};
