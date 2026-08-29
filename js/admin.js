@@ -96,12 +96,28 @@ function renderActivityPage() {
   const slice = all.slice(page * pageSize, (page + 1) * pageSize);
   const log = document.getElementById('activity-log');
   if (!log) return;
+  function adminActIcon(text) {
+    const s = String(text || '');
+    if (s.indexOf('Thu hoạch') >= 0) return 'fa-solid fa-basket-shopping';
+    if (s.indexOf('Trồng') >= 0) return 'fa-solid fa-seedling';
+    if (s.indexOf('Tưới') >= 0 || s.indexOf('tưới') >= 0) return 'fa-solid fa-droplet';
+    if (s.indexOf('Bón') >= 0 || s.indexOf('phân') >= 0) return 'fa-solid fa-flask';
+    if (s.indexOf('Tiên') >= 0) return 'fa-solid fa-wand-magic-sparkles';
+    if (s.indexOf('NYC') >= 0) return 'fa-solid fa-heart';
+    if (s.indexOf('Giúp việc') >= 0) return 'fa-solid fa-user-tie';
+    if (s.indexOf('Mua') >= 0) return 'fa-solid fa-cart-shopping';
+    if (s.indexOf('Bán') >= 0) return 'fa-solid fa-tags';
+    if (s.indexOf('Admin') >= 0) return 'fa-solid fa-user-shield';
+    if (s.indexOf('BÙ OFFLINE') >= 0 || s.indexOf('offline') >= 0) return 'fa-solid fa-bolt';
+    if (s.indexOf('Lên cấp') >= 0) return 'fa-solid fa-star';
+    return 'fa-solid fa-circle-dot';
+  }
   if (slice.length) {
     log.innerHTML = slice.map(a =>
-      `<li><strong>${a.time || ''}</strong> [${a.email || '?'}] — ${a.text}</li>`
+      `<li><span class="act-time"><i class="fa-regular fa-clock"></i> ${a.time || ''}</span> <span class="act-user">[${a.email || '?'}]</span> <i class="${adminActIcon(a.text)} act-fa"></i> <span class="act-text">${a.text || ''}</span></li>`
     ).join('');
   } else {
-    log.innerHTML = '<li>Chưa có hoạt động nào.</li>';
+    log.innerHTML = '<li><i class="fa-solid fa-inbox"></i> Chưa có hoạt động nào.</li>';
   }
   const pager = document.getElementById('activity-pager');
   if (!pager) return;

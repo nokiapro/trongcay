@@ -3186,17 +3186,43 @@ function renderStats() {
 }
 
 // ===== ACTIVITY PAGE =====
+function activityFaIcon(text, type) {
+  const s = String(text || '');
+  const t = String(type || '');
+  if (t === 'offline' || s.indexOf('BÙ OFFLINE') >= 0 || s.indexOf('Bù offline') >= 0) return 'fa-solid fa-bolt';
+  if (t === 'offline_detail') return 'fa-solid fa-circle-info';
+  if (t === 'harvest_offline' || s.indexOf('Thu hoạch') >= 0) return 'fa-solid fa-basket-shopping';
+  if (s.indexOf('Trồng') >= 0 || s.indexOf('trồng lại') >= 0) return 'fa-solid fa-seedling';
+  if (s.indexOf('Tưới') >= 0 || s.indexOf('tưới') >= 0) return 'fa-solid fa-droplet';
+  if (s.indexOf('Bón') >= 0 || s.indexOf('phân') >= 0) return 'fa-solid fa-flask';
+  if (s.indexOf('Tiên') >= 0) return 'fa-solid fa-wand-magic-sparkles';
+  if (s.indexOf('NYC') >= 0 || s.indexOf('Người yêu') >= 0) return 'fa-solid fa-heart';
+  if (s.indexOf('Giúp việc') >= 0 || s.indexOf('Helper') >= 0) return 'fa-solid fa-user-tie';
+  if (s.indexOf('Mua') >= 0) return 'fa-solid fa-cart-shopping';
+  if (s.indexOf('Bán') >= 0) return 'fa-solid fa-tags';
+  if (s.indexOf('Lên cấp') >= 0) return 'fa-solid fa-star';
+  if (s.indexOf('Thành tựu') >= 0) return 'fa-solid fa-medal';
+  if (s.indexOf('Ghép') >= 0) return 'fa-solid fa-flask-vial';
+  if (s.indexOf('Nhổ') >= 0) return 'fa-solid fa-trash';
+  if (s.indexOf('mưa') >= 0 || s.indexOf('Mưa') >= 0) return 'fa-solid fa-cloud-rain';
+  if (s.indexOf('pet') >= 0 || s.indexOf('Pet') >= 0) return 'fa-solid fa-paw';
+  if (s.indexOf('Admin') >= 0) return 'fa-solid fa-user-shield';
+  if (s.indexOf('thưởng') >= 0 || s.indexOf('Nhận') >= 0) return 'fa-solid fa-gift';
+  return 'fa-solid fa-circle-dot';
+}
+
 function renderActivityPage() {
   if (!currentPlayer) return;
   const actList = document.getElementById('activity-list');
   if (!actList) return;
   const acts = currentPlayer.activity || [];
   if (acts.length === 0) {
-    actList.innerHTML = '<li style="color:#999">Chưa có hoạt động nào.</li>';
+    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i> Chưa có hoạt động nào.</li>';
   } else {
-    actList.innerHTML = acts.slice(0, 50).map(a =>
-      `<li><span class="time">${a.time || ''}</span><span>${a.text}</span></li>`
-    ).join('');
+    actList.innerHTML = acts.slice(0, 80).map(a => {
+      const icon = activityFaIcon(a.text, a.type);
+      return '<li><span class="time"><i class="fa-regular fa-clock"></i> ' + (a.time || '') + '</span><span class="act-icon"><i class="' + icon + '"></i></span><span class="act-text">' + (a.text || '') + '</span></li>';
+    }).join('');
   }
 }
 
@@ -3564,9 +3590,8 @@ if (!window.__careVisibilityBound) {
           } catch (_) {}
         }
         forceBackgroundCare('visible');
-        const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
-        const away = currentPlayer.lastSeenAt ? (t - currentPlayer.lastSeenAt) : 0;
-        if (away >= 5 * 60 * 1000 && typeof Game !== 'undefined' && Game.simulateOfflineCare) {
+        // Không còn ngưỡng 5 phút — luôn bù thời gian / log khi quay lại
+        if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
           try {
             const r = await Game.simulateOfflineCare();
             if (r && r.changed) {
@@ -3579,9 +3604,16 @@ if (!window.__careVisibilityBound) {
               if (r.notes && r.notes.length && typeof showToast === 'function') {
                 showToast('⚡ ' + (r.offlineText ? r.offlineText + ' · ' : '') + (r.notes && r.notes.length ? r.notes.join(' · ') : 'Bù offline — xem Nhật ký'), 'success');
               }
+            } else {
+              const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
+              currentPlayer.lastSeenAt = t;
             }
-          } catch (_) {}
+          } catch (_) {
+            const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
+            currentPlayer.lastSeenAt = t;
+          }
         } else {
+          const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
           currentPlayer.lastSeenAt = t;
         }
       })();

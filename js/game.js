@@ -1314,7 +1314,7 @@ const Game = {
       let msg = `🧚 Tiên chăm: tưới ${wateredN} ô`;
       if (cfg.useFertilizer) msg += fertN ? `, bón ${fertN} ô` : ' (hết / không đủ phân)';
       else msg += ' (không bón phân)';
-      this.addActivity(msg);
+      this.addActivity(msg, { type: 'fairy_care', at: now });
       // Tiên tưới cũng tính nhiệm vụ tưới (mỗi ô = 3 lần tưới)
       if (wateredN > 0 && typeof Features !== 'undefined' && Features.trackQuest) {
         Features.trackQuest('water', wateredN * 3);
@@ -1551,7 +1551,9 @@ const Game = {
     }
     if ((plot.waterCount || 0) >= 2) amount = Math.ceil(amount * 1.1);
     if (plot.seedStar) amount = Math.ceil(amount * 1.5);
+    const seedStarFlag = !!plot.seedStar;
     const hid = plot.plantId;
+    const plantName = (plant && plant.name) ? plant.name : String(hid || 'cây');
     if (!currentPlayer.inventory) currentPlayer.inventory = {};
     if (plot.seedStar) {
       if (!currentPlayer.inventory.harvestStar) currentPlayer.inventory.harvestStar = {};
@@ -1563,7 +1565,7 @@ const Game = {
     currentPlayer.stats = currentPlayer.stats || {};
     currentPlayer.stats.harvested = (currentPlayer.stats.harvested || 0) + amount;
     this.unlockCollection(hid);
-    this.addXp(Math.ceil((plant.xp || 5) * (plot.seedStar ? 1.3 : 1)));
+    this.addXp(Math.ceil((plant.xp || 5) * (seedStarFlag ? 1.3 : 1)));
     plot.plantId = null;
     plot.plantedAt = null;
     plot.watered = false;
@@ -1573,9 +1575,12 @@ const Game = {
     plot.fertilizedAt = null;
     plot.seedStar = false;
     let planted = 0;
+    let replantName = '';
     if (doReplant && cfg && cfg.plantId) {
       if (this._nycPlantOneAt(plot, cfg, t)) {
         planted = 1;
+        const rp = this.getPlant(cfg.plantId);
+        replantName = (rp && rp.name) ? rp.name : String(cfg.plantId);
         if (this.isFairyActive() && this.isFairyGardenEnabled(gi)) {
           plot.waterCount = 3;
           plot.watered = true;
@@ -1591,6 +1596,10 @@ const Game = {
         }
       }
     }
+    // Ghi log đúng mốc giờ thu khi vắng
+    let logMsg = 'Thu hoạch ' + amount + ' ' + plantName + (seedStarFlag ? ' ⭐' : '');
+    if (planted && replantName) logMsg += ' · NYC trồng lại ' + replantName;
+    this.addActivity(logMsg, { type: 'harvest_offline', at: t, plotGarden: gi });
     return { harvested: 1, planted };
   },
 
@@ -1639,7 +1648,8 @@ const Game = {
     if (fromLog && fromLog < from) {
       from = Math.max(Number(currentPlayer.lastCatchUpAt) || 0, fromLog - 1000);
     }
-    const OFFLINE_MIN_MS = (fromLog != null) ? 30 * 1000 : 5 * 60 * 1000;
+    // Không còn ngưỡng 5 phút — thời gian chạy liên tục, bù ngay khi quay lại
+    const OFFLINE_MIN_MS = 1000;
     if (now - from < OFFLINE_MIN_MS) {
       currentPlayer.lastCatchUpAt = now;
       delete currentPlayer._needOfflineFromLog;
@@ -2738,7 +2748,10 @@ const Game = {
   addActivity(text, meta) {
     if (!currentPlayer) return;
     if (!currentPlayer.activity) currentPlayer.activity = [];
-    const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
+    // meta.at = mốc thời gian thật (ms) — dùng khi bù offline (thu hoạch lúc vắng)
+    const t = (meta && typeof meta.at === 'number' && meta.at > 0)
+      ? meta.at
+      : ((typeof nowMs === 'function') ? nowMs() : Date.now());
     const timeStr = (typeof formatGameDateTime === 'function')
       ? formatGameDateTime(t)
       : new Date(t).toLocaleString('vi-VN');

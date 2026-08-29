@@ -1533,3 +1533,26 @@ html[data-theme="dark"] .admin-menu-btn {
   border-color: #3d5a4c;
   color: #e8f5e9;
 }
+
+
+/* Activity log icons */
+.activity-log li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+}
+.activity-log .act-time {
+  color: #64748b;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+.activity-log .act-fa {
+  color: #10b981;
+  width: 1.1rem;
+  text-align: center;
+}
+.activity-log .act-user {
+  color: #64748b;
+  font-size: 0.9em;
+}
