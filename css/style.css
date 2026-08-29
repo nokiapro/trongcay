@@ -20,7 +20,7 @@
   --input-bg: #f8fafc;
   --soil-bg: #fef3c7;
   --soil-border: #fde68a;
-  --shadow-card: 0 10px 25px -5px rgba(34, 197, 94, 0.15), 0 8px 10px -6px rgba(34, 197, 94, 0.1);
+  --shadow-card: 0 6px 16px -4px rgba(34, 197, 94, 0.12), 0 4px 8px -4px rgba(22, 163, 74, 0.08);
 
   /* Aliases (code cũ) */
   --bg: var(--bg-main);
@@ -55,7 +55,7 @@
   --btn-danger-bg: linear-gradient(135deg, #dc2626, #ef4444);
   --btn-danger-color: #ffffff;
   --btn-warning-bg: linear-gradient(135deg, #d97706, #f59e0b);
-  --btn-warning-color: #14532d;
+  --btn-warning-color: #ffffff;
   --btn-purple-bg: linear-gradient(135deg, #7c3aed, #8b5cf6);
   --btn-purple-color: #ffffff;
   --btn-timer-bg: linear-gradient(135deg, #1e3a5f, #3b82f6);
@@ -2250,10 +2250,10 @@ html[data-theme="dark"] .plot-progress {
   color: var(--primary);
 }
 .profile-level-tag {
-  margin-top: -6px;
+  margin-top: -10px;
   position: relative;
-  z-index: 3;
-  padding: 3px 14px;
+  z-index: 5;
+  padding: 3px 16px;
   border-radius: 999px;
   font-weight: 800;
   font-size: 0.78rem;
@@ -2576,7 +2576,7 @@ html[data-theme="dark"] {
   --input-bg: #022c22;
   --soil-bg: #451a03;
   --soil-border: #78350f;
-  --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 8px 20px -6px rgba(0, 0, 0, 0.28), 0 4px 10px -4px rgba(0, 0, 0, 0.18);
 
   --bg: var(--bg-main);
   --card: var(--bg-card);
@@ -2606,7 +2606,7 @@ html[data-theme="dark"] {
   --btn-danger-bg: linear-gradient(135deg, #b91c1c, #f87171);
   --btn-danger-color: #ffffff;
   --btn-warning-bg: linear-gradient(135deg, #b45309, #fbbf24);
-  --btn-warning-color: #022c22;
+  --btn-warning-color: #ffffff;
   --btn-purple-bg: linear-gradient(135deg, #6d28d9, #a78bfa);
   --btn-purple-color: #ffffff;
   --btn-timer-bg: linear-gradient(135deg, #1e3a5f, #3b82f6);
@@ -4362,42 +4362,60 @@ html[data-theme="dark"] .garden-switch-hint {
   z-index: 40;
 }
 
-/* Nút trigger dropdown (Vườn / Công cụ / Hỗ trợ): không tô nền */
+/* Vườn / Công cụ / Hỗ trợ — cùng style primary (light) */
 #btn-tools-menu.btn,
 #btn-tools-menu.btn-primary,
 #btn-support-menu.btn,
 #btn-support-menu.btn-primary,
-.garden-support-dd #btn-support-menu {
-  background: transparent !important;
-  border: 1.5px solid rgba(45, 106, 79, 0.35) !important;
-  color: var(--text, #1b4332) !important;
-  box-shadow: none !important;
+.garden-support-dd #btn-support-menu,
+.garden-switcher .pill-dd-trigger,
+#garden-switcher .pill-dd-trigger {
+  background: linear-gradient(135deg, var(--primary-hover, #16a34a), var(--primary, #22c55e)) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.3) !important;
   filter: none !important;
+  font-weight: 700 !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
 }
 #btn-tools-menu.btn:hover,
 #btn-tools-menu.btn-primary:hover,
 #btn-support-menu.btn:hover,
 #btn-support-menu.btn-primary:hover,
-.garden-support-dd #btn-support-menu:hover {
-  background: rgba(45, 106, 79, 0.08) !important;
-  border-color: var(--primary, #2d6a4f) !important;
-  transform: none !important;
+.garden-support-dd #btn-support-menu:hover,
+.garden-switcher .pill-dd-trigger:hover,
+#garden-switcher .pill-dd-trigger:hover {
+  background: linear-gradient(135deg, var(--primary, #22c55e), var(--primary-light, #4ade80)) !important;
+  color: #ffffff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 18px rgba(34, 197, 94, 0.4) !important;
   filter: none !important;
+}
+#btn-tools-menu.btn:active,
+#btn-support-menu.btn:active,
+.garden-switcher .pill-dd-trigger:active {
+  transform: translateY(1px) !important;
+  box-shadow: none !important;
 }
 html[data-theme="dark"] #btn-tools-menu.btn,
 html[data-theme="dark"] #btn-tools-menu.btn-primary,
 html[data-theme="dark"] #btn-support-menu.btn,
 html[data-theme="dark"] #btn-support-menu.btn-primary,
-html[data-theme="dark"] .garden-support-dd #btn-support-menu {
-  background: transparent !important;
-  border-color: rgba(149, 213, 178, 0.35) !important;
-  color: #e8f5e9 !important;
+html[data-theme="dark"] .garden-support-dd #btn-support-menu,
+html[data-theme="dark"] .garden-switcher .pill-dd-trigger,
+html[data-theme="dark"] #garden-switcher .pill-dd-trigger {
+  background: linear-gradient(135deg, var(--primary-hover, #059669), var(--primary, #10b981)) !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3) !important;
 }
 html[data-theme="dark"] #btn-tools-menu.btn:hover,
 html[data-theme="dark"] #btn-support-menu.btn:hover,
-html[data-theme="dark"] .garden-support-dd #btn-support-menu:hover {
-  background: rgba(82, 183, 136, 0.12) !important;
-  border-color: #52b788 !important;
+html[data-theme="dark"] .garden-support-dd #btn-support-menu:hover,
+html[data-theme="dark"] .garden-switcher .pill-dd-trigger:hover {
+  background: linear-gradient(135deg, var(--primary, #10b981), var(--primary-light, #34d399)) !important;
+  color: #ffffff !important;
+  transform: translateY(-2px) !important;
 }
 
 /* Menu xổ xuống: GIỮ nền để đọc được */
@@ -7637,4 +7655,142 @@ html[data-theme="dark"] textarea:focus {
 }
 html[data-theme="dark"] .login-screen {
   background: linear-gradient(145deg, #022c22 0%, #064e3b 50%, #047857 100%);
+}
+
+
+/* ==========================================================================
+   UI polish v1.9.8
+   ========================================================================== */
+
+/* Bán hết / warning buttons — chữ trắng light */
+:root:not([data-theme="dark"]) .btn-warning,
+html[data-theme="light"] .btn-warning,
+.btn-warning {
+  color: #ffffff !important;
+}
+.btn-sell-seed.btn-primary,
+.btn-sell-hv.btn-primary,
+.btn-sell-fert.btn-primary {
+  color: #ffffff !important;
+}
+
+/* Quest blocks — bo góc + shadow theo bo góc */
+#quests-daily,
+#quests-weekly,
+.quest-block {
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  background: color-mix(in srgb, var(--primary-dark, #14532d) 88%, #000) !important;
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--primary) 22%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent) !important;
+  padding: 16px 18px !important;
+  margin-bottom: 18px !important;
+}
+html[data-theme="dark"] #quests-daily,
+html[data-theme="dark"] #quests-weekly {
+  background: color-mix(in srgb, var(--bg-card) 92%, #000) !important;
+}
+#quests-daily > h3,
+#quests-weekly > h3 {
+  color: #ecfdf5 !important;
+  margin: 0 0 12px !important;
+  font-size: 1.05rem;
+}
+.quest-card {
+  border-radius: 14px !important;
+  margin: 8px 0 !important;
+  background: color-mix(in srgb, #fff 8%, transparent) !important;
+  box-shadow: none !important;
+  border: none !important;
+  color: #ecfdf5 !important;
+}
+.quest-card .q-title,
+.quest-card small {
+  color: #ecfdf5 !important;
+}
+.quest-card .q-prog {
+  background: rgba(0,0,0,0.25) !important;
+  border-radius: 99px !important;
+}
+.quest-card .q-prog > i {
+  background: linear-gradient(90deg, var(--primary), var(--primary-light)) !important;
+  border-radius: 99px !important;
+}
+
+/* Profile LVL */
+.profile-avatar-block {
+  overflow: visible !important;
+  padding-bottom: 4px;
+}
+.profile-card {
+  overflow: visible !important;
+}
+.profile-level-tag {
+  margin-top: -10px !important;
+  position: relative;
+  z-index: 5;
+  overflow: visible;
+  /* tránh bị cắt mép trái */
+  margin-left: 0;
+  padding-left: 16px;
+  padding-right: 16px;
+  max-width: none;
+  box-sizing: border-box;
+}
+.profile-level-tag.has-frame-grad {
+  border: 2px solid transparent !important;
+  background:
+    linear-gradient(var(--bg-card, #fff), var(--bg-card, #fff)) padding-box,
+    var(--avatar-frame-grad) border-box !important;
+  background-size: auto, 200% 200% !important;
+  animation: avatar-frame-shift 3s ease infinite;
+  color: var(--text-main, #14532d) !important;
+  text-shadow: none;
+}
+html[data-theme="dark"] .profile-level-tag.has-frame-grad {
+  background:
+    linear-gradient(var(--bg-card, #064e3b), var(--bg-card, #064e3b)) padding-box,
+    var(--avatar-frame-grad) border-box !important;
+  color: #fff !important;
+}
+
+/* Khi có frame: LVL nằm gọn dưới, không bị clip */
+.profile-avatar-wrap.has-frame {
+  overflow: visible;
+  margin-bottom: 2px;
+}
+
+/* MENU title trên nav mobile */
+.nav-menu-title {
+  display: none;
+}
+@media (max-width: 768px) {
+  .nav-menu-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    color: var(--text-main, var(--text));
+    padding: 4px 16px 12px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border-color, var(--border));
+    flex: 0 0 auto;
+  }
+  .nav-menu-title i {
+    color: var(--primary);
+    font-size: 1.1rem;
+  }
+  .bottom-nav {
+    padding-top: 56px !important;
+  }
+}
+
+/* Soften remaining heavy black shadows */
+.stat-card,
+.shop-card,
+.profile-card,
+.modal-content {
+  box-shadow: var(--shadow-card) !important;
 }
