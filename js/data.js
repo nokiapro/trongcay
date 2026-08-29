@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.8.3';
+const APP_VERSION = '1.8.5';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13107,7 +13107,7 @@ const DEFAULT_SETTINGS = {
   /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.8.3',
+  appVersion: '1.8.5',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13393,7 +13393,7 @@ function readLocalPlayLog(uid) {
 
 function writeLocalPlayLog(uid, arr) {
   try {
-    localStorage.setItem(playLogLocalKey(uid), JSON.stringify((arr || []).slice(0, 120)));
+    localStorage.setItem(playLogLocalKey(uid), JSON.stringify((arr || []).slice(0, 300)));
   } catch (_) {}
 }
 
@@ -13437,11 +13437,11 @@ function recordGameEvent(type, data) {
     t: entry.t,
     d: data ? JSON.stringify(data).slice(0, 100) : null
   });
-  if (currentPlayer.playLog.length > 50) currentPlayer.playLog.length = 50;
+  if (currentPlayer.playLog.length > 150) currentPlayer.playLog.length = 150;
 
   const local = readLocalPlayLog(currentUser.uid);
   local.unshift(entry);
-  writeLocalPlayLog(currentUser.uid, local.slice(0, 120));
+  writeLocalPlayLog(currentUser.uid, local.slice(0, 300));
   markPendingSnapshot(entry.type, t);
 
   // Đẩy Firebase ngay (không chờ) — nếu fail, vào web sẽ flush lại

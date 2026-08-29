@@ -1431,13 +1431,27 @@ const Game = {
     });
 
     if (fairy) {
-      const last = currentPlayer.lastFairyCare || 0;
-      if (!last || (now - last >= this.BOOST_MS)) {
+      const last = Number(currentPlayer.lastFairyCare) || 0;
+      // Chỉ chăm khi ĐÃ HẾT đủ 3h kể từ lastFairyCare — gán last = last+3h (hoặc now nếu lệch),
+      // không nhảy lastFairyCare = now khi vừa bù offline (tránh reset đồng hồ về 3:00:00).
+      if (!last) {
         this.forEachGarden((plots, gi) => {
           if (!this.isFairyGardenEnabled(gi)) return;
           this.runFairyCare(now);
         });
         currentPlayer.lastFairyCare = now;
+        changed = true;
+      } else if (now - last >= this.BOOST_MS) {
+        // Có thể bỏ lỡ nhiều chu kỳ: áp 1 lần chăm tại mốc last+3h… gần now nhất
+        let careAt = last;
+        while (careAt + this.BOOST_MS <= now) {
+          careAt += this.BOOST_MS;
+        }
+        this.forEachGarden((plots, gi) => {
+          if (!this.isFairyGardenEnabled(gi)) return;
+          this.runFairyCare(careAt);
+        });
+        currentPlayer.lastFairyCare = careAt;
         changed = true;
       }
     }
@@ -1654,15 +1668,25 @@ const Game = {
       }
       rainT += rainStep;
     }
+    // Chu kỳ 3h Tiên: chỉ bù đúng các mốc đủ 3h đã qua — KHÔNG gán lastFairyCare = now
+    // → đồng hồ 3h còn lại = phần giờ thật còn lại (bù offline đúng)
     if (this.isFairyActive()) {
-      let careAt = currentPlayer.lastFairyCare || 0;
-      if (!careAt || careAt < from) {
+      let careAt = Number(currentPlayer.lastFairyCare) || 0;
+      if (!careAt) {
+        // Chưa từng chăm: 1 lần tại mốc bắt đầu offline, rồi các chu kỳ 3h
         events.push({ t: from, type: 'fairy' });
         careAt = from;
-      }
-      while (careAt + this.BOOST_MS <= now) {
-        careAt += this.BOOST_MS;
-        events.push({ t: careAt, type: 'fairy' });
+        while (careAt + this.BOOST_MS <= now) {
+          careAt += this.BOOST_MS;
+          events.push({ t: careAt, type: 'fairy' });
+        }
+      } else {
+        // Đã có mốc: chỉ thêm event khi đủ từng chu kỳ 3h trong [careAt, now]
+        while (careAt + this.BOOST_MS <= now) {
+          careAt += this.BOOST_MS;
+          events.push({ t: careAt, type: 'fairy' });
+        }
+        // Không đụng lastFairyCare nếu chưa tới mốc — đồng hồ chạy tiếp phần còn lại
       }
     }
     events.sort((a, b) => a.t - b.t || (a.type === 'rain' ? -1 : 1));
@@ -1787,16 +1811,62 @@ const Game = {
     delete currentPlayer._needOfflineFromLog;
     delete currentPlayer._logEarliest;
     if (fromLog) {
-      notes.unshift('Log thao tác → bù từ ' + new Date(from).toLocaleTimeString('vi-VN'));
+      notes.unshift('Log thao tác → bù từ ' + new Date(from).toLocaleString('vi-VN'));
     }
-    if (changed) {
-      this.addActivity('⚡ Bù offline: ' + (notes.join(' · ') || 'đã cập nhật'));
+
+    const offlineMs = now - from;
+    const offlineText = this.formatOfflineDuration(offlineMs);
+    const fairyActive = this.isFairyActive();
+    const nycActive = this.isNycActive();
+    const helperActive = this.isHelperActive();
+
+    // Báo cáo chi tiết nhiều dòng
+    const lines = [];
+    lines.push('⚡ BÙ OFFLINE — vắng ' + offlineText + ' (từ ' + new Date(from).toLocaleString('vi-VN') + ' → ' + new Date(now).toLocaleString('vi-VN') + ')');
+    lines.push('📋 Tóm tắt: ' + (notes.length ? notes.join(' · ') : (changed ? 'đã cập nhật trạng thái' : 'không có thay đổi lớn')));
+    lines.push('🌧️ Mưa: ' + rainHits + ' trận (tỉ lệ admin ' + rainChance + '% / mỗi 15 phút) · ô được Tiên tưới kèm mưa: ' + rainWatered);
+    // Đồng hồ 3h sau bù
+    let cycleLeftSec = null;
+    if (fairyActive) {
+      const lastC = Number(currentPlayer.lastFairyCare) || 0;
+      if (lastC) {
+        cycleLeftSec = Math.max(0, Math.ceil((lastC + this.BOOST_MS - now) / 1000));
+      }
     }
+    lines.push('🧚 Tiên: ' + (fairyActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · chu kỳ 3 giờ đã chạy: ' + fairyCycles + ' lần · đồng hồ 3h còn: ' + (cycleLeftSec == null ? '—' : this.formatTime(cycleLeftSec)) + ' (không reset full 3h)');
+    lines.push('💔 NYC: ' + (nycActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · thu ' + totalHarvest + ' ô (vụ) · trồng lại ' + totalPlant + ' ô (plantedAt đúng giờ chín)');
+    lines.push('💁 Giúp việc: ' + (helperActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · mua theo mốc kho: ' + helperBuys + ' đợt');
+    if (fromLog) {
+      lines.push('📝 Có log thao tác (trồng/tưới/bón) → mốc bù lấy sớm hơn lastSeen');
+    }
+    lines.push('✅ Kết thúc bù offline · lastSeen/lastCatchUp cập nhật ' + new Date(now).toLocaleString('vi-VN'));
+
+    // Luôn ghi log chi tiết khi offline ≥ ngưỡng (kể cả changed=false để user thấy đã check)
+    this.logOfflineReport({
+      lines,
+      offlineMs,
+      offlineText,
+      from,
+      to: now,
+      rainHits,
+      rainChance,
+      rainWatered,
+      fairyCycles,
+      totalHarvest,
+      totalPlant,
+      helperBuys,
+      fairyActive,
+      nycActive,
+      helperActive
+    });
+
     return {
       ok: true,
       changed,
       notes,
-      offlineMs: now - from,
+      lines,
+      offlineMs,
+      offlineText,
       totalHarvest,
       totalPlant,
       fairyCycles,
@@ -2644,12 +2714,87 @@ const Game = {
     return currentPlayer.plots.filter(p => !p.plantId).length;
   },
 
-  addActivity(text) {
+  /** Định dạng thời lượng offline (ms → chữ) */
+  formatOfflineDuration(ms) {
+    ms = Math.max(0, Number(ms) || 0);
+    const s = Math.floor(ms / 1000);
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    const parts = [];
+    if (d) parts.push(d + ' ngày');
+    if (h) parts.push(h + ' giờ');
+    if (m) parts.push(m + ' phút');
+    if (sec && !d) parts.push(sec + ' giây');
+    return parts.length ? parts.join(' ') : '0 giây';
+  },
+
+  /**
+   * Nhật ký hoạt động chi tiết (UI + playLog Firebase/local).
+   * @param {string} text
+   * @param {object} [meta] { type, ...data } — type ghi playLogs
+   */
+  addActivity(text, meta) {
     if (!currentPlayer) return;
     if (!currentPlayer.activity) currentPlayer.activity = [];
-    currentPlayer.activity.unshift({ text, time: (typeof formatGameDateTime === 'function') ? formatGameDateTime(typeof nowMs === 'function' ? nowMs() : Date.now()) : new Date().toLocaleString('vi-VN') });
-    if (currentPlayer.activity.length > 30) currentPlayer.activity = currentPlayer.activity.slice(0, 30);
+    const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
+    const timeStr = (typeof formatGameDateTime === 'function')
+      ? formatGameDateTime(t)
+      : new Date(t).toLocaleString('vi-VN');
+    currentPlayer.activity.unshift({
+      text: String(text || ''),
+      time: timeStr,
+      t: t,
+      type: (meta && meta.type) ? String(meta.type) : 'note'
+    });
+    // Giữ nhiều hơn để xem đủ chi tiết offline
+    if (currentPlayer.activity.length > 120) currentPlayer.activity = currentPlayer.activity.slice(0, 120);
+
+    // Đồng bộ playLogs (Firebase + localStorage)
+    if (typeof recordGameEvent === 'function') {
+      const type = (meta && meta.type) ? String(meta.type).slice(0, 24) : 'note';
+      const data = meta && typeof meta === 'object' ? { ...meta, msg: String(text || '').slice(0, 400) } : { msg: String(text || '').slice(0, 400) };
+      delete data.type;
+      try { recordGameEvent(type, data); } catch (_) {}
+    }
   },
+
+  /** Ghi nhiều dòng log offline chi tiết */
+  logOfflineReport(report) {
+    if (!report || !currentPlayer) return;
+    const lines = Array.isArray(report.lines) ? report.lines : [];
+    lines.forEach((line, i) => {
+      this.addActivity(line, {
+        type: i === 0 ? 'offline' : 'offline_detail',
+        offlineMs: report.offlineMs,
+        idx: i
+      });
+    });
+    // 1 event tổng hợp (tránh trùng msg dài)
+    if (typeof recordGameEvent === 'function') {
+      try {
+        recordGameEvent('offline_summary', {
+          offlineMs: report.offlineMs,
+          offlineText: report.offlineText,
+          from: report.from,
+          to: report.to,
+          rainHits: report.rainHits,
+          rainChance: report.rainChance,
+          rainWatered: report.rainWatered,
+          fairyCycles: report.fairyCycles,
+          totalHarvest: report.totalHarvest,
+          totalPlant: report.totalPlant,
+          helperBuys: report.helperBuys,
+          fairyActive: report.fairyActive,
+          nycActive: report.nycActive,
+          helperActive: report.helperActive,
+          lines: lines.slice(0, 20)
+        });
+      } catch (_) {}
+    }
+  },
+
 
   totalFertilizerCount() {
     if (!currentPlayer || !currentPlayer.inventory.fertilizers) return 0;

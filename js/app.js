@@ -538,7 +538,7 @@ auth.onAuthStateChanged(async (user) => {
               if (r.notes && r.notes.length && typeof showToast === 'function') {
                 const hours = Math.floor((r.offlineMs || 0) / 3600000);
                 const mins = Math.floor(((r.offlineMs || 0) % 3600000) / 60000);
-                showToast('⚡ Bù ' + (hours ? hours + 'g ' : '') + mins + 'p: ' + r.notes.join(' · '), 'success');
+                showToast('⚡ Bù ' + (r.offlineText || ((hours ? hours + 'g ' : '') + mins + 'p')) + ': ' + (r.notes && r.notes.length ? r.notes.join(' · ') : 'xem Nhật ký'), 'success');
               }
             }
           }
@@ -3461,7 +3461,7 @@ if (!window.__careVisibilityBound) {
                 if (gp && gp.classList.contains('active')) renderGarden();
               }
               if (r.notes && r.notes.length && typeof showToast === 'function') {
-                showToast('⚡ ' + r.notes.join(' · '), 'success');
+                showToast('⚡ ' + (r.offlineText ? r.offlineText + ' · ' : '') + (r.notes && r.notes.length ? r.notes.join(' · ') : 'Bù offline — xem Nhật ký'), 'success');
               }
             }
           } catch (_) {}
