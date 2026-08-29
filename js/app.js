@@ -3209,14 +3209,10 @@ function updateTreeLevelUI(val) {
   const tier = getTreeTier(level);
 
   const range = document.getElementById('levelInputRange');
-  const num = document.getElementById('levelInputNumber');
   if (range) range.value = level;
-  if (num) num.value = level;
 
   const titleEl = document.getElementById('tierTitleText');
-  const cssEl = document.getElementById('cssClassText');
   if (titleEl) titleEl.textContent = tier.title;
-  if (cssEl) cssEl.textContent = '.' + tier.class;
 
   const progress = (level / 1000) * 100;
   const bar = document.getElementById('levelProgressBar');
@@ -3246,37 +3242,11 @@ function updateTreeLevelUI(val) {
   if (pillText) pillText.textContent = 'LVL ' + level + ' • ' + tier.title;
 }
 
-function renderTreeTiersGrid() {
-  const container = document.getElementById('treeTiersGrid');
-  if (!container) return;
-  container.innerHTML = TREE_TIERS.map(t => `
-    <button type="button" class="level-tier-card" data-lvl="${t.min}">
-      <div class="level-tier-card-top">
-        <div>
-          <span class="level-tier-range">Level ${t.min} – ${t.max}</span>
-          <strong class="level-tier-name">${t.title}</strong>
-        </div>
-        <div class="tree-badge-wrapper ${t.class} level-tier-mini">
-          <div class="tree-badge-container">
-            <div class="tree-emblem-orb"><i class="fa-solid ${t.icon} tree-icon"></i></div>
-          </div>
-        </div>
-      </div>
-      <p class="level-tier-desc">${t.desc}</p>
-    </button>
-  `).join('');
-  container.querySelectorAll('[data-lvl]').forEach(btn => {
-    btn.addEventListener('click', () => updateTreeLevelUI(btn.dataset.lvl));
-  });
-}
-
 function bindLevelPageControls() {
   if (_levelPageBound) return;
   _levelPageBound = true;
   const range = document.getElementById('levelInputRange');
-  const num = document.getElementById('levelInputNumber');
   range?.addEventListener('input', e => updateTreeLevelUI(e.target.value));
-  num?.addEventListener('change', e => updateTreeLevelUI(e.target.value));
   document.querySelectorAll('.level-preset').forEach(btn => {
     btn.addEventListener('click', () => updateTreeLevelUI(btn.dataset.lvl));
   });
@@ -3303,7 +3273,6 @@ function bindLevelPageControls() {
 
 function renderLevelPage() {
   bindLevelPageControls();
-  renderTreeTiersGrid();
   const myLv = (currentPlayer && currentPlayer.level) ? currentPlayer.level : 1;
   updateTreeLevelUI(myLv);
 }
