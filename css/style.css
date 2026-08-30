@@ -6487,16 +6487,18 @@ html[data-theme="dark"] .merge-box .merge-sub {
   transition: background 0.6s ease;
   background: rgba(74, 222, 128, 0.45);
 }
+/* ===== TREE BADGE 12 TIERS (design) ===== */
 .tree-badge-wrapper {
   position: relative;
-  z-index: 2;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   perspective: 1000px;
+  cursor: default;
   user-select: none;
-  transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 2;
 }
 .tree-badge-container {
   position: relative;
@@ -6512,18 +6514,16 @@ html[data-theme="dark"] .merge-box .merge-sub {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.55), inset 0 2px 8px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.55), inset 0 2px 8px rgba(255, 255, 255, 0.4);
   transition: all 0.5s ease;
   overflow: hidden;
 }
 .tree-emblem-orb::after {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.28) 50%, transparent 60%);
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.3) 50%, transparent 60%);
   transform: rotate(30deg);
   animation: treeShimmer 5s infinite;
   pointer-events: none;
@@ -6536,150 +6536,134 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .tree-level-tag {
   position: relative;
   z-index: 10;
-  margin-top: -10px;
-  padding: 4px 14px;
+  margin-top: -12px;
+  padding: 4px 16px;
   border-radius: 999px;
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.04em;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
-  border: 2px solid rgba(255, 255, 255, 0.28);
-  text-shadow: 0 1px 3px rgba(0,0,0,0.7);
+  font-weight: 900;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(8px);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+  transition: all 0.4s ease;
+}
+[data-theme="dark"] .tree-level-tag,
+.dark .tree-level-tag {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
 }
 .orbit-halo-ring {
   position: absolute;
   inset: -12px;
   border-radius: 50%;
-  border: 2px dashed rgba(250, 204, 21, 0.55);
+  border: 2px dashed rgba(250, 204, 21, 0.6);
   animation: rotateHalo 12s linear infinite;
   pointer-events: none;
   display: none;
 }
+.orbit-halo-ring-inner {
+  position: absolute;
+  inset: -24px;
+  border-radius: 50%;
+  border: 2px dotted rgba(255, 255, 255, 0.4);
+  animation: rotateHaloReverse 8s linear infinite;
+  pointer-events: none;
+  display: none;
+}
 @keyframes rotateHalo { 100% { transform: rotate(360deg); } }
+@keyframes rotateHaloReverse { 100% { transform: rotate(-360deg); } }
 
-/* Tiers */
-.tier-tree-1 .tree-emblem-orb {
-  width: 90px; height: 90px;
-  background: radial-gradient(circle at 30% 30%, #4a3425, #1a100a);
-  border: 3px solid #855335;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 15px rgba(133, 83, 53, 0.3);
-}
+/* Tier 1: 1-99 */
+.tier-tree-1 .tree-emblem-orb { width: 80px; height: 80px; background: radial-gradient(circle at 30% 30%, #4a3425, #1a100a); border: 3px solid #855335; }
 .tier-tree-1 .tree-level-tag { background: linear-gradient(135deg, #855335, #3a2215); color: #fef08a; }
-.tier-tree-1 .tree-icon { color: #4ade80; font-size: 2.2rem; filter: drop-shadow(0 2px 6px rgba(74,222,128,0.5)); }
+.tier-tree-1 .tree-icon { color: #4ade80; font-size: 2rem; filter: drop-shadow(0 2px 6px rgba(74,222,128,0.5)); }
 
-.tier-tree-2 .tree-emblem-orb {
-  width: 105px; height: 105px;
-  background: radial-gradient(circle at 30% 30%, #15803d, #052e16);
-  border: 4px solid #4ade80;
-  box-shadow: 0 12px 25px rgba(0,0,0,0.6), 0 0 20px rgba(74, 222, 128, 0.4);
-}
-.tier-tree-2 .tree-level-tag { background: linear-gradient(135deg, #16a34a, #065f46); color: #fff; }
-.tier-tree-2 .tree-icon { color: #86efac; font-size: 2.8rem; filter: drop-shadow(0 0 10px rgba(134,239,172,0.7)); }
+/* Tier 2: 100-499 */
+.tier-tree-2 .tree-emblem-orb { width: 95px; height: 95px; background: radial-gradient(circle at 30% 30%, #15803d, #052e16); border: 4px solid #4ade80; }
+.tier-tree-2 .tree-level-tag { background: linear-gradient(135deg, #16a34a, #065f46); color: #ffffff; }
+.tier-tree-2 .tree-icon { color: #86efac; font-size: 2.5rem; filter: drop-shadow(0 0 10px rgba(134,239,172,0.7)); }
 
-.tier-tree-3 .tree-emblem-orb {
-  width: 120px; height: 120px;
-  background: radial-gradient(circle at 30% 30%, #0369a1, #0c4a6e);
-  border: 4px solid #38bdf8;
-  box-shadow: 0 14px 28px rgba(0,0,0,0.55), 0 0 22px rgba(56, 189, 248, 0.45);
-}
+/* Tier 3: 500-999 */
+.tier-tree-3 .tree-emblem-orb { width: 110px; height: 110px; background: radial-gradient(circle at 30% 30%, #0e7490, #042f2e); border: 4px solid #38bdf8; }
 .tier-tree-3 .tree-level-tag { background: linear-gradient(135deg, #0284c7, #0f766e); color: #e0f2fe; }
-.tier-tree-3 .tree-icon { color: #38bdf8; font-size: 3.4rem; filter: drop-shadow(0 0 12px rgba(56,189,248,0.8)); }
+.tier-tree-3 .tree-icon { color: #38bdf8; font-size: 3rem; filter: drop-shadow(0 0 12px rgba(56,189,248,0.8)); }
 
-.tier-tree-4 .tree-emblem-orb {
-  width: 135px; height: 135px;
-  background: radial-gradient(circle at 30% 30%, #a16207, #422006);
-  border: 4px solid #facc15;
-  box-shadow: 0 16px 32px rgba(0,0,0,0.55), 0 0 24px rgba(250, 204, 21, 0.5);
-}
-.tier-tree-4 .tree-level-tag { background: linear-gradient(135deg, #eab308, #854d0e); color: #fff; border-color: #fef08a; }
-.tier-tree-4 .tree-icon { color: #fef08a; font-size: 4rem; filter: drop-shadow(0 0 15px rgba(254,240,138,0.9)); }
+/* Tier 4: 1000-1999 */
+.tier-tree-4 .tree-emblem-orb { width: 125px; height: 125px; background: radial-gradient(circle at 30% 30%, #15803d, #78350f, #064e3b); border: 5px solid #facc15; }
+.tier-tree-4 .tree-level-tag { background: linear-gradient(135deg, #eab308, #854d0e); color: #ffffff; border-color: #fef08a; }
+.tier-tree-4 .tree-icon { color: #fef08a; font-size: 3.5rem; filter: drop-shadow(0 0 15px rgba(254,240,138,0.9)); }
 
-.tier-tree-5 .tree-emblem-orb {
-  width: 150px; height: 150px;
-  background: radial-gradient(circle at 30% 30%, #be185d, #064e3b);
-  border: 4px solid #f472b6;
-  box-shadow: 0 18px 36px rgba(0,0,0,0.55), 0 0 28px rgba(244, 114, 182, 0.55);
-}
-.tier-tree-5 .tree-level-tag { background: linear-gradient(135deg, #ec4899, #059669); color: #fff; }
-.tier-tree-5 .tree-icon { color: #fbcfe8; font-size: 4.5rem; filter: drop-shadow(0 0 18px rgba(244,114,182,0.9)); }
+/* Tier 5: 2000-2999 */
+.tier-tree-5 .tree-emblem-orb { width: 140px; height: 140px; background: radial-gradient(circle at 30% 30%, #047857, #831843, #022c22); border: 5px solid #f472b6; }
+.tier-tree-5 .tree-level-tag { background: linear-gradient(135deg, #ec4899, #059669); color: #ffffff; }
+.tier-tree-5 .tree-icon { color: #fbcfe8; font-size: 4rem; filter: drop-shadow(0 0 18px rgba(244,114,182,0.9)); }
 
-.tier-tree-6 .tree-emblem-orb {
-  width: 160px; height: 160px;
-  background: radial-gradient(circle at 30% 30%, #0891b2, #042f2e);
-  border: 4px solid #22d3ee;
-  box-shadow: 0 18px 40px rgba(0,0,0,0.55), 0 0 30px rgba(0, 242, 254, 0.65);
-  animation: bioTreePulse 2.4s ease-in-out infinite alternate;
-}
-.tier-tree-6 .tree-level-tag { background: linear-gradient(135deg, #00f2fe, #0369a1); color: #fff; }
-.tier-tree-6 .tree-icon { color: #67e8f9; font-size: 5rem; filter: drop-shadow(0 0 22px rgba(0,242,254,1)); }
+/* Tier 6: 3000-4499 */
+.tier-tree-6 .tree-emblem-orb { width: 155px; height: 155px; background: radial-gradient(circle at 30% 30%, #0284c7, #0f172a, #03001e); border: 5px solid #00f2fe; animation: bioTreePulse 3s infinite alternate ease-in-out; }
+.tier-tree-6 .tree-level-tag { background: linear-gradient(135deg, #00f2fe, #0369a1); color: #ffffff; }
+.tier-tree-6 .tree-icon { color: #67e8f9; font-size: 4.5rem; filter: drop-shadow(0 0 22px rgba(0,242,254,1)); }
 
-.tier-tree-7 .tree-emblem-orb {
-  width: 170px; height: 170px;
-  background: radial-gradient(circle at 30% 30%, #b45309, #14532d);
-  border: 5px solid #f59e0b;
-  box-shadow: 0 20px 42px rgba(0,0,0,0.55), 0 0 34px rgba(245, 158, 11, 0.7);
-}
+/* Tier 7: 4500-5999 */
+.tier-tree-7 .tree-emblem-orb { width: 170px; height: 170px; background: radial-gradient(circle at 30% 30%, #b45309, #064e3b, #451a03); border: 6px solid #f59e0b; }
 .tier-tree-7 .tree-level-tag { background: linear-gradient(135deg, #f59e0b, #047857); color: #fef08a; border-color: #fef08a; }
-.tier-tree-7 .tree-icon { color: #fef08a; font-size: 5.5rem; filter: drop-shadow(0 0 25px rgba(245,158,11,1)); }
+.tier-tree-7 .tree-icon { color: #fef08a; font-size: 5rem; filter: drop-shadow(0 0 25px rgba(245,158,11,1)); }
 .tier-tree-7 .orbit-halo-ring { display: block; border-color: #f59e0b; }
 
-.tier-tree-8 .tree-emblem-orb {
-  width: 180px; height: 180px;
-  background: linear-gradient(135deg, #7c3aed, #0d9488, #2563eb);
-  background-size: 200% 200%;
-  animation: gaiaTreeShift 6s ease infinite;
-  border: 5px solid #c084fc;
-  box-shadow: 0 22px 48px rgba(0,0,0,0.55), 0 0 38px rgba(192, 132, 252, 0.75);
-}
-.tier-tree-8 .tree-level-tag { background: linear-gradient(135deg, #a855f7, #14b8a6, #3b82f6); color: #fff; }
-.tier-tree-8 .tree-icon { color: #e9d5ff; font-size: 6rem; filter: drop-shadow(0 0 28px rgba(192,132,252,1)); }
+/* Tier 8: 6000-7499 */
+.tier-tree-8 .tree-emblem-orb { width: 185px; height: 185px; background: radial-gradient(circle at 30% 30%, #581c87, #064e3b, #0c4a6e); border: 6px solid #c084fc; animation: gaiaTreeShift 4s ease infinite; }
+.tier-tree-8 .tree-level-tag { background: linear-gradient(135deg, #a855f7, #14b8a6, #3b82f6); color: #ffffff; }
+.tier-tree-8 .tree-icon { color: #e9d5ff; font-size: 5.5rem; filter: drop-shadow(0 0 28px rgba(192,132,252,1)); }
 .tier-tree-8 .orbit-halo-ring { display: block; border-color: #c084fc; animation-duration: 8s; }
 
-.tier-tree-9 .tree-emblem-orb {
-  width: 200px; height: 200px;
-  background: radial-gradient(circle at 35% 30%, #f43f5e, #059669, #f59e0b);
-  border: 5px solid #f43f5e;
-  animation: divineYggdrasilTree 4s ease-in-out infinite;
-  box-shadow: 0 24px 55px rgba(0,0,0,0.6), 0 0 45px rgba(244, 63, 94, 0.85);
-}
-.tier-tree-9 .tree-level-tag {
-  background: linear-gradient(135deg, #f43f5e, #f59e0b, #10b981, #38bdf8);
-  background-size: 300% 300%;
-  animation: gaiaTreeShift 3s ease infinite;
-  color: #fff;
-  border-color: #fef08a;
-}
-.tier-tree-9 .tree-icon {
-  color: #fef08a;
-  font-size: 6.5rem;
-  animation: pulseYggdrasilIcon 2s infinite alternate;
-}
-.tier-tree-9 .orbit-halo-ring {
-  display: block;
-  border-color: #fef08a;
-  border-width: 3px;
-  animation-duration: 6s;
-}
+/* Tier 9: 7500-8999 */
+.tier-tree-9 .tree-emblem-orb { width: 200px; height: 200px; background: radial-gradient(circle at 30% 30%, #701a75, #064e3b, #0f172a); border: 7px solid #f43f5e; animation: divineYggdrasilTree 4s linear infinite; }
+.tier-tree-9 .tree-level-tag { background: linear-gradient(135deg, #f43f5e, #3b82f6, #10b981, #f59e0b); background-size: 200% 200%; animation: gaiaTreeShift 3s linear infinite; color: #ffffff; border-color: #fef08a; padding: 6px 22px; font-size: 1.05rem; }
+.tier-tree-9 .tree-icon { color: #fef08a; font-size: 6rem; animation: pulseYggdrasilIcon 2s infinite alternate; }
+.tier-tree-9 .orbit-halo-ring { display: block; border-color: #fef08a; border-width: 3px; animation-duration: 6s; }
 
-@keyframes bioTreePulse {
-  0% { filter: drop-shadow(0 0 15px rgba(0, 242, 254, 0.5)); }
-  100% { filter: drop-shadow(0 0 35px rgba(0, 242, 254, 0.95)); }
+/* Tier 10: 9000-9499 */
+.tier-tree-10 .tree-emblem-orb { width: 215px; height: 215px; background: radial-gradient(circle at 50% 50%, #1e1b4b, #000000, #172554); border: 8px solid #cbd5e1; box-shadow: 0 0 50px rgba(147, 197, 253, 0.6), inset 0 0 20px rgba(255,255,255,0.5); }
+.tier-tree-10 .tree-level-tag { background: linear-gradient(135deg, #94a3b8, #334155, #0f172a); color: #e0f2fe; border-color: #bae6fd; font-size: 1.1rem; }
+.tier-tree-10 .tree-icon { color: #e0f2fe; font-size: 6.5rem; filter: drop-shadow(0 0 30px rgba(255,255,255,1)); animation: pulseYggdrasilIcon 1.5s infinite alternate; }
+.tier-tree-10 .orbit-halo-ring { display: block; border-color: #93c5fd; border-width: 3px; border-style: solid; }
+.tier-tree-10 .orbit-halo-ring-inner { display: block; border-color: #cbd5e1; }
+
+/* Tier 11: 9500-9999 */
+.tier-tree-11 .tree-emblem-orb { width: 230px; height: 230px; background: conic-gradient(from 0deg, #4c1d95, #000000, #7f1d1d, #000000, #4c1d95); border: 8px solid #e11d48; animation: rotateHalo 6s linear infinite; }
+.tier-tree-11 .tree-emblem-orb .tree-icon { animation: rotateHaloReverse 6s linear infinite; }
+.tier-tree-11 .tree-level-tag { background: linear-gradient(135deg, #be123c, #4a044e, #000000); color: #fecdd3; border-color: #fda4af; font-size: 1.1rem; }
+.tier-tree-11 .tree-icon { color: #fda4af; font-size: 7rem; filter: drop-shadow(0 0 40px rgba(225, 29, 72, 1)); }
+.tier-tree-11 .orbit-halo-ring { display: block; border-color: #f43f5e; border-width: 4px; animation-duration: 3s; }
+.tier-tree-11 .orbit-halo-ring-inner { display: block; border-color: #c084fc; animation-duration: 4s; }
+
+/* Tier 12: 10000 MAX */
+.tier-tree-12 .tree-emblem-orb {
+  width: 250px; height: 250px;
+  background: radial-gradient(circle at 50% 50%, #ffffff, #fef08a, #f59e0b);
+  border: 10px solid #ffffff;
+  box-shadow: 0 0 80px rgba(255, 255, 255, 0.9), inset 0 0 30px rgba(255,255,255,1);
+  animation: supremeCreatorPulse 2s infinite alternate ease-in-out;
 }
-@keyframes gaiaTreeShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+.tier-tree-12 .tree-level-tag {
+  background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+  background-size: 300% 300%;
+  animation: rainbowShift 3s linear infinite;
+  color: #ffffff;
+  border: 3px solid #ffffff;
+  padding: 8px 28px;
+  font-size: 1.25rem;
+  text-shadow: 0 0 10px rgba(0,0,0,0.8);
 }
-@keyframes divineYggdrasilTree {
-  0% { filter: drop-shadow(0 0 25px rgba(16, 185, 129, 0.8)); border-color: #f43f5e; }
-  33% { filter: drop-shadow(0 0 45px rgba(245, 158, 11, 0.9)); border-color: #f59e0b; }
-  66% { filter: drop-shadow(0 0 45px rgba(56, 189, 248, 0.9)); border-color: #38bdf8; }
-  100% { filter: drop-shadow(0 0 25px rgba(16, 185, 129, 0.8)); border-color: #f43f5e; }
-}
-@keyframes pulseYggdrasilIcon {
-  0% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(254,240,138,0.8)); }
-  100% { transform: scale(1.1); filter: drop-shadow(0 0 35px rgba(244,63,94,1)); }
-}
+.tier-tree-12 .tree-icon { color: #ffffff; font-size: 8rem; filter: drop-shadow(0 0 40px rgba(255,255,255,1)); animation: pulseYggdrasilIcon 1s infinite alternate; }
+.tier-tree-12 .orbit-halo-ring { display: block; border-color: #ffffff; border-width: 5px; border-style: solid; animation-duration: 2s; box-shadow: 0 0 20px rgba(255,255,255,0.5); }
+.tier-tree-12 .orbit-halo-ring-inner { display: block; border-color: #fef08a; border-width: 3px; border-style: solid; animation-duration: 1.5s; box-shadow: 0 0 20px rgba(250,204,21,0.5); }
+
+@keyframes bioTreePulse { 0% { filter: drop-shadow(0 0 15px rgba(0, 242, 254, 0.5)); } 100% { filter: drop-shadow(0 0 35px rgba(0, 242, 254, 0.95)); } }
+@keyframes gaiaTreeShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes divineYggdrasilTree { 0% { filter: drop-shadow(0 0 25px rgba(16, 185, 129, 0.8)); border-color: #f43f5e; } 33% { filter: drop-shadow(0 0 45px rgba(245, 158, 11, 0.9)); border-color: #f59e0b; } 66% { filter: drop-shadow(0 0 45px rgba(56, 189, 248, 0.9)); border-color: #38bdf8; } 100% { filter: drop-shadow(0 0 25px rgba(16, 185, 129, 0.8)); border-color: #f43f5e; } }
+@keyframes pulseYggdrasilIcon { 0% { transform: scale(1); } 100% { transform: scale(1.12); filter: drop-shadow(0 0 35px rgba(255,255,255,1)); } }
+@keyframes rainbowShift { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+@keyframes supremeCreatorPulse { 0% { transform: scale(1); filter: drop-shadow(0 0 50px rgba(255, 255, 255, 0.7)); } 100% { transform: scale(1.05); filter: drop-shadow(0 0 100px rgba(255, 255, 255, 1)); } }
 
 .eco-pill-badge {
   position: relative;
@@ -6687,15 +6671,16 @@ html[data-theme="dark"] .merge-box .merge-sub {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 18px;
+  padding: 6px 16px;
   border-radius: 999px;
   font-weight: 800;
-  font-size: 0.88rem;
-  letter-spacing: 0.02em;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
   box-shadow: 0 4px 16px rgba(0,0,0,0.35);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   background: rgba(6, 40, 24, 0.75);
   color: #ecfdf5;
+  transition: all 0.3s ease;
 }
 .eco-pill-badge.tier-tree-1 { background: linear-gradient(135deg, #855335, #3a2215); color: #fef08a; }
 .eco-pill-badge.tier-tree-2 { background: linear-gradient(135deg, #16a34a, #065f46); color: #fff; }
@@ -6705,7 +6690,21 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .eco-pill-badge.tier-tree-6 { background: linear-gradient(135deg, #00f2fe, #0369a1); color: #fff; }
 .eco-pill-badge.tier-tree-7 { background: linear-gradient(135deg, #f59e0b, #047857); color: #fef08a; }
 .eco-pill-badge.tier-tree-8 { background: linear-gradient(135deg, #a855f7, #14b8a6, #3b82f6); color: #fff; }
-.eco-pill-badge.tier-tree-9 { background: linear-gradient(135deg, #f43f5e, #f59e0b, #10b981); color: #fff; }
+.eco-pill-badge.tier-tree-9 { background: linear-gradient(135deg, #f43f5e, #3b82f6, #10b981); color: #fff; }
+.eco-pill-badge.tier-tree-10 { background: linear-gradient(135deg, #94a3b8, #334155); color: #e0f2fe; }
+.eco-pill-badge.tier-tree-11 { background: linear-gradient(135deg, #be123c, #4a044e); color: #fecdd3; }
+.eco-pill-badge.tier-tree-12 { background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 300% 300%; animation: rainbowShift 3s linear infinite; color: #fff; }
+
+/* Scale down on small screens */
+@media (max-width: 480px) {
+  .tier-tree-7 .tree-emblem-orb, .tier-tree-8 .tree-emblem-orb { width: 140px !important; height: 140px !important; }
+  .tier-tree-9 .tree-emblem-orb, .tier-tree-10 .tree-emblem-orb { width: 150px !important; height: 150px !important; }
+  .tier-tree-11 .tree-emblem-orb, .tier-tree-12 .tree-emblem-orb { width: 160px !important; height: 160px !important; }
+  .tier-tree-7 .tree-icon, .tier-tree-8 .tree-icon { font-size: 3.2rem !important; }
+  .tier-tree-9 .tree-icon, .tier-tree-10 .tree-icon { font-size: 3.6rem !important; }
+  .tier-tree-11 .tree-icon, .tier-tree-12 .tree-icon { font-size: 4rem !important; }
+}
+
 
 .level-tier-meta {
   z-index: 2;

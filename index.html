@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vườn Xanh - Trồng Cây & Thu Hoạch</title>
-  <link rel="stylesheet" href="css/style.css?v=1.9.31" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.34" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -274,13 +274,14 @@
       <section id="page-level" class="page">
         <div class="page-header">
           <h1><i class="fa-solid fa-tree"></i> Level &amp; Badge Cây</h1>
-          <p>Badge tiến hóa theo cấp độ (1 – 1000) · Kéo thanh để xem trước</p>
+          <p>Badge tiến hóa 12 bậc (1 – 10.000) · Kéo thanh để xem trước</p>
         </div>
         <div class="level-badge-showcase" id="level-badge-showcase">
           <div class="level-badge-ambient" id="levelAmbientGlow"></div>
           <div id="activeTreeWrapper" class="tree-badge-wrapper tier-tree-1">
             <div id="activeTreeContainer" class="tree-badge-container">
               <div class="orbit-halo-ring"></div>
+              <div class="orbit-halo-ring-inner"></div>
               <div class="tree-emblem-orb">
                 <i id="activeTreeIcon" class="fa-solid fa-seedling tree-icon"></i>
               </div>
@@ -299,7 +300,7 @@
             <div class="level-slider-label-center">
               <label for="levelInputRange">Kéo để xem trước Level</label>
             </div>
-            <input type="range" id="levelInputRange" min="1" max="1000" value="1" class="level-range" />
+            <input type="range" id="levelInputRange" min="1" max="10000" value="1" class="level-range" />
             <div class="level-progress-wrap">
               <div class="level-progress-labels">
                 <span>Tiến trình sinh trưởng</span>
@@ -746,10 +747,10 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.31"></script>
-  <script src="js/data.js?v=1.9.31"></script>
-  <script src="js/game.js?v=1.9.31"></script>
-  <script src="js/features.js?v=1.9.31"></script>
-  <script src="js/app.js?v=1.9.31"></script>
+  <script src="js/firebase-config.js?v=1.9.34"></script>
+  <script src="js/data.js?v=1.9.34"></script>
+  <script src="js/game.js?v=1.9.34"></script>
+  <script src="js/features.js?v=1.9.34"></script>
+  <script src="js/app.js?v=1.9.34"></script>
 </body>
 </html>

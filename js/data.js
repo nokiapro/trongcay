@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.9.31';
+const APP_VERSION = '1.9.34';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13107,7 +13107,7 @@ const DEFAULT_SETTINGS = {
   /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.9.31',
+  appVersion: '1.9.34',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -14059,7 +14059,11 @@ async function savePlayer(opts) {
 
   const t = typeof nowMs === 'function' ? nowMs() : Date.now();
   currentPlayer.timersSyncedAt = t;
-  currentPlayer.lastSeenAt = t;
+  // KHÔNG ghi lastSeenAt = now mỗi lần save — sẽ làm mất cửa sổ offline.
+  // lastSeenAt chỉ cập nhật khi ẩn tab / sau bù offline / heartbeat.
+  if (typeof currentPlayer.lastSeenAt !== 'number' || !currentPlayer.lastSeenAt) {
+    currentPlayer.lastSeenAt = t;
+  }
   currentPlayer.sessionId = CLIENT_SESSION_ID;
   const prev = Math.max(
     Number(currentPlayer.updatedAt) || 0,

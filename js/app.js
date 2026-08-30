@@ -3482,16 +3482,20 @@ function renderActivityPage() {
 }
 
 // ===== LEVEL / TREE BADGE PAGE =====
+const TREE_MAX_LEVEL = 10000;
 const TREE_TIERS = [
-  { min: 1, max: 49, class: 'tier-tree-1', title: 'Mầm Cây Trong Chậu Đất', icon: 'fa-seedling', desc: 'Hạt giống nhỏ vừa vươn mầm khỏi chậu đất sét nâu tròn', glow: 'rgba(133, 83, 53, 0.4)' },
-  { min: 50, max: 149, class: 'tier-tree-2', title: 'Chồi Xanh Lục Ngọc', icon: 'fa-plant-wilt', desc: 'Mầm chồi non vươn cao với những chiếc lá lục bảo bóng mượt', glow: 'rgba(74, 222, 128, 0.45)' },
-  { min: 150, max: 299, class: 'tier-tree-3', title: 'Thân Cây Bích Nguyệt', icon: 'fa-leaf', desc: 'Thân cây con tỏa sắc lam ngọc huyền ảo dưới ánh trăng', glow: 'rgba(56, 189, 248, 0.5)' },
-  { min: 300, max: 499, class: 'tier-tree-4', title: 'Đại Thụ Kim Ngân', icon: 'fa-tree', desc: 'Thân gỗ vững chãi tỏa tán lá vàng kim rực rỡ phú quý', glow: 'rgba(250, 204, 21, 0.55)' },
-  { min: 500, max: 699, class: 'tier-tree-5', title: 'Thần Hoa Sinh Thái', icon: 'fa-spa', desc: 'Thần cây trổ những bông hoa tỏa hương thơm ngọt ngào', glow: 'rgba(244, 114, 182, 0.6)' },
-  { min: 700, max: 849, class: 'tier-tree-6', title: 'Rừng Dạ Quang', icon: 'fa-clover', desc: 'Cây phát sáng dạ quang xanh lơ rực rỡ giữa không gian', glow: 'rgba(0, 242, 254, 0.7)' },
-  { min: 750, max: 949, class: 'tier-tree-7', title: 'Thái Dương Cổ Thụ', icon: 'fa-sun', desc: 'Cổ thụ hấp thụ ánh sáng mặt trời quay vòng hào quang', glow: 'rgba(245, 158, 11, 0.75)' },
-  { min: 950, max: 999, class: 'tier-tree-8', title: 'Vệ Binh Gaia Tối Cao', icon: 'fa-earth-americas', desc: 'Cây linh hồn tím huyền bí bảo hộ cho đại địa thiên nhiên', glow: 'rgba(192, 132, 252, 0.85)' },
-  { min: 1000, max: 1000, class: 'tier-tree-9', title: 'Thần Cây Vũ Trụ Yggdrasil', icon: 'fa-tree', desc: 'Đỉnh cao tiến hóa - Cây Thế Giới kết nối ngàn sao vũ trụ', glow: 'rgba(244, 63, 94, 0.95)' }
+  { min: 1, max: 99, class: 'tier-tree-1', title: 'Mầm Cây Trong Chậu Đất', icon: 'fa-seedling', desc: 'Hạt giống nhỏ vừa vươn mầm', glow: 'rgba(133, 83, 53, 0.4)' },
+  { min: 100, max: 499, class: 'tier-tree-2', title: 'Chồi Xanh Lục Ngọc', icon: 'fa-plant-wilt', desc: 'Chồi non lá lục bảo', glow: 'rgba(74, 222, 128, 0.45)' },
+  { min: 500, max: 999, class: 'tier-tree-3', title: 'Thân Cây Bích Nguyệt', icon: 'fa-leaf', desc: 'Thân cây sắc lam ngọc', glow: 'rgba(56, 189, 248, 0.5)' },
+  { min: 1000, max: 1999, class: 'tier-tree-4', title: 'Đại Thụ Kim Ngân', icon: 'fa-tree', desc: 'Tán lá vàng kim phú quý', glow: 'rgba(250, 204, 21, 0.55)' },
+  { min: 2000, max: 2999, class: 'tier-tree-5', title: 'Thần Hoa Sinh Thái', icon: 'fa-spa', desc: 'Hoa thơm ngọt ngào', glow: 'rgba(244, 114, 182, 0.6)' },
+  { min: 3000, max: 4499, class: 'tier-tree-6', title: 'Rừng Dạ Quang', icon: 'fa-clover', desc: 'Phát sáng dạ quang xanh lơ', glow: 'rgba(0, 242, 254, 0.7)' },
+  { min: 4500, max: 5999, class: 'tier-tree-7', title: 'Thái Dương Cổ Thụ', icon: 'fa-sun', desc: 'Hào quang mặt trời', glow: 'rgba(245, 158, 11, 0.75)' },
+  { min: 6000, max: 7499, class: 'tier-tree-8', title: 'Vệ Binh Gaia Tối Cao', icon: 'fa-earth-americas', desc: 'Linh hồn tím bảo hộ đại địa', glow: 'rgba(192, 132, 252, 0.85)' },
+  { min: 7500, max: 8999, class: 'tier-tree-9', title: 'Thần Cây Yggdrasil', icon: 'fa-tree', desc: 'Cây Thế Giới ngàn sao', glow: 'rgba(244, 63, 94, 0.95)' },
+  { min: 9000, max: 9499, class: 'tier-tree-10', title: 'Ngân Hà Mộc Thần', icon: 'fa-star', desc: 'Ánh bạc ngân hà', glow: 'rgba(147, 197, 253, 0.9)' },
+  { min: 9500, max: 9999, class: 'tier-tree-11', title: 'Hỗn Mang Khởi Nguyên', icon: 'fa-fire', desc: 'Hỗn mang khởi nguồn', glow: 'rgba(225, 29, 72, 0.95)' },
+  { min: 10000, max: 10000, class: 'tier-tree-12', title: 'Tạo Hóa Tối Thượng', icon: 'fa-crown', desc: 'Đỉnh tối thượng tạo hóa', glow: 'rgba(255, 255, 255, 0.95)' }
 ];
 
 function getTreeTier(level) {
@@ -3501,7 +3505,7 @@ function getTreeTier(level) {
 let _levelPageBound = false;
 
 function updateTreeLevelUI(val) {
-  const level = Math.min(1000, Math.max(1, parseInt(val, 10) || 1));
+  const level = Math.min(TREE_MAX_LEVEL, Math.max(1, parseInt(val, 10) || 1));
   const tier = getTreeTier(level);
 
   const range = document.getElementById('levelInputRange');
@@ -3510,7 +3514,7 @@ function updateTreeLevelUI(val) {
   const titleEl = document.getElementById('tierTitleText');
   if (titleEl) titleEl.textContent = tier.title;
 
-  const progress = (level / 1000) * 100;
+  const progress = (level / TREE_MAX_LEVEL) * 100;
   const bar = document.getElementById('levelProgressBar');
   const pct = document.getElementById('xpPercentText');
   if (bar) bar.style.width = progress + '%';
@@ -3873,6 +3877,16 @@ if (!window.__careVisibilityBound) {
   });
   window.addEventListener('pagehide', markLastSeen);
   window.addEventListener('beforeunload', markLastSeen);
+  // Heartbeat lastSeen mỗi 30s khi tab đang mở — thoát đột ngột vẫn còn mốc gần đúng để bù offline
+  if (!window.__lastSeenHeartbeat) {
+    window.__lastSeenHeartbeat = setInterval(() => {
+      if (!currentPlayer || document.hidden) return;
+      const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
+      currentPlayer.lastSeenAt = t;
+      // backup local nhẹ, không bắt buộc save Firebase mỗi nhịp
+      try { if (typeof backupPlayerLocal === 'function') backupPlayerLocal(); } catch (_) {}
+    }, 30000);
+  }
   window.addEventListener('focus', () => {
     if (currentPlayer) {
       if (typeof pullRemotePlayerIfNewer === 'function') {
