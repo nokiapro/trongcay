@@ -1,4 +1,3 @@
-// ===== DEFAULT DATA =====
 const DEFAULT_PLANTS = [
   {
     id: 'hoa-hong',
@@ -13095,28 +13094,21 @@ const DEFAULT_FERTILIZERS = [
   }
 ];
 
-/** Phiên bản client (tăng mỗi lần deploy code mới) */
 const APP_VERSION = '1.9.49';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
   startCoins: 1000,
-  rainChance: 15,          // 1–50 (%)
-  rainDurationMinutes: 0.25, // phút mưa liên tục (0.25 = 15 giây mặc định)
+  rainChance: 15,
+  rainDurationMinutes: 0.25,
   plotPrice: 500,
-  /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
-  /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
   appVersion: '1.9.49',
-  /** Favicon / site icon URL (admin) */
   siteIconUrl: '',
-  /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
-  /** true = bắt buộc tải lại (không cho đóng banner) */
   forceUpdate: false
 };
 
-/** Bùa bảo hộ ghép hạt — rate = % CỘNG THÊM vào tỉ lệ cơ bản (admin: mergeBaseRate) */
 const DEFAULT_PROTECTS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(rate => ({
   id: 'bao-' + rate,
   icon: rate >= 80 ? '🛡️' : rate >= 50 ? '🧿' : '🔮',
@@ -13126,7 +13118,6 @@ const DEFAULT_PROTECTS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map(rate => (
   desc: 'Cộng thêm +' + rate + '% vào tỉ lệ ghép cơ bản (tối đa 100%, tối thiểu 1%).'
 }));
 
-/** Gói Tiên tự chăm vườn (ngày) */
 const DEFAULT_FAIRY_PACKS = [
   { id: 'tien-1', days: 1, price: 200, icon: '<i class="fa-solid fa-wand-magic-sparkles"></i>', name: 'Tiên 1 ngày' },
   { id: 'tien-3', days: 3, price: 500, icon: '<i class="fa-solid fa-wand-magic-sparkles"></i>', name: 'Tiên 3 ngày' },
@@ -13137,7 +13128,6 @@ const DEFAULT_FAIRY_PACKS = [
   { id: 'tien-30', days: 30, price: 3000, icon: '<i class="fa-solid fa-wand-magic-sparkles"></i>', name: 'Tiên 30 ngày' }
 ];
 
-/** Gói Người Yêu Cũ — tự thu hoạch + trồng lại theo cấu hình hạt */
 const DEFAULT_NYC_PACKS = [
   { id: 'nyc-1', days: 1, price: 250, icon: '<i class="fa-solid fa-heart-crack"></i>', name: 'NYC 1 ngày' },
   { id: 'nyc-3', days: 3, price: 650, icon: '<i class="fa-solid fa-heart-crack"></i>', name: 'NYC 3 ngày' },
@@ -13148,7 +13138,6 @@ const DEFAULT_NYC_PACKS = [
   { id: 'nyc-30', days: 30, price: 4000, icon: '<i class="fa-solid fa-heart-crack"></i>', name: 'NYC 30 ngày' }
 ];
 
-/** Gói Người giúp việc — tự mua vật phẩm cửa hàng theo mốc kho */
 const DEFAULT_HELPER_PACKS = [
   { id: 'help-1', days: 1, price: 180, icon: '<i class="fa-solid fa-user-tie"></i>', name: 'Giúp việc 1 ngày' },
   { id: 'help-3', days: 3, price: 450, icon: '<i class="fa-solid fa-user-tie"></i>', name: 'Giúp việc 3 ngày' },
@@ -13169,7 +13158,6 @@ const TYPE_LABELS = {
   so: 'Số'
 };
 
-// Current user state (in memory)
 let currentUser = null;
 let currentPlayer = null;
 let currentPlants = [];
@@ -13180,10 +13168,8 @@ function createDefaultPlayerData(uid, email, role) {
   const plotCount = currentSettings.plotCount || DEFAULT_SETTINGS.plotCount;
   const startCoins = currentSettings.startCoins || DEFAULT_SETTINGS.startCoins;
 
-  // Không tặng hạt free — mua ở cửa hàng (có nút mua 1000)
   const seeds = {};
 
-  // Tặng vài phân cơ bản để chơi thử
   const fertilizers = {
     'phan-thuong': 5,
     'phan-xanh': 2
@@ -13251,7 +13237,6 @@ async function initGlobalData() {
     currentPlants = [...DEFAULT_PLANTS];
   } else {
     const val = plantsSnap.val() || {};
-    // Merge: thêm cây mới + cập nhật growStages/growTime nếu thiếu
     let changed = false;
     DEFAULT_PLANTS.forEach(p => {
       if (!val[p.id]) {
@@ -13279,31 +13264,22 @@ async function initGlobalData() {
   } catch (_) {}
 }
 
-/**
- * Đồng bộ thời gian với Firebase (nhiều thiết bị chung 1 mốc giờ).
- * nowMs() = Date.now() + serverOffset — dùng cho plantedAt / lastSeen / bù offline.
- */
 let _serverTimeOffset = 0;
 let _serverTimeReady = false;
 const CLIENT_SESSION_ID = 's_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36);
-/** updatedAt lúc load / sau save thành công — để không đè bản mới hơn từ máy khác */
 let _playerBaseUpdatedAt = 0;
 let _playerDirty = false;
 let _pullRemoteBusy = false;
 
 function nowMs() {
-  // Không cộng lệch Firebase — dùng giờ máy (người chơi GMT+7)
   return Date.now();
 }
 
-/** Múi giờ chuẩn game: GMT+7 (Việt Nam) */
 const GAME_TIMEZONE = 'Asia/Ho_Chi_Minh';
 const GAME_TZ_OFFSET_MS = 7 * 60 * 60 * 1000;
 
-/** Date theo giờ VN từ timestamp ms */
 function dateInGameTz(ms) {
   const t = (ms == null ? nowMs() : Number(ms));
-  // Dùng Intl để lấy Y/M/D/H theo Asia/Ho_Chi_Minh
   try {
     const parts = new Intl.DateTimeFormat('en-CA', {
       timeZone: GAME_TIMEZONE,
@@ -13336,21 +13312,17 @@ function dateInGameTz(ms) {
   }
 }
 
-/** Chuỗi ngày "YYYY-MM-DD" theo GMT+7 — dùng điểm danh / daily */
 function gameDayKey(ms) {
   const d = dateInGameTz(ms);
   const pad = n => String(n).padStart(2, '0');
   return d.year + '-' + pad(d.month) + '-' + pad(d.day);
 }
 
-/** toDateString tương đương nhưng cố định GMT+7 */
 function gameDateString(ms) {
   const d = dateInGameTz(ms);
-  // Giống toDateString style cho so sánh daily cũ: dùng key ổn định
   return gameDayKey(ms);
 }
 
-/** Format hiển thị vi-VN theo GMT+7 */
 function formatGameDateTime(ms, withSeconds) {
   if (!ms) return '—';
   try {
@@ -13367,18 +13339,10 @@ function formatGameDateTime(ms, withSeconds) {
   }
 }
 
-
-
 function markPlayerDirty() {
   _playerDirty = true;
 }
 
-/**
- * ===== PLAY LOG (nhật ký theo giây) =====
- * - Mỗi thao tác → ghi local ngay + đẩy Firebase song song
- * - Thoát chưa kịp đẩy → vào web flush lại
- * - Sự kiện plant/water/fert/harvest có data ô → replay + đưa vào mốc bù offline
- */
 function pendingSyncKey(uid) {
   return 'vx_pending_sync_' + (uid || (currentUser && currentUser.uid) || 'guest');
 }
@@ -13417,11 +13381,6 @@ function markPendingSnapshot(action, at) {
   backupPlayerLocal();
 }
 
-/**
- * Ghi sự kiện game có cấu trúc (trồng / tưới / bón / thu…).
- * @param {string} type plant|water|fert|harvest|buy|other
- * @param {object} data { plotId, gardenIndex, plantId, fertId, plantedAt, ... }
- */
 function recordGameEvent(type, data) {
   if (!currentUser || !currentPlayer) return null;
   const t = typeof nowMs === 'function' ? nowMs() : Date.now();
@@ -13449,7 +13408,6 @@ function recordGameEvent(type, data) {
   writeLocalPlayLog(currentUser.uid, local.slice(0, 300));
   markPendingSnapshot(entry.type, t);
 
-  // Đẩy Firebase ngay (không chờ) — nếu fail, vào web sẽ flush lại
   if (db && currentUser) {
     const clean = {
       id: entry.id,
@@ -13474,12 +13432,10 @@ function recordGameEvent(type, data) {
   return entry;
 }
 
-/** Ghi 1 thao tác text (tương thích cũ) */
 function recordPlayerAction(action, detail) {
   return recordGameEvent(action || 'action', detail != null ? { detail: String(detail).slice(0, 120) } : null);
 }
 
-/** Đẩy log local chưa sync lên Firebase */
 async function flushPlayLogsToFirebase() {
   if (!db || !currentUser) return { ok: false, n: 0 };
   const local = readLocalPlayLog(currentUser.uid);
@@ -13509,15 +13465,10 @@ async function flushPlayLogsToFirebase() {
   return { ok: true, n };
 }
 
-/**
- * Áp log plant/water/fert/harvest lên state nếu Firebase thiếu (tránh mất giờ trồng).
- * Trả về mốc thời gian sớm nhất của sự kiện critical (để bù offline).
- */
 function applyCriticalPlayLogToPlayer(player) {
   if (!currentUser || !player) return null;
   const local = readLocalPlayLog(currentUser.uid);
   if (!local.length) return null;
-  // Chỉ lấy event chưa sync hoặc trong 48h gần nhất
   const now = typeof nowMs === 'function' ? nowMs() : Date.now();
   const cutoff = now - 48 * 3600 * 1000;
   const critical = local
@@ -13554,7 +13505,6 @@ function applyCriticalPlayLogToPlayer(player) {
     const plot = plots[pi];
     const type = e.type || e.a;
     if (type === 'plant' && d.plantId) {
-      // Chỉ áp nếu ô trống hoặc cùng cây nhưng plantedAt muộn hơn log
       if (!plot.plantId || (plot.plantedAt && d.plantedAt && plot.plantedAt > d.plantedAt)) {
         plot.plantId = d.plantId;
         plot.plantedAt = d.plantedAt || e.t;
@@ -13591,16 +13541,12 @@ function applyCriticalPlayLogToPlayer(player) {
     }
   });
 
-  // Đồng bộ plots = active garden
   const ag = typeof player.activeGarden === 'number' ? player.activeGarden : 0;
   if (player.gardens && player.gardens[ag]) player.plots = player.gardens[ag];
 
   return earliest;
 }
 
-/**
- * Khi vào web: flush log → merge snapshot local → replay event critical → chỉnh mốc bù offline.
- */
 async function syncPlayerOnEnter() {
   if (!currentUser || !currentPlayer || !db) return { ok: false, msg: 'no-user' };
   let usedLocal = false;
@@ -13627,23 +13573,17 @@ async function syncPlayerOnEnter() {
     console.warn('syncPlayerOnEnter pending', e);
   }
 
-  // Replay log critical lên state (bù trồng/tưới/bón bị thiếu)
   try {
     logEarliest = applyCriticalPlayLogToPlayer(currentPlayer);
     if (logEarliest != null) {
       _playerDirty = true;
-      // Mốc bù offline: lùi lastSeenAt về trước sự kiện sớm nhất chưa xử lý bù
-      // → simulateOfflineCare tính đủ mưa/Tiên/NYC từ lúc user đã chơi
       const prevSeen = Number(currentPlayer.lastSeenAt) || 0;
       const prevCatch = Number(currentPlayer.lastCatchUpAt) || 0;
-      // Chỉ lùi nếu event mới hơn lần bù trước (tránh bù trùng)
       if (logEarliest > prevCatch) {
-        // lastSeenAt = min(seen hiện tại, earliest - 1s) nhưng không mới hơn catch-up cũ quá
         const targetFrom = Math.max(prevCatch, logEarliest - 1000);
         if (!prevSeen || prevSeen > targetFrom) {
           currentPlayer.lastSeenAt = targetFrom;
         }
-        // Đánh dấu cần bù (simulateOfflineCare sẽ chạy sau)
         currentPlayer._needOfflineFromLog = true;
         currentPlayer._logEarliest = logEarliest;
       }
@@ -13674,7 +13614,6 @@ async function syncPlayerOnEnter() {
   return { ok: true, msg: 'up-to-date', usedLocal, logEarliest };
 }
 
-/** Backup localStorage — thoát tab / F5 vẫn còn bản mới nhất trên máy */
 function playerBackupKey(uid) {
   return 'vx_player_backup_' + (uid || (currentUser && currentUser.uid) || 'guest');
 }
@@ -13693,7 +13632,6 @@ function backupPlayerLocal() {
   }
 }
 
-/** Điểm “độ giàu” tiến trình — tránh backup rỗng đè Firebase đầy đủ */
 function playerProgressScore(p) {
   if (!p || typeof p !== 'object') return 0;
   let score = (Number(p.coins) || 0) + (Number(p.level) || 1) * 10000 + (Number(p.xp) || 0);
@@ -13725,12 +13663,6 @@ function playerProgressScore(p) {
   return score;
 }
 
-/**
- * Gộp quà/sửa từ admin trên remote vào currentPlayer (không đè tiến trình chơi local).
- * - coins remote cao hơn → giữ coins remote (admin cộng tiền)
- * - plots remote dài hơn → nối thêm ô cuối (admin + ô)
- * - role / banned lấy theo remote nếu remote mới hơn
- */
 function mergeRemoteAdminGifts(remote) {
   if (!remote || !currentPlayer) return false;
   let changed = false;
@@ -13770,7 +13702,6 @@ function mergeRemoteAdminGifts(remote) {
     currentPlayer.banReason = remote.banReason || null;
     changed = true;
   }
-  // activity: giữ dòng Admin mới từ remote
   if (Array.isArray(remote.activity) && remote.activity.length) {
     if (!Array.isArray(currentPlayer.activity)) currentPlayer.activity = [];
     const head = remote.activity[0];
@@ -13786,11 +13717,6 @@ function mergeRemoteAdminGifts(remote) {
   return changed;
 }
 
-/**
- * Chỉ lấy backup local khi:
- * - backup mới hơn remote theo updatedAt, VÀ
- * - tiến trình backup không kém hơn remote rõ rệt (không đè bản Firebase giàu bằng bản local trống)
- */
 function restorePlayerLocalIfNewer(remotePlayer) {
   try {
     if (!currentUser) return false;
@@ -13802,16 +13728,13 @@ function restorePlayerLocalIfNewer(remotePlayer) {
     const rAt = remotePlayer ? (Number(remotePlayer.updatedAt) || 0) : 0;
     const bScore = playerProgressScore(payload.player);
     const rScore = playerProgressScore(remotePlayer);
-    // Backup mới hơn và tiến trình ≥ 80% remote (hoặc remote gần như trống)
     if (bAt > rAt + 1000 && (rScore < 1000 || bScore >= rScore * 0.8)) {
       currentPlayer = payload.player;
       _playerBaseUpdatedAt = bAt;
       _playerDirty = true;
-      // Vẫn gộp quà admin trên Firebase (tiền / ô) để F5 không làm mất
       try { mergeRemoteAdminGifts(remotePlayer); } catch (_) {}
       return true;
     }
-    // Remote tốt hơn → giữ Firebase, có thể xóa backup cũ lỗi
     if (rScore > bScore * 1.2 && rAt >= bAt) {
       try { localStorage.removeItem(playerBackupKey(currentUser.uid)); } catch (_) {}
     }
@@ -13822,20 +13745,13 @@ function restorePlayerLocalIfNewer(remotePlayer) {
 }
 
 async function initServerTime() {
-  // ĐÃ TẮT: không đồng bộ lệch giờ Firebase (tránh lệch khỏi GMT+7 trên máy người chơi)
   _serverTimeOffset = 0;
   _serverTimeReady = true;
   return 0;
 }
 
-/**
- * Kéo bản remote CHỈ khi local không có thay đổi chưa lưu.
- * Nếu đang dirty (chơi offline / vừa thao tác) → GIỮ local, đẩy lên Firebase.
- * @returns {boolean} true nếu đã thay currentPlayer bằng bản remote
- */
 async function pullRemotePlayerIfNewer() {
   if (!db || !currentUser || !currentPlayer || _pullRemoteBusy) return false;
-  // Có tiến trình local chưa sync → không được đè mất
   if (_playerDirty) {
     try { await savePlayer(); } catch (_) {}
     return false;
@@ -13847,7 +13763,6 @@ async function pullRemotePlayerIfNewer() {
     const remote = snap.val();
     const rAt = Number(remote.updatedAt) || 0;
     const lAt = Number(currentPlayer.updatedAt) || _playerBaseUpdatedAt || 0;
-    // Remote mới hơn rõ — máy khác: lấy full; cùng máy / admin: chỉ merge quà
     if (rAt > lAt + 1500) {
       if (remote.sessionId && remote.sessionId !== CLIENT_SESSION_ID) {
         currentPlayer = remote;
@@ -13858,7 +13773,6 @@ async function pullRemotePlayerIfNewer() {
         }
         return true;
       }
-      // Cùng session nhưng remote mới (admin cộng khi user đang online)
       if (mergeRemoteAdminGifts(remote)) {
         _playerBaseUpdatedAt = Math.max(_playerBaseUpdatedAt, rAt);
         return true;
@@ -13893,9 +13807,7 @@ async function loadPlayer(uid, email) {
     isAdmin = role === 'admin';
   } else {
     const remoteVal = snap.val();
-    // Ưu tiên backup local nếu mới hơn Firebase (thoát ra chưa kịp sync)
     if (restorePlayerLocalIfNewer(remoteVal)) {
-      // currentPlayer đã = backup
     } else {
       currentPlayer = remoteVal;
       _playerBaseUpdatedAt = Number(currentPlayer.updatedAt) || 0;
@@ -13904,7 +13816,6 @@ async function loadPlayer(uid, email) {
     if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {} };
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
     if (!currentPlayer.inventory.harvest) currentPlayer.inventory.harvest = {};
-    // Migrate old single fertilizer count
     if (typeof currentPlayer.inventory.fertilizer === 'number') {
       if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
       currentPlayer.inventory.fertilizers['phan-vang'] = (currentPlayer.inventory.fertilizers['phan-vang'] || 0) + currentPlayer.inventory.fertilizer;
@@ -13912,12 +13823,10 @@ async function loadPlayer(uid, email) {
     }
     if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
 
-    // ĐÃ TẮT xóa hạt hàng loạt (seedGiftRemoved) — từng gây mất kho khi load lại
     if (!currentPlayer.seedGiftRemoved) {
       currentPlayer.seedGiftRemoved = true;
     }
 
-    // Chỉ tặng phân mẫu khi kho phân hoàn toàn trống (user mới)
     if (Object.keys(currentPlayer.inventory.fertilizers || {}).length === 0) {
       currentPlayer.inventory.fertilizers = { 'phan-thuong': 5, 'phan-xanh': 2 };
     }
@@ -13972,7 +13881,6 @@ async function loadPlayer(uid, email) {
     }
     currentPlayer.plots.forEach((p, i) => {
       if (typeof p.waterCount !== 'number') p.waterCount = p.watered ? 1 : 0;
-      // migrate old fertilizer boolean
       if (p.fertilizer === true && !p.fertilizerId) p.fertilizerId = 'phan-vang';
       if (p.fertilizerId === undefined) p.fertilizerId = null;
       delete p.fertilizer;
@@ -13984,11 +13892,9 @@ async function loadPlayer(uid, email) {
     if (typeof Game !== 'undefined' && Game.applyPendingHelps) {
       await Game.applyPendingHelps();
     }
-    // Chuẩn hóa multi-vườn TRƯỚC khi cân nhắc lưu (không tạo vườn trống đè vườn đầy)
     if (typeof Game !== 'undefined' && Game.ensureGardens) {
       try { Game.ensureGardens(); } catch (_) {}
     }
-    // Nhận tiền chợ đang treo (nếu có)
     try {
       if (typeof Features !== 'undefined' && Features.claimMarketCredits) {
         const cr = await Features.claimMarketCredits();
@@ -13996,18 +13902,15 @@ async function loadPlayer(uid, email) {
       }
     } catch (_) {}
 
-    // CHỈ ghi Firebase khi local dirty (restore backup) — tránh mỗi lần F5 / bản mới ghi đè
     if (_playerDirty) {
       try { await savePlayer(); } catch (_) {}
     } else {
-      // Cập nhật backup = bản Firebase ổn định (phòng thoát tab)
       try { backupPlayerLocal(); } catch (_) {}
     }
   }
   return currentPlayer;
 }
 
-/** Toast kết quả lưu Firebase — success có debounce nhẹ để tránh spam */
 let _lastSaveOkToastAt = 0;
 function notifyFirebaseSave(ok, msg, opts) {
   if (typeof showToast !== 'function') return;
@@ -14016,22 +13919,15 @@ function notifyFirebaseSave(ok, msg, opts) {
     if (ok) {
       if (silent) return;
       const now = Date.now();
-      // Cùng 1 chuỗi thao tác (≤1.2s) chỉ báo 1 lần
       if (now - _lastSaveOkToastAt < 1200) return;
       _lastSaveOkToastAt = now;
       showToast('☁️ Đã lưu lên Firebase', 'success');
     } else {
-      // Lỗi luôn báo (kể cả silent background)
       showToast('⚠️ Chưa lên Firebase' + (msg ? ': ' + msg : '') + ' — F5 có thể mất tiến trình', 'error');
     }
   } catch (_) {}
 }
 
-/**
- * Lưu player lên Firebase + backup máy.
- * @param {{ silent?: boolean }} opts silent=true: không toast khi thành công (ẩn tab…)
- * @returns {{ ok: boolean, msg?: string }}
- */
 async function savePlayer(opts) {
   opts = opts || {};
   if (!currentUser || !currentPlayer || !db) {
@@ -14039,13 +13935,11 @@ async function savePlayer(opts) {
     notifyFirebaseSave(false, r.msg, opts);
     return r;
   }
-  // Nhận tiền chợ trước khi ghi (tránh mất credit)
   try {
     if (typeof Features !== 'undefined' && Features.claimMarketCredits) {
       await Features.claimMarketCredits();
     }
   } catch (_) {}
-  // Ghi nhật ký thao tác (trừ các lần sync nền lặp lại)
   if (opts.action && opts.action !== 'enter-sync') {
     try { recordPlayerAction(opts.action, opts.detail || null); } catch (_) {}
   } else if (!opts.silent && !opts.action) {
@@ -14064,8 +13958,6 @@ async function savePlayer(opts) {
 
   const t = typeof nowMs === 'function' ? nowMs() : Date.now();
   currentPlayer.timersSyncedAt = t;
-  // KHÔNG ghi lastSeenAt = now mỗi lần save — sẽ làm mất cửa sổ offline.
-  // lastSeenAt chỉ cập nhật khi ẩn tab / sau bù offline / heartbeat.
   if (typeof currentPlayer.lastSeenAt !== 'number' || !currentPlayer.lastSeenAt) {
     currentPlayer.lastSeenAt = t;
   }
@@ -14077,12 +13969,10 @@ async function savePlayer(opts) {
   currentPlayer.updatedAt = Math.max(t, prev + 1);
   _playerDirty = true;
 
-  // Backup local (chỉ cùng origin: localhost ≠ GitHub pages)
   backupPlayerLocal();
 
   const ref = db.ref('users/' + currentUser.uid);
   let lastErr = null;
-  // Trước khi ghi: nếu remote có quà admin mới hơn base → gộp vào, tránh đè mất
   try {
     const pre = await ref.once('value');
     if (pre.exists()) {
@@ -14090,11 +13980,9 @@ async function savePlayer(opts) {
       const rAt = Number(remote.updatedAt) || 0;
       if (rAt > (Number(_playerBaseUpdatedAt) || 0)) {
         mergeRemoteAdminGifts(remote);
-        // đồng bộ mốc base để không merge lặp
         if (rAt > (Number(_playerBaseUpdatedAt) || 0)) {
           _playerBaseUpdatedAt = rAt;
         }
-        // updatedAt payload phải mới hơn remote
         currentPlayer.updatedAt = Math.max(
           Number(currentPlayer.updatedAt) || 0,
           rAt + 1,
@@ -14104,7 +13992,6 @@ async function savePlayer(opts) {
     }
   } catch (_) {}
 
-  // Clone plain JSON — tránh Firebase từ chối undefined / function
   let payload;
   try {
     payload = JSON.parse(JSON.stringify(currentPlayer));
@@ -14132,7 +14019,6 @@ async function savePlayer(opts) {
           }));
         }
       } catch (_) {}
-      // Đẩy play log kèm (không chặn)
       try { flushPlayLogsToFirebase(); } catch (_) {}
       notifyFirebaseSave(true, null, opts);
       return { ok: true };
@@ -14149,23 +14035,12 @@ async function savePlayer(opts) {
   return { ok: false, msg };
 }
 
-/**
- * Đồng bộ nhẹ các mốc thời gian lên Firebase (không ghi cả user).
- * Dùng sau khi Tiên/NYC/reset 3h thay đổi — tránh lệch giờ giữa thiết bị / F5.
- */
 let _timerSyncBusy = false;
 let _timerSyncQueued = false;
-/**
- * ĐÃ TẮT đồng bộ timer/plots từng phần lên Firebase.
- * Trước đây update() plots chỉ còn vài field → ghi đè mất specialMult,
- * multi-garden, và listener đè ngược tưới/bón của Tiên → trông như không chăm.
- * Tiên/NYC chỉ giữ state local; savePlayer() full khi cần lưu.
- */
 async function syncTimersToFirebase() {
   return;
 }
 
-/** Lưu player có debounce — rút còn 800ms; thoát tab thì flush ngay */
 let _savePlayerDebounceTimer = null;
 function scheduleSavePlayer(delayMs = 800) {
   if (!currentUser || !currentPlayer) return;
@@ -14178,7 +14053,6 @@ function scheduleSavePlayer(delayMs = 800) {
   }, delayMs);
 }
 
-/** Hủy debounce và lưu ngay (khi ẩn tab / thoát) */
 function flushSavePlayer() {
   if (!currentUser || !currentPlayer) return;
   if (_savePlayerDebounceTimer) {
@@ -14186,11 +14060,9 @@ function flushSavePlayer() {
     _savePlayerDebounceTimer = null;
   }
   backupPlayerLocal();
-  // Ẩn tab: silent success (không spam toast), lỗi vẫn báo
   return savePlayer({ silent: true }).catch(e => console.warn('flushSavePlayer', e));
 }
 
-/** Khi có mạng / ẩn-hiện tab: backup + đẩy Firebase */
 if (typeof window !== 'undefined' && !window.__vxOnlineSaveBound) {
   window.__vxOnlineSaveBound = true;
   window.addEventListener('online', () => {
@@ -14198,7 +14070,6 @@ if (typeof window !== 'undefined' && !window.__vxOnlineSaveBound) {
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      // Thoát / chuyển tab → lưu ngay, không đợi debounce
       flushSavePlayer();
     } else if (_playerDirty) {
       flushSavePlayer();
@@ -14213,13 +14084,8 @@ if (typeof window !== 'undefined' && !window.__vxOnlineSaveBound) {
   });
 }
 
-/**
- * ĐÃ TẮT listener đè plots từ Firebase (gây mất tưới/bón Tiên).
- * Giữ stub để app.js gọi không lỗi.
- */
 let _playerTimerUnsub = null;
 function listenPlayerTimers() {
-  // no-op — không đồng bộ ngược plots/timer từ Firebase
   if (_playerTimerUnsub && currentUser && db) {
     try { db.ref('users/' + currentUser.uid).off('value', _playerTimerUnsub); } catch (_) {}
   }
@@ -14255,8 +14121,6 @@ function getFertilizer(id) {
   return DEFAULT_FERTILIZERS.find(f => f.id === id);
 }
 
-
-/** Pet dạo vườn — tỉ lệ rơi xu rất thấp */
 const DEFAULT_PETS = [
   { id: 'pet-meo-trang', icon: '🐱', name: 'Mèo trắng', price: 800, species: 'cat', coinChance: 0.008, coinMin: 1, coinMax: 3, desc: 'Đi dạo quanh vườn. Hiếm khi nhặt được vài xu.' },
   { id: 'pet-meo-den', icon: '🐈‍⬛', name: 'Mèo đen', price: 1200, species: 'cat', coinChance: 0.01, coinMin: 1, coinMax: 4, desc: 'May mắn hơn một chút khi nhặt xu.' },
@@ -14274,11 +14138,6 @@ const DEFAULT_PETS = [
   { id: 'pet-frog', icon: '🐸', name: 'Ếch xanh', price: 600, species: 'other', coinChance: 0.006, coinMin: 1, coinMax: 2, desc: 'Nhảy gần vòi nước.' }
 ];
 
-
-/**
- * Sinh ~1000 thực đơn nhà bếp từ danh sách cây.
- * Mỗi món: nguyên liệu harvest (plantId), số lượng, giá bán món.
- */
 const KITCHEN_STYLES = [
   { key: 'salad', name: 'Salad', icon: '🥗', mult: 1.15 },
   { key: 'soup', name: 'Súp', icon: '🍲', mult: 1.25 },
@@ -14304,13 +14163,12 @@ function buildKitchenRecipes(plants) {
   const recipes = [];
   const styles = KITCHEN_STYLES;
   let idx = 0;
-  // Pass 1: mỗi cây × mỗi style (đơn nguyên liệu)
   for (let i = 0; i < list.length && recipes.length < 1000; i++) {
     const p = list[i];
     if (!p || !p.id) continue;
     for (let s = 0; s < styles.length && recipes.length < 1000; s++) {
       const st = styles[s];
-      const need = 1 + (s % 3); // 1–3
+      const need = 1 + (s % 3);
       const base = Math.max(2, Number(p.sellPrice) || 10);
       const sell = Math.max(need + 1, Math.floor(base * need * st.mult));
       recipes.push({
@@ -14324,7 +14182,6 @@ function buildKitchenRecipes(plants) {
       idx++;
     }
   }
-  // Pass 2: combo 2 cây kề nhau để đủ 1000
   for (let i = 0; i < list.length - 1 && recipes.length < 1000; i++) {
     const a = list[i], b = list[i + 1];
     if (!a || !b) continue;
@@ -14463,10 +14320,6 @@ const DEFAULT_COMPANIONS = [
 function getCompanions() { return DEFAULT_COMPANIONS; }
 function getCompanion(id) { return DEFAULT_COMPANIONS.find(c => c.id === id); }
 
-/**
- * Badge icon Font Awesome — CHỈ style regular (fa-regular).
- * name = tên FA (slug) để tìm theo web Font Awesome; hiển thị shop 50 / trang.
- */
 const _FA_BADGE_SEED = [
   ['address-book', 'Sổ địa chỉ', 320], ['address-card', 'Thẻ địa chỉ', 330],
   ['bell', 'Chuông', 340], ['bookmark', 'Đánh dấu', 350], ['building', 'Tòa nhà', 360],
@@ -14675,4 +14528,3 @@ const DEFAULT_AVATAR_FRAMES = [
 ];
 function getAvatarFrames() { return DEFAULT_AVATAR_FRAMES; }
 function getAvatarFrame(id) { return DEFAULT_AVATAR_FRAMES.find(f => f.id === id); }
-

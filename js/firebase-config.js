@@ -1,4 +1,3 @@
-// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyC96Hq3bgVbCIff95AOp1epL-8ho3_Ukqk",
   authDomain: "trongcay-b417b.firebaseapp.com",
@@ -14,8 +13,6 @@ firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
 const db = firebase.database();
-// Giữ đăng nhập sau F5 / đóng tab (localStorage + IndexedDB)
 try {
   auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 } catch (e) { console.warn('auth persistence', e); }
-

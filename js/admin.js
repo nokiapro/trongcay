@@ -1,5 +1,3 @@
-// ===== ADMIN PANEL (Firebase) =====
-
 function showToast(msg, type = '') {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
@@ -7,7 +5,6 @@ function showToast(msg, type = '') {
   setTimeout(() => toast.classList.remove('show'), 2800);
 }
 
-// Auth check
 auth.onAuthStateChanged(async (user) => {
   const loading = document.getElementById('admin-loading');
   const dash = document.getElementById('admin-dashboard');
@@ -39,7 +36,6 @@ auth.onAuthStateChanged(async (user) => {
   }
 });
 
-// Sidebar
 document.querySelectorAll('.side-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.side-btn').forEach(b => b.classList.remove('active'));
@@ -305,7 +301,6 @@ document.querySelectorAll('.modal').forEach(modal => {
   });
 });
 
-// Users
 async function renderUsers() {
   const snap = await db.ref('users').once('value');
   const users = snap.val() || {};
@@ -349,7 +344,6 @@ async function renderUsers() {
     `;
   }).join('') || '<tr><td colspan="6">Không có người chơi khớp bộ lọc.</td></tr>';
 
-  /** Admin sửa user: luôn bump updatedAt để client F5/save không đè mất bằng backup local cũ */
   function adminTouchUpdatedAt(u) {
     const t = Date.now();
     u.updatedAt = Math.max(Number(u.updatedAt) || 0, t) + 1;
@@ -534,7 +528,6 @@ function renderSettings() {
   const mMsg = document.getElementById('set-maint-msg');
   if (mMsg) mMsg.value = currentSettings.maintenanceMsg || '';
 
-  // Hệ thống cập nhật
   const clientVer = (typeof APP_VERSION !== 'undefined' && APP_VERSION) ? APP_VERSION : '—';
   const pubEl = document.getElementById('set-published-version');
   const cliEl = document.getElementById('set-client-version');
@@ -566,14 +559,12 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
   if (rainEl) {
     let r = parseInt(rainEl.value, 10);
     if (isNaN(r)) r = 15;
-    // Random mưa 1% – 50%
     currentSettings.rainChance = Math.max(1, Math.min(50, r));
   }
   const rainDurEl = document.getElementById('set-rain-duration');
   if (rainDurEl) {
     let d = parseFloat(rainDurEl.value);
     if (!Number.isFinite(d) || d <= 0) d = 0.25;
-    // 0.1 phút (~6s) – 120 phút
     currentSettings.rainDurationMinutes = Math.max(0.1, Math.min(120, d));
   }
   const mbEl = document.getElementById('set-merge-base');
@@ -589,7 +580,6 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
   if (iconIn) currentSettings.siteIconUrl = (iconIn.value || '').trim();
   await saveSettings();
   showToast('Đã lưu cài đặt!' + (currentSettings.maintenanceOn ? ' (Bảo trì BẬT)' : ''), 'success');
-  // preview
   const prev = document.getElementById('set-site-icon-preview');
   const img = document.getElementById('set-site-icon-img');
   if (prev && img) {
@@ -787,7 +777,6 @@ document.getElementById('btn-send-birthday-mail')?.addEventListener('click', asy
   }
 });
 
-// Mobile sidebar toggle — ẩn nút 3 gạch khi menu đang mở
 function setAdminSidebar(open) {
   document.getElementById('admin-sidebar')?.classList.toggle('open', open);
   document.getElementById('admin-backdrop')?.classList.toggle('show', open);
@@ -809,7 +798,6 @@ document.getElementById('btn-reset-plants').addEventListener('click', async () =
   showToast('Đã reset danh sách cây!', 'success');
 });
 
-/* Pill dropdown cho admin select */
 (function () {
   const CHECK = '<svg class="pill-dd-check" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>';
   const ARROW = '<svg class="pill-dd-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>';
@@ -891,7 +879,6 @@ document.getElementById('btn-reset-plants').addEventListener('click', async () =
   });
 })();
 
-/* Theme dark/light đồng bộ với index (localStorage vx-theme) */
 (function () {
   function applyTheme(mode) {
     const root = document.documentElement;
@@ -914,8 +901,6 @@ document.getElementById('btn-reset-plants').addEventListener('click', async () =
   });
 })();
 
-
-// ===== CÔNG BỐ PHIÊN BẢN CLIENT =====
 document.getElementById('btn-publish-version')?.addEventListener('click', async () => {
   const clientVer = (typeof APP_VERSION !== 'undefined' && APP_VERSION) ? String(APP_VERSION) : '';
   if (!clientVer) {
@@ -930,7 +915,7 @@ document.getElementById('btn-publish-version')?.addEventListener('click', async 
   try {
     await saveSettings();
     renderSettings();
-    showToast('Đã công bố v' + clientVer + ' — user online sẽ được nhắc tải lại!', 'success');
+    showToast('Đã công bố v' + clientVer + ' - user online sẽ được nhắc tải lại!', 'success');
   } catch (e) {
     showToast('Lỗi lưu: ' + (e.message || e), 'error');
   }
@@ -941,7 +926,6 @@ document.getElementById('btn-save-update-meta')?.addEventListener('click', async
   const forceEl = document.getElementById('set-force-update');
   currentSettings.updateNotes = (notesEl && notesEl.value) ? notesEl.value.trim() : '';
   currentSettings.forceUpdate = !!(forceEl && forceEl.checked);
-  // Không đổi appVersion — chỉ meta
   try {
     await saveSettings();
     showToast('Đã lưu ghi chú / bắt buộc tải lại', 'success');
@@ -1032,9 +1016,6 @@ document.getElementById('mail-target-search')?.addEventListener('input', () => {
   window._mailSearchT = setTimeout(fillMailTargetSelect, 200);
 });
 
-
-
-// Users search / filter unlimited
 document.getElementById('user-search-input')?.addEventListener('input', () => {
   if (typeof renderUsers === 'function') renderUsers();
 });
