@@ -52,14 +52,15 @@ const Game = {
     // Badge động từ FA Pro CSS (id = ab-<slug>)
     const slug = String(id).replace(/^ab-/, '').replace(/^fa-/, '');
     if (!slug) return null;
+    const fa = (typeof faProClass === 'function') ? faProClass(slug) : ('fa-solid fa-' + slug);
     return {
       id: 'ab-' + slug,
-      fa: 'fa-regular fa-' + slug,
+      fa,
       slug,
       name: slug,
       price: 400,
       rarity: 'common',
-      desc: 'Icon FA regular · ' + slug
+      desc: 'Icon FA · ' + slug
     };
   },
 

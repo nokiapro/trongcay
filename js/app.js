@@ -2996,10 +2996,10 @@ function renderShop() {
       faBar.id = 'badge-fa-search-bar';
       faBar.className = 'badge-fa-search-bar';
       faBar.innerHTML = `
-        <label class="badge-fa-label"><i class="fa-brands fa-font-awesome"></i> Tìm icon trong FA Pro (regular)</label>
+        <label class="badge-fa-label"><i class="fa-brands fa-font-awesome"></i> Tìm icon trong FA Pro (tự chọn solid/brands)</label>
         <div class="badge-fa-row">
           <input type="search" id="badge-fa-search" placeholder="Nhập tên icon FA… ví dụ: heart, star, face-smile" autocomplete="off" />
-          <span class="badge-fa-hint">Nguồn: pro.min.css · regular · tối đa 48 icon</span>
+          <span class="badge-fa-hint">Nguồn: pro.min.css · solid/brands · tối đa 48 icon</span>
         </div>`;
       grid.parentElement?.insertBefore(faBar, grid);
     }
@@ -3027,7 +3027,7 @@ function renderShop() {
       const slice = slugs.slice(0, BADGE_PAGE);
       if (countEl) {
         countEl.textContent = matched > BADGE_PAGE
-          ? ('Hiện ' + BADGE_PAGE + '/' + matched.toLocaleString() + ' icon · gõ thêm để lọc (FA Pro regular)')
+          ? ('Hiện ' + BADGE_PAGE + '/' + matched.toLocaleString() + ' icon · gõ thêm để lọc (FA Pro)')
           : (matched.toLocaleString() + ' icon · tối đa 48 + Không badge');
       }
       grid.innerHTML = '';
@@ -3040,7 +3040,7 @@ function renderShop() {
       grid.appendChild(none);
       slice.forEach(slug => {
         const id = 'ab-' + slug;
-        const fa = 'fa-regular fa-' + slug;
+        const fa = (typeof faProClass === 'function' ? faProClass(slug) : ('fa-solid fa-' + slug));
         const have = !!owned[id];
         const on = eq === id;
         const price = 400;
@@ -3048,7 +3048,7 @@ function renderShop() {
         card.className = 'shop-card';
         card.innerHTML = `<div class="shop-icon" style="font-size:1.8rem;color:var(--primary,#16a34a)"><i class="${fa}"></i></div>
           <div class="shop-name">${slug}</div>
-          <span class="shop-type">fa-regular</span>
+          <span class="shop-type">${(fa.split(" ")[0] || "fa-solid").replace("fa-","")}</span>
           <div class="shop-meta"><span style="font-size:0.7rem;opacity:0.75">${fa}</span></div>
           <div class="shop-owned">${on ? shopOwnedLabel('equipped') : (have ? shopOwnedLabel('owned') : shopOwnedLabel('none'))}</div>
           <div class="shop-price">${price.toLocaleString()} 🪙</div>
