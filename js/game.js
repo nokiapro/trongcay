@@ -661,7 +661,7 @@ const Game = {
       currentPlayer.xp -= this.xpForLevel(currentPlayer.level || 1);
       currentPlayer.level = (currentPlayer.level || 1) + 1;
       currentPlayer.coins += 100 * currentPlayer.level;
-      this.addActivity(`🎉 Lên cấp ${currentPlayer.level}! +${100 * currentPlayer.level}🪙`);
+      this.addActivity(`Lên cấp ${currentPlayer.level}! +${100 * currentPlayer.level}🪙`);
     }
   },
 
