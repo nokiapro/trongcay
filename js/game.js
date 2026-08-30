@@ -1841,9 +1841,15 @@ const Game = {
     return { harvested: 1, planted, amount, plantName, plantId: hid, seedStar: seedStarFlag, replantName };
   },
 
-  /** Mốc chín sớm nhất (ms) trên các vườn NYC đang bật, ≤ untilMs. null nếu không có. */
-  _nextNycReadyAt(untilMs) {
-    if (!this.isNycActive() || !currentPlayer || !currentPlayer.gardens) return null;
+  /**
+   * Mốc chín sớm nhất (ms) trên các vườn NYC đang bật, ≤ untilMs. null nếu không có.
+   * @param {object} [opts]
+   * @param {boolean} [opts.requireActive=true] — false khi bù offline (NYC có thể hết hạn giữa chừng nhưng vẫn cần quét ô chín trong khung đã có NYC)
+   */
+  _nextNycReadyAt(untilMs, opts) {
+    if (!currentPlayer || !currentPlayer.gardens) return null;
+    const requireActive = !(opts && opts.requireActive === false);
+    if (requireActive && !this.isNycActive()) return null;
     let best = null;
     for (let gi = 0; gi < currentPlayer.gardens.length; gi++) {
       if (!this.isNycGardenEnabled(gi)) continue;
@@ -1936,23 +1942,26 @@ const Game = {
     }
     // Chu kỳ 3h Tiên: chỉ bù đúng các mốc đủ 3h đã qua — KHÔNG gán lastFairyCare = now
     // → đồng hồ 3h còn lại = phần giờ thật còn lại (bù offline đúng)
-    if (this.isFairyActive()) {
+    // Lên lịch Tiên nếu còn hạn tại `from` hoặc vẫn active lúc mở app
+    const fairyCovered = this.isFairyActiveAt(from) || this.isFairyActive();
+    if (fairyCovered) {
       let careAt = Number(currentPlayer.lastFairyCare) || 0;
       if (!careAt) {
-        // Chưa từng chăm: 1 lần tại mốc bắt đầu offline, rồi các chu kỳ 3h
-        events.push({ t: from, type: 'fairy' });
-        careAt = from;
-        while (careAt + this.BOOST_MS <= now) {
+        if (this.isFairyActiveAt(from)) {
+          events.push({ t: from, type: 'fairy' });
+          careAt = from;
+        }
+        while (careAt && careAt + this.BOOST_MS <= now) {
           careAt += this.BOOST_MS;
-          events.push({ t: careAt, type: 'fairy' });
+          if (this.isFairyActiveAt(careAt)) events.push({ t: careAt, type: 'fairy' });
+          else break;
         }
       } else {
-        // Đã có mốc: chỉ thêm event khi đủ từng chu kỳ 3h trong [careAt, now]
         while (careAt + this.BOOST_MS <= now) {
           careAt += this.BOOST_MS;
-          events.push({ t: careAt, type: 'fairy' });
+          if (this.isFairyActiveAt(careAt)) events.push({ t: careAt, type: 'fairy' });
+          else break;
         }
-        // Không đụng lastFairyCare nếu chưa tới mốc — đồng hồ chạy tiếp phần còn lại
       }
     }
     events.sort((a, b) => a.t - b.t || (a.type === 'rain' ? -1 : 1));
@@ -2031,36 +2040,34 @@ const Game = {
     };
 
     // --- Timeline: mưa / Tiên / chín — lặp đủ nhiều vòng cho offline cả đêm ---
+    // requireActive:false khi từng có NYC trong khung offline — tránh mất vòng thu vì hết hạn lúc mở app
+    const scanReadyOpts = nycCovered ? { requireActive: false } : { requireActive: true };
     let guard = 0;
     let lastReadyStamp = -1;
     let stuckSame = 0;
     const GUARD_MAX = 50000;
     while (guard++ < GUARD_MAX) {
-      const nextReady = this._nextNycReadyAt(now);
+      const nextReady = this._nextNycReadyAt(now, scanReadyOpts);
       const nextEv = (evIdx < events.length && events[evIdx].t <= now) ? events[evIdx] : null;
 
       if (nextReady == null && !nextEv) break;
 
       if (nextReady != null && (!nextEv || nextReady <= nextEv.t)) {
-        // Tránh kẹt cùng một mốc chín mãi (isReady lệch)
         if (nextReady === lastReadyStamp) {
           stuckSame++;
           if (stuckSame > 3) {
-            // Ép thu tại now rồi thoát vòng chín này
+            // Kẹt mốc chín: thu 1 lần rồi bỏ qua (không double-count)
             nycHarvestReplantAt(Math.min(now, nextReady + 1));
             stuckSame = 0;
             lastReadyStamp = -1;
-            // Nếu vẫn không nhúc nhích, bỏ qua mốc này bằng cách +1ms plantedAt
-            const still = this._nextNycReadyAt(now);
+            const still = this._nextNycReadyAt(now, scanReadyOpts);
             if (still === nextReady) {
               this.forEachGarden((plots, gi2) => {
                 if (!this.isNycGardenEnabled(gi2)) return;
-                const cfg2 = this.getNycConfigForGarden(gi2);
-                (plots || []).forEach((plot, pi) => {
+                (plots || []).forEach((plot) => {
                   if (plot && plot.plantId && plot.plantedAt && this.getReadyAtMs(plot) === nextReady) {
-                    plot.plantedAt = nextReady; // coi như vừa trồng lại tại mốc chín → vòng sau tính grow mới
-                    const rStuck = this._nycHarvestOneAt(plot, nextReady, gi2, cfg2, this.isNycActiveAt(nextReady), true);
-                    recordHarvestStat(rStuck, gi2 + ':' + pi);
+                    // Đẩy plantedAt để vòng sau không kẹt cùng mốc (đã thu ở trên nếu còn cây)
+                    if (plot.plantId) plot.plantedAt = nextReady + 1;
                   }
                 });
               });
@@ -2071,8 +2078,8 @@ const Game = {
           stuckSame = 0;
           lastReadyStamp = nextReady;
         }
-        // Chỉ thu bằng NYC trong khung còn hạn; nếu hết hạn NYC vẫn thu 1 lần khi chín (không trồng lại)
-        if (nycCovered || nextReady <= now) {
+        // Có NYC trong khung offline → thu tại mốc chín; trồng lại chỉ khi isNycActiveAt(t)
+        if (nycCovered) {
           nycHarvestReplantAt(nextReady);
         }
         continue;
@@ -2086,6 +2093,7 @@ const Game = {
         rainWatered += r.watered || 0;
         if (r.watered || r.boosted) changed = true;
       } else if (ev.type === 'fairy' && this.isFairyActiveAt(ev.t)) {
+        // runFairyCare theo từng vườn (hàm chỉ chăm activeGarden)
         this.forEachGarden((plots, gi) => {
           if (!this.isFairyGardenEnabled(gi)) return;
           this.runFairyCare(ev.t);
@@ -2096,8 +2104,10 @@ const Game = {
       }
     }
 
-    // Chốt: thu mọi ô đã chín tới `now` (trồng lại nếu NYC còn hạn)
-    nycHarvestReplantAt(now);
+    // Chốt: chỉ auto-thu offline nếu từng có NYC trong khung vắng (hoặc NYC còn hạn)
+    if (nycCovered || this.isNycActive()) {
+      nycHarvestReplantAt(now);
+    }
 
     currentPlayer.activeGarden = activeGarden;
     currentPlayer.plots = currentPlayer.gardens[activeGarden];
@@ -2118,7 +2128,7 @@ const Game = {
       notes.push(
         `NYC: thu ${uniquePlotsHarvested} ô` +
         (totalHarvest > uniquePlotsHarvested ? ` (${totalHarvest} lần)` : '') +
-        ` · trồng lại ${totalPlant} lần · sản lượng ${totalYieldAmount} (offline)`
+        ` · trồng/trồng lại ${totalPlant} lần · sản lượng ${totalYieldAmount}`
       );
     }
 
@@ -2178,7 +2188,7 @@ const Game = {
       'NYC: ' + (nycActive ? 'ĐANG BẬT' : 'tắt/hết hạn') +
       ' · thu ' + _uniqP + ' ô' +
       (totalHarvest > _uniqP ? ' (' + totalHarvest + ' lần thu)' : '') +
-      ' · trồng lại ' + totalPlant + ' lần · sản lượng ' + totalYieldAmount
+      ' · trồng/trồng lại ' + totalPlant + ' lần · sản lượng ' + totalYieldAmount
     );
     // Chi tiết theo loại cây: số lần thu + sản lượng
     const plantDetailParts = Object.keys(harvestByPlant).map(name => {

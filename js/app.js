@@ -1588,7 +1588,7 @@ function mountPillDropdown(select, opts = {}) {
   };
 
   const positionMenu = () => {
-    // Portal ra body + fixed → không bị modal/overflow cắt (lỗi chi tiết ô)
+    // Portal ra body + fixed → không bị modal/overflow cắt
     if (menu.parentNode !== document.body) {
       document.body.appendChild(menu);
     }
@@ -1601,17 +1601,27 @@ function mountPillDropdown(select, opts = {}) {
 
     const tr = trigger.getBoundingClientRect();
     const minW = Math.max(tr.width, 160);
-    menu.style.minWidth = minW + 'px';
-    menu.style.maxWidth = Math.min(Math.max(minW, 280), window.innerWidth - 16) + 'px';
-    menu.style.maxHeight = Math.min(280, window.innerHeight - 24) + 'px';
-    menu.style.overflowY = 'auto';
-    menu.style.zIndex = '500';
-
-    // đo sau khi hiện
-    const mh = Math.min(menu.scrollHeight || 200, 280);
     const spaceBelow = window.innerHeight - tr.bottom - 10;
     const spaceAbove = tr.top - 10;
-    const openUp = spaceBelow < Math.min(mh, 160) && spaceAbove > spaceBelow;
+    // Mobile / touch: ưu tiên xổ LÊN (dropdown chọn hạt NYC/ghép thường nằm giữa màn hình)
+    const isMobile = window.innerWidth <= 900 || (('ontouchstart' in window) && window.innerWidth <= 1200);
+    const preferUp = isMobile || !!wrap.closest('.merge-box, #modal-nyc, #modal-fairy, .bulk-panel, #page-inventory');
+    let openUp;
+    if (preferUp && spaceAbove >= 100) {
+      openUp = spaceAbove >= spaceBelow || spaceBelow < 180;
+    } else {
+      openUp = spaceBelow < Math.min(200, spaceAbove) && spaceAbove > spaceBelow;
+    }
+    // Chiều cao menu theo khoảng trống phía mở
+    const avail = Math.max(120, openUp ? spaceAbove : spaceBelow);
+    const maxH = Math.min(320, avail - 4, window.innerHeight - 24);
+    menu.style.minWidth = minW + 'px';
+    menu.style.maxWidth = Math.min(Math.max(minW, 280), window.innerWidth - 16) + 'px';
+    menu.style.maxHeight = maxH + 'px';
+    menu.style.overflowY = 'auto';
+    menu.style.zIndex = '5000';
+
+    const mh = Math.min(menu.scrollHeight || 200, maxH);
     wrap.classList.toggle('drop-up', openUp);
 
     let left = tr.left;
