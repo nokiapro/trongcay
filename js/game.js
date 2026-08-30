@@ -820,6 +820,8 @@ const Game = {
     }
   },
 
+  BUY_MAX_QTY: 100000,
+
   async buySeed(plantId, qty = 1) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const plant = this.getPlant(plantId);
@@ -827,6 +829,10 @@ const Game = {
     if (!this.isPlantAvailable(plant)) {
       return { ok: false, msg: 'Hạt Limited — ngoài thời gian sự kiện!' };
     }
+    qty = Math.max(1, Math.floor(Number(qty) || 1));
+    if (!Number.isFinite(qty)) qty = 1;
+    const buyMax = this.BUY_MAX_QTY || 100000;
+    if (qty > buyMax) qty = buyMax;
     const cost = plant.seedPrice * qty;
     if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền!' };
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
@@ -843,6 +849,10 @@ const Game = {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const fert = this.getFertilizer(fertId);
     if (!fert) return { ok: false, msg: 'Không tìm thấy phân bón!' };
+    qty = Math.max(1, Math.floor(Number(qty) || 1));
+    if (!Number.isFinite(qty)) qty = 1;
+    const buyMax = this.BUY_MAX_QTY || 100000;
+    if (qty > buyMax) qty = buyMax;
     const cost = fert.price * qty;
     if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền!' };
     if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
@@ -2765,6 +2775,37 @@ const Game = {
    * Tỉ lệ = base (admin) + bonus bùa. Thất bại: mất 1 hạt (+ bùa nếu có).
    * times: số lần ghép (mặc định 1). saveOnce: gom 1 lần save.
    */
+  /**
+   * Lấy mẫu binomial(n, p) nhanh — n lớn dùng xấp xỉ chuẩn, không loop n lần.
+   */
+  _binomialSample(n, p) {
+    n = Math.max(0, Math.floor(n) || 0);
+    if (n === 0) return 0;
+    p = Math.max(0, Math.min(1, Number(p) || 0));
+    if (p <= 0) return 0;
+    if (p >= 1) return n;
+    // n nhỏ: roll từng lần cho công bằng
+    if (n <= 8000) {
+      let k = 0;
+      for (let i = 0; i < n; i++) if (Math.random() < p) k++;
+      return k;
+    }
+    // n lớn: xấp xỉ chuẩn + clamp
+    const mean = n * p;
+    const sd = Math.sqrt(n * p * (1 - p)) || 0;
+    let u = 0, v = 0, s = 0;
+    do {
+      u = Math.random() * 2 - 1;
+      v = Math.random() * 2 - 1;
+      s = u * u + v * v;
+    } while (s === 0 || s >= 1);
+    const z = u * Math.sqrt(-2 * Math.log(s) / s);
+    let k = Math.round(mean + sd * z);
+    if (k < 0) k = 0;
+    if (k > n) k = n;
+    return k;
+  },
+
   async mergeSeeds(plantId, protectId, times = 1) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const plant = this.getPlant(plantId);
@@ -2773,53 +2814,82 @@ const Game = {
     if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
     if (!currentPlayer.inventory.protects) currentPlayer.inventory.protects = {};
 
-    // Không giới hạn số lần ghép (bỏ max 9999) — chạy đến hết hạt/bùa hoặc đủ times
-    times = Math.max(1, parseInt(times, 10) || 1);
-    if (!Number.isFinite(times) || times < 1) times = 1;
+    // times = 'all' → ghép đến hết hạt (và bùa nếu có)
+    const unlimited = this.isUnlimitedResources();
+    const seeds = currentPlayer.inventory.seeds;
+    const stars = currentPlayer.inventory.seedsStar;
+    const protects = currentPlayer.inventory.protects;
+    let protect = null;
+    if (protectId) {
+      protect = this.getProtect(protectId);
+      if (!protect) return { ok: false, msg: 'Bùa bảo hộ không hợp lệ!' };
+    }
+
+    const ratePct = this.getMergeSuccessRate(protectId || null);
+    const p = ratePct / 100;
+    const lastRate = ratePct;
+
+    let wantAll = (times === 'all' || times === 'max' || times === Infinity);
+    let timesLeft = wantAll ? Number.MAX_SAFE_INTEGER : Math.max(1, Math.floor(Number(times) || 1));
+    if (!Number.isFinite(timesLeft) || timesLeft < 1) timesLeft = 1;
+    if (wantAll && unlimited) {
+      // Unlimited + all: giới hạn an toàn 1 triệu lần/lượt (không có trần hạt)
+      timesLeft = 1000000;
+      wantAll = false;
+    }
+
     let success = 0;
     let fail = 0;
     let did = 0;
-    let lastRate = this.getMergeSuccessRate(protectId || null);
+    let guard = 0;
+    const YIELD_EVERY_BLOCKS = 1;
 
-    const unlimited = this.isUnlimitedResources();
-    for (let i = 0; i < times; i++) {
-      const have = currentPlayer.inventory.seeds[plantId] || 0;
+    while (timesLeft > 0 && guard++ < 500000) {
+      let have = unlimited ? Number.MAX_SAFE_INTEGER : (seeds[plantId] || 0);
       if (!unlimited && have < 2) break;
-      let protect = null;
-      if (protectId) {
-        protect = this.getProtect(protectId);
-        if (!protect) return { ok: false, msg: 'Bùa bảo hộ không hợp lệ!' };
-        if (!unlimited) {
-          const ph = currentPlayer.inventory.protects[protectId] || 0;
-          if (ph < 1) {
-            if (did === 0) return { ok: false, msg: 'Không đủ bùa bảo hộ!' };
-            break;
-          }
+      let ph = 0;
+      if (protect && !unlimited) {
+        ph = protects[protectId] || 0;
+        if (ph < 1) {
+          if (did === 0) return { ok: false, msg: 'Không đủ bùa bảo hộ!' };
+          break;
         }
       }
-      const rate = this.getMergeSuccessRate(protectId || null);
-      lastRate = rate;
+
+      // Khối tối đa: đủ hạt cho mọi outcome (cần 2*B hạt nếu all success)
+      // + đủ bùa. Dùng block lớn + binomial → không đơ dù hàng tỷ hạt.
+      let maxBySeed = unlimited ? timesLeft : Math.floor(have / 2);
+      if (protect && !unlimited) maxBySeed = Math.min(maxBySeed, ph);
+      let B = Math.min(timesLeft, maxBySeed);
+      if (B < 1) break;
+
+      // Chia block vừa phải để thỉnh thoảng yield UI (vẫn rất nhanh nhờ binomial)
+      if (B > 200000) B = 200000;
+
+      const k = this._binomialSample(B, p); // số thành công trong B lần
+      const f = B - k;
 
       if (!unlimited) {
-        currentPlayer.inventory.seeds[plantId] -= 2;
-        if (currentPlayer.inventory.seeds[plantId] <= 0) delete currentPlayer.inventory.seeds[plantId];
+        // Net: success -2, fail -1 → tổng trừ (B + k) hạt
+        const consume = B + k;
+        seeds[plantId] = have - consume;
+        if (seeds[plantId] <= 0) delete seeds[plantId];
         if (protect) {
-          currentPlayer.inventory.protects[protectId]--;
-          if (currentPlayer.inventory.protects[protectId] <= 0) delete currentPlayer.inventory.protects[protectId];
+          protects[protectId] = ph - B;
+          if (protects[protectId] <= 0) delete protects[protectId];
         }
       }
+      if (k > 0) stars[plantId] = (stars[plantId] || 0) + k;
 
-      const roll = Math.random() * 100;
-      if (roll < rate) {
-        currentPlayer.inventory.seedsStar[plantId] = (currentPlayer.inventory.seedsStar[plantId] || 0) + 1;
-        success++;
-      } else if (!unlimited) {
-        currentPlayer.inventory.seeds[plantId] = (currentPlayer.inventory.seeds[plantId] || 0) + 1;
-        fail++;
-      } else {
-        fail++;
+      success += k;
+      fail += f;
+      did += B;
+      timesLeft -= B;
+
+      // Nhường UI mỗi block
+      if ((guard % YIELD_EVERY_BLOCKS) === 0) {
+        await new Promise(r => setTimeout(r, 0));
       }
-      did++;
     }
 
     if (did === 0) return { ok: false, msg: 'Cần ít nhất 2 hạt thường cùng loại!' };
@@ -2840,7 +2910,7 @@ const Game = {
     return {
       ok: true,
       success: success > 0,
-      msg: `Ghép ${did} lần · ✨ ${success} sao · 💥 ${fail} thất bại (tỉ lệ ${lastRate}%)`,
+      msg: `Ghép ${did.toLocaleString()} lần · ✨ ${success.toLocaleString()} sao · 💥 ${fail.toLocaleString()} thất bại (tỉ lệ ${lastRate}%)`,
       did, successCount: success, failCount: fail
     };
   },

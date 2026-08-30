@@ -2187,7 +2187,7 @@ function bindPressHold(el, { onClick, onHold, ms = 450 } = {}) {
 }
 
 /** Modal nhập số lượng (ghép / mua): title, hint, maxHint, onConfirm(n|'all') */
-function openQtyPickModal({ title, hint, confirmLabel, onConfirm }) {
+function openQtyPickModal({ title, hint, confirmLabel, onConfirm, maxQty }) {
   const modal = document.getElementById('modal-bulk');
   const list = document.getElementById('bulk-qty-list');
   const titleEl = document.getElementById('bulk-title');
@@ -2196,10 +2196,11 @@ function openQtyPickModal({ title, hint, confirmLabel, onConfirm }) {
   if (titleEl) titleEl.textContent = title || 'Chọn số lượng';
   if (hintEl) hintEl.textContent = hint || '';
   list.innerHTML = '';
+  const cap = (maxQty && maxQty > 0) ? Math.floor(maxQty) : 0;
   const row = document.createElement('div');
   row.className = 'bulk-qty-row';
   row.innerHTML = `
-    <input type="number" id="bulk-qty-input" class="bulk-qty-input" min="1" placeholder="Số lượng (không giới hạn)" inputmode="numeric" />
+    <input type="number" id="bulk-qty-input" class="bulk-qty-input" min="1"${cap ? ` max="${cap}"` : ''} placeholder="${cap ? ('Tối đa ' + cap.toLocaleString()) : 'Số lượng'}" inputmode="numeric" />
     <button type="button" class="btn btn-primary btn-sm" id="bulk-qty-all">Tất cả</button>
     <button type="button" class="btn btn-secondary btn-sm" id="bulk-qty-ok">${confirmLabel || 'OK'}</button>
   `;
@@ -2210,8 +2211,9 @@ function openQtyPickModal({ title, hint, confirmLabel, onConfirm }) {
   };
   row.querySelector('#bulk-qty-all')?.addEventListener('click', () => run('all'));
   row.querySelector('#bulk-qty-ok')?.addEventListener('click', () => {
-    const v = parseInt(row.querySelector('#bulk-qty-input')?.value, 10);
+    let v = parseInt(row.querySelector('#bulk-qty-input')?.value, 10);
     if (!Number.isFinite(v) || v < 1) { showToast('Nhập số hợp lệ!', 'error'); return; }
+    if (cap && v > cap) v = cap;
     run(v);
   });
   modal.classList.add('show');
@@ -2755,7 +2757,17 @@ function renderShop() {
     });
     document.querySelectorAll('.btn-buy-protect').forEach(btn => {
       const buy = async (qty) => {
-        const res = await Game.buyProtect(btn.dataset.id, qty);
+        const item = Game.getProtect && Game.getProtect(btn.dataset.id);
+        const price = item ? (Number(item.price) || 1) : 1;
+        const buyMax = Game.BUY_MAX_QTY || 100000;
+        let n = qty;
+        if (n === 'all') {
+          const coins = currentPlayer.coins || 0;
+          n = price > 0 ? Math.floor(coins / price) : 1;
+        }
+        n = Math.max(1, Math.floor(Number(n) || 1));
+        if (n > buyMax) n = buyMax;
+        const res = await Game.buyProtect(btn.dataset.id, n);
         showToast(res.msg, res.ok ? 'success' : 'error');
         updateCoins();
         renderShop();
@@ -2764,8 +2776,9 @@ function renderShop() {
         onClick: () => buy(1),
         onHold: () => openQtyPickModal({
           title: 'Mua bao nhiêu bùa?',
-          hint: 'Nhập số lượng bất kỳ, hoặc Tất cả = mua tối đa theo số xu hiện có (không giới hạn 99).',
+          hint: 'Tối đa ' + (Game.BUY_MAX_QTY || 100000).toLocaleString() + ' / lần (tránh đơ web). Tất cả = theo số xu.',
           confirmLabel: 'Mua',
+          maxQty: Game.BUY_MAX_QTY || 100000,
           onConfirm: (n) => buy(n)
         })
       });
@@ -2922,7 +2935,16 @@ function renderShop() {
 
     document.querySelectorAll('.btn-buy-fert').forEach(btn => {
       const buy = async (qty) => {
-        const n = qty === 'all' ? 99 : Math.max(1, parseInt(qty, 10) || 1);
+        const fert = Game.getFertilizer && Game.getFertilizer(btn.dataset.id);
+        const price = fert ? (Number(fert.price) || 1) : 1;
+        const buyMax = Game.BUY_MAX_QTY || 100000;
+        let n = qty;
+        if (n === 'all') {
+          const coins = currentPlayer.coins || 0;
+          n = price > 0 ? Math.floor(coins / price) : 1;
+        }
+        n = Math.max(1, Math.floor(Number(n) || 1));
+        if (n > buyMax) n = buyMax;
         const res = await Game.buyFertilizer(btn.dataset.id, n);
         showToast(res.msg, res.ok ? 'success' : 'error');
         updateCoins();
@@ -2932,8 +2954,9 @@ function renderShop() {
         onClick: () => buy(1),
         onHold: () => openQtyPickModal({
           title: 'Mua bao nhiêu?',
-          hint: 'Nhập số lượng hoặc Tất cả (tối đa 99).',
+          hint: 'Tối đa ' + (Game.BUY_MAX_QTY || 100000).toLocaleString() + ' / lần. Tất cả = theo số xu.',
           confirmLabel: 'Mua',
+          maxQty: Game.BUY_MAX_QTY || 100000,
           onConfirm: (n) => buy(n)
         })
       });
@@ -3244,7 +3267,9 @@ function renderShop() {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.id;
       const input = btn.parentElement.querySelector('.qty-input');
-      const qty = Math.max(1, parseInt(input?.value || '1', 10));
+      let qty = Math.max(1, parseInt(input?.value || '1', 10) || 1);
+      const buyMax = (Game.BUY_MAX_QTY || 100000);
+      if (qty > buyMax) qty = buyMax;
       const res = await Game.buySeed(id, qty);
       showToast(res.msg, res.ok ? 'success' : 'error');
       updateCoins();
@@ -3545,14 +3570,15 @@ function renderInventory() {
         if (!pid) { showToast('Chọn hạt!', 'error'); return; }
         let n = times;
         if (n === 'all') {
-          const have = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[pid]) || 0;
-          n = Math.floor(have / 2);
-          if (pr) {
-            const ph = (currentPlayer.inventory.protects && currentPlayer.inventory.protects[pr]) || 0;
-            n = Math.min(n, ph);
-          }
+          showToast('Đang ghép tất cả (nhanh, không đơ)…', 'info');
+          const res = await Game.mergeSeeds(pid, pr || null, 'all');
+          showToast(res.msg, res.ok ? (res.success ? 'success' : 'error') : 'error');
+          updateCoins();
+          renderInventory();
+          return;
         }
-        n = Math.max(1, parseInt(n, 10) || 1);
+        n = Math.max(1, Math.floor(Number(n) || 1));
+        showToast('Đang ghép ' + n.toLocaleString() + ' lần…', 'info');
         const res = await Game.mergeSeeds(pid, pr || null, n);
         showToast(res.msg, res.ok ? (res.success ? 'success' : 'error') : 'error');
         updateCoins();
@@ -3567,7 +3593,7 @@ function renderInventory() {
           const maxN = Math.floor(have / 2);
           openQtyPickModal({
             title: 'Ghép bao nhiêu lần?',
-            hint: `Tối đa ~${maxN} lần với số hạt hiện có. Ấn giữ = chọn số / Tất cả.`,
+            hint: `Có thể ghép ~${maxN.toLocaleString()} lần với số hạt hiện có. Bấm «Tất cả» = ghép hết (nhanh, không đơ web).`,
             confirmLabel: 'Ghép',
             onConfirm: (n) => doMerge(n)
           });
