@@ -969,20 +969,26 @@ button.btn,
   gap: 6px;
   justify-content: center;
   align-items: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   width: 100%;
+  overflow: visible;
+  padding: 2px 0;
+  box-sizing: border-box;
 }
 
 .inv-item .actions .btn {
-  padding: 5px 10px;
-  font-size: 0.72rem;
+  padding: 6px 12px !important;
+  font-size: 0.75rem !important;
   white-space: nowrap;
-  flex: 0 0 auto;
-  min-width: 0;
-  line-height: 1.2;
-  border-radius: 8px;
+  flex: 0 1 auto;
+  min-width: auto;
+  max-width: 100%;
+  line-height: 1.25;
+  border-radius: 10px !important;
   text-align: center;
-  margin: 0 auto;
+  margin: 0;
+  overflow: visible;
+  box-sizing: border-box;
 }
 
 .empty-state {
@@ -3062,13 +3068,14 @@ html[data-theme="dark"] .plot-boost-badge {
   }
   .inv-item .actions .btn {
     width: auto;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     white-space: nowrap;
-    line-height: 1.15;
-    padding: 5px 8px;
-    font-size: 0.7rem;
-    min-width: 0;
+    line-height: 1.2;
+    padding: 6px 10px !important;
+    font-size: 0.72rem !important;
+    min-width: auto;
     text-align: center;
+    overflow: visible;
   }
   .inv-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
