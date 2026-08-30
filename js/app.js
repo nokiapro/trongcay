@@ -3509,8 +3509,8 @@ const TREE_TIERS = [
   { min: 4500, max: 5999, class: 'tier-tree-7', title: 'Thái Dương Cổ Thụ', icon: 'fa-sun', desc: 'Hào quang mặt trời', glow: 'rgba(245, 158, 11, 0.75)' },
   { min: 6000, max: 7499, class: 'tier-tree-8', title: 'Vệ Binh Gaia Tối Cao', icon: 'fa-earth-americas', desc: 'Linh hồn tím bảo hộ đại địa', glow: 'rgba(192, 132, 252, 0.85)' },
   { min: 7500, max: 8999, class: 'tier-tree-9', title: 'Thần Cây Yggdrasil', icon: 'fa-tree', desc: 'Cây Thế Giới ngàn sao', glow: 'rgba(244, 63, 94, 0.95)' },
-  { min: 9000, max: 9499, class: 'tier-tree-10', title: 'Ngân Hà Mộc Thần', icon: 'fa-star', desc: 'Ánh bạc ngân hà', glow: 'rgba(147, 197, 253, 0.9)' },
-  { min: 9500, max: 9999, class: 'tier-tree-11', title: 'Hỗn Mang Khởi Nguyên', icon: 'fa-fire', desc: 'Hỗn mang khởi nguồn', glow: 'rgba(225, 29, 72, 0.95)' },
+  { min: 9000, max: 9499, class: 'tier-tree-10', title: 'Ngân Hà Mộc Thần', icon: 'fa-meteor', desc: 'Ánh bạc ngân hà', glow: 'rgba(147, 197, 253, 0.9)' },
+  { min: 9500, max: 9999, class: 'tier-tree-11', title: 'Hỗn Mang Khởi Nguyên', icon: 'fa-hurricane', desc: 'Hỗn mang khởi nguồn', glow: 'rgba(225, 29, 72, 0.95)' },
   { min: 10000, max: 10000, class: 'tier-tree-12', title: 'Tạo Hóa Tối Thượng', icon: 'fa-crown', desc: 'Đỉnh tối thượng tạo hóa', glow: 'rgba(255, 255, 255, 0.95)' }
 ];
 
