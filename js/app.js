@@ -32,7 +32,16 @@ function updateProfileLevelTag(level) {
 
 function updateCoins() {
   if (!currentPlayer) return;
-  document.getElementById('coin-display').textContent = (currentPlayer.coins || 0).toLocaleString();
+  const coinEl = document.getElementById('coin-display');
+  if (coinEl) {
+    if (Game.isUnlimitedResources && Game.isUnlimitedResources()) {
+      coinEl.textContent = '∞';
+      coinEl.title = 'Unlimited tài nguyên';
+    } else {
+      coinEl.textContent = (currentPlayer.coins || 0).toLocaleString();
+      coinEl.title = '';
+    }
+  }
   document.getElementById('level-display').textContent = currentPlayer.level || 1;
   if (typeof updateProfileLevelTag === 'function') updateProfileLevelTag(currentPlayer.level || 1);
   const fertEl = document.getElementById('fertilizer-count');
@@ -1114,6 +1123,23 @@ async function sendChat() {
 // ===== PROFILE =====
 
 
+
+function applySiteIcon(url) {
+  url = (url || (typeof currentSettings !== 'undefined' && currentSettings && currentSettings.siteIconUrl) || '').trim();
+  let link = document.querySelector('link[rel="icon"]');
+  if (!url) {
+    if (link && link.dataset.dynamic === '1') link.remove();
+    return;
+  }
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    link.dataset.dynamic = '1';
+    document.head.appendChild(link);
+  }
+  link.href = url;
+}
+
 function applyProfileCompanion() {
   const el = document.getElementById('profile-companion');
   if (!el) return;
@@ -2168,7 +2194,7 @@ function openQtyPickModal({ title, hint, confirmLabel, onConfirm }) {
   const row = document.createElement('div');
   row.className = 'bulk-qty-row';
   row.innerHTML = `
-    <input type="number" id="bulk-qty-input" class="bulk-qty-input" min="1" max="9999" placeholder="Số lượng" inputmode="numeric" />
+    <input type="number" id="bulk-qty-input" class="bulk-qty-input" min="1" placeholder="Số lượng (không giới hạn)" inputmode="numeric" />
     <button type="button" class="btn btn-primary btn-sm" id="bulk-qty-all">Tất cả</button>
     <button type="button" class="btn btn-secondary btn-sm" id="bulk-qty-ok">${confirmLabel || 'OK'}</button>
   `;
@@ -2903,27 +2929,34 @@ function renderShop() {
 
   if (currentShopTab === 'badge') {
     const countEl = document.getElementById('shop-count');
-    document.getElementById('shop-pager').innerHTML = '';
+    const BADGE_PAGE = 50;
     let items = (Game.getAvatarBadges && Game.getAvatarBadges()) || [];
-    const q = (document.getElementById('shop-search')?.value || '').trim().toLowerCase();
+    // Chỉ regular; lọc theo tên FA (slug) / tên hiển thị — giống tìm trên fontawesome.com
+    items = items.filter(it => (it.fa || '').indexOf('fa-regular') === 0);
+    const q = (document.getElementById('shop-search')?.value || '').trim().toLowerCase().replace(/^fa-regular\s+fa-/, '').replace(/^fa-/, '');
     if (q) {
       items = items.filter(it =>
+        (it.slug || '').toLowerCase().indexOf(q) >= 0 ||
         (it.name || '').toLowerCase().indexOf(q) >= 0 ||
-        (it.fa || '').toLowerCase().indexOf(q) >= 0 ||
-        (it.rarity || '').toLowerCase().indexOf(q) >= 0
+        (it.fa || '').toLowerCase().indexOf(q) >= 0
       );
     }
-    if (countEl) countEl.textContent = items.length + ' icon FA · gắn góc trên-phải avatar (Pro)';
+    const totalPages = Math.max(1, Math.ceil(items.length / BADGE_PAGE));
+    if (shopPage >= totalPages) shopPage = totalPages - 1;
+    const slice = items.slice(shopPage * BADGE_PAGE, (shopPage + 1) * BADGE_PAGE);
+    if (countEl) {
+      countEl.textContent = items.length + ' icon FA regular · trang ' + (shopPage + 1) + '/' + totalPages + ' (50/trang) · tìm theo tên FA';
+    }
     const owned = (currentPlayer && currentPlayer.avatarBadges) || {};
     const eq = (currentPlayer && currentPlayer.avatarBadgeId) || null;
     const none = document.createElement('div');
     none.className = 'shop-card';
-    none.innerHTML = `<div class="shop-icon"><i class="fa-solid fa-ban" style="font-size:1.6rem"></i></div>
+    none.innerHTML = `<div class="shop-icon"><i class="fa-regular fa-circle-xmark" style="font-size:1.6rem"></i></div>
       <div class="shop-name">Không badge</div>
       <div class="shop-owned">${!eq ? shopOwnedLabel('equipped') : ''}</div>
       <button class="btn btn-secondary btn-equip-badge" data-id="none">Gỡ</button>`;
     grid.appendChild(none);
-    items.forEach(it => {
+    slice.forEach(it => {
       const have = !!owned[it.id];
       const on = eq === it.id;
       const rarityLabel = it.rarity === 'legendary' ? 'Huyền thoại' : it.rarity === 'epic' ? 'Sử thi' : it.rarity === 'rare' ? 'Hiếm' : 'Thường';
@@ -2931,8 +2964,8 @@ function renderShop() {
       card.className = 'shop-card rarity-' + (it.rarity || 'common');
       card.innerHTML = `<div class="shop-icon" style="font-size:1.8rem;color:var(--primary,#16a34a)"><i class="${it.fa}"></i></div>
         <div class="shop-name">${it.name}</div>
-        <span class="shop-type">Icon · ${rarityLabel}</span>
-        <div class="shop-meta"><span style="font-size:0.7rem;opacity:0.75">${it.fa}</span></div>
+        <span class="shop-type">regular · ${rarityLabel}</span>
+        <div class="shop-meta"><span style="font-size:0.7rem;opacity:0.75">${it.slug || it.fa}</span></div>
         <div class="shop-owned">${on ? shopOwnedLabel('equipped') : (have ? shopOwnedLabel('owned') : shopOwnedLabel('none'))}</div>
         <div class="shop-price">${(it.price || 0).toLocaleString()} 🪙</div>
         ${have
@@ -2955,6 +2988,18 @@ function renderShop() {
       renderShop();
       if (typeof applyProfileBadge === 'function') applyProfileBadge();
     }));
+    const pager = document.getElementById('shop-pager');
+    if (pager) {
+      if (totalPages > 1) {
+        pager.innerHTML = `<button class="btn btn-secondary btn-sm" id="badge-prev" ${shopPage <= 0 ? 'disabled' : ''}>‹</button>
+             <span class="shop-page-label">${shopPage + 1} / ${totalPages}</span>
+             <button class="btn btn-secondary btn-sm" id="badge-next" ${shopPage >= totalPages - 1 ? 'disabled' : ''}>›</button>`;
+        pager.querySelector('#badge-prev')?.addEventListener('click', () => { shopPage = Math.max(0, shopPage - 1); renderShop(); });
+        pager.querySelector('#badge-next')?.addEventListener('click', () => { shopPage = Math.min(totalPages - 1, shopPage + 1); renderShop(); });
+      } else {
+        pager.innerHTML = '';
+      }
+    }
     return;
   }
 
@@ -4769,7 +4814,9 @@ function watchSettingsForUpdate() {
       if (val.rainChance != null) currentSettings.rainChance = val.rainChance;
       if (val.rainDurationMinutes != null) currentSettings.rainDurationMinutes = val.rainDurationMinutes;
       if (typeof val.maintenanceOn === 'boolean') currentSettings.maintenanceOn = val.maintenanceOn;
+      if (val.siteIconUrl != null) currentSettings.siteIconUrl = val.siteIconUrl;
     }
+    if (typeof applySiteIcon === 'function') applySiteIcon(currentSettings.siteIconUrl);
     checkClientUpdate(true);
   };
   _settingsVersionUnsub = handler;

@@ -311,12 +311,26 @@ async function renderUsers() {
   const users = snap.val() || {};
   const tbody = document.querySelector('#users-table tbody');
 
-  tbody.innerHTML = Object.keys(users).map(uid => {
+  const q = ((document.getElementById('user-search-input') || {}).value || '').trim().toLowerCase();
+  const onlyUnlimited = !!(document.getElementById('user-filter-unlimited') || {}).checked;
+  let uids = Object.keys(users);
+  if (q) {
+    uids = uids.filter(uid => {
+      const u = users[uid] || {};
+      const hay = [uid, u.email || '', u.name || '', u.displayName || ''].join(' ').toLowerCase();
+      return hay.indexOf(q) >= 0;
+    });
+  }
+  if (onlyUnlimited) {
+    uids = uids.filter(uid => !!(users[uid] && users[uid].unlimitedResources));
+  }
+  tbody.innerHTML = uids.map(uid => {
     const u = users[uid];
     const banned = !!u.banned;
+    const unlim = !!u.unlimitedResources;
     return `
-      <tr style="${banned ? 'opacity:0.65' : ''}">
-        <td>${u.email || uid}${banned ? ' <span style="color:#e63946">[BAN]</span>' : ''}</td>
+      <tr style="${banned ? 'opacity:0.65' : ''}${unlim ? ';background:rgba(34,197,94,0.08)' : ''}">
+        <td>${u.email || uid}${banned ? ' <span style="color:#e63946">[BAN]</span>' : ''}${unlim ? ' <span style="color:#16a34a;font-weight:700">[∞]</span>' : ''}</td>
         <td><strong style="color:${u.role === 'admin' ? '#e63946' : '#2d6a4f'}">${u.role || 'user'}</strong></td>
         <td>${(u.coins || 0).toLocaleString()}🪙</td>
         <td>${(u.stats && u.stats.planted) || 0}</td>
@@ -324,6 +338,7 @@ async function renderUsers() {
         <td class="actions">
           <button class="btn btn-primary btn-add-coins" data-uid="${uid}">+ Tiền</button>
           <button class="btn btn-secondary btn-add-plots" data-uid="${uid}">+ Ô thường</button>
+          <button class="btn ${unlim ? 'btn-secondary' : 'btn-success'} btn-toggle-unlimited" data-uid="${uid}" title="Unlimited tài nguyên">${unlim ? '∞ Tắt' : '∞ Unlimited'}</button>
           ${u.role !== 'admin' ? `<button class="btn btn-success btn-make-admin" data-uid="${uid}">Set Admin</button>` : ''}
           ${u.role === 'admin' && uid !== currentUser.uid ? `<button class="btn btn-secondary btn-remove-admin" data-uid="${uid}">Bỏ Admin</button>` : ''}
           ${uid !== currentUser.uid ? (banned
@@ -332,7 +347,7 @@ async function renderUsers() {
         </td>
       </tr>
     `;
-  }).join('') || '<tr><td colspan="6">Chưa có người chơi.</td></tr>';
+  }).join('') || '<tr><td colspan="6">Không có người chơi khớp bộ lọc.</td></tr>';
 
   /** Admin sửa user: luôn bump updatedAt để client F5/save không đè mất bằng backup local cũ */
   function adminTouchUpdatedAt(u) {
@@ -476,6 +491,22 @@ async function renderUsers() {
       renderUsers();
     });
   });
+
+  document.querySelectorAll('.btn-toggle-unlimited').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const uid = btn.dataset.uid;
+      const snap = await db.ref('users/' + uid + '/unlimitedResources').once('value');
+      const next = !snap.val();
+      const msg = next
+        ? 'Bật UNLIMITED tài nguyên cho user này? (xu/hạt/phân/bùa không bị trừ)'
+        : 'Tắt unlimited cho user này?';
+      if (!confirm(msg)) return;
+      await db.ref('users/' + uid).update({ unlimitedResources: next, updatedAt: Date.now() });
+      showToast(next ? 'Đã bật ∞ Unlimited!' : 'Đã tắt Unlimited.', 'success');
+      renderUsers();
+    });
+  });
+
 }
 
 function renderSettings() {
@@ -513,6 +544,19 @@ function renderSettings() {
   if (notesEl) notesEl.value = currentSettings.updateNotes || '';
   const forceEl = document.getElementById('set-force-update');
   if (forceEl) forceEl.checked = !!currentSettings.forceUpdate;
+  const iconEl = document.getElementById('set-site-icon');
+  if (iconEl) iconEl.value = currentSettings.siteIconUrl || '';
+  const prev = document.getElementById('set-site-icon-preview');
+  const img = document.getElementById('set-site-icon-img');
+  if (prev && img) {
+    const url = (currentSettings.siteIconUrl || '').trim();
+    if (url) {
+      img.src = url;
+      prev.style.display = 'flex';
+    } else {
+      prev.style.display = 'none';
+    }
+  }
 }
 
 document.getElementById('btn-save-settings').addEventListener('click', async () => {
@@ -541,8 +585,18 @@ document.getElementById('btn-save-settings').addEventListener('click', async () 
   currentSettings.maintenanceOn = !!document.getElementById('set-maint-on')?.checked;
   currentSettings.maintenanceMsg = (document.getElementById('set-maint-msg')?.value || '').trim()
     || 'Hệ thống đang bảo trì. Vui lòng quay lại sau.';
+  const iconIn = document.getElementById('set-site-icon');
+  if (iconIn) currentSettings.siteIconUrl = (iconIn.value || '').trim();
   await saveSettings();
   showToast('Đã lưu cài đặt!' + (currentSettings.maintenanceOn ? ' (Bảo trì BẬT)' : ''), 'success');
+  // preview
+  const prev = document.getElementById('set-site-icon-preview');
+  const img = document.getElementById('set-site-icon-img');
+  if (prev && img) {
+    const url = currentSettings.siteIconUrl || '';
+    if (url) { img.src = url; prev.style.display = 'flex'; }
+    else prev.style.display = 'none';
+  }
 });
 
 async function renderGiftCodes() {
@@ -978,3 +1032,12 @@ document.getElementById('mail-target-search')?.addEventListener('input', () => {
   window._mailSearchT = setTimeout(fillMailTargetSelect, 200);
 });
 
+
+
+// Users search / filter unlimited
+document.getElementById('user-search-input')?.addEventListener('input', () => {
+  if (typeof renderUsers === 'function') renderUsers();
+});
+document.getElementById('user-filter-unlimited')?.addEventListener('change', () => {
+  if (typeof renderUsers === 'function') renderUsers();
+});

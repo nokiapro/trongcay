@@ -24,6 +24,26 @@ const Game = {
   getAvatarFrame(id) { return this.getAvatarFrames().find(f => f.id === id); },
   getCompanions() { return typeof getCompanions === 'function' ? getCompanions() : (typeof DEFAULT_COMPANIONS !== 'undefined' ? DEFAULT_COMPANIONS : []); },
   getCompanion(id) { return this.getCompanions().find(c => c.id === id); },
+
+  /** User được admin cấp unlimitedResources — không trừ xu / hạt / phân / bùa */
+  isUnlimitedResources() {
+    return !!(currentPlayer && currentPlayer.unlimitedResources);
+  },
+  canAfford(cost) {
+    if (this.isUnlimitedResources()) return true;
+    return (Number(currentPlayer && currentPlayer.coins) || 0) >= (Number(cost) || 0);
+  },
+  /** Trừ xu; unlimited → bỏ qua. Trả false nếu thiếu tiền. */
+  chargeCoins(cost) {
+    cost = Math.max(0, Number(cost) || 0);
+    if (this.isUnlimitedResources()) return true;
+    if (!currentPlayer || (Number(currentPlayer.coins) || 0) < cost) return false;
+    currentPlayer.coins = (Number(currentPlayer.coins) || 0) - cost;
+    currentPlayer.stats = currentPlayer.stats || {};
+    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
+    return true;
+  },
+
   getAvatarBadges() { return typeof getAvatarBadges === 'function' ? getAvatarBadges() : (typeof DEFAULT_AVATAR_BADGES !== 'undefined' ? DEFAULT_AVATAR_BADGES : []); },
   getAvatarBadge(id) { return this.getAvatarBadges().find(b => b.id === id); },
 
@@ -790,12 +810,12 @@ const Game = {
       return { ok: false, msg: 'Hạt Limited — ngoài thời gian sự kiện!' };
     }
     const cost = plant.seedPrice * qty;
-    if (currentPlayer.coins < cost) return { ok: false, msg: 'Không đủ tiền!' };
-    currentPlayer.coins -= cost;
-    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
+    if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền!' };
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
     currentPlayer.inventory.seeds[plantId] = (currentPlayer.inventory.seeds[plantId] || 0) + qty;
-    this.addActivity(`Mua ${qty} hạt ${plant.name} (-${cost}🪙)`);
+    this.addActivity(this.isUnlimitedResources()
+      ? `Mua ${qty} hạt ${plant.name} (unlimited)`
+      : `Mua ${qty} hạt ${plant.name} (-${cost}🪙)`);
     if (typeof Features !== 'undefined') Features.trackQuest('buySeed', qty);
     await savePlayer();
     return { ok: true, msg: `Đã mua ${qty} hạt ${plant.name}!` };
@@ -806,12 +826,12 @@ const Game = {
     const fert = this.getFertilizer(fertId);
     if (!fert) return { ok: false, msg: 'Không tìm thấy phân bón!' };
     const cost = fert.price * qty;
-    if (currentPlayer.coins < cost) return { ok: false, msg: 'Không đủ tiền!' };
-    currentPlayer.coins -= cost;
-    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
+    if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền!' };
     if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
     currentPlayer.inventory.fertilizers[fertId] = (currentPlayer.inventory.fertilizers[fertId] || 0) + qty;
-    this.addActivity(`Mua ${qty} ${fert.name} (-${cost}🪙)`);
+    this.addActivity(this.isUnlimitedResources()
+      ? `Mua ${qty} ${fert.name} (unlimited)`
+      : `Mua ${qty} ${fert.name} (-${cost}🪙)`);
     await savePlayer();
     return { ok: true, msg: `Đã mua ${qty} ${fert.name}!` };
   },
@@ -821,28 +841,38 @@ const Game = {
     const plot = currentPlayer.plots[plotId];
     if (!plot) return { ok: false, msg: 'Ô đất không tồn tại!' };
     if (plot.plantId) return { ok: false, msg: 'Ô đất đã có cây!' };
+    const unlimited = this.isUnlimitedResources();
     const normal = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[plantId]) || 0;
     const star = (currentPlayer.inventory.seedsStar && currentPlayer.inventory.seedsStar[plantId]) || 0;
     let usedStar = false;
     if (preferredKind === 'star') {
-      if (star < 1) return { ok: false, msg: 'Không đủ hạt sao!' };
-      currentPlayer.inventory.seedsStar[plantId]--;
-      if (currentPlayer.inventory.seedsStar[plantId] <= 0) delete currentPlayer.inventory.seedsStar[plantId];
+      if (!unlimited && star < 1) return { ok: false, msg: 'Không đủ hạt sao!' };
       usedStar = true;
-    } else if (preferredKind === 'normal') {
-      if (normal < 1) return { ok: false, msg: 'Không đủ hạt thường!' };
-      currentPlayer.inventory.seeds[plantId]--;
-      if (currentPlayer.inventory.seeds[plantId] <= 0) delete currentPlayer.inventory.seeds[plantId];
-    } else {
-      // Mặc định: ưu tiên sao nếu có
-      if (normal + star < 1) return { ok: false, msg: 'Không đủ hạt giống!' };
-      if (star > 0) {
+      if (!unlimited) {
         currentPlayer.inventory.seedsStar[plantId]--;
         if (currentPlayer.inventory.seedsStar[plantId] <= 0) delete currentPlayer.inventory.seedsStar[plantId];
-        usedStar = true;
-      } else {
+      }
+    } else if (preferredKind === 'normal') {
+      if (!unlimited && normal < 1) return { ok: false, msg: 'Không đủ hạt thường!' };
+      if (!unlimited) {
         currentPlayer.inventory.seeds[plantId]--;
         if (currentPlayer.inventory.seeds[plantId] <= 0) delete currentPlayer.inventory.seeds[plantId];
+      }
+    } else {
+      if (!unlimited && normal + star < 1) return { ok: false, msg: 'Không đủ hạt giống!' };
+      if (star > 0 || (unlimited && preferredKind !== 'normal')) {
+        usedStar = star > 0;
+        if (unlimited && star < 1 && preferredKind === 'star') usedStar = true;
+        if (!unlimited && star > 0) {
+          currentPlayer.inventory.seedsStar[plantId]--;
+          if (currentPlayer.inventory.seedsStar[plantId] <= 0) delete currentPlayer.inventory.seedsStar[plantId];
+          usedStar = true;
+        } else if (!unlimited) {
+          currentPlayer.inventory.seeds[plantId]--;
+          if (currentPlayer.inventory.seeds[plantId] <= 0) delete currentPlayer.inventory.seeds[plantId];
+        } else if (star > 0) {
+          usedStar = true;
+        }
       }
     }
     plot.plantId = plantId;
@@ -2679,41 +2709,50 @@ const Game = {
     if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
     if (!currentPlayer.inventory.protects) currentPlayer.inventory.protects = {};
 
-    times = Math.max(1, Math.min(9999, parseInt(times, 10) || 1));
+    // Không giới hạn số lần ghép (bỏ max 9999) — chạy đến hết hạt/bùa hoặc đủ times
+    times = Math.max(1, parseInt(times, 10) || 1);
+    if (!Number.isFinite(times) || times < 1) times = 1;
     let success = 0;
     let fail = 0;
     let did = 0;
     let lastRate = this.getMergeSuccessRate(protectId || null);
 
+    const unlimited = this.isUnlimitedResources();
     for (let i = 0; i < times; i++) {
       const have = currentPlayer.inventory.seeds[plantId] || 0;
-      if (have < 2) break;
+      if (!unlimited && have < 2) break;
       let protect = null;
       if (protectId) {
         protect = this.getProtect(protectId);
         if (!protect) return { ok: false, msg: 'Bùa bảo hộ không hợp lệ!' };
-        const ph = currentPlayer.inventory.protects[protectId] || 0;
-        if (ph < 1) {
-          if (did === 0) return { ok: false, msg: 'Không đủ bùa bảo hộ!' };
-          break;
+        if (!unlimited) {
+          const ph = currentPlayer.inventory.protects[protectId] || 0;
+          if (ph < 1) {
+            if (did === 0) return { ok: false, msg: 'Không đủ bùa bảo hộ!' };
+            break;
+          }
         }
       }
       const rate = this.getMergeSuccessRate(protectId || null);
       lastRate = rate;
 
-      currentPlayer.inventory.seeds[plantId] -= 2;
-      if (currentPlayer.inventory.seeds[plantId] <= 0) delete currentPlayer.inventory.seeds[plantId];
-      if (protect) {
-        currentPlayer.inventory.protects[protectId]--;
-        if (currentPlayer.inventory.protects[protectId] <= 0) delete currentPlayer.inventory.protects[protectId];
+      if (!unlimited) {
+        currentPlayer.inventory.seeds[plantId] -= 2;
+        if (currentPlayer.inventory.seeds[plantId] <= 0) delete currentPlayer.inventory.seeds[plantId];
+        if (protect) {
+          currentPlayer.inventory.protects[protectId]--;
+          if (currentPlayer.inventory.protects[protectId] <= 0) delete currentPlayer.inventory.protects[protectId];
+        }
       }
 
       const roll = Math.random() * 100;
       if (roll < rate) {
         currentPlayer.inventory.seedsStar[plantId] = (currentPlayer.inventory.seedsStar[plantId] || 0) + 1;
         success++;
-      } else {
+      } else if (!unlimited) {
         currentPlayer.inventory.seeds[plantId] = (currentPlayer.inventory.seeds[plantId] || 0) + 1;
+        fail++;
+      } else {
         fail++;
       }
       did++;

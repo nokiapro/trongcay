@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 /** Phiên bản client (tăng mỗi lần deploy code mới) */
-const APP_VERSION = '1.9.40';
+const APP_VERSION = '1.9.41';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13107,7 +13107,9 @@ const DEFAULT_SETTINGS = {
   /** Tỉ lệ ghép hạt cơ bản khi không dùng bùa (1–100) */
   mergeBaseRate: 25,
   /** Phiên bản đã công bố trên server (Admin bấm “Công bố”) */
-  appVersion: '1.9.40',
+  appVersion: '1.9.41',
+  /** Favicon / site icon URL (admin) */
+  siteIconUrl: '',
   /** Ghi chú hiển thị khi có bản mới */
   updateNotes: '',
   /** true = bắt buộc tải lại (không cho đóng banner) */
@@ -13272,6 +13274,9 @@ async function initGlobalData() {
   } else {
     currentSettings = { ...DEFAULT_SETTINGS, ...setSnap.val() };
   }
+  try {
+    if (typeof applySiteIcon === 'function') applySiteIcon(currentSettings.siteIconUrl);
+  } catch (_) {}
 }
 
 /**
@@ -14459,84 +14464,77 @@ function getCompanions() { return DEFAULT_COMPANIONS; }
 function getCompanion(id) { return DEFAULT_COMPANIONS.find(c => c.id === id); }
 
 /**
- * Badge icon Font Awesome (Pro) — hiện góc trên-phải avatar giống thú cưng.
- * fa = class FA đầy đủ (vd: fa-solid fa-heart). style: solid|regular|brands|duotone|...
+ * Badge icon Font Awesome — CHỈ style regular (fa-regular).
+ * name = tên FA (slug) để tìm theo web Font Awesome; hiển thị shop 50 / trang.
  */
 const _FA_BADGE_SEED = [
-  // Nature / garden
-  ['fa-solid fa-seedling', 'Mầm', 300], ['fa-solid fa-leaf', 'Lá', 320], ['fa-solid fa-clover', 'Cỏ ba lá', 340],
-  ['fa-solid fa-tree', 'Cây', 360], ['fa-solid fa-tree-deciduous', 'Cây rụng lá', 380], ['fa-solid fa-palm-tree', 'Cọ', 400],
-  ['fa-solid fa-flower', 'Hoa', 420], ['fa-solid fa-flower-tulip', 'Tulip', 440], ['fa-solid fa-rose', 'Hồng', 460],
-  ['fa-solid fa-spa', 'Spa', 480], ['fa-solid fa-cannabis', 'Lá gai', 500], ['fa-solid fa-wheat', 'Lúa', 520],
-  ['fa-solid fa-apple-whole', 'Táo', 540], ['fa-solid fa-carrot', 'Cà rốt', 560], ['fa-solid fa-pepper-hot', 'Ớt', 580],
-  ['fa-solid fa-lemon', 'Chanh', 600], ['fa-solid fa-mushroom', 'Nấm', 620], ['fa-solid fa-seedling', 'Mầm xanh', 300],
-  // Weather / sky
-  ['fa-solid fa-sun', 'Mặt trời', 450], ['fa-solid fa-moon', 'Trăng', 470], ['fa-solid fa-cloud', 'Mây', 400],
-  ['fa-solid fa-cloud-rain', 'Mưa', 480], ['fa-solid fa-cloud-sun', 'Nắng mây', 500], ['fa-solid fa-rainbow', 'Cầu vồng', 650],
-  ['fa-solid fa-snowflake', 'Tuyết', 520], ['fa-solid fa-bolt', 'Sét', 550], ['fa-solid fa-wind', 'Gió', 430],
-  ['fa-solid fa-star', 'Sao', 500], ['fa-solid fa-stars', 'Chòm sao', 700], ['fa-solid fa-meteor', 'Sao băng', 800],
-  // Animals
-  ['fa-solid fa-dog', 'Chó', 400], ['fa-solid fa-cat', 'Mèo', 400], ['fa-solid fa-crow', 'Quạ', 420],
-  ['fa-solid fa-dove', 'Bồ câu', 450], ['fa-solid fa-dragon', 'Rồng', 900], ['fa-solid fa-fish', 'Cá', 380],
-  ['fa-solid fa-frog', 'Ếch', 390], ['fa-solid fa-hippo', 'Hà mã', 600], ['fa-solid fa-horse', 'Ngựa', 550],
-  ['fa-solid fa-kiwi-bird', 'Kiwi', 480], ['fa-solid fa-otter', 'Rái cá', 520], ['fa-solid fa-paw', 'Chân thú', 350],
-  ['fa-solid fa-spider', 'Nhện', 500], ['fa-solid fa-worm', 'Sâu', 320], ['fa-solid fa-bee', 'Ong', 450],
-  ['fa-solid fa-butterfly', 'Bướm', 480], ['fa-solid fa-feather', 'Lông vũ', 400], ['fa-solid fa-feather-pointed', 'Lông nhọn', 420],
-  // Hearts / love
-  ['fa-solid fa-heart', 'Tim', 400], ['fa-solid fa-heart-crack', 'Tim nứt', 450], ['fa-solid fa-heart-pulse', 'Nhịp tim', 500],
-  ['fa-regular fa-heart', 'Tim rỗng', 380], ['fa-solid fa-hand-holding-heart', 'Trao tim', 550],
-  // Fantasy / magic
-  ['fa-solid fa-wand-magic-sparkles', 'Đũa phép', 700], ['fa-solid fa-hat-wizard', 'Mũ pháp sư', 750],
-  ['fa-solid fa-ghost', 'Ma', 500], ['fa-solid fa-skull', 'Đầu lâu', 550], ['fa-solid fa-fire', 'Lửa', 480],
-  ['fa-solid fa-fire-flame-curved', 'Ngọn lửa', 520], ['fa-solid fa-gem', 'Ngọc', 800], ['fa-solid fa-crown', 'Vương miện', 900],
-  ['fa-solid fa-shield-halved', 'Khiên', 500], ['fa-solid fa-sword', 'Kiếm', 600], ['fa-solid fa-wand-sparkles', 'Đũa lấp lánh', 720],
-  // Symbols
-  ['fa-solid fa-certificate', 'Chứng nhận', 450], ['fa-solid fa-medal', 'Huy chương', 550], ['fa-solid fa-trophy', 'Cúp', 700],
-  ['fa-solid fa-award', 'Giải thưởng', 600], ['fa-solid fa-ribbon', 'Ruy băng', 400], ['fa-solid fa-gift', 'Quà', 450],
-  ['fa-solid fa-bell', 'Chuông', 380], ['fa-solid fa-bookmark', 'Đánh dấu', 350], ['fa-solid fa-flag', 'Cờ', 360],
-  ['fa-solid fa-key', 'Chìa khóa', 420], ['fa-solid fa-lock', 'Khóa', 400], ['fa-solid fa-unlock', 'Mở khóa', 400],
-  ['fa-solid fa-compass', 'La bàn', 480], ['fa-solid fa-map', 'Bản đồ', 450], ['fa-solid fa-location-dot', 'Địa điểm', 380],
-  // Faces / people
-  ['fa-solid fa-face-smile', 'Cười', 350], ['fa-solid fa-face-grin-stars', 'Cười sao', 450],
-  ['fa-solid fa-face-laugh-beam', 'Cười tươi', 420], ['fa-solid fa-face-kiss-wink-heart', 'Hôn tim', 480],
-  ['fa-solid fa-user', 'User', 300], ['fa-solid fa-user-astronaut', 'Phi hành gia', 700],
-  ['fa-solid fa-user-ninja', 'Ninja', 650], ['fa-solid fa-user-secret', 'Bí mật', 600],
-  // Food / drink
-  ['fa-solid fa-mug-hot', 'Cà phê', 380], ['fa-solid fa-ice-cream', 'Kem', 400], ['fa-solid fa-cookie', 'Bánh quy', 360],
-  ['fa-solid fa-cake-candles', 'Bánh kem', 450], ['fa-solid fa-pizza-slice', 'Pizza', 420], ['fa-solid fa-burger', 'Burger', 400],
-  ['fa-solid fa-champagne-glasses', 'Champagne', 550], ['fa-solid fa-wine-glass', 'Rượu', 480],
-  // Tech / game
-  ['fa-solid fa-gamepad', 'Gamepad', 500], ['fa-solid fa-dice', 'Xúc xắc', 420], ['fa-solid fa-chess-knight', 'Mã cờ', 480],
-  ['fa-solid fa-rocket', 'Tên lửa', 650], ['fa-solid fa-robot', 'Robot', 600], ['fa-solid fa-satellite', 'Vệ tinh', 700],
-  ['fa-solid fa-wifi', 'Wifi', 350], ['fa-solid fa-mobile-screen', 'Điện thoại', 380],
-  // Music / art
-  ['fa-solid fa-music', 'Nhạc', 400], ['fa-solid fa-headphones', 'Tai nghe', 420], ['fa-solid fa-guitar', 'Guitar', 480],
-  ['fa-solid fa-palette', 'Bảng màu', 450], ['fa-solid fa-camera', 'Máy ảnh', 400], ['fa-solid fa-film', 'Phim', 420],
-  // Misc popular
-  ['fa-solid fa-infinity', 'Vô cực', 600], ['fa-solid fa-peace', 'Hòa bình', 450], ['fa-solid fa-yin-yang', 'Âm dương', 550],
-  ['fa-solid fa-ankh', 'Ankh', 500], ['fa-solid fa-om', 'Om', 520], ['fa-solid fa-hamsa', 'Hamsa', 540],
-  ['fa-solid fa-anchor', 'Mỏ neo', 400], ['fa-solid fa-ship', 'Tàu', 480], ['fa-solid fa-plane', 'Máy bay', 450],
-  ['fa-solid fa-car', 'Xe', 400], ['fa-solid fa-bicycle', 'Xe đạp', 380], ['fa-solid fa-umbrella', 'Ô', 360],
-  ['fa-solid fa-glasses', 'Kính', 350], ['fa-solid fa-hat-cowboy', 'Mũ cao bồi', 480],
-  ['fa-solid fa-ring', 'Nhẫn', 700], ['fa-solid fa-coins', 'Xu', 400], ['fa-solid fa-sack-dollar', 'Túi tiền', 550],
-  ['fa-solid fa-diamond', 'Kim cương', 900], ['fa-solid fa-sparkles', 'Lấp lánh', 500],
-  ['fa-solid fa-bolt-lightning', 'Sét mạnh', 580], ['fa-solid fa-atom', 'Nguyên tử', 650],
-  ['fa-solid fa-dna', 'ADN', 600], ['fa-solid fa-flask', 'Bình thí nghiệm', 420],
-  ['fa-solid fa-book', 'Sách', 350], ['fa-solid fa-graduation-cap', 'Mũ tốt nghiệp', 480],
-  ['fa-solid fa-house', 'Nhà', 320], ['fa-solid fa-building', 'Tòa nhà', 400],
-  ['fa-solid fa-globe', 'Địa cầu', 450], ['fa-solid fa-earth-americas', 'Trái đất', 500],
-  ['fa-solid fa-mountain', 'Núi', 450], ['fa-solid fa-water', 'Nước', 380],
-  ['fa-solid fa-droplet', 'Giọt nước', 320], ['fa-solid fa-fire-extinguisher', 'Bình chữa cháy', 400],
-  // Brands (FA Pro brands)
-  ['fa-brands fa-github', 'GitHub', 500], ['fa-brands fa-discord', 'Discord', 500],
-  ['fa-brands fa-x-twitter', 'X', 450], ['fa-brands fa-instagram', 'Instagram', 450],
-  ['fa-brands fa-youtube', 'YouTube', 480], ['fa-brands fa-tiktok', 'TikTok', 480],
-  ['fa-brands fa-spotify', 'Spotify', 460], ['fa-brands fa-steam', 'Steam', 500],
-  // Duotone (Pro)
-  ['fa-duotone fa-solid fa-heart', 'Tim duotone', 800], ['fa-duotone fa-solid fa-star', 'Sao duotone', 850],
-  ['fa-duotone fa-solid fa-crown', 'Vương miện DT', 1000], ['fa-duotone fa-solid fa-gem', 'Ngọc DT', 950],
-  ['fa-duotone fa-solid fa-fire', 'Lửa DT', 820], ['fa-duotone fa-solid fa-bolt', 'Sét DT', 830],
-  ['fa-duotone fa-solid fa-dragon', 'Rồng DT', 1200], ['fa-duotone fa-solid fa-wand-magic-sparkles', 'Đũa DT', 1100]
+  ['address-book', 'Sổ địa chỉ', 320], ['address-card', 'Thẻ địa chỉ', 330],
+  ['bell', 'Chuông', 340], ['bookmark', 'Đánh dấu', 350], ['building', 'Tòa nhà', 360],
+  ['calendar', 'Lịch', 370], ['calendar-check', 'Lịch check', 380], ['calendar-days', 'Lịch ngày', 390],
+  ['chart-bar', 'Biểu đồ', 400], ['chess-bishop', 'Tượng cờ', 410], ['chess-king', 'Vua cờ', 420],
+  ['chess-knight', 'Mã cờ', 430], ['chess-pawn', 'Tốt cờ', 440], ['chess-queen', 'Hậu cờ', 450],
+  ['chess-rook', 'Xe cờ', 460], ['circle', 'Tròn', 300], ['circle-check', 'Tròn check', 350],
+  ['circle-dot', 'Chấm tròn', 320], ['circle-down', 'Tròn xuống', 330], ['circle-left', 'Tròn trái', 330],
+  ['circle-pause', 'Tạm dừng', 340], ['circle-play', 'Phát', 350], ['circle-question', 'Hỏi', 360],
+  ['circle-right', 'Tròn phải', 330], ['circle-stop', 'Dừng', 340], ['circle-up', 'Tròn lên', 330],
+  ['circle-user', 'User tròn', 380], ['circle-xmark', 'Tròn X', 360], ['clipboard', 'Clipboard', 370],
+  ['clock', 'Đồng hồ', 380], ['clone', 'Clone', 390], ['closed-captioning', 'Phụ đề', 400],
+  ['comment', 'Bình luận', 360], ['comment-dots', 'Chat dots', 370], ['comments', 'Chat nhóm', 380],
+  ['compass', 'La bàn', 420], ['copy', 'Copy', 350], ['copyright', 'Bản quyền', 360],
+  ['credit-card', 'Thẻ tín dụng', 400], ['envelope', 'Thư', 340], ['envelope-open', 'Thư mở', 360],
+  ['eye', 'Mắt', 350], ['eye-slash', 'Che mắt', 360], ['face-angry', 'Tức giận', 380],
+  ['face-dizzy', 'Chóng mặt', 390], ['face-flushed', 'Đỏ mặt', 400], ['face-frown', 'Buồn', 380],
+  ['face-frown-open', 'Buồn miệng mở', 390], ['face-grimace', 'Nhăn mặt', 400],
+  ['face-grin', 'Cười toe', 380], ['face-grin-beam', 'Cười tươi', 400],
+  ['face-grin-beam-sweat', 'Cười mồ hôi', 420], ['face-grin-hearts', 'Cười tim', 450],
+  ['face-grin-squint', 'Cười nheo', 420], ['face-grin-stars', 'Cười sao', 450],
+  ['face-grin-tears', 'Cười khóc', 430], ['face-grin-tongue', 'Cười lưỡi', 420],
+  ['face-grin-tongue-squint', 'Cười lưỡi nheo', 440], ['face-grin-tongue-wink', 'Cười lưỡi nháy', 440],
+  ['face-grin-wide', 'Cười rộng', 420], ['face-grin-wink', 'Cười nháy', 430],
+  ['face-kiss', 'Hôn', 420], ['face-kiss-beam', 'Hôn tươi', 440], ['face-kiss-wink-heart', 'Hôn tim', 480],
+  ['face-laugh', 'Cười lớn', 400], ['face-laugh-beam', 'Cười rạng', 420],
+  ['face-laugh-squint', 'Cười nheo', 420], ['face-laugh-wink', 'Cười nháy', 430],
+  ['face-meh', 'Meh', 360], ['face-meh-blank', 'Meh trống', 370],
+  ['face-rolling-eyes', 'Lăn mắt', 400], ['face-sad-cry', 'Khóc buồn', 400],
+  ['face-sad-tear', 'Nước mắt', 400], ['face-smile', 'Cười', 360],
+  ['face-smile-beam', 'Cười tươi', 400], ['face-smile-wink', 'Cười nháy', 420],
+  ['face-surprise', 'Ngạc nhiên', 400], ['face-tired', 'Mệt', 380],
+  ['file', 'File', 320], ['file-audio', 'File audio', 360], ['file-code', 'File code', 380],
+  ['file-excel', 'File Excel', 400], ['file-image', 'File ảnh', 380], ['file-lines', 'File dòng', 360],
+  ['file-pdf', 'File PDF', 400], ['file-powerpoint', 'File PPT', 400], ['file-video', 'File video', 380],
+  ['file-word', 'File Word', 400], ['file-zipper', 'File zip', 380],
+  ['flag', 'Cờ', 350], ['floppy-disk', 'Đĩa mềm', 360], ['folder', 'Thư mục', 340],
+  ['folder-closed', 'Thư mục đóng', 350], ['folder-open', 'Thư mục mở', 360],
+  ['font-awesome', 'Font Awesome', 500], ['futbol', 'Bóng đá', 400],
+  ['gem', 'Ngọc', 600], ['hand', 'Tay', 350], ['hand-back-fist', 'Nắm đấm', 380],
+  ['hand-lizard', 'Tay thằn lằn', 400], ['hand-peace', 'Peace', 400],
+  ['hand-point-down', 'Chỉ xuống', 360], ['hand-point-left', 'Chỉ trái', 360],
+  ['hand-point-right', 'Chỉ phải', 360], ['hand-point-up', 'Chỉ lên', 360],
+  ['hand-pointer', 'Con trỏ', 380], ['hand-scissors', 'Kéo', 380],
+  ['hand-spock', 'Spock', 400], ['handshake', 'Bắt tay', 420],
+  ['hard-drive', 'Ổ cứng', 380], ['heart', 'Tim', 400], ['hospital', 'Bệnh viện', 420],
+  ['hourglass', 'Đồng hồ cát', 400], ['hourglass-half', 'Cát nửa', 420],
+  ['id-badge', 'Thẻ ID', 400], ['id-card', 'CMND', 420],
+  ['image', 'Ảnh', 360], ['images', 'Nhiều ảnh', 380],
+  ['keyboard', 'Bàn phím', 380], ['lemon', 'Chanh', 400],
+  ['life-ring', 'Phao', 420], ['lightbulb', 'Bóng đèn', 400],
+  ['map', 'Bản đồ', 420], ['message', 'Tin nhắn', 360],
+  ['money-bill-1', 'Tiền', 400], ['moon', 'Trăng', 420],
+  ['newspaper', 'Báo', 380], ['note-sticky', 'Sticky note', 360],
+  ['object-group', 'Nhóm object', 380], ['object-ungroup', 'Tách object', 380],
+  ['paper-plane', 'Máy bay giấy', 420], ['paste', 'Dán', 350],
+  ['pen-to-square', 'Sửa', 380], ['rectangle-list', 'Danh sách', 360],
+  ['rectangle-xmark', 'Hộp X', 360], ['registered', 'Registered', 350],
+  ['share-from-square', 'Chia sẻ', 380], ['snowflake', 'Tuyết', 420],
+  ['square', 'Vuông', 300], ['square-caret-down', 'Caret xuống', 340],
+  ['square-caret-left', 'Caret trái', 340], ['square-caret-right', 'Caret phải', 340],
+  ['square-caret-up', 'Caret lên', 340], ['square-check', 'Vuông check', 360],
+  ['square-full', 'Vuông đầy', 320], ['square-minus', 'Vuông trừ', 340],
+  ['square-plus', 'Vuông cộng', 340], ['star', 'Sao', 450],
+  ['sun', 'Mặt trời', 430], ['thumbs-down', 'Dislike', 360],
+  ['thumbs-up', 'Like', 360], ['trash-can', 'Thùng rác', 350],
+  ['user', 'User', 320], ['window-maximize', 'Cửa sổ max', 360],
+  ['window-minimize', 'Cửa sổ min', 360], ['window-restore', 'Khôi phục', 360]
 ];
 
 const DEFAULT_AVATAR_BADGES = (function () {
@@ -14544,24 +14542,26 @@ const DEFAULT_AVATAR_BADGES = (function () {
   const out = [];
   let i = 0;
   _FA_BADGE_SEED.forEach(row => {
-    const fa = row[0];
-    if (seen[fa]) return;
-    seen[fa] = true;
+    const slug = String(row[0] || '').replace(/^fa-/, '');
+    if (!slug || seen[slug]) return;
+    seen[slug] = true;
     i++;
+    const fa = 'fa-regular fa-' + slug;
     const id = 'ab-' + String(i).padStart(3, '0');
-    const name = row[1] || fa.split(' ').pop().replace(/^fa-/, '');
+    const name = row[1] || slug;
     const price = Number(row[2]) || 400;
     let rarity = 'common';
-    if (price >= 1000) rarity = 'legendary';
-    else if (price >= 700) rarity = 'epic';
-    else if (price >= 500) rarity = 'rare';
+    if (price >= 550) rarity = 'legendary';
+    else if (price >= 450) rarity = 'epic';
+    else if (price >= 380) rarity = 'rare';
     out.push({
       id,
       fa,
+      slug,
       name,
       price,
       rarity,
-      desc: 'Icon Font Awesome hiện góc avatar'
+      desc: 'Icon FA regular · ' + slug
     });
   });
   return out;
