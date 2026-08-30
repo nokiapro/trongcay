@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vườn Xanh - Trồng Cây & Thu Hoạch</title>
-  <link rel="stylesheet" href="css/style.css?v=1.9.34" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.35" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -278,7 +278,7 @@
         </div>
         <div class="level-badge-showcase" id="level-badge-showcase">
           <div class="level-badge-ambient" id="levelAmbientGlow"></div>
-          <div id="activeTreeWrapper" class="tree-badge-wrapper tier-tree-1">
+          <div id="activeTreeWrapper" class="tree-badge-wrapper tier-tree-1" style="overflow: visible; border-radius: 0;">
             <div id="activeTreeContainer" class="tree-badge-container">
               <div class="orbit-halo-ring"></div>
               <div class="orbit-halo-ring-inner"></div>
@@ -442,6 +442,7 @@
               <img id="profile-avatar-img" class="profile-avatar" src="" alt="Avatar" style="display:none" />
               <div id="profile-avatar-fallback" class="profile-avatar-fallback"><i class="fa-solid fa-user"></i></div>
             </div>
+            <div id="profile-level-tag" class="tree-level-tag profile-level-under-avatar tier-tree-1">LVL <span id="profile-level-num">1</span></div>
           </div>
           <div class="profile-field">
             <label>Tên hiển thị</label>
@@ -747,10 +748,10 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.34"></script>
-  <script src="js/data.js?v=1.9.34"></script>
-  <script src="js/game.js?v=1.9.34"></script>
-  <script src="js/features.js?v=1.9.34"></script>
-  <script src="js/app.js?v=1.9.34"></script>
+  <script src="js/firebase-config.js?v=1.9.35"></script>
+  <script src="js/data.js?v=1.9.35"></script>
+  <script src="js/game.js?v=1.9.35"></script>
+  <script src="js/features.js?v=1.9.35"></script>
+  <script src="js/app.js?v=1.9.35"></script>
 </body>
 </html>

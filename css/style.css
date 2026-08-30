@@ -1036,7 +1036,7 @@ button.btn,
 
 .activity-list {
   list-style: none;
-  max-height: 320px;
+  max-height: 581px;
   overflow-y: auto;
 }
 
@@ -6537,20 +6537,46 @@ html[data-theme="dark"] .merge-box .merge-sub {
   position: relative;
   z-index: 10;
   margin-top: -12px;
-  padding: 4px 16px;
-  border-radius: 999px;
+  padding: 4px 20px;
+  border-radius: 9999px !important;
   font-weight: 900;
   font-size: 0.9rem;
   letter-spacing: 0.05em;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   border: 2px solid rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(8px);
   text-shadow: 0 2px 4px rgba(0,0,0,0.6);
   transition: all 0.4s ease;
+  /* Bo tròn hoàn hảo, không lộ hình vuông */
+  overflow: hidden !important;
+  background-clip: padding-box !important;
+  -webkit-background-clip: padding-box !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 [data-theme="dark"] .tree-level-tag,
 .dark .tree-level-tag {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+#activeTreeWrapper.tree-badge-wrapper {
+  overflow: visible !important;
+  border-radius: 0 !important;
+}
+/* LVL dưới avatar hồ sơ */
+.profile-level-under-avatar {
+  margin-top: -8px;
+  position: relative;
+  z-index: 5;
+}
+.profile-avatar-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 .orbit-halo-ring {
   position: absolute;
@@ -7541,4 +7567,32 @@ html[data-theme="dark"] .profile-companion {
 }
 .agent-garden-enable {
   margin-bottom: 8px;
+}
+
+
+/* FORCE no border on all buttons site-wide */
+.btn,
+button.btn,
+.btn-sm,
+.btn.btn-sm,
+.btn-primary,
+.btn-secondary,
+.btn-success,
+.btn-danger,
+.btn-warning,
+.btn-purple,
+.btn-timer,
+.btn-icon,
+button:not(.agent-garden-tab):not(.nav-btn):not(.shop-tab) {
+  border: none !important;
+  outline: none;
+}
+.btn:focus,
+.btn:focus-visible,
+button.btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+.btn-secondary {
+  border: none !important;
 }

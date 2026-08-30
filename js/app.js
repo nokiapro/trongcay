@@ -16,10 +16,25 @@ function showToast(msg, type = '') {
   setTimeout(() => toast.classList.remove('show'), 2800);
 }
 
+function updateProfileLevelTag(level) {
+  const lv = Math.min(typeof TREE_MAX_LEVEL === 'number' ? TREE_MAX_LEVEL : 10000, Math.max(1, parseInt(level, 10) || 1));
+  const num = document.getElementById('profile-level-num');
+  if (num) num.textContent = lv;
+  const tag = document.getElementById('profile-level-tag');
+  if (!tag) return;
+  const tierFn = typeof getTreeTier === 'function' ? getTreeTier : null;
+  if (!tierFn || typeof TREE_TIERS === 'undefined') return;
+  const tier = tierFn(lv);
+  if (!tier) return;
+  TREE_TIERS.forEach(t => tag.classList.remove(t.class));
+  tag.classList.add(tier.class);
+}
+
 function updateCoins() {
   if (!currentPlayer) return;
   document.getElementById('coin-display').textContent = (currentPlayer.coins || 0).toLocaleString();
   document.getElementById('level-display').textContent = currentPlayer.level || 1;
+  if (typeof updateProfileLevelTag === 'function') updateProfileLevelTag(currentPlayer.level || 1);
   const fertEl = document.getElementById('fertilizer-count');
   if (fertEl) fertEl.textContent = Game.totalFertilizerCount();
 }
@@ -1141,6 +1156,7 @@ function applyProfileAvatarFrame() {
 
 
 function renderProfile() {
+  if (currentPlayer && typeof updateProfileLevelTag === "function") updateProfileLevelTag(currentPlayer.level || 1);
   if (!currentUser || !currentPlayer) return;
   document.getElementById('profile-uid').textContent = currentUser.uid;
   document.getElementById('profile-name').value = getDisplayName();
