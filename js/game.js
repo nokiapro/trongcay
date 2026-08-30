@@ -2042,9 +2042,9 @@ const Game = {
 
     // Báo cáo chi tiết nhiều dòng
     const lines = [];
-    lines.push('⚡ BÙ OFFLINE — vắng ' + offlineText + ' (từ ' + new Date(from).toLocaleString('vi-VN') + ' → ' + new Date(now).toLocaleString('vi-VN') + ')');
-    lines.push('📋 Tóm tắt: ' + (notes.length ? notes.join(' · ') : (changed ? 'đã cập nhật trạng thái' : 'không có thay đổi lớn')));
-    lines.push('🌧️ Mưa: ' + rainHits + ' trận (tỉ lệ admin ' + rainChance + '% / mỗi 15 phút) · ô được Tiên tưới kèm mưa: ' + rainWatered);
+    lines.push('BÙ OFFLINE — vắng ' + offlineText + ' (từ ' + new Date(from).toLocaleString('vi-VN') + ' → ' + new Date(now).toLocaleString('vi-VN') + ')');
+    lines.push('Tóm tắt: ' + (notes.length ? notes.join(' · ') : (changed ? 'đã cập nhật trạng thái' : 'không có thay đổi lớn')));
+    lines.push('Mưa: ' + rainHits + ' trận (tỉ lệ admin ' + rainChance + '% / mỗi 15 phút) · ô được Tiên tưới kèm mưa: ' + rainWatered);
     // Đồng hồ 3h sau bù
     let cycleLeftSec = null;
     if (fairyActive) {
@@ -2053,13 +2053,13 @@ const Game = {
         cycleLeftSec = Math.max(0, Math.ceil((lastC + this.BOOST_MS - now) / 1000));
       }
     }
-    lines.push('🧚 Tiên: ' + (fairyActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · chu kỳ 3 giờ đã chạy: ' + fairyCycles + ' lần · đồng hồ 3h còn: ' + (cycleLeftSec == null ? '—' : this.formatTime(cycleLeftSec)) + ' (không reset full 3h)');
-    lines.push('💔 NYC: ' + (nycActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · thu ' + totalHarvest + ' ô (vụ) · trồng lại ' + totalPlant + ' ô (plantedAt đúng giờ chín)');
-    lines.push('💁 Giúp việc: ' + (helperActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · mua theo mốc kho: ' + helperBuys + ' đợt');
+    lines.push('Tiên: ' + (fairyActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · chu kỳ 3 giờ đã chạy: ' + fairyCycles + ' lần · đồng hồ 3h còn: ' + (cycleLeftSec == null ? '—' : this.formatTime(cycleLeftSec)) + ' (không reset full 3h)');
+    lines.push('NYC: ' + (nycActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · thu ' + totalHarvest + ' ô (vụ) · trồng lại ' + totalPlant + ' ô (plantedAt đúng giờ chín)');
+    lines.push('Giúp việc: ' + (helperActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · mua theo mốc kho: ' + helperBuys + ' đợt');
     if (fromLog) {
-      lines.push('📝 Có log thao tác (trồng/tưới/bón) → mốc bù lấy sớm hơn lastSeen');
+      lines.push('Có log thao tác (trồng/tưới/bón) → mốc bù lấy sớm hơn lastSeen');
     }
-    lines.push('✅ Kết thúc bù offline · lastSeen/lastCatchUp cập nhật ' + new Date(now).toLocaleString('vi-VN'));
+    lines.push('Kết thúc bù offline · lastSeen/lastCatchUp cập nhật ' + new Date(now).toLocaleString('vi-VN'));
 
     // Luôn ghi log chi tiết khi offline ≥ ngưỡng (kể cả changed=false để user thấy đã check)
     this.logOfflineReport({
