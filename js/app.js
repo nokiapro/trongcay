@@ -1160,11 +1160,13 @@ function applyProfileBadge() {
   const wrap = document.getElementById('profile-avatar-wrap');
   if (!el) return;
   const id = currentPlayer && currentPlayer.avatarBadgeId;
+  const owned = id && currentPlayer.avatarBadges && currentPlayer.avatarBadges[id];
   const b = id && Game.getAvatarBadge ? Game.getAvatarBadge(id) : null;
-  if (b && b.fa) {
-    el.innerHTML = '<i class="' + b.fa + '"></i>';
+  const fa = (owned && owned.fa) || (b && b.fa) || null;
+  if (fa) {
+    el.innerHTML = '<i class="' + fa + '"></i>';
     el.style.display = 'flex';
-    el.title = b.name || '';
+    el.title = (b && b.name) || (owned && owned.slug) || id || '';
     if (wrap) wrap.classList.add('has-badge');
   } else {
     el.innerHTML = '';
@@ -2554,7 +2556,45 @@ function getShopPlantsFiltered() {
   return plants;
 }
 
+
+/** Cache danh sách icon từ Font Awesome Pro CSS (pro.min.css) */
+let _faProIconList = null;
+let _faProIconLoading = null;
+const FA_PRO_CSS_URL = 'https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css';
+
+function loadFaProIconList() {
+  if (_faProIconList) return Promise.resolve(_faProIconList);
+  if (_faProIconLoading) return _faProIconLoading;
+  _faProIconLoading = fetch(FA_PRO_CSS_URL)
+    .then(r => r.text())
+    .then(css => {
+      const re = /\.fa-([a-z0-9-]+)\s*\{--fa:/g;
+      const set = new Set();
+      let m;
+      while ((m = re.exec(css)) !== null) {
+        const slug = m[1];
+        // bỏ số đơn, class style
+        if (!slug || /^\d+$/.test(slug)) continue;
+        if (['solid','regular','light','thin','duotone','brands','sharp','classic'].indexOf(slug) >= 0) continue;
+        set.add(slug);
+      }
+      _faProIconList = Array.from(set).sort();
+      return _faProIconList;
+    })
+    .catch(err => {
+      console.warn('loadFaProIconList', err);
+      // fallback từ data.js
+      const fb = (typeof getAvatarBadges === 'function' ? getAvatarBadges() : []).map(b => b.slug || (b.fa || '').replace(/^fa-regular fa-/, '')).filter(Boolean);
+      _faProIconList = fb;
+      return _faProIconList;
+    });
+  return _faProIconLoading;
+}
+
+
 function renderShop() {
+  const faBarHide = document.getElementById('badge-fa-search-bar');
+  if (faBarHide && currentShopTab !== 'badge') faBarHide.style.display = 'none';
   const grid = document.getElementById('shop-grid');
   grid.innerHTML = '';
   const seeds = (currentPlayer && currentPlayer.inventory && currentPlayer.inventory.seeds) || {};
@@ -2929,77 +2969,110 @@ function renderShop() {
 
   if (currentShopTab === 'badge') {
     const countEl = document.getElementById('shop-count');
+    const pager = document.getElementById('shop-pager');
     const BADGE_PAGE = 50;
-    let items = (Game.getAvatarBadges && Game.getAvatarBadges()) || [];
-    // Chỉ regular; lọc theo tên FA (slug) / tên hiển thị — giống tìm trên fontawesome.com
-    items = items.filter(it => (it.fa || '').indexOf('fa-regular') === 0);
-    const q = (document.getElementById('shop-search')?.value || '').trim().toLowerCase().replace(/^fa-regular\s+fa-/, '').replace(/^fa-/, '');
-    if (q) {
-      items = items.filter(it =>
-        (it.slug || '').toLowerCase().indexOf(q) >= 0 ||
-        (it.name || '').toLowerCase().indexOf(q) >= 0 ||
-        (it.fa || '').toLowerCase().indexOf(q) >= 0
-      );
+    // Ẩn ô tìm cửa hàng chung — dùng ô tìm FA riêng
+    const shopSearchWrap = document.getElementById('shop-search')?.closest('.shop-search-wrap, .shop-toolbar, .shop-filters') || document.getElementById('shop-search')?.parentElement;
+    // Render thanh tìm FA + grid
+    if (countEl) countEl.textContent = 'Đang tải icon từ Font Awesome Pro…';
+    if (pager) pager.innerHTML = '';
+
+    // Toolbar tìm riêng cho FA (không dùng #shop-search)
+    let faBar = document.getElementById('badge-fa-search-bar');
+    if (!faBar) {
+      faBar = document.createElement('div');
+      faBar.id = 'badge-fa-search-bar';
+      faBar.className = 'badge-fa-search-bar';
+      faBar.innerHTML = `
+        <label class="badge-fa-label"><i class="fa-brands fa-font-awesome"></i> Tìm icon trong FA Pro (regular)</label>
+        <div class="badge-fa-row">
+          <input type="search" id="badge-fa-search" placeholder="Nhập tên icon FA… ví dụ: heart, star, face-smile" autocomplete="off" />
+          <span class="badge-fa-hint">Nguồn: pro.min.css · chỉ style regular · 50 / trang</span>
+        </div>`;
+      grid.parentElement?.insertBefore(faBar, grid);
     }
-    const totalPages = Math.max(1, Math.ceil(items.length / BADGE_PAGE));
-    if (shopPage >= totalPages) shopPage = totalPages - 1;
-    const slice = items.slice(shopPage * BADGE_PAGE, (shopPage + 1) * BADGE_PAGE);
-    if (countEl) {
-      countEl.textContent = items.length + ' icon FA regular · trang ' + (shopPage + 1) + '/' + totalPages + ' (50/trang) · tìm theo tên FA';
+    faBar.style.display = '';
+
+    const qInput = document.getElementById('badge-fa-search');
+    if (qInput && !qInput._boundFa) {
+      qInput._boundFa = true;
+      let tmr = null;
+      qInput.addEventListener('input', () => {
+        clearTimeout(tmr);
+        tmr = setTimeout(() => { shopPage = 0; renderShop(); }, 200);
+      });
     }
+
+    const q = (qInput?.value || '').trim().toLowerCase().replace(/^fa-regular\s+fa-/, '').replace(/^fa-/, '');
     const owned = (currentPlayer && currentPlayer.avatarBadges) || {};
     const eq = (currentPlayer && currentPlayer.avatarBadgeId) || null;
-    const none = document.createElement('div');
-    none.className = 'shop-card';
-    none.innerHTML = `<div class="shop-icon"><i class="fa-regular fa-circle-xmark" style="font-size:1.6rem"></i></div>
-      <div class="shop-name">Không badge</div>
-      <div class="shop-owned">${!eq ? shopOwnedLabel('equipped') : ''}</div>
-      <button class="btn btn-secondary btn-equip-badge" data-id="none">Gỡ</button>`;
-    grid.appendChild(none);
-    slice.forEach(it => {
-      const have = !!owned[it.id];
-      const on = eq === it.id;
-      const rarityLabel = it.rarity === 'legendary' ? 'Huyền thoại' : it.rarity === 'epic' ? 'Sử thi' : it.rarity === 'rare' ? 'Hiếm' : 'Thường';
-      const card = document.createElement('div');
-      card.className = 'shop-card rarity-' + (it.rarity || 'common');
-      card.innerHTML = `<div class="shop-icon" style="font-size:1.8rem;color:var(--primary,#16a34a)"><i class="${it.fa}"></i></div>
-        <div class="shop-name">${it.name}</div>
-        <span class="shop-type">regular · ${rarityLabel}</span>
-        <div class="shop-meta"><span style="font-size:0.7rem;opacity:0.75">${it.slug || it.fa}</span></div>
-        <div class="shop-owned">${on ? shopOwnedLabel('equipped') : (have ? shopOwnedLabel('owned') : shopOwnedLabel('none'))}</div>
-        <div class="shop-price">${(it.price || 0).toLocaleString()} 🪙</div>
-        ${have
-          ? `<button class="btn ${on ? 'btn-secondary' : 'btn-primary'} btn-equip-badge" data-id="${it.id}">${on ? 'Đang gắn' : 'Gắn'}</button>`
-          : `<button class="btn btn-primary btn-buy-badge" data-id="${it.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>`}`;
-      grid.appendChild(card);
-    });
-    grid.querySelectorAll('.btn-buy-badge').forEach(btn => btn.addEventListener('click', async () => {
-      const res = await Game.buyAvatarBadge(btn.dataset.id);
-      showToast(res.msg, res.ok ? 'success' : 'error');
-      updateCoins();
-      renderShop();
-      if (typeof applyProfileBadge === 'function') applyProfileBadge();
-    }));
-    grid.querySelectorAll('.btn-equip-badge').forEach(btn => btn.addEventListener('click', () => {
-      const res = Game.equipAvatarBadge(btn.dataset.id);
-      showToast(res.msg, res.ok ? 'success' : 'error');
-      if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
-      else if (typeof savePlayer === 'function') savePlayer();
-      renderShop();
-      if (typeof applyProfileBadge === 'function') applyProfileBadge();
-    }));
-    const pager = document.getElementById('shop-pager');
-    if (pager) {
-      if (totalPages > 1) {
-        pager.innerHTML = `<button class="btn btn-secondary btn-sm" id="badge-prev" ${shopPage <= 0 ? 'disabled' : ''}>‹</button>
-             <span class="shop-page-label">${shopPage + 1} / ${totalPages}</span>
-             <button class="btn btn-secondary btn-sm" id="badge-next" ${shopPage >= totalPages - 1 ? 'disabled' : ''}>›</button>`;
-        pager.querySelector('#badge-prev')?.addEventListener('click', () => { shopPage = Math.max(0, shopPage - 1); renderShop(); });
-        pager.querySelector('#badge-next')?.addEventListener('click', () => { shopPage = Math.min(totalPages - 1, shopPage + 1); renderShop(); });
-      } else {
-        pager.innerHTML = '';
+
+    const renderWithList = (allSlugs) => {
+      let slugs = allSlugs || [];
+      if (q) slugs = slugs.filter(s => s.indexOf(q) >= 0);
+      const totalPages = Math.max(1, Math.ceil(slugs.length / BADGE_PAGE));
+      if (shopPage >= totalPages) shopPage = totalPages - 1;
+      const slice = slugs.slice(shopPage * BADGE_PAGE, (shopPage + 1) * BADGE_PAGE);
+      if (countEl) {
+        countEl.textContent = slugs.length.toLocaleString() + ' icon FA regular (pro.min.css) · trang ' + (shopPage + 1) + '/' + totalPages;
       }
-    }
+      grid.innerHTML = '';
+      const none = document.createElement('div');
+      none.className = 'shop-card';
+      none.innerHTML = `<div class="shop-icon"><i class="fa-regular fa-circle-xmark" style="font-size:1.6rem"></i></div>
+        <div class="shop-name">Không badge</div>
+        <div class="shop-owned">${!eq ? shopOwnedLabel('equipped') : ''}</div>
+        <button class="btn btn-secondary btn-equip-badge" data-id="none">Gỡ</button>`;
+      grid.appendChild(none);
+      slice.forEach(slug => {
+        const id = 'ab-' + slug;
+        const fa = 'fa-regular fa-' + slug;
+        const have = !!owned[id];
+        const on = eq === id;
+        const price = 400;
+        const card = document.createElement('div');
+        card.className = 'shop-card';
+        card.innerHTML = `<div class="shop-icon" style="font-size:1.8rem;color:var(--primary,#16a34a)"><i class="${fa}"></i></div>
+          <div class="shop-name">${slug}</div>
+          <span class="shop-type">fa-regular</span>
+          <div class="shop-meta"><span style="font-size:0.7rem;opacity:0.75">${fa}</span></div>
+          <div class="shop-owned">${on ? shopOwnedLabel('equipped') : (have ? shopOwnedLabel('owned') : shopOwnedLabel('none'))}</div>
+          <div class="shop-price">${price.toLocaleString()} 🪙</div>
+          ${have
+            ? `<button class="btn ${on ? 'btn-secondary' : 'btn-primary'} btn-equip-badge" data-id="${id}">${on ? 'Đang gắn' : 'Gắn'}</button>`
+            : `<button class="btn btn-primary btn-buy-badge" data-id="${id}" data-slug="${slug}"><i class="fa-solid fa-cart-plus"></i> Mua</button>`}`;
+        grid.appendChild(card);
+      });
+      grid.querySelectorAll('.btn-buy-badge').forEach(btn => btn.addEventListener('click', async () => {
+        const res = await Game.buyAvatarBadge(btn.dataset.id);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        updateCoins();
+        renderShop();
+        if (typeof applyProfileBadge === 'function') applyProfileBadge();
+      }));
+      grid.querySelectorAll('.btn-equip-badge').forEach(btn => btn.addEventListener('click', () => {
+        const res = Game.equipAvatarBadge(btn.dataset.id);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
+        else if (typeof savePlayer === 'function') savePlayer();
+        renderShop();
+        if (typeof applyProfileBadge === 'function') applyProfileBadge();
+      }));
+      if (pager) {
+        if (totalPages > 1) {
+          pager.innerHTML = `<button class="btn btn-secondary btn-sm" id="badge-prev" ${shopPage <= 0 ? 'disabled' : ''}>‹</button>
+               <span class="shop-page-label">${shopPage + 1} / ${totalPages}</span>
+               <button class="btn btn-secondary btn-sm" id="badge-next" ${shopPage >= totalPages - 1 ? 'disabled' : ''}>›</button>`;
+          pager.querySelector('#badge-prev')?.addEventListener('click', () => { shopPage = Math.max(0, shopPage - 1); renderShop(); });
+          pager.querySelector('#badge-next')?.addEventListener('click', () => { shopPage = Math.min(totalPages - 1, shopPage + 1); renderShop(); });
+        } else pager.innerHTML = '';
+      }
+    };
+
+    loadFaProIconList().then(list => {
+      if (currentShopTab !== 'badge') return;
+      renderWithList(list);
+    });
     return;
   }
 

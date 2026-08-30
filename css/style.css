@@ -3112,19 +3112,37 @@ html[data-theme="dark"] .plot-boost-badge {
   box-shadow: var(--shadow);
   margin-bottom: 16px;
 }
-.quest-block { margin-bottom: 20px; }
-.quest-block h3 { margin: 0 0 12px; font-size: 1.1rem; }
-.quest-card {
+.quest-block {
+  margin-bottom: 20px;
   background: var(--card);
-  border-radius: 14px;
-  padding: 14px 16px;
-  margin-bottom: 10px;
+  border-radius: 16px;
+  overflow: hidden;
   box-shadow: var(--shadow);
+  border: 1px solid color-mix(in srgb, var(--primary, #22c55e) 18%, transparent);
+}
+.quest-block h3 {
+  margin: 0;
+  padding: 14px 16px;
+  font-size: 1.1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--primary, #22c55e) 14%, transparent);
+  background: color-mix(in srgb, var(--primary, #22c55e) 8%, var(--card));
+}
+.quest-card {
+  background: transparent;
+  border-radius: 0;
+  padding: 14px 16px;
+  margin-bottom: 0;
+  box-shadow: none;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   justify-content: space-between;
+  border-bottom: 1px solid color-mix(in srgb, var(--primary, #22c55e) 10%, transparent);
+}
+.quest-card:last-child {
+  border-bottom: none;
+  border-radius: 0 0 16px 16px;
 }
 .quest-card .q-title { font-weight: 700; }
 .quest-card .q-prog {
@@ -7148,7 +7166,6 @@ textarea::placeholder {
 .activity-section,
 #page-activity .activity-section,
 .quest-block,
-.quest-card,
 .rank-item,
 .inv-item,
 .ach-item,
@@ -7657,4 +7674,40 @@ html[data-theme="dark"] .profile-badge {
 }
 .btn-timer {
   border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+
+/* Badge FA search (riêng, nguồn pro.min.css) */
+.badge-fa-search-bar {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--primary, #22c55e) 20%, transparent);
+  box-shadow: var(--shadow);
+}
+.badge-fa-label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+.badge-fa-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.badge-fa-row input[type="search"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #cbd5e1);
+  background: var(--bg, #fff);
+  color: var(--text);
+}
+.badge-fa-hint {
+  font-size: 0.78rem;
+  opacity: 0.75;
 }

@@ -45,7 +45,24 @@ const Game = {
   },
 
   getAvatarBadges() { return typeof getAvatarBadges === 'function' ? getAvatarBadges() : (typeof DEFAULT_AVATAR_BADGES !== 'undefined' ? DEFAULT_AVATAR_BADGES : []); },
-  getAvatarBadge(id) { return this.getAvatarBadges().find(b => b.id === id); },
+  getAvatarBadge(id) {
+    if (!id) return null;
+    const found = this.getAvatarBadges().find(b => b.id === id);
+    if (found) return found;
+    // Badge động từ FA Pro CSS (id = ab-<slug>)
+    const slug = String(id).replace(/^ab-/, '').replace(/^fa-/, '');
+    if (!slug) return null;
+    return {
+      id: 'ab-' + slug,
+      fa: 'fa-regular fa-' + slug,
+      slug,
+      name: slug,
+      price: 400,
+      rarity: 'common',
+      desc: 'Icon FA regular · ' + slug
+    };
+  },
+
 
 
   getPet(id) { return this.getPets().find(p => p.id === id); },
@@ -3225,15 +3242,18 @@ const Game = {
     const item = this.getAvatarBadge(id);
     if (!item) return { ok: false, msg: 'Không tìm thấy icon badge!' };
     if (!currentPlayer.avatarBadges) currentPlayer.avatarBadges = {};
-    if (currentPlayer.avatarBadges[id]) return { ok: false, msg: 'Đã sở hữu!' };
-    const price = Number(item.price) || 0;
-    if ((currentPlayer.coins || 0) < price) return { ok: false, msg: 'Không đủ xu!' };
-    currentPlayer.coins -= price;
-    currentPlayer.avatarBadges[id] = { id, boughtAt: (typeof nowMs === 'function' ? nowMs() : Date.now()) };
-    if (!currentPlayer.avatarBadgeId) currentPlayer.avatarBadgeId = id;
-    this.addActivity('Mua badge icon ' + item.name + ' (-' + price + '🪙)');
-    currentPlayer.stats = currentPlayer.stats || {};
-    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + price;
+    const bid = item.id || id;
+    if (currentPlayer.avatarBadges[bid]) return { ok: false, msg: 'Đã sở hữu!' };
+    const price = Number(item.price) || 400;
+    if (!this.chargeCoins(price)) return { ok: false, msg: 'Không đủ xu!' };
+    currentPlayer.avatarBadges[bid] = {
+      id: bid,
+      fa: item.fa || ('fa-regular fa-' + (item.slug || bid)),
+      slug: item.slug || null,
+      boughtAt: (typeof nowMs === 'function' ? nowMs() : Date.now())
+    };
+    if (!currentPlayer.avatarBadgeId) currentPlayer.avatarBadgeId = bid;
+    this.addActivity('Mua badge icon ' + item.name + (this.isUnlimitedResources() ? ' (unlimited)' : ' (-' + price + '🪙)'));
     return { ok: true, msg: 'Đã mua ' + item.name + '!' };
   },
   equipAvatarBadge(id) {
