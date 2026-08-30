@@ -2982,7 +2982,7 @@ function renderShop() {
   if (currentShopTab === 'badge') {
     const countEl = document.getElementById('shop-count');
     const pager = document.getElementById('shop-pager');
-    const BADGE_PAGE = 50;
+    const BADGE_PAGE = 48; // 48 icon + 1 ô Không badge, không phân trang
     // Ẩn ô tìm cửa hàng chung — dùng ô tìm FA riêng
     const shopSearchWrap = document.getElementById('shop-search')?.closest('.shop-search-wrap, .shop-toolbar, .shop-filters') || document.getElementById('shop-search')?.parentElement;
     // Render thanh tìm FA + grid
@@ -2999,7 +2999,7 @@ function renderShop() {
         <label class="badge-fa-label"><i class="fa-brands fa-font-awesome"></i> Tìm icon trong FA Pro (regular)</label>
         <div class="badge-fa-row">
           <input type="search" id="badge-fa-search" placeholder="Nhập tên icon FA… ví dụ: heart, star, face-smile" autocomplete="off" />
-          <span class="badge-fa-hint">Nguồn: pro.min.css · chỉ style regular · 50 / trang</span>
+          <span class="badge-fa-hint">Nguồn: pro.min.css · regular · tối đa 48 icon</span>
         </div>`;
       grid.parentElement?.insertBefore(faBar, grid);
     }
@@ -3022,11 +3022,13 @@ function renderShop() {
     const renderWithList = (allSlugs) => {
       let slugs = allSlugs || [];
       if (q) slugs = slugs.filter(s => s.indexOf(q) >= 0);
-      const totalPages = Math.max(1, Math.ceil(slugs.length / BADGE_PAGE));
-      if (shopPage >= totalPages) shopPage = totalPages - 1;
-      const slice = slugs.slice(shopPage * BADGE_PAGE, (shopPage + 1) * BADGE_PAGE);
+      // Chỉ hiện tối đa 48 icon (+ 1 ô Không badge), không phân trang
+      const matched = slugs.length;
+      const slice = slugs.slice(0, BADGE_PAGE);
       if (countEl) {
-        countEl.textContent = slugs.length.toLocaleString() + ' icon FA regular (pro.min.css) · trang ' + (shopPage + 1) + '/' + totalPages;
+        countEl.textContent = matched > BADGE_PAGE
+          ? ('Hiện ' + BADGE_PAGE + '/' + matched.toLocaleString() + ' icon · gõ thêm để lọc (FA Pro regular)')
+          : (matched.toLocaleString() + ' icon · tối đa 48 + Không badge');
       }
       grid.innerHTML = '';
       const none = document.createElement('div');
@@ -3070,15 +3072,7 @@ function renderShop() {
         renderShop();
         if (typeof applyProfileBadge === 'function') applyProfileBadge();
       }));
-      if (pager) {
-        if (totalPages > 1) {
-          pager.innerHTML = `<button class="btn btn-secondary btn-sm" id="badge-prev" ${shopPage <= 0 ? 'disabled' : ''}>‹</button>
-               <span class="shop-page-label">${shopPage + 1} / ${totalPages}</span>
-               <button class="btn btn-secondary btn-sm" id="badge-next" ${shopPage >= totalPages - 1 ? 'disabled' : ''}>›</button>`;
-          pager.querySelector('#badge-prev')?.addEventListener('click', () => { shopPage = Math.max(0, shopPage - 1); renderShop(); });
-          pager.querySelector('#badge-next')?.addEventListener('click', () => { shopPage = Math.min(totalPages - 1, shopPage + 1); renderShop(); });
-        } else pager.innerHTML = '';
-      }
+      if (pager) pager.innerHTML = ''; // không phân trang badge
     };
 
     loadFaProIconList().then(list => {

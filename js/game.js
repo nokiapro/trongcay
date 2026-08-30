@@ -2029,12 +2029,11 @@ const Game = {
               this.forEachGarden((plots, gi2) => {
                 if (!this.isNycGardenEnabled(gi2)) return;
                 const cfg2 = this.getNycConfigForGarden(gi2);
-                plots.forEach(plot => {
+                (plots || []).forEach((plot, pi) => {
                   if (plot && plot.plantId && plot.plantedAt && this.getReadyAtMs(plot) === nextReady) {
                     plot.plantedAt = nextReady; // coi như vừa trồng lại tại mốc chín → vòng sau tính grow mới
-                    // silent + ghi vào tổng số vụ
                     const rStuck = this._nycHarvestOneAt(plot, nextReady, gi2, cfg2, this.isNycActiveAt(nextReady), true);
-                    recordHarvestStat(rStuck);
+                    recordHarvestStat(rStuck, gi2 + ':' + pi);
                   }
                 });
               });
@@ -2086,8 +2085,14 @@ const Game = {
       );
     }
     if (fairyCycles) notes.push(`Tiên ${fairyCycles} lần chu kỳ 3h`);
+    const uniquePlotsHarvested = harvestedPlotKeys.size;
     if (totalHarvest || totalPlant) {
-      notes.push(`NYC: thu ${totalHarvest} vụ · trồng ${totalPlant} ô · sản lượng ${totalYieldAmount} (offline)`);
+      // uniquePlots = số ô vật lý; totalHarvest = số lần thu (có thể > số ô vì NYC trồng lại)
+      notes.push(
+        `NYC: thu ${uniquePlotsHarvested} ô` +
+        (totalHarvest > uniquePlotsHarvested ? ` (${totalHarvest} lần)` : '') +
+        ` · trồng lại ${totalPlant} lần · sản lượng ${totalYieldAmount} (offline)`
+      );
     }
 
     // Giúp việc
@@ -2136,16 +2141,22 @@ const Game = {
       }
     }
     lines.push('Tiên: ' + (fairyActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · chu kỳ 3 giờ đã chạy: ' + fairyCycles + ' lần · đồng hồ 3h còn: ' + (cycleLeftSec == null ? '—' : this.formatTime(cycleLeftSec)) + ' (không reset full 3h)');
-    lines.push('NYC: ' + (nycActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · thu ' + totalHarvest + ' vụ · trồng lại ' + totalPlant + ' ô · sản lượng ' + totalYieldAmount);
-    // Chi tiết theo loại cây (số vụ + sản lượng) — 1 dòng gọn, không spam từng ô
+    const _uniqP = harvestedPlotKeys.size;
+    lines.push(
+      'NYC: ' + (nycActive ? 'ĐANG BẬT' : 'tắt/hết hạn') +
+      ' · thu ' + _uniqP + ' ô' +
+      (totalHarvest > _uniqP ? ' (' + totalHarvest + ' lần thu)' : '') +
+      ' · trồng lại ' + totalPlant + ' lần · sản lượng ' + totalYieldAmount
+    );
+    // Chi tiết theo loại cây: số lần thu + sản lượng
     const plantDetailParts = Object.keys(harvestByPlant).map(name => {
       const s = harvestByPlant[name];
-      return name + ' ×' + s.cycles + ' vụ (' + s.amount + ' sp)';
+      return name + ' ×' + s.cycles + ' lần (' + s.amount + ' sp)';
     });
     if (plantDetailParts.length) {
       lines.push('Chi tiết thu offline: ' + plantDetailParts.join(' · '));
     } else if (!totalHarvest && !totalPlant) {
-      lines.push('Chi tiết thu offline: không có vụ nào trong thời gian vắng');
+      lines.push('Chi tiết thu offline: không thu được ô nào trong thời gian vắng');
     }
     lines.push('Giúp việc: ' + (helperActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · mua theo mốc kho: ' + helperBuys + ' đợt');
     if (fromLog) {
@@ -2167,6 +2178,7 @@ const Game = {
       totalHarvest,
       totalPlant,
       totalYieldAmount,
+      uniquePlotsHarvested: harvestedPlotKeys.size,
       harvestByPlant,
       helperBuys,
       fairyActive,
