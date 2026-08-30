@@ -1,3 +1,4 @@
+/* ===== RESET & BASE ===== */
 * {
   margin: 0;
   padding: 0;
@@ -5,6 +6,7 @@
 }
 
 :root {
+  /* Light — nắng & lá non */
   --bg-main: #f0fdf4;
   --bg-card: #ffffff;
   --text-main: #14532d;
@@ -20,6 +22,7 @@
   --soil-border: #fde68a;
   --shadow-card: 0 6px 16px -4px rgba(34, 197, 94, 0.12), 0 4px 8px -4px rgba(22, 163, 74, 0.08);
 
+  /* Aliases (code cũ) */
   --bg: var(--bg-main);
   --card: var(--bg-card);
   --surface: #f0fdf4;
@@ -33,12 +36,14 @@
   --radius: 18px;
   --radius-sm: 12px;
 
+  /* Status */
   --danger: #ef4444;
   --success: #10b981;
   --warning: #d97706;
   --warning-bg: #f59e0b;
   --purple: #8b5cf6;
 
+  /* Buttons */
   --btn-primary-bg: linear-gradient(135deg, var(--primary-hover), var(--primary));
   --btn-primary-color: #ffffff;
   --btn-primary-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
@@ -69,6 +74,7 @@ body {
   line-height: 1.5;
 }
 
+/* ===== LOGIN ===== */
 .login-screen {
   min-height: 100vh;
   display: flex;
@@ -149,6 +155,7 @@ body {
   line-height: 1.5;
 }
 
+/* ===== HEADER ===== */
 .header {
   display: flex;
   align-items: center;
@@ -263,6 +270,7 @@ body {
   transform: scale(1.08);
 }
 
+/* ===== MAIN & PAGES ===== */
 .main {
   max-width: 1180px;
   margin: 0 auto;
@@ -315,6 +323,7 @@ body {
   color: var(--primary-dark);
 }
 
+/* ===== BUTTONS — size thống nhất ===== */
 .btn,
 button.btn,
 .btn-sm,
@@ -447,6 +456,7 @@ button.btn,
   50% { box-shadow: 0 4px 22px rgba(34, 197, 94, 0.6); }
 }
 
+/* ===== GARDEN ===== */
 .garden-controls {
   display: flex;
   flex-direction: column;
@@ -490,6 +500,7 @@ button.btn,
 
 .garden-grid {
   display: grid;
+  /* Ô mới xếp thêm sang BÊN PHẢI (cột mới), không đẩy xuống dưới */
   grid-auto-flow: column;
   grid-template-rows: repeat(4, minmax(150px, auto));
   grid-auto-columns: minmax(140px, 160px);
@@ -567,6 +578,7 @@ button.btn,
 }
 
 .plot:hover .plot-icon {
+  /* no transform — tránh nhấp nháy khi DOM update */
 }
 
 .plot-name {
@@ -629,6 +641,7 @@ button.btn,
   line-height: 1.2;
 }
 
+/* ===== SHOP ===== */
 .shop-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
@@ -796,6 +809,7 @@ button.btn,
   margin-bottom: 8px;
 }
 
+/* Icon ký tự / số: tối đa ~10 ký tự, tự thu nhỏ cho vừa */
 .shop-icon.shop-icon-chars {
   display: flex;
   align-items: center;
@@ -871,6 +885,7 @@ button.btn,
   max-width: 280px;
 }
 
+/* ===== INVENTORY ===== */
 .inventory-tabs {
   display: flex;
   gap: 8px;
@@ -983,6 +998,7 @@ button.btn,
   font-size: 1.05rem;
 }
 
+/* ===== STATS ===== */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -1049,6 +1065,7 @@ button.btn,
   min-width: 110px;
 }
 
+/* ===== MODAL ===== */
 .modal {
   display: none;
   position: fixed;
@@ -1223,6 +1240,7 @@ html[data-theme="dark"] .plot-progress {
   color: var(--text-muted);
 }
 
+/* ===== TOAST ===== */
 .toast {
   position: fixed;
   top: 72px;
@@ -1287,6 +1305,7 @@ html[data-theme="dark"] .plot-progress {
   background: linear-gradient(135deg, #d62828, var(--danger));
 }
 
+/* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
   .header {
     flex-wrap: wrap;
@@ -1313,6 +1332,7 @@ html[data-theme="dark"] .plot-progress {
   }
 }
 
+/* ===== SHOP TABS ===== */
 .shop-tabs {
   display: flex;
   gap: 8px;
@@ -1357,6 +1377,7 @@ html[data-theme="dark"] .plot-progress {
   color: var(--primary);
 }
 
+/* Buy quantity buttons */
 .buy-qty {
   display: flex;
   flex-wrap: wrap;
@@ -1369,6 +1390,7 @@ html[data-theme="dark"] .plot-progress {
   font-size: 0.85rem;
 }
 
+/* Character seed icons */
 .shop-card .shop-icon {
   min-height: 3.2rem;
   display: flex;
@@ -1376,11 +1398,13 @@ html[data-theme="dark"] .plot-progress {
   justify-content: center;
 }
 
+/* For letter/number seeds displayed as text */
 .shop-icon:has(:only-child),
 .plot-icon {
   font-family: 'Roboto Condensed', 'Roboto', sans-serif;
 }
 
+/* Gói 1000 hạt */
 .pack-1000 {
   background: linear-gradient(135deg, #fef3c7, #fde68a);
   border: 2px solid #f59e0b;
@@ -1420,6 +1444,7 @@ html[data-theme="dark"] .plot-progress {
   max-width: 420px;
 }
 
+/* Shop toolbar & pager */
 .shop-toolbar {
   display: flex;
   align-items: center;
@@ -1465,6 +1490,8 @@ html[data-theme="dark"] .plot-progress {
   cursor: not-allowed;
 }
 
+
+/* ===== COMPACT CARDS ===== */
 .shop-grid {
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 10px;
@@ -1513,6 +1540,7 @@ html[data-theme="dark"] .plot-progress {
   .header { padding: 10px 12px; }
 }
 
+/* ===== RAIN EFFECT + MINI-GAME ===== */
 .rain-overlay {
   pointer-events: none;
   position: fixed;
@@ -1576,6 +1604,7 @@ html[data-theme="dark"] .plot-progress {
   z-index: 3;
 }
 
+/* ===== BOTTOM NAV ===== */
 .menu-toggle {
   display: none;
   position: fixed;
@@ -1667,6 +1696,7 @@ html[data-theme="dark"] .plot-progress {
   padding-bottom: 90px;
 }
 
+/* Mobile: hamburger vertical menu */
 @media (max-width: 768px) {
   .menu-toggle { display: flex; align-items: center; justify-content: center; }
 
@@ -1720,6 +1750,7 @@ html[data-theme="dark"] .plot-progress {
 
   .menu-toggle.hidden { display: none; }
 
+  /* 3 columns garden on mobile */
   .garden-grid {
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 8px;
@@ -1735,6 +1766,7 @@ html[data-theme="dark"] .plot-progress {
   .plot-timer { font-size: 0.62rem; }
 }
 
+/* Rank */
 .rank-tabs {
   display: flex;
   gap: 8px;
@@ -1779,6 +1811,7 @@ html[data-theme="dark"] .plot-progress {
 .rank-name { flex: 1; font-weight: 600; }
 .rank-val { font-weight: 700; color: var(--primary-dark); }
 
+/* Friends & chat */
 .friends-layout {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
@@ -1813,7 +1846,7 @@ html[data-theme="dark"] .plot-progress {
   cursor: pointer;
   gap: 8px;
   flex-wrap: wrap;
-  overflow: hidden;
+  overflow: hidden; /* clip mọi góc vuông con → không lộ nền đen */
   isolation: isolate;
 }
 .friend-item:hover, .friend-item.active { background: #e8f5e9; }
@@ -1898,6 +1931,7 @@ html[data-theme="dark"] .plot-progress {
   font-family: inherit;
 }
 
+/* ===== BOTTOM NAV ===== */
 .menu-toggle {
   display: none;
   position: fixed;
@@ -2098,6 +2132,8 @@ html[data-theme="dark"] .plot-progress {
   flex: 1; padding: 10px 14px; border: 2px solid #e0efe8; border-radius: 12px; font-family: inherit;
 }
 
+
+/* PC garden 3 columns centered larger */
 @media (min-width: 769px) {
   .garden-grid {
     grid-template-columns: repeat(3, 1fr);
@@ -2221,6 +2257,7 @@ html[data-theme="dark"] .plot-progress {
   font-size: 2rem;
   color: var(--primary);
 }
+/* Avatar ring (legacy, đang ẩn bằng display:none) */
 .profile-avatar-wrap.tier-tree-1 .profile-avatar-ring {
   border-color: #855335;
   box-shadow: 0 0 0 3px rgba(133, 83, 53, 0.22), 0 0 16px rgba(133, 83, 53, 0.4);
@@ -2287,6 +2324,8 @@ html[data-theme="dark"] .plot-progress {
   word-break: break-all;
 }
 
+/* ===== FINAL GRID OVERRIDES ===== */
+/* Shop: PC 7 cột (21 = 7x3), Mobile 3 cột */
 .shop-grid {
   grid-template-columns: repeat(7, 1fr) !important;
   gap: 10px;
@@ -2298,6 +2337,7 @@ html[data-theme="dark"] .plot-progress {
   .shop-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px; }
 }
 
+/* Garden: PC 4 cột giữa, Mobile 3 cột */
 @media (min-width: 769px) {
   .garden-grid {
     grid-template-columns: repeat(4, 1fr) !important;
@@ -2318,6 +2358,9 @@ html[data-theme="dark"] .plot-progress {
   }
 }
 
+/* ===== Friends / Chat ===== */
+
+/* PC: đúng height bạn chọn, chỉ scroll trong khung tin nhắn (không scrollbar trang) */
 @media (min-width: 769px) {
   body:has(#page-friends.active) {
     overflow: hidden;
@@ -2389,6 +2432,7 @@ html[data-theme="dark"] .plot-progress {
   }
 }
 
+/* Mobile: danh sách bạn bình thường; khi mở chat → full màn hình kiểu Messenger */
 @media (max-width: 768px) {
   #page-friends.active {
     display: block;
@@ -2422,6 +2466,7 @@ html[data-theme="dark"] .plot-progress {
     display: inline-flex;
   }
 
+  /* Full-screen Messenger-style chat */
   .chat-panel.chat-open {
     display: flex !important;
     flex-direction: column;
@@ -2485,7 +2530,10 @@ html[data-theme="dark"] .plot-progress {
   }
 }
 
+
+/* ===== DARK THEME ===== */
 html[data-theme="dark"] {
+  /* Dark — rừng sâu & đom đóm */
   --bg-main: #022c22;
   --bg-card: #064e3b;
   --text-main: #ecfdf5;
@@ -2630,6 +2678,7 @@ html[data-theme="dark"] .uid-row code {
   color: var(--text);
 }
 
+/* ===== Chat avatar rows ===== */
 .chat-row {
   display: flex;
   align-items: flex-end;
@@ -2673,6 +2722,9 @@ html[data-theme="dark"] .chat-av-fb {
   margin-right: 4px;
 }
 
+
+
+/* Chat bubble: chữ dài gần giữa, xuống dòng */
 .chat-row .chat-bubble {
   max-width: min(88%, 420px);
   word-break: break-word;
@@ -2725,6 +2777,7 @@ html[data-theme="dark"] .chat-bubble .chat-time-tip::after {
   border-top-color: rgba(15, 26, 20, 0.95);
 }
 
+/* Nút quay lại chỉ mũi tên */
 .btn-chat-back {
   min-width: 36px;
   padding: 6px 10px !important;
@@ -2733,13 +2786,18 @@ html[data-theme="dark"] .chat-bubble .chat-time-tip::after {
   margin: 0 !important;
 }
 
+/* Ẩn timestamp cũ nếu còn */
 .chat-bubble .t { display: none !important; }
 
+
+/* ===== CUSTOM SCROLLBAR ===== */
+/* Firefox */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--primary-light) transparent;
 }
 
+/* Chromium / Safari / Edge */
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -2764,6 +2822,7 @@ html[data-theme="dark"] .chat-bubble .chat-time-tip::after {
   background: transparent;
 }
 
+/* Vùng scroll nội dung — track nhẹ */
 .seed-list::-webkit-scrollbar-track,
 .friends-list::-webkit-scrollbar-track,
 .chat-messages::-webkit-scrollbar-track,
@@ -2799,6 +2858,8 @@ html[data-theme="dark"] .modal-content::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.04);
 }
 
+
+/* Badge đếm ngược reset nước/phân 3h — giữa đáy ô */
 .plot-boost-badge {
   position: absolute;
   bottom: 6px;
@@ -2844,6 +2905,7 @@ html[data-theme="dark"] .plot-boost-badge {
   margin-left: 4px;
 }
 
+/* Server announce + fairy */
 .server-announce {
   display: none;
   align-items: center;
@@ -2907,6 +2969,7 @@ html[data-theme="dark"] .plot-boost-badge {
   justify-content: center;
 }
 
+/* ===== NYC badge ===== */
 .nyc-badge {
   background: linear-gradient(135deg, #f472b6, #fb7185);
   color: #fff;
@@ -2944,6 +3007,7 @@ html[data-theme="dark"] .plot-boost-badge {
   margin-top: 4px;
 }
 
+/* ===== Garden decorations (fairy / NYC) ===== */
 .garden-decor {
   position: absolute;
   left: var(--dx, 20%);
@@ -2972,6 +3036,7 @@ html[data-theme="dark"] .plot-boost-badge {
   100% { transform: translate(0, 0); }
 }
 
+/* ===== Mobile inventory fix ===== */
 @media (max-width: 768px) {
   .inventory-tabs {
     flex-wrap: wrap;
@@ -3039,6 +3104,7 @@ html[data-theme="dark"] .plot-boost-badge {
   margin-top: 2px;
 }
 
+/* ===== Features: quests / market / bank / buff / gate ===== */
 .card-panel {
   background: var(--card);
   border-radius: 16px;
@@ -3258,6 +3324,7 @@ html[data-theme="dark"] .plot-boost-badge {
   font-weight: 700;
 }
 
+/* ===== UI polish: select (dropdown) + number steppers + center PC ===== */
 select,
 .ux-select {
   appearance: none;
@@ -3326,6 +3393,7 @@ html[data-theme="dark"] select option {
   color: #e8f5e9;
 }
 
+/* Number inputs — ẩn hết mũi tên lên/xuống (toàn site) */
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
@@ -3384,6 +3452,7 @@ input.ux-number:focus,
   flex: 1 1 140px;
 }
 
+/* Custom qty stepper wrapper look */
 .buy-qty,
 .plant-qty-row {
   display: flex;
@@ -3439,6 +3508,7 @@ input.ux-number:focus,
   height: 100%;
   box-sizing: border-box;
 }
+/* Bank stepper slightly wider for larger amounts */
 .bank-amount-stepper {
   height: 36px;
   min-width: 120px;
@@ -3451,6 +3521,7 @@ input.ux-number:focus,
   font-size: 0.95rem !important;
 }
 
+/* Center PC layouts */
 @media (min-width: 769px) {
   .inv-item .actions {
     display: flex;
@@ -3503,6 +3574,7 @@ input.ux-number:focus,
   line-height: 1.2;
 }
 
+/* ===== Bank UI polish ===== */
 .bank-deposit-box h3 {
   display: flex;
   align-items: center;
@@ -3616,6 +3688,8 @@ html[data-theme="dark"] .bank-stat-val {
   color: #95d5b2;
 }
 
+
+/* Plot upgrade mult */
 .plot-upgrade-box {
   margin-top: 14px;
   padding: 12px 14px;
@@ -3661,6 +3735,7 @@ html[data-theme="dark"] .plot-upgrade-box {
   }
 }
 
+/* ===== FINAL: PC 3×7 (21 ô), Mobile 3×3 (9 ô) — thêm cột thì cuộn ngang ===== */
 .garden-grid {
   --gg-gap: 14px;
   --gg-col: 142px;
@@ -3673,6 +3748,7 @@ html[data-theme="dark"] .plot-upgrade-box {
   justify-content: start !important;
   align-content: start !important;
   gap: var(--gg-gap) !important;
+  /* Chỉ hiện 7 cột; cột 8+ cuộn ngang */
   width: 100% !important;
   max-width: calc(var(--gg-cols-visible) * var(--gg-col) + (var(--gg-cols-visible) - 1) * var(--gg-gap)) !important;
   margin-left: auto !important;
@@ -3689,6 +3765,7 @@ html[data-theme="dark"] .plot-upgrade-box {
     --gg-col: 108px;
     --gg-cols-visible: 3;
     grid-template-rows: repeat(3, minmax(112px, auto)) !important;
+    /* Chỉ hiện 3 cột; cột 4+ cuộn ngang */
     max-width: calc(var(--gg-cols-visible) * var(--gg-col) + (var(--gg-cols-visible) - 1) * var(--gg-gap)) !important;
   }
 }
@@ -3703,6 +3780,8 @@ html[data-theme="dark"] .plot-upgrade-box {
   border-bottom: 2px solid rgba(45, 106, 79, 0.15);
 }
 
+
+/* Profile quick buttons compact for mobile */
 @media (max-width: 560px) {
   .profile-buff-quick {
     flex-wrap: nowrap !important;
@@ -3720,6 +3799,7 @@ html[data-theme="dark"] .plot-upgrade-box {
   }
 }
 
+/* ===== Kitchen ===== */
 .kitchen-tabs {
   display: flex;
   gap: 8px;
@@ -3766,6 +3846,7 @@ html[data-theme="dark"] .plot-upgrade-box {
 }
 .kitchen-actions .qty-input { width: 52px; padding: 6px; }
 
+/* ===== Garden pets ===== */
 .garden-stage { position: relative; }
 .garden-pets {
   pointer-events: none;
@@ -3797,6 +3878,7 @@ html[data-theme="dark"] .plot-upgrade-box {
 }
 .bank-item-actions .btn { white-space: nowrap; }
 
+/* Khôi phục phiên khi F5 */
 .auth-loading {
   position: fixed;
   inset: 0;
@@ -3818,6 +3900,7 @@ html[data-theme="dark"] .plot-upgrade-box {
   display: block;
 }
 
+/* Profile: 12 nút hình/buff xếp dọc */
 .profile-buff-quick-vertical {
   display: flex !important;
   flex-direction: column !important;
@@ -3851,6 +3934,7 @@ html[data-theme="dark"] .plot-upgrade-box {
   height: 0 !important;
 }
 
+/* ===== Custom dropdown (cùng style button site) ===== */
 .pill-dd {
   position: relative;
   display: inline-block;
@@ -4024,6 +4108,7 @@ html[data-theme="dark"] .pill-dd-check {
   color: #95d5b2;
 }
 
+/* Native select ẩn khi đã gắn dropdown */
 select.pill-dd-native {
   position: absolute !important;
   opacity: 0 !important;
@@ -4036,6 +4121,7 @@ select.pill-dd-native {
   clip: rect(0, 0, 0, 0);
 }
 
+/* Toolbar vườn: cạnh phân bón trong controls-main */
 .garden-toolbar {
   display: inline-flex;
   flex-wrap: wrap;
@@ -4138,6 +4224,7 @@ html[data-theme="dark"] .garden-switch-hint {
   z-index: 300;
 }
 
+/* Toggle vườn trong cấu hình Tiên / NYC */
 .garden-toggle-list {
   display: flex;
   flex-direction: column;
@@ -4175,6 +4262,7 @@ html[data-theme="dark"] .garden-switch-hint {
   flex-shrink: 0;
 }
 
+/* ===== Force button size đồng bộ (cuối file, ưu tiên cao) ===== */
 .btn,
 .btn-sm,
 .btn-primary,
@@ -4209,6 +4297,7 @@ html[data-theme="dark"] .garden-switch-hint {
   align-items: center;
 }
 
+/* ===== Shop tăng tốc ô: dropdown không lệch / không bị cắt ===== */
 .shop-grid {
   overflow: visible !important;
 }
@@ -4260,6 +4349,7 @@ html[data-theme="dark"] .garden-switch-hint {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Khi mở dropdown, card nổi trên các card khác */
 .shop-grid:has(.pill-dd.open) .shop-card {
   z-index: 1;
 }
@@ -4267,6 +4357,7 @@ html[data-theme="dark"] .garden-switch-hint {
   z-index: 40;
 }
 
+/* Vườn / Công cụ / Hỗ trợ — cùng style primary (light) */
 #btn-tools-menu.btn,
 #btn-tools-menu.btn-primary,
 #btn-support-menu.btn,
@@ -4322,6 +4413,7 @@ html[data-theme="dark"] .garden-switcher .pill-dd-trigger:hover {
   transform: translateY(-2px) !important;
 }
 
+/* Menu xổ xuống: GIỮ nền để đọc được */
 .pill-dd-menu,
 .garden-tools-menu {
   background: var(--card, #fff) !important;
@@ -4362,6 +4454,7 @@ html[data-theme="dark"] .pill-dd-item.active {
   color: #95d5b2 !important;
 }
 
+/* Kho hạt: nút & chữ nhỏ gọn như ảnh */
 .inv-item .name {
   font-size: 0.78rem !important;
   line-height: 1.25;
@@ -4384,6 +4477,7 @@ html[data-theme="dark"] .pill-dd-item.active {
   font-size: 0.85rem !important;
 }
 
+/* Kitchen pager */
 #kitchen-pager.shop-pager {
   display: flex;
   flex-wrap: wrap;
@@ -4392,6 +4486,7 @@ html[data-theme="dark"] .pill-dd-item.active {
   margin: 14px 0 8px;
 }
 
+/* ===== Unified pager (toàn site) ===== */
 .ux-pager,
 .shop-pager,
 #kitchen-pager,
@@ -4424,6 +4519,7 @@ html[data-theme="dark"] .pill-dd-item.active {
   cursor: not-allowed;
 }
 
+/* ===== Mobile: shop tăng tốc ô không lệch ===== */
 @media (max-width: 768px) {
   .shop-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -4476,6 +4572,7 @@ html[data-theme="dark"] .pill-dd-item.active {
   }
 }
 
+/* Chat open animation */
 @keyframes chat-slide-in {
   from { opacity: 0; transform: translateX(18px); }
   to { opacity: 1; transform: translateX(0); }
@@ -4493,6 +4590,7 @@ html[data-theme="dark"] .pill-dd-item.active {
   }
 }
 
+/* ===== Mobile responsive polish (mọi màn nhỏ) ===== */
 @media (max-width: 768px) {
   .main {
     padding: 14px 10px 88px !important;
@@ -4592,6 +4690,7 @@ html[data-theme="dark"] .pill-dd-item.active {
   }
 }
 
+/* Chợ: 2 ô số lượng / giá — cố định nhỏ, không phình to */
 #market-qty,
 #market-price {
   width: 100% !important;
@@ -4633,6 +4732,7 @@ html[data-theme="dark"] .pill-dd-item.active {
   }
 }
 
+/* Hộp thư người chơi */
 .mail-box {
   margin-top: 14px;
   padding: 12px;
@@ -4690,6 +4790,7 @@ html[data-theme="dark"] .mail-item {
   min-width: 80px;
 }
 
+/* ===== Chợ + Ngân hàng: căn giữa mọi màn, dropdown đúng chỗ ===== */
 .market-sell-box,
 .bank-deposit-box {
   text-align: center !important;
@@ -4708,6 +4809,7 @@ html[data-theme="dark"] .mail-item {
   align-items: center !important;
   overflow: visible !important;
 }
+/* Mobile: cột giữa, không kéo full lệch */
 @media (max-width: 599px) {
   .market-sell-box .market-sell-row,
   .bank-deposit-box .market-sell-row {
@@ -4744,6 +4846,7 @@ html[data-theme="dark"] .mail-item {
     width: auto !important;
   }
 }
+/* Dropdown trong chợ/NH: menu bám nút, không bay lệch */
 .market-sell-box .pill-dd,
 .bank-deposit-box .pill-dd {
   position: relative !important;
@@ -4766,6 +4869,7 @@ html[data-theme="dark"] .mail-item {
   top: calc(100% + 4px) !important;
 }
 
+/* Badge thư trên nav */
 .nav-btn {
   position: relative;
 }
@@ -4795,6 +4899,7 @@ html[data-theme="dark"] .mail-item {
   right: 2px;
 }
 
+/* ===== Timer: không co giãn khi đổi số ===== */
 .btn-timer,
 #btn-global-timer,
 .plot-timer,
@@ -4847,6 +4952,7 @@ html[data-theme="dark"] .mail-item {
   white-space: nowrap;
 }
 
+/* ===== Mail: chỉ tiêu đề, mở nội dung khi bấm ===== */
 .mail-item {
   display: flex;
   align-items: flex-start;
@@ -4931,6 +5037,7 @@ html[data-theme="dark"] .mail-actions .btn-mail-icon[title]:hover::after {
   color: #0f1a15;
 }
 
+/* ===== Roamers: Tiên / NYC / Pet chạy quanh vườn ===== */
 .garden-grid {
   position: relative;
 }
@@ -5020,6 +5127,7 @@ html[data-theme="dark"] .mail-actions .btn-mail-icon[title]:hover::after {
   100% { transform: translate(0, 0) scaleX(1); }
 }
 
+/* Modal ô đất: đủ ngang, không scrollbar ngang */
 #modal-plot .modal-content {
   width: min(420px, calc(100vw - 24px)) !important;
   max-width: calc(100vw - 24px) !important;
@@ -5089,6 +5197,7 @@ html[data-theme="dark"] .plot-upgrade-box h4 {
   color: #d8f3dc !important;
 }
 
+/* ===== Garden scroll: world cuộn, agents đi theo ô ===== */
 .garden-stage {
   position: relative;
   width: 100% !important;
@@ -5130,8 +5239,10 @@ html[data-theme="dark"] .plot-upgrade-box h4 {
   position: absolute;
 }
 
+/* Ẩn label Số xu ngoài */
 .bank-amount-label { display: none !important; }
 
+/* Bank stats: font cố định, không co giãn */
 .bank-stat-val,
 .bank-interest-val,
 [data-role="bank-interest"],
@@ -5160,10 +5271,12 @@ html[data-theme="dark"] .plot-upgrade-box h4 {
   flex-shrink: 0;
 }
 
+/* ===== Global font: Roboto Condensed ===== */
 html, body, button, input, select, textarea {
   font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
 }
 
+/* Thời gian / timer: giữ monospace + tabular */
 .btn-timer,
 #btn-global-timer,
 #global-timer-text,
@@ -5186,6 +5299,7 @@ html, body, button, input, select, textarea {
   font-feature-settings: "tnum" 1;
 }
 
+/* Dropdown vượt khung modal / card */
 .modal-content,
 #modal-plot .modal-content,
 .plot-upgrade-box,
@@ -5216,6 +5330,7 @@ html, body, button, input, select, textarea {
   z-index: 450 !important;
   position: absolute !important;
 }
+/* Khi mở dropdown trong modal, cho phép menu tràn */
 .modal.show .modal-content:has(.pill-dd.open) {
   overflow: visible !important;
 }
@@ -5226,6 +5341,7 @@ html, body, button, input, select, textarea {
   z-index: 501 !important;
 }
 
+/* Bank stat label căn giữa */
 .bank-stat {
   display: flex !important;
   flex-direction: column !important;
@@ -5243,6 +5359,7 @@ html, body, button, input, select, textarea {
   min-width: 7.5ch;
 }
 
+/* ===== GRID VƯỜN: Mobile 3×3 | PC 3×7 — cột tiếp theo cuộn ngang ===== */
 .garden-stage {
   --gg-gap: 14px;
   --gg-col: 142px;
@@ -5300,6 +5417,7 @@ html, body, button, input, select, textarea {
     --gg-col: 108px;
     --gg-cols-visible: 3;
     --gg-row-min: 112px;
+    /* Mobile: hiện đúng 3 cột; cột 4+ cuộn */
     max-width: calc(3 * var(--gg-col) + 2 * var(--gg-gap)) !important;
     width: 100% !important;
   }
@@ -5320,6 +5438,7 @@ html, body, button, input, select, textarea {
     --gg-col: 142px;
     --gg-cols-visible: 7;
     --gg-row-min: 148px;
+    /* PC: hiện đúng 7 cột; cột 8+ cuộn */
     max-width: calc(7 * 142px + 6 * 14px) !important;
   }
   .garden-grid {
@@ -5329,6 +5448,8 @@ html, body, button, input, select, textarea {
   }
 }
 
+
+/* ===== UPDATE SYSTEM ===== */
 .app-version-badge {
   margin-left: 8px;
   font-size: 0.72rem;
@@ -5391,17 +5512,22 @@ html, body, button, input, select, textarea {
 .update-banner-dismiss:hover { background: rgba(255,255,255,0.32); }
 .update-banner.force .update-banner-dismiss { display: none; }
 
+
+/* Chi tiết ô: 10 giây cuối / hết hiệu lực */
 .plot-boost-off {
   color: #e9c46a !important;
   font-weight: 600;
 }
 
+/* Dropdown: mở bằng position fixed (JS); drop-up chỉ đánh dấu */
 .pill-dd.drop-up .pill-dd-arrow {
   transform: none;
 }
 .pill-dd-menu {
+  /* z-index cao hơn modal (200) khi fixed */
   z-index: 400;
 }
+/* Trong modal: cho phép menu thoát overflow */
 .modal-content {
   overflow-x: hidden;
 }
@@ -5413,6 +5539,7 @@ html, body, button, input, select, textarea {
   z-index: 50;
 }
 
+/* Người giúp việc */
 .helper-badge {
   background: linear-gradient(135deg, #0ea5e9, #6366f1);
   color: #fff;
@@ -5446,6 +5573,7 @@ html, body, button, input, select, textarea {
 .helper-rule-row .helper-rule-name { flex: 1; min-width: 120px; font-weight: 600; }
 .helper-rule-row input[type="number"] { width: 64px; }
 
+/* Menu Hỗ trợ (cạnh Công cụ) */
 .garden-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -5453,6 +5581,7 @@ html, body, button, input, select, textarea {
   gap: 8px;
 }
 .garden-support-dd #btn-support-menu {
+  /* overridden in v1.9.10 block */
 }
 .garden-tools-menu .support-menu-status {
   margin-left: auto;
@@ -5468,6 +5597,7 @@ html[data-theme="dark"] .garden-tools-menu .support-menu-status {
   color: #a7c4b5;
 }
 
+/* Nút Hỗ trợ — không nền */
 .btn-support-trigger {
   display: inline-flex;
   align-items: center;
@@ -5493,6 +5623,7 @@ html[data-theme="dark"] .btn-support-trigger:hover {
   background: rgba(82, 183, 136, 0.12) !important;
 }
 
+/* Menu hỗ trợ — pill màu như badge */
 .garden-support-menu {
   min-width: min(280px, calc(100vw - 24px)) !important;
   max-width: calc(100vw - 16px) !important;
@@ -5501,6 +5632,7 @@ html[data-theme="dark"] .btn-support-trigger:hover {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  /* Mở sang trái — nút Hỗ trợ sát mép phải mobile */
   left: auto !important;
   right: 0 !important;
   transform: none !important;
@@ -5577,6 +5709,8 @@ html[data-theme="dark"] .btn-support-trigger:hover {
   filter: grayscale(0.15);
 }
 
+
+/* ===== FORCE ROBOTO CONDENSED TOÀN SITE ===== */
 html, body,
 button, input, select, textarea, option,
 .btn, .toast, .modal, .modal-content,
@@ -5590,6 +5724,7 @@ button, input, select, textarea, option,
 * {
   font-family: inherit;
 }
+/* Thời gian / số: vẫn Roboto Condensed, tabular */
 .plot-timer, .bank-timer, .btn-timer, #global-timer-text,
 .support-pill-time, [data-role="timer"], [data-role="plot-remain"] {
   font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
@@ -5597,6 +5732,7 @@ button, input, select, textarea, option,
   letter-spacing: 0.02em;
 }
 
+/* Dropdown portal (gắn body) — không bị modal cắt */
 .pill-dd-menu.pill-dd-portal {
   position: fixed !important;
   z-index: 500 !important;
@@ -5606,6 +5742,8 @@ button, input, select, textarea, option,
   overflow-x: visible;
 }
 
+
+/* Timer cạnh Hỗ trợ — không nền */
 .btn-timer-bare,
 #btn-global-timer.btn-timer-bare {
   display: inline-flex !important;
@@ -5642,6 +5780,7 @@ html[data-theme="dark"] #btn-global-timer.btn-timer-bare {
   gap: 6px 10px;
 }
 
+/* Tên cây chi tiết ô — căn giữa */
 #modal-plot #plot-title,
 #plot-title {
   text-align: center !important;
@@ -5650,6 +5789,7 @@ html[data-theme="dark"] #btn-global-timer.btn-timer-bare {
   display: block;
 }
 
+/* Modal plot: không để scrollbar cắt dropdown */
 #modal-plot .modal-content {
   overflow-x: visible !important;
   overflow-y: auto !important;
@@ -5664,6 +5804,7 @@ html[data-theme="dark"] #btn-global-timer.btn-timer-bare {
   z-index: 30;
 }
 
+/* ===== Hỗ trợ = cùng style Công cụ (btn-primary) ===== */
 .garden-support-dd #btn-support-menu,
 #btn-support-menu.btn.btn-primary {
   background: linear-gradient(135deg, var(--primary, #2d6a4f), var(--primary-light, #40916c)) !important;
@@ -5708,6 +5849,7 @@ html[data-theme="dark"] .garden-support-menu button[role="menuitem"] {
   color: #e8f5e9 !important;
 }
 
+/* Chip chu kỳ 3h — giống khối Thời tiết */
 .garden-cycle-chip,
 #btn-global-timer.garden-cycle-chip,
 #btn-global-timer.weather {
@@ -5739,6 +5881,7 @@ html[data-theme="dark"] #btn-global-timer.garden-cycle-chip {
   color: #e8f5e9 !important;
 }
 
+/* Thanh trạng thái dài dưới garden-controls */
 .garden-status-bar {
   display: flex;
   flex-wrap: wrap;
@@ -5827,6 +5970,7 @@ html[data-theme="dark"] .gsb-time { color: #a7c4b5; }
   }
 }
 
+/* Modal chi tiết ô — triệt scrollbar ngang */
 #modal-plot {
   overflow: hidden !important;
 }
@@ -5859,8 +6003,11 @@ html[data-theme="dark"] .gsb-time { color: #a7c4b5; }
   text-overflow: ellipsis;
 }
 
+/* FORCE removed — Hỗ trợ dùng cùng gradient với Công cụ (v1.9.10) */
+/* Ẩn status bar nếu còn sót */
 .garden-status-bar { display: none !important; }
 
+/* Menu Hỗ trợ: icon | tên | giờ còn | gear */
 .garden-support-menu {
   min-width: min(300px, 92vw) !important;
   padding: 8px !important;
@@ -5957,6 +6104,7 @@ html[data-theme="dark"] .support-row-gear {
   color: #e8f5e9;
 }
 
+/* ===== Modal cấu hình Tiên / NYC / Helper: căn giữa tiêu đề ===== */
 #modal-fairy-config .modal-content > h2,
 #modal-nyc-config .modal-content > h2,
 #modal-helper-config .modal-content > h2,
@@ -5983,6 +6131,7 @@ html[data-theme="dark"] .support-row-gear {
   justify-content: center;
 }
 
+/* Bulk: ô nhập + Tất cả */
 .modal-bulk-content {
   max-width: 340px !important;
   text-align: center;
@@ -6031,6 +6180,7 @@ html[data-theme="dark"] .bulk-qty-input {
   background: rgba(45, 106, 79, 0.15) !important;
 }
 
+/* Helper rules — khung đẹp */
 .helper-rules-list {
   display: flex;
   flex-direction: column;
@@ -6149,6 +6299,8 @@ html[data-theme="dark"] .helper-add-row {
   max-width: min(520px, calc(100vw - 24px)) !important;
 }
 
+
+/* ===== Ô nhập tên cấu hình (Tiên / NYC / Helper) ===== */
 .cfg-name-input,
 #fairy-custom-name,
 #nyc-custom-name,
@@ -6214,6 +6366,8 @@ html[data-theme="dark"] #helper-custom-name:focus {
   box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.2) !important;
 }
 
+
+/* ===== Ô number đẹp toàn site (không còn gạch dưới trơ) ===== */
 input[type="number"]:not(.qty-stepper input):not(.bank-amount-stepper input) {
   border-radius: 10px !important;
   border: 1.5px solid rgba(45, 106, 79, 0.28) !important;
@@ -6243,6 +6397,7 @@ html[data-theme="dark"] input[type="number"]:focus {
   box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.2) !important;
 }
 
+/* Helper add form labels */
 .helper-add-row label {
   display: block;
   font-size: 0.75rem;
@@ -6264,6 +6419,8 @@ html[data-theme="dark"] input[type="number"]:focus {
   text-align: center;
 }
 
+
+/* Ghép hạt — 2 dòng mô tả */
 .merge-box .merge-lead {
   text-align: center;
   margin: 0 0 4px;
@@ -6281,6 +6438,8 @@ html[data-theme="dark"] .merge-box .merge-sub {
   color: #a7c4b5;
 }
 
+
+/* Ghép hạt — khung rộng hơn */
 .merge-box {
   max-width: min(440px, 100%) !important;
   width: 100%;
@@ -6297,6 +6456,8 @@ html[data-theme="dark"] .merge-box .merge-sub {
   max-width: 100%;
 }
 
+
+/* Dropdown Hỗ trợ — neo phải, menu xổ sang trái */
 .garden-support-dd {
   position: relative !important;
   z-index: 40;
@@ -6316,11 +6477,16 @@ html[data-theme="dark"] .merge-box .merge-sub {
     left: auto !important;
     min-width: min(260px, calc(100vw - 20px)) !important;
   }
+  /* Công cụ cũng neo trong viewport */
   .garden-tools-dd.open {
     z-index: 110;
   }
 }
 
+
+/* ==========================================================================
+   LEVEL PAGE — TREE EVOLUTION BADGE (v1.8.6)
+   ========================================================================== */
 .level-badge-showcase {
   position: relative;
   display: flex;
@@ -6353,6 +6519,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
   transition: background 0.6s ease;
   background: rgba(74, 222, 128, 0.45);
 }
+/* ===== TREE BADGE 12 TIERS (design) ===== */
 .tree-badge-wrapper {
   position: relative;
   display: inline-flex;
@@ -6383,12 +6550,13 @@ html[data-theme="dark"] .merge-box .merge-sub {
   transition: all 0.5s ease;
   overflow: hidden;
 }
+/* Shimmer reflection sweep on tree orb */
 .tree-emblem-orb::after {
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
-    width: 80%;
+    left: 0; /* Đặt lại mốc tọa độ */
+    width: 80%; /* Tăng độ rộng dải sáng để tạo bóng đổ tự nhiên hơn */
     height: 100%;
     background: linear-gradient(
         to right, 
@@ -6397,9 +6565,11 @@ html[data-theme="dark"] .merge-box .merge-sub {
         rgba(255, 255, 255, 0) 100%
     );
     pointer-events: none;
+    /* Chuyển sang dùng transform để tối ưu độ mượt (chống giật khung hình) */
     animation: treeShimmer 7s infinite; 
 }
 
+/* Kéo điểm bắt đầu và kết thúc ra thật xa để không bị cắt xén */
 @keyframes treeShimmer {
     0% { 
         transform: translateX(-200%) skewX(-25deg); 
@@ -6425,6 +6595,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
   backdrop-filter: blur(8px);
   text-shadow: 0 2px 4px rgba(0,0,0,0.6);
   transition: all 0.4s ease;
+  /* Bo tròn hoàn hảo, không lộ hình vuông */
   overflow: hidden !important;
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
@@ -6444,6 +6615,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
   overflow: visible !important;
   border-radius: 0 !important;
 }
+/* LVL dưới avatar hồ sơ */
 .profile-level-under-avatar {
   margin-top: -8px;
   position: relative;
@@ -6475,51 +6647,62 @@ html[data-theme="dark"] .merge-box .merge-sub {
 @keyframes rotateHalo { 100% { transform: rotate(360deg); } }
 @keyframes rotateHaloReverse { 100% { transform: rotate(-360deg); } }
 
+/* Tier 1: 1-99 */
 .tier-tree-1 .tree-emblem-orb { width: 80px; height: 80px; background: radial-gradient(circle at 30% 30%, #4a3425, #1a100a); border: 3px solid #855335; }
 .tier-tree-1 .tree-level-tag { background: linear-gradient(135deg, #855335, #3a2215); color: #fef08a; }
 .tier-tree-1 .tree-icon { color: #4ade80; font-size: 2rem; filter: drop-shadow(0 2px 6px rgba(74,222,128,0.5)); }
 
+/* Tier 2: 100-499 */
 .tier-tree-2 .tree-emblem-orb { width: 95px; height: 95px; background: radial-gradient(circle at 30% 30%, #15803d, #052e16); border: 4px solid #4ade80; }
 .tier-tree-2 .tree-level-tag { background: linear-gradient(135deg, #16a34a, #065f46); color: #ffffff; }
 .tier-tree-2 .tree-icon { color: #86efac; font-size: 2.5rem; filter: drop-shadow(0 0 10px rgba(134,239,172,0.7)); }
 
+/* Tier 3: 500-999 */
 .tier-tree-3 .tree-emblem-orb { width: 110px; height: 110px; background: radial-gradient(circle at 30% 30%, #0e7490, #042f2e); border: 4px solid #38bdf8; }
 .tier-tree-3 .tree-level-tag { background: linear-gradient(135deg, #0284c7, #0f766e); color: #e0f2fe; }
 .tier-tree-3 .tree-icon { color: #38bdf8; font-size: 3rem; filter: drop-shadow(0 0 12px rgba(56,189,248,0.8)); }
 
+/* Tier 4: 1000-1999 */
 .tier-tree-4 .tree-emblem-orb { width: 125px; height: 125px; background: radial-gradient(circle at 30% 30%, #15803d, #78350f, #064e3b); border: 5px solid #facc15; }
 .tier-tree-4 .tree-level-tag { background: linear-gradient(135deg, #eab308, #854d0e); color: #ffffff; border-color: #fef08a; }
 .tier-tree-4 .tree-icon { color: #fef08a; font-size: 3.5rem; filter: drop-shadow(0 0 15px rgba(254,240,138,0.9)); }
 
+/* Tier 5: 2000-2999 */
 .tier-tree-5 .tree-emblem-orb { width: 140px; height: 140px; background: radial-gradient(circle at 30% 30%, #047857, #831843, #022c22); border: 5px solid #f472b6; }
 .tier-tree-5 .tree-level-tag { background: linear-gradient(135deg, #ec4899, #059669); color: #ffffff; }
 .tier-tree-5 .tree-icon { color: #fbcfe8; font-size: 4rem; filter: drop-shadow(0 0 18px rgba(244,114,182,0.9)); }
 
+/* Tier 6: 3000-4499 */
 .tier-tree-6 .tree-emblem-orb { width: 155px; height: 155px; background: radial-gradient(circle at 30% 30%, #0284c7, #0f172a, #03001e); border: 5px solid #00f2fe; animation: bioTreePulse 3s infinite alternate ease-in-out; }
 .tier-tree-6 .tree-level-tag { background: linear-gradient(135deg, #00f2fe, #0369a1); color: #ffffff; }
 .tier-tree-6 .tree-icon { color: #67e8f9; font-size: 4.5rem; filter: drop-shadow(0 0 22px rgba(0,242,254,1)); }
 
+/* Tier 7: 4500-5999 */
 .tier-tree-7 .tree-emblem-orb { width: 170px; height: 170px; background: radial-gradient(circle at 30% 30%, #b45309, #064e3b, #451a03); border: 6px solid #f59e0b; }
 .tier-tree-7 .tree-level-tag { background: linear-gradient(135deg, #f59e0b, #047857); color: #fef08a; border-color: #fef08a; }
 .tier-tree-7 .tree-icon { color: #fef08a; font-size: 5rem; filter: drop-shadow(0 0 25px rgba(245,158,11,1)); }
 .tier-tree-7 .orbit-halo-ring { display: block; border-color: #f59e0b; }
 
+/* Tier 8: 6000-7499 */
 .tier-tree-8 .tree-emblem-orb { width: 185px; height: 185px; background: radial-gradient(circle at 30% 30%, #581c87, #064e3b, #0c4a6e); border: 6px solid #c084fc; animation: gaiaTreeShift 4s ease infinite; }
 .tier-tree-8 .tree-level-tag { background: linear-gradient(135deg, #a855f7, #14b8a6, #3b82f6); color: #ffffff; }
 .tier-tree-8 .tree-icon { color: #e9d5ff; font-size: 5.5rem; filter: drop-shadow(0 0 28px rgba(192,132,252,1)); }
 .tier-tree-8 .orbit-halo-ring { display: block; border-color: #c084fc; animation-duration: 8s; }
 
+/* Tier 9: 7500-8999 */
 .tier-tree-9 .tree-emblem-orb { width: 200px; height: 200px; background: radial-gradient(circle at 30% 30%, #701a75, #064e3b, #0f172a); border: 7px solid #f43f5e; animation: divineYggdrasilTree 4s linear infinite; }
 .tier-tree-9 .tree-level-tag { background: linear-gradient(135deg, #f43f5e, #3b82f6, #10b981, #f59e0b); background-size: 200% 200%; animation: gaiaTreeShift 3s linear infinite; color: #ffffff; border-color: #fef08a; padding: 6px 22px; font-size: 1.05rem; }
 .tier-tree-9 .tree-icon { color: #fef08a; font-size: 6rem; animation: pulseYggdrasilIcon 2s infinite alternate; }
 .tier-tree-9 .orbit-halo-ring { display: block; border-color: #fef08a; border-width: 3px; animation-duration: 6s; }
 
+/* Tier 10: 9000-9499 */
 .tier-tree-10 .tree-emblem-orb { width: 215px; height: 215px; background: radial-gradient(circle at 50% 50%, #1e1b4b, #000000, #172554); border: 8px solid #cbd5e1; box-shadow: 0 0 50px rgba(147, 197, 253, 0.6), inset 0 0 20px rgba(255,255,255,0.5); }
 .tier-tree-10 .tree-level-tag { background: linear-gradient(135deg, #94a3b8, #334155, #0f172a); color: #e0f2fe; border-color: #bae6fd; font-size: 1.1rem; }
 .tier-tree-10 .tree-icon { color: #e0f2fe; font-size: 6.5rem; filter: drop-shadow(0 0 30px rgba(255,255,255,1)); animation: pulseYggdrasilIcon 1.5s infinite alternate; }
 .tier-tree-10 .orbit-halo-ring { display: block; border-color: #93c5fd; border-width: 3px; border-style: solid; }
 .tier-tree-10 .orbit-halo-ring-inner { display: block; border-color: #cbd5e1; }
 
+/* Tier 11: 9500-9999 */
 .tier-tree-11 .tree-emblem-orb { width: 230px; height: 230px; background: conic-gradient(from 0deg, #4c1d95, #000000, #7f1d1d, #000000, #4c1d95); border: 8px solid #e11d48; animation: rotateHalo 6s linear infinite; }
 .tier-tree-11 .tree-emblem-orb .tree-icon { animation: rotateHaloReverse 6s linear infinite; }
 .tier-tree-11 .tree-level-tag { background: linear-gradient(135deg, #be123c, #4a044e, #000000); color: #fecdd3; border-color: #fda4af; font-size: 1.1rem; }
@@ -6527,6 +6710,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .tier-tree-11 .orbit-halo-ring { display: block; border-color: #f43f5e; border-width: 4px; animation-duration: 3s; }
 .tier-tree-11 .orbit-halo-ring-inner { display: block; border-color: #c084fc; animation-duration: 4s; }
 
+/* Tier 12: 10000 MAX */
 .tier-tree-12 .tree-emblem-orb {
   width: 250px; height: 250px;
   background: radial-gradient(circle at 50% 50%, #ffffff, #fef08a, #f59e0b);
@@ -6585,6 +6769,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .eco-pill-badge.tier-tree-11 { background: linear-gradient(135deg, #be123c, #4a044e); color: #fecdd3; }
 .eco-pill-badge.tier-tree-12 { background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 300% 300%; animation: rainbowShift 3s linear infinite; color: #fff; }
 
+/* Scale down on small screens */
 @media (max-width: 480px) {
   .tier-tree-7 .tree-emblem-orb, .tier-tree-8 .tree-emblem-orb { width: 140px !important; height: 140px !important; }
   .tier-tree-9 .tree-emblem-orb, .tier-tree-10 .tree-emblem-orb { width: 150px !important; height: 150px !important; }
@@ -6593,6 +6778,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
   .tier-tree-9 .tree-icon, .tier-tree-10 .tree-icon { font-size: 3.6rem !important; }
   .tier-tree-11 .tree-icon, .tier-tree-12 .tree-icon { font-size: 4rem !important; }
 }
+
 
 .level-tier-meta {
   z-index: 2;
@@ -6833,6 +7019,13 @@ html[data-theme="dark"] .merge-box .merge-sub {
   .tier-tree-7 .tree-icon { font-size: 4.2rem; }
 }
 
+
+/* ==========================================================================
+   UNIFIED THEME SYSTEM — dark + light (v1.9.3)
+   All buttons, inputs, frames use CSS variables that swap with data-theme.
+   ========================================================================== */
+
+/* --- Buttons (both themes via tokens) --- */
 .btn-primary,
 #btn-tools-menu.btn-primary,
 #btn-support-menu.btn-primary {
@@ -6918,6 +7111,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
   color: var(--primary);
 }
 
+/* Tabs */
 .shop-tab,
 .rank-tab,
 .tab-btn,
@@ -6936,6 +7130,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
   font-weight: 700;
 }
 
+/* Inputs */
 input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 select,
 textarea,
@@ -6963,6 +7158,7 @@ textarea::placeholder {
   opacity: 0.85;
 }
 
+/* Cards / panels */
 .stat-card,
 .shop-card,
 .profile-card,
@@ -7024,6 +7220,7 @@ html[data-theme="dark"] .chat-bubble.me {
   border-color: var(--border-strong) !important;
 }
 
+/* Text helpers */
 .page-header h1,
 .section-title {
   color: var(--text) !important;
@@ -7040,6 +7237,7 @@ html[data-theme="dark"] .chat-bubble.me {
   color: var(--primary) !important;
 }
 
+/* Level page */
 .level-badge-showcase {
   background:
     radial-gradient(ellipse at 50% 12%, color-mix(in srgb, var(--primary) 18%, transparent) 0%, transparent 55%),
@@ -7087,6 +7285,7 @@ html[data-theme="dark"] .chat-bubble.me {
   background: linear-gradient(90deg, var(--primary), var(--success), var(--warning-bg)) !important;
 }
 
+/* Activity icons */
 .activity-list .act-icon {
   color: var(--primary) !important;
 }
@@ -7095,6 +7294,7 @@ html[data-theme="dark"] .chat-bubble.me {
   color: var(--text);
 }
 
+/* Nav */
 .bottom-nav {
   background: var(--card) !important;
   border-color: var(--border) !important;
@@ -7108,11 +7308,13 @@ html[data-theme="dark"] .chat-bubble.me {
   background: var(--surface-2) !important;
 }
 
+/* Profile avatar fallback */
 .profile-avatar-fallback {
   background: var(--surface-2) !important;
   color: var(--primary) !important;
 }
 
+/* Modal */
 .modal-content {
   background: var(--card) !important;
   color: var(--text) !important;
@@ -7122,18 +7324,21 @@ html[data-theme="dark"] .chat-bubble.me {
   color: var(--text-muted) !important;
 }
 
+/* Login card stays readable */
 .login-card {
   background: var(--card) !important;
   color: var(--text) !important;
   border: 1px solid var(--border) !important;
 }
 
+/* Rank / shop cards hover */
 .shop-card:hover,
 .stat-card:hover,
 .rank-item:hover {
   border-color: var(--border-strong) !important;
 }
 
+/* Secondary surfaces that were hard-coded green */
 .chat-av-fb,
 .rank-av-fb {
   background: var(--surface-2) !important;
@@ -7144,12 +7349,14 @@ html[data-theme="dark"] .chat-bubble.me {
   color: var(--text) !important;
 }
 
+/* Qty stepper */
 .qty-stepper button {
   background: var(--btn-secondary-bg) !important;
   color: var(--btn-secondary-color) !important;
   border: 1px solid var(--btn-secondary-border) !important;
 }
 
+/* Garden menus */
 .garden-tools-menu {
   background: var(--card) !important;
   border: 1px solid var(--border) !important;
@@ -7162,10 +7369,12 @@ html[data-theme="dark"] .chat-bubble.me {
   background: var(--surface-2) !important;
 }
 
+/* Ensure dark body bg image stays */
 html[data-theme="dark"] body {
   background-color: var(--bg);
 }
 
+/* Header stays brand gradient but readable */
 .header {
   color: #fff;
 }
@@ -7174,10 +7383,15 @@ html[data-theme="dark"] .header {
   border-bottom: 1px solid var(--border);
 }
 
+/* App version */
 .app-version-badge {
   color: rgba(255,255,255,0.85);
 }
 
+
+/* ==========================================================================
+   Avatar frame + companion + LVL (v1.9.15 — clean rewrite)
+   ========================================================================== */
 @keyframes avatar-frame-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -7203,6 +7417,7 @@ html[data-theme="dark"] .header {
   flex-shrink: 0;
 }
 
+/* Vòng khung avatar — độ dày như cũ (v1.9.22) */
 .profile-avatar-wrap.has-frame::before {
   content: '';
   position: absolute;
@@ -7252,6 +7467,7 @@ html[data-theme="dark"] .header {
   display: none !important;
 }
 
+/* Thú cưng — góc trên phải */
 .profile-companion {
   display: none;
   position: absolute;
@@ -7272,6 +7488,7 @@ html[data-theme="dark"] .header {
 html[data-theme="dark"] .profile-companion {
   background: var(--card, #1c2820);
 }
+/* Badge FA icon — góc trên-phải avatar */
 .profile-badge {
   display: none;
   position: absolute;
@@ -7303,8 +7520,19 @@ html[data-theme="dark"] .profile-badge {
 }
 .shop-owned .owned-ico { margin-right: 4px; opacity: 0.95; }
 
+
 .nav-menu-title { display: none !important; height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; }
 
+
+
+
+
+
+/* ==========================================================================
+   v1.9.19 — LVL không bị cắt mép (overflow chain)
+   ========================================================================== */
+
+/* Tắt transform animation trên trang profile — transform tạo containing/clip */
 #page-profile.page,
 #page-profile.page.active {
   overflow: visible !important;
@@ -7342,6 +7570,7 @@ html[data-theme="dark"] .profile-badge {
 
 .profile-avatar-wrap.has-frame::before {
   z-index: 0 !important;
+  /* vòng chỉ quanh avatar, không kéo dài che LVL */
   pointer-events: none !important;
 }
 
@@ -7359,6 +7588,7 @@ html[data-theme="dark"] .profile-badge {
   z-index: 5 !important;
 }
 
+/* Shop preview khung avatar */
 .avatar-frame-preview {
   width: 56px;
   height: 56px;
@@ -7379,6 +7609,8 @@ html[data-theme="dark"] .profile-badge {
   display: block;
 }
 
+
+/* Tab chọn vườn — cấu hình Tiên / NYC từng vườn */
 .agent-garden-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -7414,6 +7646,10 @@ html[data-theme="dark"] .profile-badge {
   margin-bottom: 8px;
 }
 
+
+
+
+/* Bạn bè: nút bo tròn, không góc vuông lộ */
 .friend-item .friend-actions .btn,
 .friend-item .btn-visit-friend,
 .friend-item .btn-chat-friend {
@@ -7424,6 +7660,8 @@ html[data-theme="dark"] .profile-badge {
   overflow: visible;
 }
 
+
+/* Restored button borders */
 .btn-primary,
 .btn-success,
 .btn-danger,
@@ -7438,6 +7676,8 @@ html[data-theme="dark"] .profile-badge {
   border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
 }
 
+
+/* Badge FA search (riêng, nguồn pro.min.css) */
 .badge-fa-search-bar {
   margin: 0 0 14px;
   padding: 12px 14px;
