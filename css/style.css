@@ -6532,20 +6532,36 @@ html[data-theme="dark"] .merge-box .merge-sub {
   transition: all 0.5s ease;
   overflow: hidden;
 }
+/* Shimmer reflection sweep on tree orb */
 .tree-emblem-orb::after {
-  content: '';
-  position: absolute;
-  top: -50%; left: -50%;
-  width: 200%; height: 200%;
-  background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.3) 50%, transparent 60%);
-  transform: rotate(30deg);
-  animation: treeShimmer 5s infinite;
-  pointer-events: none;
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0; /* Đặt lại mốc tọa độ */
+    width: 80%; /* Tăng độ rộng dải sáng để tạo bóng đổ tự nhiên hơn */
+    height: 100%;
+    background: linear-gradient(
+        to right, 
+        rgba(255, 255, 255, 0) 0%, 
+        rgba(255, 255, 255, 0.4) 50%, 
+        rgba(255, 255, 255, 0) 100%
+    );
+    pointer-events: none;
+    /* Chuyển sang dùng transform để tối ưu độ mượt (chống giật khung hình) */
+    animation: treeShimmer 7s infinite; 
 }
+
+/* Kéo điểm bắt đầu và kết thúc ra thật xa để không bị cắt xén */
 @keyframes treeShimmer {
-  0% { transform: translateY(-100%) rotate(30deg); }
-  25% { transform: translateY(100%) rotate(30deg); }
-  100% { transform: translateY(100%) rotate(30deg); }
+    0% { 
+        transform: translateX(-200%) skewX(-25deg); 
+    }
+    30% { 
+        transform: translateX(250%) skewX(-25deg); 
+    }
+    100% { 
+        transform: translateX(250%) skewX(-25deg); 
+    }
 }
 .tree-level-tag {
   position: relative;
