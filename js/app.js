@@ -2563,29 +2563,41 @@ let _faProIconLoading = null;
 const FA_PRO_CSS_URL = 'https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css';
 
 function loadFaProIconList() {
-  if (_faProIconList) return Promise.resolve(_faProIconList);
+  if (_faProIconList && _faProIconList.length) return Promise.resolve(_faProIconList);
   if (_faProIconLoading) return _faProIconLoading;
+
+  // 1) Ưu tiên danh sách đã trích từ pro.min.css (js/fa-icons.js) — không bị CORS
+  if (typeof FA_PRO_ICON_SLUGS !== 'undefined' && Array.isArray(FA_PRO_ICON_SLUGS) && FA_PRO_ICON_SLUGS.length) {
+    _faProIconList = FA_PRO_ICON_SLUGS.slice();
+    return Promise.resolve(_faProIconList);
+  }
+
+  // 2) Thử fetch pro.min.css (có thể CORS fail trên host khác)
   _faProIconLoading = fetch(FA_PRO_CSS_URL)
-    .then(r => r.text())
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
     .then(css => {
-      const re = /\.fa-([a-z0-9-]+)\s*\{--fa:/g;
+      const re = /\.fa-([a-z0-9-]+)(?=[,{])/g;
       const set = new Set();
       let m;
       while ((m = re.exec(css)) !== null) {
         const slug = m[1];
-        // bỏ số đơn, class style
         if (!slug || /^\d+$/.test(slug)) continue;
-        if (['solid','regular','light','thin','duotone','brands','sharp','classic'].indexOf(slug) >= 0) continue;
+        if (['solid','regular','light','thin','duotone','brands','sharp','classic','fw','spin','pulse'].indexOf(slug) >= 0) continue;
         set.add(slug);
       }
       _faProIconList = Array.from(set).sort();
+      if (!_faProIconList.length) throw new Error('empty parse');
       return _faProIconList;
     })
     .catch(err => {
       console.warn('loadFaProIconList', err);
-      // fallback từ data.js
-      const fb = (typeof getAvatarBadges === 'function' ? getAvatarBadges() : []).map(b => b.slug || (b.fa || '').replace(/^fa-regular fa-/, '')).filter(Boolean);
-      _faProIconList = fb;
+      const fb = (typeof getAvatarBadges === 'function' ? getAvatarBadges() : [])
+        .map(b => b.slug || (b.fa || '').replace(/^fa-regular\s+fa-/, '').replace(/^fa-/, ''))
+        .filter(Boolean);
+      _faProIconList = fb.length ? fb : ['heart','star','user','bell','bookmark','circle','face-smile','moon','sun','gem'];
       return _faProIconList;
     });
   return _faProIconLoading;
