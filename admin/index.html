@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin - Vườn Xanh</title>
-  <link rel="stylesheet" href="../css/style.css?v=1.9.49" />
-  <link rel="stylesheet" href="../css/admin.css?v=1.9.49" />
+  <link rel="stylesheet" href="../css/style.css?v=1.9.50" />
+  <link rel="stylesheet" href="../css/admin.css?v=1.9.50" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -13,6 +13,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
 </head>
 <body class="admin-body">
+  <!-- Loading / Access denied -->
   <div id="admin-loading" class="admin-login">
     <div class="login-card">
       <h1>🔐 Admin Panel</h1>
@@ -21,6 +22,7 @@
     </div>
   </div>
 
+  <!-- Admin Dashboard -->
   <div id="admin-dashboard" class="admin-dashboard hidden">
     <div id="admin-backdrop" class="admin-backdrop"></div>
     <button id="admin-menu-btn" class="admin-menu-btn" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
@@ -47,7 +49,7 @@
         </button>
       </div>
       <section id="sec-dashboard" class="admin-section active">
-        <h1>📊 TỔNG QUAN HỆ THỐNG</h1>
+        <h1>📊 Tổng quan hệ thống</h1>
         <div class="admin-stats" id="admin-stats"></div>
         <div class="admin-card">
           <h3><i class="fa-solid fa-clock-rotate-left"></i> Hoạt động gần đây</h3>
@@ -58,7 +60,7 @@
 
       <section id="sec-plants" class="admin-section">
         <div class="section-header">
-          <h1>🌿 QUẢN LÝ CÂY / HOA / QUẢ</h1>
+          <h1>🌿 Quản lý cây / hoa / quả</h1>
           <button id="btn-add-plant" class="btn btn-primary">+ Thêm cây mới</button>
         </div>
         <div class="shop-toolbar" style="margin-bottom:12px">
@@ -111,6 +113,10 @@
             <tbody></tbody>
           </table>
         </div>
+        <p style="margin-top:16px;color:#52796f;font-size:0.9rem">
+          💡 Tạo tài khoản mới tại Firebase Console → Authentication → Users → Add user.
+          Tài khoản đầu tiên đăng nhập sẽ tự động là <strong>admin</strong>.
+        </p>
       </section>
 
       <section id="sec-giftcodes" class="admin-section">
@@ -163,21 +169,21 @@
       </section>
 
       <section id="sec-settings" class="admin-section">
-        <h1>⚙️ CÀI ĐẶT HỆ THỐNG</h1>
+        <h1>⚙️ Cài đặt hệ thống</h1>
 
         <div class="admin-card settings-form">
           <label>Số ô đất mặc định (cho user mới)</label>
           <input type="number" id="set-plots" min="4" max="36" />
           <label>Tiền khởi đầu (cho user mới)</label>
           <input type="number" id="set-coins" min="0" />
-          <label>Tỉ lệ mưa ngẫu nhiên (%) — mỗi ~45 giây kiểm tra một lần (1-50)</label>
+          <label>Tỉ lệ mưa ngẫu nhiên (%) — mỗi ~45 giây kiểm tra một lần (1–50)</label>
           <input type="number" id="set-rain" min="1" max="50" step="1" />
           <label>Thời lượng mưa liên tục (phút)</label>
           <input type="number" id="set-rain-duration" min="0.1" max="120" step="0.05" />
           <p style="font-size:0.85rem;color:#52796f;margin-top:4px">Ví dụ: 0.25 = 15 giây, 1 = 1 phút, 5 = 5 phút. Mưa rút ngắn ~12% thời gian còn lại của cây đang lớn. Tiên (nếu bật) tưới hết khi mưa.</p>
-          <label>Tỉ lệ ghép hạt cơ bản % (không dùng bùa, 1-100)</label>
+          <label>Tỉ lệ ghép hạt cơ bản % (không dùng bùa, 1–100)</label>
           <input type="number" id="set-merge-base" min="1" max="100" step="1" />
-          <p style="font-size:0.85rem;color:#52796f;margin-top:4px">Mặc định 25%. Bùa bảo hộ <strong>cộng thêm</strong> (vd +10% → 35%). Kết quả luôn trong khoảng 1-100%.</p>
+          <p style="font-size:0.85rem;color:#52796f;margin-top:4px">Mặc định 25%. Bùa bảo hộ <strong>cộng thêm</strong> (vd +10% → 35%). Kết quả luôn trong khoảng 1–100%.</p>
           <label style="margin-top:12px"><i class="fa-solid fa-image"></i> Link ảnh favicon / icon site (.ico, .png, .svg…)</label>
           <input type="url" id="set-site-icon" placeholder="https://example.com/favicon.ico" />
           <p style="font-size:0.85rem;color:#52796f;margin-top:4px">URL ảnh icon tab trình duyệt. Để trống = mặc định trình duyệt. Sau khi lưu, user F5 sẽ thấy icon mới.</p>
@@ -192,7 +198,7 @@
             <span class="maint-icon"><i class="fa-solid fa-screwdriver-wrench"></i></span>
             <div>
               <h3 style="margin:0">Chế độ bảo trì</h3>
-              <p style="margin:4px 0 0;font-size:0.88rem;color:#52796f">Khi bật, user thường chỉ thấy màn khóa - admin vẫn vào được.</p>
+              <p style="margin:4px 0 0;font-size:0.88rem;color:#52796f">Khi bật, user thường chỉ thấy màn khóa — admin vẫn vào được.</p>
             </div>
           </div>
           <label class="maint-toggle">
@@ -234,7 +240,7 @@
       </section>
 
       <section id="sec-announce" class="admin-section">
-        <h1>✉️ THƯ & THÔNG BÁO</h1>
+        <h1>✉️ Thư & Thông báo</h1>
         <div class="admin-card announce-card">
           <div class="announce-card-head">
             <span class="announce-icon"><i class="fa-solid fa-envelope"></i></span>
@@ -271,7 +277,7 @@
       </section>
 
       <section id="sec-reset" class="admin-section">
-        <h1>🔄 RESET DỮ LIỆU</h1>
+        <h1>🔄 Reset dữ liệu</h1>
         <div class="admin-card danger-zone">
           <p>⚠️ Reset danh sách cây về mặc định (không xóa user).</p>
           <button id="btn-reset-plants" class="btn btn-danger">Reset danh sách cây</button>
@@ -280,6 +286,7 @@
     </main>
   </div>
 
+  <!-- Modal thêm/sửa cây -->
   <div id="modal-plant-form" class="modal">
     <div class="modal-content">
       <h2 id="form-title">Thêm cây mới</h2>
@@ -310,7 +317,7 @@
         <label>Mô tả</label>
         <textarea id="p-desc" rows="2"></textarea>
         <label class="checkbox-row"><input type="checkbox" id="p-limited" /> Limited (sự kiện)</label>
-        <label>Tháng bán (1-12, cách nhau bởi dấu phẩy — để trống = luôn bán nếu Limited)</label>
+        <label>Tháng bán (1–12, cách nhau bởi dấu phẩy — để trống = luôn bán nếu Limited)</label>
         <input type="text" id="p-months" placeholder="vd: 1,2,12" />
         <div class="modal-actions">
           <button type="submit" class="btn btn-primary">Lưu</button>
@@ -322,8 +329,8 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="../js/firebase-config.js?v=1.9.49"></script>
-  <script src="../js/data.js?v=1.9.49"></script>
-  <script src="../js/admin.js?v=1.9.49"></script>
+  <script src="../js/firebase-config.js?v=1.9.50"></script>
+  <script src="../js/data.js?v=1.9.50"></script>
+  <script src="../js/admin.js?v=1.9.50"></script>
 </body>
 </html>
