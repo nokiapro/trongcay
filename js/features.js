@@ -1,4 +1,9 @@
+/**
+ * Tính năng mở rộng: nhiệm vụ, chợ, giftcode, ngân hàng, ô đặc biệt, bảo trì, ban
+ */
 const Features = {
+  // ===== Nâng cấp ô đất (hệ số 1.0 → 50) =====
+  // Giá = chi phí nâng từ x1 lên mức target (trả phần chênh khi nâng tiếp)
   PLOT_UPGRADE_TIERS: [
     { mult: 1.0, price: 0 },
     { mult: 1.5, price: 500 },
@@ -21,6 +26,7 @@ const Features = {
     const tgt = tiers.find(t => t.mult === Number(targetMult));
     if (!tgt) return null;
     if (tgt.mult <= (Number(currentMult) || 1)) return null;
+    // Giá nâng = giá mốc đích − giá mốc hiện tại
     const curPrice = (tiers.filter(t => t.mult <= (Number(currentMult) || 1)).pop() || tiers[0]).price;
     return Math.max(0, tgt.price - curPrice);
   },
@@ -40,6 +46,7 @@ const Features = {
     if ((currentPlayer.coins || 0) < cost) return { ok: false, msg: 'Không đủ xu! Cần ' + cost.toLocaleString() + '🪙' };
     currentPlayer.coins -= cost;
     plot.specialMultPermanent = tgt;
+    // Giữ boost tạm nếu đang cao hơn; không thì đặt permanent
     const now = Date.now();
     const tempOn = plot.specialMultUntil && plot.specialMultUntil > now;
     const tempM = Number(plot.specialMultTemp) || 0;
@@ -56,6 +63,10 @@ const Features = {
     return { ok: true, msg: 'Ô #' + (plotId + 1) + ' đã lên x' + tgt + '!' };
   },
 
+  /**
+   * Nâng tất cả ô (mọi vườn) lên targetMult vĩnh viễn (mặc định x50).
+   * Chỉ tính các ô đang dưới mức đích; giá = tổng chi phí từng ô.
+   */
   async upgradeAllPlotsTo(targetMult = 50) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     if (typeof Game !== 'undefined' && Game.ensureGardens) {
@@ -108,6 +119,7 @@ const Features = {
       plot.specialName = 'Ô x' + tgt + ' (vĩnh viễn)';
       plot.specialId = 'upgrade-perm-' + tgt;
     });
+    // Đồng bộ plots đang active
     if (typeof Game !== 'undefined' && Game.syncActiveGarden) {
       try { Game.syncActiveGarden(); } catch (_) {}
     } else if (Array.isArray(currentPlayer.gardens) && typeof currentPlayer.activeGarden === 'number') {
@@ -127,6 +139,9 @@ const Features = {
     };
   },
 
+  
+
+  // Gói tăng tốc tạm thời (cửa hàng) — days 1..30 + vĩnh viễn dùng upgradePlot
   PLOT_TEMP_BOOSTS: [
     { id: 'tb-15-1', name: 'x1.5 · 1 ngày', mult: 1.5, days: 1, price: 120 },
     { id: 'tb-15-3', name: 'x1.5 · 3 ngày', mult: 1.5, days: 3, price: 300 },
@@ -160,6 +175,7 @@ const Features = {
     currentPlayer.coins -= pack.price;
     const now = Date.now();
     const addMs = pack.days * 86400000;
+    // Cùng mức đang active → cộng dồn thời gian; khác mức → ghi đè nếu mới cao hơn hoặc hết hạn
     const active = plot.specialMultUntil && plot.specialMultUntil > now;
     if (active && Number(plot.specialMultTemp) === pack.mult) {
       plot.specialMultUntil = plot.specialMultUntil + addMs;
@@ -179,6 +195,7 @@ const Features = {
     return { ok: true, msg: 'Ô #' + (plotId + 1) + ' → ' + pack.name + '!' };
   },
 
+  // ===== Nhiệm vụ ngày / tuần =====
   DAILY_QUEST_DEFS: [
     { id: 'd_plant', title: 'Trồng 5 cây', type: 'plant', target: 5, reward: 80, xp: 10 },
     { id: 'd_water', title: 'Tưới 10 lần', type: 'water', target: 10, reward: 60, xp: 8 },
@@ -193,6 +210,7 @@ const Features = {
   ],
 
   dayKey(d) {
+    // Luôn theo GMT+7 (Asia/Ho_Chi_Minh)
     if (typeof gameDateString === 'function') {
       const ms = (d instanceof Date) ? d.getTime() : (typeof nowMs === 'function' ? nowMs() : Date.now());
       return gameDateString(ms);
@@ -201,11 +219,14 @@ const Features = {
     return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
   },
   weekKey(d) {
+    // Thứ 2 đầu tuần theo GMT+7
     if (typeof dateInGameTz === 'function') {
       const ms = (d instanceof Date) ? d.getTime() : (typeof nowMs === 'function' ? nowMs() : Date.now());
       const g = dateInGameTz(ms);
-      const noon = Date.UTC(g.year, g.month - 1, g.day, 5, 0, 0);
+      // Tìm Monday: dùng UTC+7 noon rồi lùi
+      const noon = Date.UTC(g.year, g.month - 1, g.day, 5, 0, 0); // approx
       const tmp = new Date(ms);
+      // day of week in VN
       const wd = new Date(ms).toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'short' });
       const map = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
       const off = map[wd] != null ? map[wd] : 0;
@@ -274,6 +295,7 @@ const Features = {
     return { ok: true, msg: `Nhận ${def.reward}🪙 + ${def.xp || 0} XP!` };
   },
 
+  // ===== Ngân hàng =====
   BANK_TERMS: [
     { id: 'day', label: '1 ngày', days: 1, rate: 0.02 },
     { id: 'week', label: '1 tuần', days: 7, rate: 0.10 },
@@ -314,6 +336,7 @@ const Features = {
     return { ok: true, msg: `Đã gửi ${amount}🪙 (${term.label}, lãi ${Math.round(term.rate * 100)}%)` };
   },
 
+  /** Gửi thêm vào sổ đang mở — gốc tăng, lãi theo gốc mới */
   async bankTopUp(depId, amount) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     amount = Math.floor(Number(amount) || 0);
@@ -325,6 +348,7 @@ const Features = {
     if (Date.now() >= d.matureAt) return { ok: false, msg: 'Sổ đã đáo hạn — hãy rút rồi gửi sổ mới!' };
     currentPlayer.coins -= amount;
     d.amount = (d.amount || 0) + amount;
+    // Ghi nhận lần nạp gần nhất (không đổi hạn đáo)
     d.lastTopUpAt = Date.now();
     d.topUpTotal = (d.topUpTotal || 0) + amount;
     if (typeof Game !== 'undefined' && Game.addActivity) {
@@ -346,6 +370,7 @@ const Features = {
     if (now >= d.matureAt) {
       payout = Math.floor(d.amount * (1 + (d.rate || 0)));
     } else {
+      // Rút sớm: chỉ nhận gốc, mất lãi
       payout = d.amount;
     }
     currentPlayer.bank.deposits.splice(idx, 1);
@@ -359,6 +384,7 @@ const Features = {
     return { ok: true, msg: matured ? `Đáo hạn +${payout}🪙 (gồm lãi)!` : `Rút sớm +${payout}🪙 (không lãi).` };
   },
 
+  // ===== Gift code =====
   async redeemGiftCode(code) {
     if (!currentPlayer || !currentUser) return { ok: false, msg: 'Chưa đăng nhập!' };
     code = String(code || '').trim().toUpperCase();
@@ -424,6 +450,7 @@ const Features = {
     return { ok: true, msg: 'Đổi mã thành công! ' + parts.join(' · ') };
   },
 
+  // ===== Chợ người chơi =====
   async listMarketItem(kind, itemId, qty, priceEach) {
     if (!currentUser || !currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     qty = Math.floor(Number(qty) || 0);
@@ -471,6 +498,7 @@ const Features = {
     if (L.sellerUid === currentUser.uid) return { ok: false, msg: 'Không mua tin của chính mình!' };
     const cost = (L.qty || 0) * (L.priceEach || 0);
     if ((currentPlayer.coins || 0) < cost) return { ok: false, msg: 'Không đủ xu!' };
+    // Xóa listing trước (tránh double buy đơn giản)
     await ref.remove();
     currentPlayer.coins -= cost;
     if (L.kind === 'seed') {
@@ -480,6 +508,8 @@ const Features = {
       if (!currentPlayer.inventory.harvestBought) currentPlayer.inventory.harvestBought = {};
       currentPlayer.inventory.harvestBought[L.itemId] = (currentPlayer.inventory.harvestBought[L.itemId] || 0) + L.qty;
     }
+    // Trả tiền người bán qua marketCredits — seller claim khi vào game / save
+    // (không ghi thẳng users/seller: rule chỉ cho tự ghi; và savePlayer sẽ đè mất)
     const buyerName = currentPlayer.displayName || (currentPlayer.email || '').split('@')[0] || 'Người mua';
     const payNote = `Chợ: bán ${L.qty} ${L.itemName || L.itemId} +${cost}🪙 (từ ${buyerName})`;
     try {
@@ -499,6 +529,7 @@ const Features = {
       });
     } catch (e) {
       console.warn('marketCredits push', e);
+      // Fallback cũ: cộng coins trực tiếp (cần rule coins cho phép tăng)
       try {
         await db.ref('users/' + L.sellerUid + '/coins').transaction(cur =>
           (typeof cur === 'number' ? cur : 0) + cost
@@ -522,6 +553,10 @@ const Features = {
     return { ok: true, msg: `Đã mua ${L.qty} ${L.itemName}!` };
   },
 
+  /**
+   * Người bán nhận tiền chợ đang treo (marketCredits).
+   * Cộng coins + ghi nhật ký + xóa credit đã nhận.
+   */
   async claimMarketCredits() {
     if (!currentUser || !currentPlayer || !db) return { ok: false, claimed: 0, amount: 0 };
     let claimed = 0;
@@ -568,6 +603,7 @@ const Features = {
         if (typeof _playerDirty !== 'undefined') _playerDirty = true;
         if (typeof updateCoins === 'function') updateCoins();
         if (typeof Game !== 'undefined' && Game.addActivity && total > 0) {
+          // đã ghi activity chi tiết từng credit; toast tổng
         }
       }
       return { ok: true, claimed, amount: total };
@@ -596,11 +632,15 @@ const Features = {
     return { ok: true, msg: 'Đã gỡ tin, hoàn kho!' };
   },
 
+  // ===== (Đã bỏ mua ô đặc biệt — dùng upgradePlot) =====
   async buySpecialPlot() {
     return { ok: false, msg: 'Đã chuyển sang nâng cấp ô trong vườn!' };
   },
 
+  
+  // ===== Bảo trì / Ban =====
   async checkAccessGates() {
+    // Maintenance
     try {
       const snap = await db.ref('settings').once('value');
       const s = snap.val() || {};

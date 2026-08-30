@@ -1,3 +1,4 @@
+// ===== APP UI =====
 let selectedPlotId = null;
 
 function getDisplayName(player, user) {
@@ -75,6 +76,7 @@ function showRainEffect() {
     d.style.opacity = String(0.4 + Math.random() * 0.5);
     el.appendChild(d);
   }
+  // Mini-game: sâu + hạt rơi (click để nhặt)
   const count = 10;
   for (let i = 0; i < count; i++) {
     const item = document.createElement('button');
@@ -115,6 +117,7 @@ function hideRainEffect() {
   if (el) { el.classList.remove('active'); el.innerHTML = ''; }
 }
 
+// ===== AUTH =====
 function hideAuthLoading() {
   const el = document.getElementById('auth-loading');
   if (el) el.style.display = 'none';
@@ -153,6 +156,7 @@ function updateFairyBadge() {
     const name = Game.getFairyDisplayName ? Game.getFairyDisplayName() : 'Tiên';
     text.textContent = emoji + ' ' + name + ' · ' + Game.formatTime(Game.fairyRemainingSec());
     const icon = el.querySelector('i.fa-wand-magic-sparkles, .badge-emoji');
+    // giữ icon FA, emoji nằm trong text
   } else {
     el.style.display = 'none';
   }
@@ -189,6 +193,7 @@ function updateHelperBadge() {
   }
   if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
 }
+
 
 function openNycConfigModal() {
   if (!currentPlayer) return;
@@ -316,6 +321,8 @@ function syncFairyConfigFormVisibility() {
   if (fertCount) fertCount.style.display = fertMode === 'count' ? 'block' : 'none';
 }
 
+
+/** Tab chọn vườn + bật/tắt từng vườn (Tiên / NYC) */
 window._agentGardenTab = window._agentGardenTab || { fairy: 0, nyc: 0 };
 
 function renderAgentGardenToggles(hostId, gardensEnabled, kind) {
@@ -345,7 +352,7 @@ function renderAgentGardenToggles(hostId, gardensEnabled, kind) {
       <span class="garden-toggle-label"><i class="fa-solid fa-power-off"></i> Bật trên Vườn ${sel + 1}</span>
       <input type="checkbox" class="garden-toggle-switch" id="${k}-garden-enabled" data-garden="${sel}" ${on ? 'checked' : ''} />
     </label>
-    <p class="bulk-hint">Đang cấu hình <strong>Vườn ${sel + 1}</strong> - mỗi vườn có cấu hình riêng.</p>`;
+    <p class="bulk-hint">Đang cấu hình <strong>Vườn ${sel + 1}</strong> — mỗi vườn có cấu hình riêng.</p>`;
   } else {
     html += '<p class="bulk-hint">Chưa có vườn.</p>';
   }
@@ -365,6 +372,7 @@ function readAgentGardenToggles(hostId) {
   const host = document.getElementById(hostId);
   const ge = {};
   if (!host) return ge;
+  // Giữ trạng thái các vườn từ data hiện tại + ô đang sửa
   host.querySelectorAll('.garden-toggle-switch').forEach(inp => {
     const i = inp.dataset.garden;
     ge[i] = !!inp.checked;
@@ -446,6 +454,7 @@ function bindFairyConfigUI() {
     const gi = getSelectedAgentGarden('fairy');
     const enEl = document.getElementById('fairy-garden-enabled');
     const baseGe = Object.assign({}, (Game.getFairyConfig().gardensEnabled || {}));
+    // Giữ trạng thái bật/tắt các vườn khác
     if (enEl) baseGe[String(gi)] = !!enEl.checked;
     const res = Game.setFairyConfig({
       gardenIndex: gi,
@@ -464,7 +473,7 @@ function bindFairyConfigUI() {
     if (res.ok) {
       await savePlayer();
       showToast(res.msg, 'success');
-      openFairyConfigModal();
+      openFairyConfigModal(); // giữ modal, refresh tab
       updateFairyBadge();
     } else {
       showToast(res.msg, 'error');
@@ -569,7 +578,8 @@ auth.onAuthStateChanged(async (user) => {
         }
       }
       if (typeof Features !== 'undefined') Features.ensureQuests();
-      if (typeof listenPlayerTimers === 'function') listenPlayerTimers();
+      if (typeof listenPlayerTimers === 'function') listenPlayerTimers(); // no-op
+      // Đồng bộ play-log + snapshot local → Firebase khi vào web
       setTimeout(async () => {
         try {
           if (typeof syncPlayerOnEnter === 'function') {
@@ -592,7 +602,7 @@ auth.onAuthStateChanged(async (user) => {
           }
           if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
             const r = await Game.simulateOfflineCare();
-            if (r && r.changed) {
+            if (r && !r.skipped && (r.changed || (r.offlineMs || 0) >= 60000)) {
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(600);
               else if (typeof savePlayer === 'function') await savePlayer();
               if (typeof updateCoins === 'function') updateCoins();
@@ -600,11 +610,14 @@ auth.onAuthStateChanged(async (user) => {
                 const gp = document.getElementById('page-garden');
                 if (gp && gp.classList.contains('active')) renderGarden();
               }
-              if (r.notes && r.notes.length && typeof showToast === 'function') {
+              if (typeof showToast === 'function') {
                 const hours = Math.floor((r.offlineMs || 0) / 3600000);
                 const mins = Math.floor(((r.offlineMs || 0) % 3600000) / 60000);
-                showToast('⚡ Bù ' + (r.offlineText || ((hours ? hours + 'g ' : '') + mins + 'p')) + ': ' + (r.notes && r.notes.length ? r.notes.join(' · ') : 'xem Nhật ký'), 'success');
+                const dur = r.offlineText || ((hours ? hours + 'g ' : '') + mins + 'p');
+                const detail = (r.notes && r.notes.length) ? r.notes.join(' · ') : 'xem Nhật ký';
+                showToast('⚡ Bù ' + dur + ': ' + detail, 'success');
               }
+              if (typeof renderActivity === 'function') renderActivity();
             }
           }
         } catch (e) { console.warn('simulateOfflineCare', e); }
@@ -615,6 +628,7 @@ auth.onAuthStateChanged(async (user) => {
     } catch (e) {
       console.error(e);
       showToast('Lỗi tải dữ liệu: ' + e.message, 'error');
+      // Vẫn còn session Firebase — không đá về login, thử hiện app nếu đã có player
       hideAuthLoading();
       if (currentPlayer) showApp();
       else showLogin();
@@ -654,6 +668,7 @@ document.getElementById('btn-gate-logout')?.addEventListener('click', () => {
   auth.signOut();
 });
 
+// ===== NAVIGATION =====
 function closeMobileNav() {
   document.getElementById('bottom-nav')?.classList.remove('open');
   document.getElementById('nav-backdrop')?.classList.remove('show');
@@ -704,6 +719,7 @@ document.getElementById('btn-admin')?.addEventListener('click', () => {
   window.location.href = 'admin';
 });
 
+// ===== LEADERBOARD =====
 let rankKey = 'planted';
 document.querySelectorAll('.rank-tab').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -746,6 +762,7 @@ async function renderRank() {
   }
 }
 
+// ===== FRIENDS & CHAT =====
 let chatFriendUid = null;
 let chatUnsub = null;
 
@@ -753,16 +770,19 @@ async function renderFriends() {
   const isMobile = window.matchMedia('(max-width: 768px)').matches;
   if (isMobile) closeChat();
   else {
+    // PC: keep both panels, clear chat if no friend selected
     if (!chatFriendUid) {
       document.getElementById('chat-panel')?.classList.remove('hidden');
       document.getElementById('friends-panel')?.classList.remove('hidden');
     }
   }
+  // Xóa email demo / autofill trong ô UID bạn bè
   const friendInp = document.getElementById('friend-uid-input');
   if (friendInp) {
     friendInp.setAttribute('placeholder', 'Nhập UID bạn bè');
     friendInp.setAttribute('autocomplete', 'off');
     friendInp.setAttribute('type', 'text');
+    // Chỉ xóa nếu giá trị trông giống email demo
     const v = (friendInp.value || '').trim();
     if (!v || v.includes('@') || /demo|example|test/i.test(v)) {
       friendInp.value = '';
@@ -786,6 +806,7 @@ async function renderFriends() {
     const nameMap = {};
     list.innerHTML = ids.map(uid => {
       const f = friends[uid];
+      // Ưu tiên tên mới từ leaderboard (sau khi bạn đổi tên)
       const liveName = (lb[uid] && lb[uid].name) || f.name || uid.slice(0, 8);
       nameMap[uid] = liveName;
       return `<div class="friend-item" data-uid="${uid}">
@@ -809,6 +830,7 @@ async function renderFriends() {
         openVisitGarden(btn.dataset.uid, btn.dataset.name || nameMap[btn.dataset.uid] || 'Bạn');
       });
     });
+    // Cập nhật luôn header chat nếu đang mở
     if (chatFriendUid && nameMap[chatFriendUid]) {
       const nameEl = document.getElementById('chat-with-name');
       if (nameEl) nameEl.textContent = nameMap[chatFriendUid];
@@ -819,6 +841,7 @@ async function renderFriends() {
   }
 }
 
+/** Thăm vườn bạn bè (đọc publicGardens) + tưới giúp 1 lần/ngày */
 async function openVisitGarden(friendUid, friendName) {
   const modal = document.getElementById('modal-visit');
   const title = document.getElementById('visit-title');
@@ -907,6 +930,7 @@ document.getElementById('btn-add-friend')?.addEventListener('click', async () =>
   const q = (input.value || '').trim();
   if (!q || !currentUser) return;
   try {
+    // Find by uid direct or search leaderboard by name/email prefix
     let targetUid = q;
     let targetName = q;
     const lb = await db.ref('leaderboard').once('value');
@@ -960,6 +984,7 @@ async function openChat(uid, name) {
     document.body.classList.add('chat-open-mobile');
   }
   chatPanel?.classList.remove('hidden');
+  // Animation nhẹ khi vào khung chat
   if (chatPanel) {
     chatPanel.classList.remove('chat-animating');
     void chatPanel.offsetWidth;
@@ -980,6 +1005,7 @@ async function openChat(uid, name) {
     try { db.ref('messages/' + chatUnsub).off(); } catch (_) {}
   }
   chatUnsub = cid;
+  // Lấy avatar mình + bạn (leaderboard)
   let myAv = (currentPlayer && currentPlayer.avatar) || '';
   let friendAv = '';
   try {
@@ -1097,6 +1123,10 @@ async function sendChat() {
   }
 }
 
+// ===== PROFILE =====
+
+
+
 function applySiteIcon(url) {
   url = (url || (typeof currentSettings !== 'undefined' && currentSettings && currentSettings.siteIconUrl) || '').trim();
   let link = document.querySelector('link[rel="icon"]');
@@ -1148,6 +1178,7 @@ function applyProfileBadge() {
   }
 }
 
+/** Nhãn sở hữu cửa hàng — icon FA thay ✅ */
 function shopOwnedLabel(state) {
   if (state === 'equipped') return '<span class="owned-ico"><i class="fa-solid fa-circle-check"></i></span> Đang gắn';
   if (state === 'owned') return '<span class="owned-ico"><i class="fa-solid fa-check"></i></span> Đã sở hữu';
@@ -1165,6 +1196,7 @@ function applyProfileAvatarFrame() {
   if (frame && frame.gradient) {
     wrap.classList.add('has-frame');
     wrap.style.setProperty('--avatar-frame-grad', frame.gradient);
+    // linear → conic để vòng FULL quanh avatar
     let conic = frame.gradient;
     if (/linear-gradient/i.test(conic)) {
       conic = conic.replace(/linear-gradient\s*\(\s*[^,]+,/i, 'conic-gradient(from 0deg,');
@@ -1178,6 +1210,7 @@ function applyProfileAvatarFrame() {
     wrap.style.removeProperty('--avatar-frame-conic');
   }
 }
+
 
 function renderProfile() {
   if (currentPlayer && typeof updateProfileLevelTag === "function") updateProfileLevelTag(currentPlayer.level || 1);
@@ -1270,6 +1303,7 @@ document.getElementById('btn-save-profile')?.addEventListener('click', async () 
     nycVisual: !!document.getElementById('pref-nyc-visual')?.checked
   });
   await savePlayer();
+  // Đồng bộ tên mới sang danh sách bạn của mọi người đang kết bạn với mình
   try {
     const myName = currentPlayer.displayName;
     const snap = await db.ref('friends/' + currentUser.uid).once('value');
@@ -1286,6 +1320,7 @@ document.getElementById('btn-save-profile')?.addEventListener('click', async () 
   }
   showToast('Đã lưu hồ sơ!', 'success');
   renderProfile();
+  // Không renderGarden full — chỉ cập nhật badge/hình, giữ timer ngoài vườn
   updateFairyBadge();
   updateNycBadge();
   updateHelperBadge();
@@ -1331,6 +1366,7 @@ function highlightPrefComboButtons() {
     if (fb !== '') match = match && (p.fairyEnabled === (fb === '1'));
     if (nv !== '') match = match && (p.nycVisual === (nv === '1'));
     if (nb !== '') match = match && (p.nycEnabled === (nb === '1'));
+    // Chỉ highlight nút "cả 2" khi đủ 4 field; nút 1 phía khi đúng phía đó
     const isBoth = fv !== '' && fb !== '' && nv !== '' && nb !== '';
     const isFairyOnly = fv !== '' && fb !== '' && nv === '' && nb === '';
     const isNycOnly = nv !== '' && nb !== '' && fv === '' && fb === '';
@@ -1347,15 +1383,18 @@ async function applyPrefCombo(btn) {
   if (btn.dataset.nb !== '') next.nycEnabled = btn.dataset.nb === '1';
   writePrefToUI(next);
   if (!currentPlayer) return;
+  // Chỉ lưu pref hình/buff — không đụng fairyUntil / nycUntil / timer tưới-phân
   const res = Game.setBuffPrefs(next);
   try { await savePlayer(); } catch (_) {}
   showToast(res.msg || 'Đã cập nhật!', 'success');
+  // Cập nhật badge & trang trí hình, không renderGarden full (tránh reset timer)
   updateFairyBadge();
   updateNycBadge();
   updateHelperBadge();
   try {
     const stage = document.querySelector('.garden-stage') || document.getElementById('garden-grid');
     if (stage && typeof Game !== 'undefined') {
+      // Chỉ ẩn/hiện decor theo visual, giữ nguyên thời gian ô
       document.querySelectorAll('.garden-decor-fairy').forEach(el => {
         el.style.display = Game.showFairyDecor && Game.showFairyDecor() ? '' : 'none';
       });
@@ -1369,16 +1408,23 @@ async function applyPrefCombo(btn) {
 document.querySelectorAll('.pref-combo').forEach(btn => {
   btn.addEventListener('click', () => applyPrefCombo(btn));
 });
+// Đổi checkbox buff → đồng bộ highlight
 ['pref-fairy-enabled', 'pref-nyc-enabled'].forEach(id => {
   document.getElementById(id)?.addEventListener('change', highlightPrefComboButtons);
 });
 
+
+
+// ===== DAILY =====
 document.getElementById('btn-daily').addEventListener('click', async () => {
   const res = await Game.claimDaily();
   showToast(res.msg, res.ok ? 'success' : 'error');
   if (res.ok) { updateCoins(); updateDailyBtn(); }
 });
 
+// ===== GARDEN =====
+
+// ===== PILL DROPDOWN (shared) =====
 const PILL_CHECK_SVG = `<svg class="pill-dd-check" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
 const PILL_ARROW_SVG = `<svg class="pill-dd-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>`;
 
@@ -1387,6 +1433,7 @@ function closeAllPillMenus(except) {
     if (except && dd === except) return;
     dd.classList.remove('open', 'drop-up');
     const trigger = dd.querySelector('.pill-dd-trigger');
+    // menu có thể đã portal ra body
     let menu = dd.querySelector('.pill-dd-menu');
     if (!menu && dd._portalMenu) menu = dd._portalMenu;
     if (menu) {
@@ -1401,6 +1448,7 @@ function closeAllPillMenus(except) {
       menu.style.maxWidth = '';
       menu.style.maxHeight = '';
       menu.style.zIndex = '';
+      // trả menu về wrap
       if (menu.parentNode !== dd) {
         const trig = dd.querySelector('.pill-dd-trigger');
         if (trig && trig.nextSibling) dd.insertBefore(menu, trig.nextSibling);
@@ -1411,6 +1459,7 @@ function closeAllPillMenus(except) {
     document.querySelector('#modal-plot .modal-content')?.classList.remove('dropdown-open');
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
   });
+  // dọn menu portal sót
   document.querySelectorAll('.pill-dd-menu.pill-dd-portal').forEach(m => {
     m.hidden = true;
     m.classList.remove('pill-dd-portal');
@@ -1426,9 +1475,12 @@ if (!window.__pillDdDocBound) {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeAllPillMenus();
   });
+  // khi scroll/resize — đóng menu portal để tránh lệch vị trí
   window.addEventListener('scroll', (e) => {
+    // Không đóng khi scroll bên trong menu dropdown
     const t = e.target;
     if (t && t.closest && (t.closest('.pill-dd-menu') || t.closest('.pill-dd-portal'))) return;
+    // Scroll trong modal-content: reposition thay vì đóng (tránh menu biến mất)
     if (t && t.closest && t.closest('#modal-plot .modal-content')) {
       document.querySelectorAll('.pill-dd.open').forEach(dd => {
         const menu = dd._portalMenu || dd.querySelector('.pill-dd-menu');
@@ -1452,8 +1504,14 @@ if (!window.__pillDdDocBound) {
   window.addEventListener('resize', () => closeAllPillMenus());
 }
 
+/**
+ * Gắn UI pill dropdown lên <select>. Giữ select gốc (ẩn) để form/event cũ vẫn chạy.
+ * @param {HTMLSelectElement} select
+ * @param {{ prefix?: string, block?: boolean }} opts
+ */
 function mountPillDropdown(select, opts = {}) {
   if (!select || select.tagName !== 'SELECT') return null;
+  // Nếu đã mount và cùng parent → chỉ refresh
   if (select.dataset.pillMounted === '1' && select._pillRefresh) {
     select._pillRefresh();
     return select._pillWrap || null;
@@ -1530,6 +1588,7 @@ function mountPillDropdown(select, opts = {}) {
   };
 
   const positionMenu = () => {
+    // Portal ra body + fixed → không bị modal/overflow cắt (lỗi chi tiết ô)
     if (menu.parentNode !== document.body) {
       document.body.appendChild(menu);
     }
@@ -1548,6 +1607,7 @@ function mountPillDropdown(select, opts = {}) {
     menu.style.overflowY = 'auto';
     menu.style.zIndex = '500';
 
+    // đo sau khi hiện
     const mh = Math.min(menu.scrollHeight || 200, 280);
     const spaceBelow = window.innerHeight - tr.bottom - 10;
     const spaceAbove = tr.top - 10;
@@ -1571,6 +1631,7 @@ function mountPillDropdown(select, opts = {}) {
   trigger.addEventListener('click', (e) => {
     e.stopPropagation();
     const willOpen = menu.hidden || menu.parentNode === document.body && !wrap.classList.contains('open');
+    // nếu đang mở trên wrap này → đóng
     const isOpen = wrap.classList.contains('open');
     closeAllPillMenus();
     if (!isOpen) {
@@ -1624,6 +1685,7 @@ function mountAllPillDropdowns(root) {
   });
 }
 
+// ===== MULTI GARDEN SWITCHER (pill dropdown) =====
 function renderGardenSwitcher() {
   const host = document.getElementById('garden-switcher');
   if (!host || !currentPlayer || typeof Game === 'undefined') return;
@@ -1710,6 +1772,7 @@ function renderGarden() {
   if (!currentPlayer) return;
   if (typeof Game.ensureGardens === 'function') Game.ensureGardens();
   renderGardenSwitcher();
+  // Hết hạn tưới / phân sau 3 giờ
   if (typeof Game.resetExpiredBoosts === 'function') {
     const changed = Game.resetExpiredBoosts();
     if (changed) {
@@ -1799,6 +1862,7 @@ function renderGarden() {
     grid.appendChild(div);
   });
 
+  // Tiên/NYC trên #garden-agents (cùng garden-world với grid → scroll ngang đi theo)
   const agents = document.getElementById('garden-agents');
   const agentHost = agents || grid;
   if (agents) agents.innerHTML = '';
@@ -1832,10 +1896,12 @@ function renderGarden() {
   updateGlobalTimer();
 }
 
+
 function openEmptyPlotModal(plotId) {
   selectedPlotId = plotId;
   const plot = currentPlayer.plots[plotId];
   if (!plot) return;
+  // Mở modal trồng + chèn nâng cấp
   openPlantModal(plotId);
   const list = document.getElementById('plant-seed-list');
   if (!list) return;
@@ -1972,6 +2038,7 @@ function openPlotModal(plotId) {
   document.getElementById('btn-water').style.display = ready || waterDisp.active ? 'none' : 'inline-flex';
   document.getElementById('btn-fertilize').style.display = ready || fertDisp.active ? 'none' : 'inline-flex';
   document.getElementById('btn-harvest').style.display = ready ? 'inline-flex' : 'none';
+  // Nâng cấp hệ số ô (1.0 → 50)
   const curMult = Number(plot.specialMult) || 1;
   const tiers = (typeof Features !== 'undefined' && Features.PLOT_UPGRADE_TIERS)
     ? Features.PLOT_UPGRADE_TIERS : [{ mult: 1, price: 0 }];
@@ -2003,6 +2070,7 @@ function openPlotModal(plotId) {
   document.getElementById('modal-plot').classList.add('show');
 }
 
+/** Cập nhật realtime thời gian/tiến độ trong modal chi tiết ô (giống ngoài vườn) */
 function softUpdatePlotModal() {
   const modal = document.getElementById('modal-plot');
   if (!modal || !modal.classList.contains('show')) return;
@@ -2049,6 +2117,7 @@ function softUpdatePlotModal() {
     fertEl.classList.toggle('plot-boost-off', !fertDisp.active);
   }
 
+  // Đổi nút khi chín / hết hiệu lực (gồm 10 giây cuối)
   const btnWater = document.getElementById('btn-water');
   const btnFert = document.getElementById('btn-fertilize');
   const btnHarvest = document.getElementById('btn-harvest');
@@ -2084,6 +2153,8 @@ document.getElementById('btn-remove').addEventListener('click', async () => {
   renderGarden();
 });
 
+
+/** Ấn giữ (≥450ms) → callback hold; nhả sớm → callback click */
 function bindPressHold(el, { onClick, onHold, ms = 450 } = {}) {
   if (!el) return;
   let timer = null;
@@ -2115,6 +2186,7 @@ function bindPressHold(el, { onClick, onHold, ms = 450 } = {}) {
   el.addEventListener('touchcancel', cancel);
 }
 
+/** Modal nhập số lượng (ghép / mua): title, hint, maxHint, onConfirm(n|'all') */
 function openQtyPickModal({ title, hint, confirmLabel, onConfirm }) {
   const modal = document.getElementById('modal-bulk');
   const list = document.getElementById('bulk-qty-list');
@@ -2147,7 +2219,7 @@ function openQtyPickModal({ title, hint, confirmLabel, onConfirm }) {
 }
 
 
-let bulkAction = null;
+let bulkAction = null; // 'water' | 'fert' | 'harvest'
 let bulkFertId = null;
 
 function openBulkModal(action) {
@@ -2240,6 +2312,7 @@ function openBulkModal(action) {
       runBulk(v);
     }
   });
+  // Nút xác nhận nhỏ cạnh input
   const go = document.createElement('button');
   go.type = 'button';
   go.className = 'btn btn-secondary btn-sm';
@@ -2368,6 +2441,8 @@ function refreshSupportMenuStatus() {
   );
 }
 
+
+// ===== FERT PICKER =====
 function openFertModal(plotId) {
   selectedPlotId = plotId;
   const list = document.getElementById('fert-pick-list');
@@ -2404,6 +2479,7 @@ function openFertModal(plotId) {
   document.getElementById('modal-fert').classList.add('show');
 }
 
+// ===== Unified pagination UI (page 1-based) =====
 function renderUxPager(el, { page, totalPages, onChange }) {
   if (!el) return;
   const tp = Math.max(1, totalPages || 1);
@@ -2433,6 +2509,7 @@ function renderUxPager(el, { page, totalPages, onChange }) {
   });
 }
 
+// ===== SHOP =====
 let currentShopTab = 'hoa';
 let shopPage = 0;
 const SHOP_PAGE_SIZE = 21;
@@ -2473,6 +2550,7 @@ function getShopPlantsFiltered() {
       (p.desc || '').toLowerCase().includes(q)
     );
   }
+  // Limited còn trong sự kiện lên trước
   plants = plants.slice().sort((a, b) => {
     const la = Game.isPlantLimited(a) && Game.isPlantAvailable(a) ? 0 : 1;
     const lb = Game.isPlantLimited(b) && Game.isPlantAvailable(b) ? 0 : 1;
@@ -2481,6 +2559,8 @@ function getShopPlantsFiltered() {
   return plants;
 }
 
+
+/** Cache danh sách icon từ Font Awesome Pro CSS (pro.min.css) */
 let _faProIconList = null;
 let _faProIconLoading = null;
 const FA_PRO_CSS_URL = 'https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css';
@@ -2489,11 +2569,13 @@ function loadFaProIconList() {
   if (_faProIconList && _faProIconList.length) return Promise.resolve(_faProIconList);
   if (_faProIconLoading) return _faProIconLoading;
 
+  // 1) Ưu tiên danh sách đã trích từ pro.min.css (js/fa-icons.js) — không bị CORS
   if (typeof FA_PRO_ICON_SLUGS !== 'undefined' && Array.isArray(FA_PRO_ICON_SLUGS) && FA_PRO_ICON_SLUGS.length) {
     _faProIconList = FA_PRO_ICON_SLUGS.slice();
     return Promise.resolve(_faProIconList);
   }
 
+  // 2) Thử fetch pro.min.css (có thể CORS fail trên host khác)
   _faProIconLoading = fetch(FA_PRO_CSS_URL)
     .then(r => {
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -2524,6 +2606,7 @@ function loadFaProIconList() {
   return _faProIconLoading;
 }
 
+
 function renderShop() {
   const faBarHide = document.getElementById('badge-fa-search-bar');
   if (faBarHide && currentShopTab !== 'badge') faBarHide.style.display = 'none';
@@ -2541,6 +2624,7 @@ function renderShop() {
     const gCount = typeof Game.getGardenCount === 'function' ? Game.getGardenCount() : 1;
     if (countEl) countEl.textContent = 'Mở rộng Vườn ' + gIdx;
     document.getElementById('shop-pager').innerHTML = '';
+    // Ước tính chi phí nâng hết ô → x50
     let upgradeAllNeed = 0;
     let upgradeAllCount = 0;
     try {
@@ -2605,6 +2689,8 @@ function renderShop() {
     return;
   }
 
+
+
   if (currentShopTab === 'tangtoc') {
     const countEl = document.getElementById('shop-count');
     document.getElementById('shop-pager').innerHTML = '';
@@ -2612,7 +2698,7 @@ function renderShop() {
     if (countEl) countEl.textContent = packs.length + ' gói tăng tốc tạm · nâng vĩnh viễn trong chi tiết ô';
     const hint = document.createElement('div');
     hint.className = 'shop-event-banner';
-    hint.innerHTML = '⏱ Gói tạm (1-30 ngày): chọn ô để áp dụng. ⚡ Nâng <strong>vĩnh viễn</strong>: mở ô đất → Nâng cấp.';
+    hint.innerHTML = '⏱ Gói tạm (1–30 ngày): chọn ô để áp dụng. ⚡ Nâng <strong>vĩnh viễn</strong>: mở ô đất → Nâng cấp.';
     grid.appendChild(hint);
     const plotOpts = (currentPlayer && currentPlayer.plots ? currentPlayer.plots : []).map((pl, i) => {
       const sm = Game.getPlotSpeedMult ? Game.getPlotSpeedMult(pl) : 1;
@@ -2770,6 +2856,7 @@ function renderShop() {
     return;
   }
 
+
   if (currentShopTab === 'helper') {
     const countEl = document.getElementById('shop-count');
     if (countEl) countEl.textContent = 'Người giúp việc tự mua kho';
@@ -2854,6 +2941,9 @@ function renderShop() {
     return;
   }
 
+
+
+
   if (currentShopTab === 'companion') {
     const countEl = document.getElementById('shop-count');
     document.getElementById('shop-pager').innerHTML = '';
@@ -2895,11 +2985,14 @@ function renderShop() {
   if (currentShopTab === 'badge') {
     const countEl = document.getElementById('shop-count');
     const pager = document.getElementById('shop-pager');
-    const BADGE_PAGE = 48;
+    const BADGE_PAGE = 48; // 48 icon + 1 ô Không badge, không phân trang
+    // Ẩn ô tìm cửa hàng chung — dùng ô tìm FA riêng
     const shopSearchWrap = document.getElementById('shop-search')?.closest('.shop-search-wrap, .shop-toolbar, .shop-filters') || document.getElementById('shop-search')?.parentElement;
+    // Render thanh tìm FA + grid
     if (countEl) countEl.textContent = 'Đang tải icon từ Font Awesome Pro…';
     if (pager) pager.innerHTML = '';
 
+    // Toolbar tìm riêng cho FA (không dùng #shop-search)
     let faBar = document.getElementById('badge-fa-search-bar');
     if (!faBar) {
       faBar = document.createElement('div');
@@ -2932,6 +3025,7 @@ function renderShop() {
     const renderWithList = (allSlugs) => {
       let slugs = allSlugs || [];
       if (q) slugs = slugs.filter(s => s.indexOf(q) >= 0);
+      // Chỉ hiện tối đa 48 icon (+ 1 ô Không badge), không phân trang
       const matched = slugs.length;
       const slice = slugs.slice(0, BADGE_PAGE);
       if (countEl) {
@@ -2981,7 +3075,7 @@ function renderShop() {
         renderShop();
         if (typeof applyProfileBadge === 'function') applyProfileBadge();
       }));
-      if (pager) pager.innerHTML = '';
+      if (pager) pager.innerHTML = ''; // không phân trang badge
     };
 
     loadFaProIconList().then(list => {
@@ -3095,6 +3189,7 @@ function renderShop() {
   const countEl = document.getElementById('shop-count');
   if (countEl) countEl.textContent = `${plants.length} loại · trang ${shopPage + 1}/${totalPages}`;
 
+  // Banner limited đang mở
   const activeLimited = Game.getPlants().filter(p => Game.isPlantLimited(p) && Game.isPlantAvailable(p));
   if (activeLimited.length && currentShopTab !== 'odat' && currentShopTab !== 'phan' && currentShopTab !== 'baoho' && currentShopTab !== 'tien' && currentShopTab !== 'nyc' && currentShopTab !== 'helper' && currentShopTab !== 'khung' && currentShopTab !== 'companion') {
     const banner = document.createElement('div');
@@ -3119,7 +3214,7 @@ function renderShop() {
     let iconHtml = plant.icon || '';
     if (isTextIcon) {
       const raw = String(plant.icon || plant.name || '').slice(0, 10);
-      const len = [...raw].length;
+      const len = [...raw].length; // đếm đúng ký tự Unicode
       const sizeClass = len <= 2 ? 'txt-sm' : len <= 4 ? 'txt-md' : len <= 7 ? 'txt-lg' : 'txt-xl';
       iconHtml = `<span class="shop-icon-text ${sizeClass}">${raw.replace(/</g, '&lt;')}</span>`;
     }
@@ -3157,6 +3252,7 @@ function renderShop() {
     });
   });
 
+  // Pager thống nhất
   const pager = document.getElementById('shop-pager');
   renderUxPager(pager, {
     page: shopPage + 1,
@@ -3165,6 +3261,7 @@ function renderShop() {
   });
 }
 
+// ===== INVENTORY =====
 (function bindInvSearch() {
   const el = document.getElementById('inv-search');
   if (!el || el.__invSearchBound) return;
@@ -3195,6 +3292,7 @@ function renderInventory() {
   const harvestStar = (currentPlayer.inventory && currentPlayer.inventory.harvestStar) || {};
   const harvestBought = (currentPlayer.inventory && currentPlayer.inventory.harvestBought) || {};
 
+  // Seeds — tách riêng thường / sao
   const invQ = (document.getElementById('inv-search')?.value || '').trim().toLowerCase();
   const seedsEl = document.getElementById('inv-seeds');
   const stars = (currentPlayer.inventory && currentPlayer.inventory.seedsStar) || {};
@@ -3270,6 +3368,7 @@ function renderInventory() {
     });
   }
 
+  // Fertilizers — có thể bán
   const fertEl = document.getElementById('inv-fert');
   const fertIds = Object.keys(ferts).filter(id => ferts[id] > 0);
   if (fertIds.length === 0) {
@@ -3305,6 +3404,7 @@ function renderInventory() {
     });
   }
 
+  // Harvest — tách 3 nguồn: thu hoạch / mua / ghép sao
   const harvestEl = document.getElementById('inv-harvest');
   const renderHarvestBag = (bag, kind, title, emptyMsg, priceFn) => {
     let ids = Object.keys(bag).filter(id => (bag[id] || 0) > 0);
@@ -3367,6 +3467,7 @@ function renderInventory() {
     });
   });
 
+  // Bảo hộ
   const protEl = document.getElementById('inv-protect');
   if (protEl) {
     const prots = (currentPlayer.inventory && currentPlayer.inventory.protects) || {};
@@ -3382,6 +3483,7 @@ function renderInventory() {
     }
   }
 
+  // Ghép hạt — giữ lựa chọn hạt + bùa sau mỗi lần ghép
   const mergeEl = document.getElementById('inv-merge');
   if (mergeEl) {
     if (typeof window._mergeSel === 'undefined') {
@@ -3393,6 +3495,7 @@ function renderInventory() {
     if (!mergeable.length) {
       mergeEl.innerHTML = '<p class="empty-state">Cần ≥ 2 hạt <strong>thường</strong> cùng loại để ghép thành hạt ⭐ (+50% sản lượng & giá bán).</p>';
     } else {
+      // Ưu tiên lựa chọn trước đó nếu còn đủ hạt / còn bùa
       let selPlant = window._mergeSel.plantId;
       if (!selPlant || !mergeable.includes(selPlant)) selPlant = mergeable[0];
       let selProt = window._mergeSel.protectId || '';
@@ -3430,6 +3533,7 @@ function renderInventory() {
       protSel?.addEventListener('change', () => {
         window._mergeSel.protectId = protSel.value || null;
       });
+      // Ghi nhớ ngay giá trị đang hiện
       window._mergeSel.plantId = plantSel?.value || selPlant;
       window._mergeSel.protectId = protSel?.value || selProt || null;
 
@@ -3473,8 +3577,10 @@ function renderInventory() {
     }
   }
 
+  // ===== Kho: Pet / Khung / Thú cưng / Icon badge (đã mua → gắn lại) =====
   const invQCos = (document.getElementById('inv-search')?.value || '').trim().toLowerCase();
 
+  // Pet
   const petEl = document.getElementById('inv-pet');
   if (petEl) {
     const ownedPets = (currentPlayer.pets) || {};
@@ -3513,6 +3619,7 @@ function renderInventory() {
     }
   }
 
+  // Khung avatar
   const khungEl = document.getElementById('inv-khung');
   if (khungEl) {
     const owned = (currentPlayer.avatarFrames) || {};
@@ -3564,6 +3671,7 @@ function renderInventory() {
     });
   }
 
+  // Thú cưng (companion cạnh avatar)
   const compEl = document.getElementById('inv-companion');
   if (compEl) {
     const owned = (currentPlayer.companions) || {};
@@ -3611,6 +3719,7 @@ function renderInventory() {
     });
   }
 
+  // Icon badge
   const badgeEl = document.getElementById('inv-badge');
   if (badgeEl) {
     const owned = (currentPlayer.avatarBadges) || {};
@@ -3663,6 +3772,7 @@ function renderInventory() {
   }
 }
 
+// ===== STATS =====
 function renderStats() {
   if (!currentPlayer) return;
   const s = currentPlayer.stats || {};
@@ -3716,6 +3826,7 @@ function renderStats() {
     </div>
   `;
 
+  // Album — full + pagination PC 5 hàng × 11 cột = 55/trang
   const albumEl = document.getElementById('collection-album');
   if (albumEl) {
     const plants = Game.getPlants() || [];
@@ -3743,6 +3854,7 @@ function renderStats() {
     document.getElementById('album-next')?.addEventListener('click', () => { window._albumPage = Math.min(totalPages - 1, page + 1); renderStats(); });
   }
 
+  // Achievements list
   const achEl = document.getElementById('achievements-list');
   if (achEl) {
     const have = currentPlayer.achievements || {};
@@ -3761,6 +3873,7 @@ function renderStats() {
 
 }
 
+// ===== ACTIVITY PAGE =====
 function activityFaIcon(text, type) {
   const s = String(text || '');
   const t = String(type || '');
@@ -3804,6 +3917,7 @@ function renderActivityPage() {
   }
 }
 
+// ===== LEVEL / TREE BADGE PAGE =====
 const TREE_MAX_LEVEL = 10000;
 const TREE_TIERS = [
   { min: 1, max: 99, class: 'tier-tree-1', title: 'Mầm Cây Trong Chậu Đất', icon: 'fa-seedling', desc: 'Hạt giống nhỏ vừa vươn mầm', glow: 'rgba(133, 83, 53, 0.4)' },
@@ -3896,6 +4010,8 @@ function renderLevelPage() {
   updateTreeLevelUI(myLv);
 }
 
+
+// ===== MODALS =====
 function closeModals() {
   document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
 }
@@ -3913,6 +4029,7 @@ document.querySelectorAll('.modal').forEach(modal => {
 if (typeof bindNycConfigUI === 'function') bindNycConfigUI();
 if (typeof bindFairyConfigUI === 'function') bindFairyConfigUI();
 
+// ===== THEME (dark / light) =====
 function applyTheme(mode) {
   const root = document.documentElement;
   if (mode === 'dark') {
@@ -3936,6 +4053,7 @@ document.getElementById('btn-theme')?.addEventListener('click', () => {
   applyTheme(cur === 'dark' ? 'light' : 'dark');
 });
 
+/** Chăm Tiên + NYC — luôn chạy kể cả khi không ở trang vườn. Trả về true nếu Tiên vừa thay đổi ô. */
 function tickGardenCare(opts) {
   if (!currentPlayer || typeof Game === 'undefined') return false;
   const doRender = !!(opts && opts.render);
@@ -3945,10 +4063,12 @@ function tickGardenCare(opts) {
     if (fairyChanged) {
       if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(2000);
       else if (typeof savePlayer === 'function') savePlayer().catch(() => {});
+      // Luôn refresh UI vườn khi Tiên vừa tưới/bón (badge nước)
       const gardenPage = document.getElementById('page-garden');
       if (gardenPage && gardenPage.classList.contains('active') && typeof renderGarden === 'function') {
         renderGarden();
       } else if (doRender && typeof renderGarden === 'function') {
+        // không ở trang vườn — bỏ qua DOM
       }
       if (typeof softUpdatePlotModal === 'function') softUpdatePlotModal();
     }
@@ -3980,6 +4100,7 @@ function tickGardenCare(opts) {
   return fairyChanged;
 }
 
+// Cập nhật tiến độ/timer tại chỗ (tránh re-render → hết nhấp nháy khi hover)
 function softUpdateGarden() {
   if (!currentPlayer) return;
   tickGardenCare({ render: false });
@@ -4024,6 +4145,7 @@ function softUpdateGardenUI() {
     if (bar && !ready) bar.style.width = progress + '%';
     const icon = el.querySelector('.plot-icon');
     if (icon && stage.icon && icon.textContent !== stage.icon) icon.textContent = stage.icon;
+    // Gỡ badge boost cũ trên ô (nếu còn từ phiên trước)
     const boostEl = el.querySelector('[data-role="boost"]');
     if (boostEl) boostEl.remove();
   });
@@ -4036,6 +4158,7 @@ function softUpdateGardenUI() {
   if (typeof softUpdateBank === 'function') softUpdateBank();
 }
 
+/** Cập nhật chip đếm ngược 3h (kiểu thời tiết) + thanh trạng thái hỗ trợ */
 function updateGlobalTimer() {
   const btn = document.getElementById('btn-global-timer');
   const textEl = document.getElementById('global-timer-text');
@@ -4049,6 +4172,7 @@ function updateGlobalTimer() {
     }
   };
 
+  // Có Tiên: đồng hồ = thời gian đến lần chăm tiếp theo (chu kỳ 3 giờ)
   if (Game.isFairyActive && Game.isFairyActive()) {
     const sec = Game.getFairyCareRemainingSec ? Game.getFairyCareRemainingSec() : null;
     const remain = sec == null ? 0 : sec;
@@ -4090,11 +4214,17 @@ function updateGlobalTimer() {
   if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
 }
 
+/**
+ * Chăm vườn nền — Tiên / NYC / Giúp việc chạy KỂ CẢ không mở trang Vườn.
+ * Chỉ cần đang đăng nhập + tab còn sống (hoặc vừa mở lại).
+ */
 function forceBackgroundCare(reason) {
   if (!currentPlayer || typeof Game === 'undefined') return false;
   try {
+    // Giúp việc: cho phép check ngay sau khi tab quay lại / login
     if (reason === 'visible' || reason === 'login' || reason === 'focus' || reason === 'online') {
       if (currentPlayer.lastHelperBuy && (Date.now() - currentPlayer.lastHelperBuy > 5000)) {
+        // giữ cooldown bình thường; không reset về 0 để tránh spam mua
       }
     }
     const changed = tickGardenCare({ render: reason === 'login' || reason === 'visible' });
@@ -4109,30 +4239,51 @@ function forceBackgroundCare(reason) {
   }
 }
 
+// Live update mỗi 1s: luôn chăm nền; chỉ soft-update DOM khi đang ở trang vườn
 setInterval(() => {
   if (!currentPlayer) return;
+  // Không bỏ qua khi tab ẩn — browser throttle interval, nhưng khi chạy vẫn phải chăm
   forceBackgroundCare('tick');
   const gardenPage = document.getElementById('page-garden');
   if (gardenPage && gardenPage.classList.contains('active')) {
+    // softUpdateGarden đã gọi tickGardenCare — tách phần UI
     softUpdateGardenUI();
   }
   if (typeof softUpdateBank === 'function') softUpdateBank();
 }, 1000);
 
+// Tab quay lại / focus / online → chăm ngay (bù thời gian bị throttle)
 if (!window.__careVisibilityBound) {
   window.__careVisibilityBound = true;
   function markLastSeen() {
     if (!currentPlayer) return;
     const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
     currentPlayer.lastSeenAt = t;
+    // Marker local — còn khi force-kill / chưa kịp ghi Firebase
+    try {
+      if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
+        localStorage.setItem('vuon_away_' + currentUser.uid, String(t));
+      }
+    } catch (_) {}
+    // Lưu ngay khi ẩn/thoát — không debounce
     if (typeof flushSavePlayer === 'function') flushSavePlayer();
     else if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(200);
+  }
+  // Idle: không tương tác ≥ 2 phút → ngừng đẩy lastSeen (coi như đã rời)
+  if (!window.__idleTrackBound) {
+    window.__idleTrackBound = true;
+    window.__lastInteractionAt = Date.now();
+    const bumpIdle = () => { window.__lastInteractionAt = Date.now(); };
+    ['pointerdown', 'keydown', 'touchstart', 'click', 'scroll', 'mousemove'].forEach(ev => {
+      window.addEventListener(ev, bumpIdle, { passive: true });
+    });
   }
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       markLastSeen();
     } else if (currentPlayer) {
       (async () => {
+        // Kéo bản Firebase nếu máy khác đã lưu mới hơn
         if (typeof pullRemotePlayerIfNewer === 'function') {
           try {
             const pulled = await pullRemotePlayerIfNewer();
@@ -4146,20 +4297,25 @@ if (!window.__careVisibilityBound) {
           } catch (_) {}
         }
         forceBackgroundCare('visible');
+        // Không còn ngưỡng 5 phút — luôn bù thời gian / log khi quay lại
         if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
           try {
             const r = await Game.simulateOfflineCare();
-            if (r && r.changed) {
+            if (r && !r.skipped && (r.changed || (r.offlineMs || 0) >= 60000)) {
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(800);
               if (typeof updateCoins === 'function') updateCoins();
               if (typeof renderGarden === 'function') {
                 const gp = document.getElementById('page-garden');
                 if (gp && gp.classList.contains('active')) renderGarden();
               }
-              if (r.notes && r.notes.length && typeof showToast === 'function') {
-                showToast('⚡ ' + (r.offlineText ? r.offlineText + ' · ' : '') + (r.notes && r.notes.length ? r.notes.join(' · ') : 'Bù offline — xem Nhật ký'), 'success');
+              if (typeof showToast === 'function') {
+                const msg = (r.notes && r.notes.length)
+                  ? r.notes.join(' · ')
+                  : ('Bù offline ' + (r.offlineText || '') + ' — xem Nhật ký');
+                showToast('⚡ ' + (r.offlineText ? r.offlineText + ' · ' : '') + msg, 'success');
               }
-            } else {
+              if (typeof renderActivity === 'function') renderActivity();
+            } else if (!r || r.skipped) {
               const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
               currentPlayer.lastSeenAt = t;
             }
@@ -4176,9 +4332,25 @@ if (!window.__careVisibilityBound) {
   });
   window.addEventListener('pagehide', markLastSeen);
   window.addEventListener('beforeunload', markLastSeen);
+  // Heartbeat lastSeen mỗi 30s khi tab đang mở & còn tương tác
+  // Idle ≥ 2 phút: KHÔNG cập nhật lastSeen → khi quay lại sẽ bù offline đúng
   if (!window.__lastSeenHeartbeat) {
     window.__lastSeenHeartbeat = setInterval(() => {
       if (!currentPlayer || document.hidden) return;
+      const now = Date.now();
+      const lastIx = window.__lastInteractionAt || now;
+      if (now - lastIx >= 2 * 60 * 1000) {
+        // Đang AFK — đóng băng lastSeen, ghi away mark 1 lần
+        try {
+          if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
+            const key = 'vuon_away_' + currentUser.uid;
+            if (!localStorage.getItem(key) && currentPlayer.lastSeenAt) {
+              localStorage.setItem(key, String(currentPlayer.lastSeenAt));
+            }
+          }
+        } catch (_) {}
+        return;
+      }
       const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
       currentPlayer.lastSeenAt = t;
       try { if (typeof backupPlayerLocal === 'function') backupPlayerLocal(); } catch (_) {}
@@ -4214,16 +4386,19 @@ if (!window.__careVisibilityBound) {
   }, false);
 }
 
+// Check rain every 45s when logged in
 setInterval(() => {
   if (currentPlayer && !Game.raining) {
     Game.tryTriggerRain();
   }
 }, 45000);
 
+// First rain chance shortly after login
 setTimeout(() => {
   if (currentPlayer) Game.tryTriggerRain();
 }, 8000);
 
+// ===== QUESTS / MARKET / BANK / GIFT =====
 function renderQuests() {
   if (!currentPlayer || typeof Features === 'undefined') return;
   Features.ensureQuests();
@@ -4345,6 +4520,7 @@ document.getElementById('btn-market-list')?.addEventListener('click', async () =
   if (res.ok) { fillMarketItemSelect(); renderMarket(); }
 });
 
+/** Lãi tích lũy tuyến tính theo giây đến đáo hạn */
 function bankAccruedInterest(d, now = Date.now()) {
   const amount = d.amount || 0;
   const rate = d.rate || 0;
@@ -4357,6 +4533,7 @@ function bankAccruedInterest(d, now = Date.now()) {
   return fullInterest * Math.min(1, Math.max(0, pct));
 }
 
+/** Lãi mỗi giây (xu/s) */
 function bankInterestPerSec(d) {
   const amount = d.amount || 0;
   const rate = d.rate || 0;
@@ -4443,6 +4620,7 @@ function renderBank() {
   });
 }
 
+/** Realtime: lãi + đếm ngược (giống plot-timer) */
 function softUpdateBank() {
   const bankPage = document.getElementById('page-bank');
   if (!bankPage || !bankPage.classList.contains('active')) return;
@@ -4480,6 +4658,7 @@ function softUpdateBank() {
   });
 }
 
+
 document.getElementById('btn-bank-deposit')?.addEventListener('click', async () => {
   const amount = document.getElementById('bank-amount')?.value;
   const term = document.getElementById('bank-term')?.value;
@@ -4501,9 +4680,12 @@ document.getElementById('btn-redeem-code')?.addEventListener('click', async () =
 
 document.getElementById('inv-search')?.addEventListener('input', () => renderInventory());
 
+/** Không bọc −/+; giữ input number native */
 function enhanceQtyInputs(root) {
+  /* no-op: không thêm qty-arrows / qty-stepper */
 }
 
+// Hook sau render shop / plant modal
 const _origRenderShop = typeof renderShop === 'function' ? renderShop : null;
 if (_origRenderShop) {
   window.renderShop = function () {
@@ -4512,11 +4694,14 @@ if (_origRenderShop) {
   };
 }
 
+/** PC: lăn chuột giữa trên vườn → cuộn ngang ô vườn */
 (function setupGardenHorizontalWheel() {
   const grid = document.getElementById('garden-grid');
   if (!grid) return;
   grid.addEventListener('wheel', (e) => {
+    // Chỉ áp dụng khi có thể cuộn ngang và đang dùng chuột (không phải trackpad pinch)
     if (grid.scrollWidth <= grid.clientWidth + 2) return;
+    // Ưu tiên chuyển deltaY thành scroll ngang khi người dùng lăn dọc
     const delta = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
     if (delta === 0) return;
     e.preventDefault();
@@ -4524,6 +4709,8 @@ if (_origRenderShop) {
   }, { passive: false });
 })();
 
+
+// ===== NHÀ BẾP =====
 document.querySelectorAll('[data-kitchen]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('[data-kitchen]').forEach(b => b.classList.remove('active'));
@@ -4562,6 +4749,7 @@ function renderKitchen() {
         return name.includes(q) || ings.includes(q);
       });
     }
+    // Ưu tiên món nấu được
     list = list.slice().sort((a, b) => {
       const canA = (a.ingredients || []).every(ing => (harvest[ing.plantId] || 0) >= (ing.qty || 1));
       const canB = (b.ingredients || []).every(ing => (harvest[ing.plantId] || 0) >= (ing.qty || 1));
@@ -4608,6 +4796,7 @@ function renderKitchen() {
         renderKitchen();
       });
     });
+    // Pagination bếp — cùng kiểu ux-pager
     renderUxPager(document.getElementById('kitchen-pager'), {
       page: window.kitchenPage,
       totalPages,
@@ -4656,6 +4845,7 @@ function renderKitchen() {
   }
 }
 
+// ===== PET DẠO VƯỜN =====
 function renderGardenPets() {
   const agents = document.getElementById('garden-agents');
   const host = agents || document.getElementById('garden-grid');
@@ -4687,6 +4877,7 @@ if (_origRenderGarden && !renderGarden._petsHooked) {
   renderGarden._petsHooked = true;
 }
 
+// Pet nhặt xu rất hiếm mỗi 20s khi đang ở vườn
 setInterval(async () => {
   const gardenPage = document.getElementById('page-garden');
   if (!gardenPage || !gardenPage.classList.contains('active')) return;
@@ -4699,6 +4890,7 @@ setInterval(async () => {
   }
 }, 20000);
 
+// Khởi tạo pill dropdown cho select tĩnh (chợ, ngân hàng...)
 function bootPillDropdowns() {
   try {
     mountAllPillDropdowns(document);
@@ -4711,6 +4903,7 @@ if (document.readyState === 'loading') {
 }
 setTimeout(bootPillDropdowns, 800);
 
+// ===== Hộp thư người chơi =====
 function updateNavMailBadge(unread) {
   const navBadge = document.getElementById('nav-mail-badge');
   if (!navBadge) return;
@@ -4785,10 +4978,12 @@ async function loadPlayerMailbox() {
   }
 }
 
+/** Tự nhận thư sinh nhật 1 lần/năm khi mở hồ sơ */
 async function maybeSendBirthdayMailLocal() {
   if (!currentUser || !currentPlayer || !currentPlayer.birthday) return;
   const { day, month } = currentPlayer.birthday;
   if (!day || !month) return;
+  // Sinh nhật theo GMT+7 (không phụ thuộc múi giờ máy)
   const g = (typeof dateInGameTz === 'function') ? dateInGameTz() : null;
   const gDay = g ? g.day : new Date().getDate();
   const gMonth = g ? g.month : (new Date().getMonth() + 1);
@@ -4815,6 +5010,9 @@ async function maybeSendBirthdayMailLocal() {
   } catch (_) {}
 }
 
+
+// ===== HỆ THỐNG CẬP NHẬT CLIENT =====
+/** So sánh version dạng 1.2.3 — trả về <0 / 0 / >0 */
 function compareSemver(a, b) {
   const pa = String(a || '0').split(/[^\d]+/).map(n => parseInt(n, 10) || 0);
   const pb = String(b || '0').split(/[^\d]+/).map(n => parseInt(n, 10) || 0);
@@ -4841,6 +5039,7 @@ function hardReloadApp() {
   } catch (_) {}
   const url = new URL(location.href);
   url.searchParams.set('_v', String(Date.now()));
+  // Bỏ hash để tránh kẹt modal
   url.hash = '';
   location.replace(url.toString());
 }
@@ -4852,7 +5051,7 @@ function showUpdateBanner(opts) {
   const notes = document.getElementById('update-banner-notes');
   const pub = (opts && opts.published) || getPublishedVersion();
   const client = getClientVersion();
-  if (title) title.textContent = `Có bản cập nhật mới (v${pub}) - bạn đang ở v${client}`;
+  if (title) title.textContent = `Có bản cập nhật mới (v${pub}) — bạn đang ở v${client}`;
   if (notes) {
     const n = (opts && opts.notes != null) ? opts.notes : ((currentSettings && currentSettings.updateNotes) || '');
     notes.textContent = n ? String(n) : 'Vui lòng tải lại để dùng tính năng / sửa lỗi mới.';
@@ -4866,7 +5065,7 @@ function showUpdateBanner(opts) {
 function hideUpdateBanner() {
   const el = document.getElementById('update-banner');
   if (!el) return;
-  if (el.classList.contains('force')) return;
+  if (el.classList.contains('force')) return; // bắt buộc → không đóng
   el.classList.remove('show');
   el.style.display = 'none';
   try {
@@ -4888,6 +5087,7 @@ function checkClientUpdate(fromListener) {
     hideUpdateBanner();
     return false;
   }
+  // Nếu user đã dismiss bản này và không force → không hiện lại (trừ khi force)
   const force = !!(currentSettings && currentSettings.forceUpdate);
   if (!force && !fromListener) {
     try {
@@ -4923,12 +5123,15 @@ function watchSettingsForUpdate() {
   const handler = (snap) => {
     if (!snap.exists()) return;
     const val = snap.val() || {};
+    // Giữ object settings đồng bộ (không ghi đè toàn bộ nếu đang sửa local — merge)
     if (typeof currentSettings === 'undefined' || !currentSettings) {
+      // eslint-disable-next-line no-undef
       currentSettings = { ...(typeof DEFAULT_SETTINGS !== 'undefined' ? DEFAULT_SETTINGS : {}), ...val };
     } else {
       if (val.appVersion != null) currentSettings.appVersion = val.appVersion;
       if (val.updateNotes != null) currentSettings.updateNotes = val.updateNotes;
       if (typeof val.forceUpdate === 'boolean') currentSettings.forceUpdate = val.forceUpdate;
+      // Đồng bộ vài field hay dùng
       if (val.rainChance != null) currentSettings.rainChance = val.rainChance;
       if (val.rainDurationMinutes != null) currentSettings.rainDurationMinutes = val.rainDurationMinutes;
       if (typeof val.maintenanceOn === 'boolean') currentSettings.maintenanceOn = val.maintenanceOn;
@@ -4941,16 +5144,20 @@ function watchSettingsForUpdate() {
   db.ref('settings').on('value', handler);
 }
 
+// Bind sớm + kiểm tra sau khi có settings
 bindUpdateUI();
 document.addEventListener('DOMContentLoaded', () => {
   bindUpdateUI();
+  // Sau khi login/initGlobalData thường đã có settings — check định kỳ nhẹ
   setTimeout(() => checkClientUpdate(false), 1500);
 });
 
+// Mỗi 2 phút kiểm tra lại (phòng listener bị mất)
 setInterval(() => {
   if (typeof currentUser !== 'undefined' && currentUser) checkClientUpdate(false);
 }, 120000);
 
+// Bật realtime settings khi đã auth (hook vào flow có sẵn)
 (function hookAuthForUpdateWatch() {
   if (typeof auth === 'undefined' || !auth) return;
   auth.onAuthStateChanged((user) => {
@@ -4963,6 +5170,8 @@ setInterval(() => {
   });
 })();
 
+
+// ===== NGƯỜI GIÚP VIỆC UI =====
 let _helperRulesDraft = [];
 
 function fillHelperItemSelect() {
@@ -5001,7 +5210,7 @@ function renderHelperRulesList() {
   if (!host || typeof Game === 'undefined') return;
   host.innerHTML = '';
   if (!_helperRulesDraft.length) {
-    host.innerHTML = '<p class="bulk-hint">Chưa có mục nào - thêm bên dưới.</p>';
+    host.innerHTML = '<p class="bulk-hint">Chưa có mục nào — thêm bên dưới.</p>';
     return;
   }
   _helperRulesDraft.forEach((r, idx) => {
@@ -5096,6 +5305,7 @@ document.getElementById('btn-helper-add-rule')?.addEventListener('click', () => 
 
 document.getElementById('btn-save-helper-config')?.addEventListener('click', async () => {
   if (typeof Game === 'undefined') return;
+  // Đọc lại ô input trên form (tránh bấm Lưu khi chưa blur → vẫn 99 cũ)
   document.querySelectorAll('#helper-rules-list input[data-f]').forEach(inp => {
     const i = parseInt(inp.dataset.i, 10);
     const f = inp.dataset.f;
