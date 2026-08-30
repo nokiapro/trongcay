@@ -1831,12 +1831,15 @@ const Game = {
         planted = 1;
         const rp = this.getPlant(cfg.plantId);
         replantName = (rp && rp.name) ? rp.name : String(cfg.plantId);
-        if (this.isFairyActive() && this.isFairyGardenEnabled(gi)) {
+        // Dùng mốc t (offline) — không dùng isFairyActive() lúc mở app
+        if (this.isFairyActiveAt(t) && this.isFairyGardenEnabled(gi)) {
           plot.waterCount = 3;
           plot.watered = true;
           plot.lastWatered = t;
-          const fcfg = this.getFairyConfig();
-          if (fcfg.useFertilizer) {
+          const fcfg = this.getFairyConfigForGarden
+            ? this.getFairyConfigForGarden(gi)
+            : this.getFairyConfig();
+          if (fcfg && fcfg.useFertilizer) {
             const fid = this.takeFertFromBagForFairy(fcfg);
             if (fid) {
               plot.fertilizerId = fid;
@@ -2004,6 +2007,36 @@ const Game = {
     const activeGarden = currentPlayer.activeGarden || 0;
     this.syncActiveGarden();
 
+    // Tiên online giữ tưới 3/3 liên tục → offline phải giả lập giống vậy
+    // (nếu không, chỉ vườn được NYC trồng lại + tưới mới chạy nhanh; vườn khác chậm → lệch log)
+    if (this.isFairyActiveAt(from)) {
+      this.forEachGarden((plots, gi) => {
+        if (!this.isFairyGardenEnabled(gi)) return;
+        (plots || []).forEach(plot => {
+          if (!plot || !plot.plantId) return;
+          plot.waterCount = 3;
+          plot.watered = true;
+          plot.lastWatered = from;
+        });
+        // Bón 1 lần đầu khung offline nếu cấu hình Tiên bật phân (trừ kho)
+        const fcfg = this.getFairyConfigForGarden
+          ? this.getFairyConfigForGarden(gi)
+          : this.getFairyConfig();
+        if (fcfg && fcfg.useFertilizer) {
+          (plots || []).forEach(plot => {
+            if (!plot || !plot.plantId) return;
+            if (this.isReadyAt(plot, from)) return;
+            if (this.isFertBoostActive && this.isFertBoostActive(plot, from)) return;
+            const fid = this.takeFertFromBagForFairy(fcfg);
+            if (!fid) return;
+            plot.fertilizerId = fid;
+            plot.fertilizedAt = from;
+          });
+        }
+      });
+      changed = true;
+    }
+
     // NYC: ô trống lúc bắt đầu offline → trồng theo cấu hình TỪNG vườn
     if (nycCovered) {
       const plantAt = from;
@@ -2168,11 +2201,12 @@ const Game = {
       );
     }
 
-    // Giúp việc
+    // Giúp việc — số lần thử tỉ lệ thời gian offline (tối thiểu 3, tối đa 48)
     if (this.isHelperActive()) {
       const prev = currentPlayer.lastHelperBuy || 0;
       let buys = 0;
-      for (let k = 0; k < 5; k++) {
+      const helperTries = Math.max(3, Math.min(48, Math.ceil(offlineGap / (15 * 60 * 1000)) + 2));
+      for (let k = 0; k < helperTries; k++) {
         currentPlayer.lastHelperBuy = 0;
         if (this.tickHelperBuy(now)) {
           buys++;
@@ -2373,13 +2407,12 @@ const Game = {
     }
     if (qty < 1) return { ok: false, msg: 'Không đủ tiền!' };
     const cost = price * qty;
-    if ((currentPlayer.coins || 0) < cost) return { ok: false, msg: 'Không đủ tiền!' };
-    currentPlayer.coins -= cost;
-    currentPlayer.stats = currentPlayer.stats || {};
-    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
+    if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền!' };
     if (!currentPlayer.inventory.protects) currentPlayer.inventory.protects = {};
     currentPlayer.inventory.protects[protectId] = (currentPlayer.inventory.protects[protectId] || 0) + qty;
-    this.addActivity(`Mua ${qty} ${item.name} (-${cost.toLocaleString()}🪙)`);
+    this.addActivity(this.isUnlimitedResources()
+      ? `Mua ${qty} ${item.name} (unlimited)`
+      : `Mua ${qty} ${item.name} (-${cost.toLocaleString()}🪙)`);
     await savePlayer();
     return { ok: true, msg: `Đã mua ${qty} ${item.name}!` };
   },
@@ -2388,9 +2421,7 @@ const Game = {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const pack = DEFAULT_FAIRY_PACKS.find(p => p.id === packId);
     if (!pack) return { ok: false, msg: 'Gói không hợp lệ!' };
-    if (currentPlayer.coins < pack.price) return { ok: false, msg: 'Không đủ tiền!' };
-    currentPlayer.coins -= pack.price;
-    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + pack.price;
+    if (!this.chargeCoins(pack.price)) return { ok: false, msg: 'Không đủ tiền!' };
     const base = Math.max((typeof nowMs==="function"?nowMs():Date.now()), currentPlayer.fairyUntil || 0);
     const wasActive = this.hasFairy();
     currentPlayer.fairyUntil = base + pack.days * 24 * 60 * 60 * 1000;
@@ -2412,9 +2443,7 @@ const Game = {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const pack = DEFAULT_NYC_PACKS.find(p => p.id === packId);
     if (!pack) return { ok: false, msg: 'Gói không hợp lệ!' };
-    if (currentPlayer.coins < pack.price) return { ok: false, msg: 'Không đủ tiền!' };
-    currentPlayer.coins -= pack.price;
-    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + pack.price;
+    if (!this.chargeCoins(pack.price)) return { ok: false, msg: 'Không đủ tiền!' };
     const base = Math.max((typeof nowMs==="function"?nowMs():Date.now()), currentPlayer.nycUntil || 0);
     const wasActive = this.hasNyc();
     currentPlayer.nycUntil = base + pack.days * 24 * 60 * 60 * 1000;
@@ -2543,8 +2572,7 @@ const Game = {
       if (!plant) return { ok: false, bought: 0, cost: 0, msg: 'Không có hạt' };
       if (!this.isPlantAvailable(plant)) return { ok: false, bought: 0, cost: 0, msg: 'Limited hết hạn' };
       const cost = plant.seedPrice * qty;
-      if (currentPlayer.coins < cost) return { ok: false, bought: 0, cost: 0, msg: 'Thiếu tiền' };
-      currentPlayer.coins -= cost;
+      if (!this.chargeCoins(cost)) return { ok: false, bought: 0, cost: 0, msg: 'Thiếu tiền' };
       currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
       if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
       currentPlayer.inventory.seeds[id] = (currentPlayer.inventory.seeds[id] || 0) + qty;
@@ -2554,8 +2582,7 @@ const Game = {
       const fert = this.getFertilizer(id);
       if (!fert) return { ok: false, bought: 0, cost: 0, msg: 'Không có phân' };
       const cost = fert.price * qty;
-      if (currentPlayer.coins < cost) return { ok: false, bought: 0, cost: 0, msg: 'Thiếu tiền' };
-      currentPlayer.coins -= cost;
+      if (!this.chargeCoins(cost)) return { ok: false, bought: 0, cost: 0, msg: 'Thiếu tiền' };
       currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
       if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
       currentPlayer.inventory.fertilizers[id] = (currentPlayer.inventory.fertilizers[id] || 0) + qty;
@@ -2565,8 +2592,7 @@ const Game = {
       const item = this.getProtect(id);
       if (!item) return { ok: false, bought: 0, cost: 0, msg: 'Không có bảo hộ' };
       const cost = item.price * qty;
-      if (currentPlayer.coins < cost) return { ok: false, bought: 0, cost: 0, msg: 'Thiếu tiền' };
-      currentPlayer.coins -= cost;
+      if (!this.chargeCoins(cost)) return { ok: false, bought: 0, cost: 0, msg: 'Thiếu tiền' };
       currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
       if (!currentPlayer.inventory.protects) currentPlayer.inventory.protects = {};
       currentPlayer.inventory.protects[id] = (currentPlayer.inventory.protects[id] || 0) + qty;
@@ -2618,9 +2644,7 @@ const Game = {
     const packs = this.getHelperPacks();
     const pack = packs.find(p => p.id === packId);
     if (!pack) return { ok: false, msg: 'Gói không hợp lệ!' };
-    if (currentPlayer.coins < pack.price) return { ok: false, msg: 'Không đủ tiền!' };
-    currentPlayer.coins -= pack.price;
-    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + pack.price;
+    if (!this.chargeCoins(pack.price)) return { ok: false, msg: 'Không đủ tiền!' };
     const base = Math.max((typeof nowMs==="function"?nowMs():Date.now()), currentPlayer.helperUntil || 0);
     currentPlayer.helperUntil = base + pack.days * 24 * 60 * 60 * 1000;
     // Mua xong chạy 1 lần ngay nếu đã có rule
@@ -3372,8 +3396,7 @@ const Game = {
     qty = Math.min(qty, room);
     const price = (currentSettings && currentSettings.plotPrice) || 500;
     const cost = price * qty;
-    if (currentPlayer.coins < cost) return { ok: false, msg: 'Không đủ tiền! Cần ' + cost + '🪙' };
-    currentPlayer.coins -= cost;
+    if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền! Cần ' + cost + '🪙' };
     currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
     const start = currentPlayer.plots.length;
     for (let i = 0; i < qty; i++) {
@@ -3410,13 +3433,12 @@ const Game = {
     if (!currentPlayer.companions) currentPlayer.companions = {};
     if (currentPlayer.companions[id]) return { ok: false, msg: 'Đã sở hữu!' };
     const price = Number(item.price) || 0;
-    if ((currentPlayer.coins || 0) < price) return { ok: false, msg: 'Không đủ xu!' };
-    currentPlayer.coins -= price;
+    if (!this.chargeCoins(price)) return { ok: false, msg: 'Không đủ xu!' };
     currentPlayer.companions[id] = { id, boughtAt: (typeof nowMs === 'function' ? nowMs() : Date.now()) };
     if (!currentPlayer.companionId) currentPlayer.companionId = id;
-    this.addActivity('Mua thú cưng ' + item.name + ' (-' + price + '🪙)');
-    currentPlayer.stats = currentPlayer.stats || {};
-    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + price;
+    this.addActivity(this.isUnlimitedResources()
+      ? 'Mua thú cưng ' + item.name + ' (unlimited)'
+      : 'Mua thú cưng ' + item.name + ' (-' + price + '🪙)');
     return { ok: true, msg: 'Đã mua ' + item.name + '!' };
   },
   equipCompanion(id) {
@@ -3464,13 +3486,12 @@ const Game = {
     if (!currentPlayer.avatarFrames) currentPlayer.avatarFrames = {};
     if (currentPlayer.avatarFrames[frameId]) return { ok: false, msg: 'Bạn đã sở hữu khung này!' };
     const price = Number(frame.price) || 0;
-    if ((currentPlayer.coins || 0) < price) return { ok: false, msg: 'Không đủ xu!' };
-    currentPlayer.coins -= price;
+    if (!this.chargeCoins(price)) return { ok: false, msg: 'Không đủ xu!' };
     currentPlayer.avatarFrames[frameId] = { id: frameId, boughtAt: (typeof nowMs === 'function' ? nowMs() : Date.now()) };
     if (!currentPlayer.avatarFrameId) currentPlayer.avatarFrameId = frameId;
-    this.addActivity('Mua khung avatar ' + frame.name + ' (-' + price + '🪙)');
-    currentPlayer.stats = currentPlayer.stats || {};
-    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + price;
+    this.addActivity(this.isUnlimitedResources()
+      ? 'Mua khung avatar ' + frame.name + ' (unlimited)'
+      : 'Mua khung avatar ' + frame.name + ' (-' + price + '🪙)');
     return { ok: true, msg: 'Đã mua khung ' + frame.name + '!' };
   },
 
@@ -3494,11 +3515,11 @@ const Game = {
     if (!pet) return { ok: false, msg: 'Không tìm thấy pet!' };
     if (!currentPlayer.pets) currentPlayer.pets = {};
     if (currentPlayer.pets[petId]) return { ok: false, msg: 'Bạn đã sở hữu pet này!' };
-    if ((currentPlayer.coins || 0) < pet.price) return { ok: false, msg: 'Không đủ xu!' };
-    currentPlayer.coins -= pet.price;
-    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + pet.price;
+    if (!this.chargeCoins(pet.price)) return { ok: false, msg: 'Không đủ xu!' };
     currentPlayer.pets[petId] = { id: petId, boughtAt: (typeof nowMs==="function"?nowMs():Date.now()), active: true };
-    this.addActivity(`Nhận pet ${pet.name} (-${pet.price}🪙)`);
+    this.addActivity(this.isUnlimitedResources()
+      ? `Nhận pet ${pet.name} (unlimited)`
+      : `Nhận pet ${pet.name} (-${pet.price}🪙)`);
     await savePlayer();
     return { ok: true, msg: `Đã mua ${pet.icon} ${pet.name}!` };
   },
