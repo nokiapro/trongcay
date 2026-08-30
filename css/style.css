@@ -335,7 +335,7 @@ button.btn,
   justify-content: center;
   gap: 6px;
   padding: 7px 12px !important;
-  border: none;
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
   border-radius: 10px !important;
   font-family: inherit;
   font-weight: 600;
@@ -1835,11 +1835,13 @@ html[data-theme="dark"] .plot-progress {
   justify-content: space-between;
   padding: 10px 12px;
   background: var(--card);
-  border-radius: 10px;
+  border-radius: 18px;
   box-shadow: var(--shadow);
   cursor: pointer;
   gap: 8px;
   flex-wrap: wrap;
+  overflow: hidden; /* clip mọi góc vuông con → không lộ nền đen */
+  isolation: isolate;
 }
 .friend-item:hover, .friend-item.active { background: #e8f5e9; }
 .friend-actions {
@@ -2640,9 +2642,14 @@ html[data-theme="dark"] .chat-bubble.me {
   background: var(--primary-dark);
 }
 
+html[data-theme="dark"] .friend-item {
+  background: #1a3328 !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+}
 html[data-theme="dark"] .friend-item:hover,
 html[data-theme="dark"] .friend-item.active {
-  background: #243d32;
+  background: #243d32 !important;
 }
 
 html[data-theme="dark"] .plot {
@@ -7133,16 +7140,17 @@ textarea::placeholder {
   color: var(--text) !important;
   box-shadow: var(--shadow);
 }
-/* Không ép border panel chat/friends — layout tự xử lý */
 .friends-panel,
 .chat-panel {
-  border: none !important;
-  box-shadow: none;
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  box-shadow: var(--shadow);
 }
 
 .friend-item {
   color: var(--text);
-  border-color: var(--border);
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent) !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
 }
 .friend-item:hover,
 .friend-item.active {
@@ -7570,29 +7578,31 @@ html[data-theme="dark"] .profile-companion {
 }
 
 
-/* FORCE no border on all buttons site-wide */
-.btn,
-button.btn,
-.btn-sm,
-.btn.btn-sm,
+
+
+/* Bạn bè: nút bo tròn, không góc vuông lộ */
+.friend-item .friend-actions .btn,
+.friend-item .btn-visit-friend,
+.friend-item .btn-chat-friend {
+  border-radius: 999px !important;
+  overflow: hidden;
+}
+.friend-actions {
+  overflow: visible;
+}
+
+
+/* Restored button borders */
 .btn-primary,
-.btn-secondary,
 .btn-success,
 .btn-danger,
 .btn-warning,
-.btn-purple,
-.btn-timer,
-.btn-icon,
-button:not(.agent-garden-tab):not(.nav-btn):not(.shop-tab) {
-  border: none !important;
-  outline: none;
-}
-.btn:focus,
-.btn:focus-visible,
-button.btn:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent);
+.btn-purple {
+  border: 1px solid color-mix(in srgb, #000 12%, transparent);
 }
 .btn-secondary {
-  border: none !important;
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent) !important;
+}
+.btn-timer {
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
 }
