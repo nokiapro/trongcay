@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vườn Xanh - Trồng Cây & Thu Hoạch</title>
-  <link rel="stylesheet" href="css/style.css?v=1.9.49" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.50" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -12,6 +12,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
 </head>
 <body>
+  <!-- LOGIN SCREEN -->
     <div id="auth-loading" class="auth-loading">
     <div class="auth-loading-card">
       <i class="fa-solid fa-spinner fa-spin"></i>
@@ -39,6 +40,7 @@
     </div>
   </div>
 
+  <!-- APP SCREEN -->
   <div id="app-screen" style="display:none">
     <div id="server-announce" class="server-announce" style="display:none" role="status">
       <span id="server-announce-text"></span>
@@ -77,8 +79,10 @@
       </div>
     </header>
 
+    <!-- Hamburger (mobile) -->
     <button id="menu-toggle" class="menu-toggle" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
 
+    <!-- Bottom / side menu -->
     <nav id="bottom-nav" class="bottom-nav">
 <button class="nav-btn active" data-page="garden"><i class="fa-solid fa-house-tree"></i><span>Vườn</span></button>
       <button class="nav-btn" data-page="shop"><i class="fa-solid fa-shop"></i><span>Cửa hàng</span></button>
@@ -104,7 +108,8 @@
       <section id="page-garden" class="page active">
         <div class="page-header">
           <div>
-            <h1><i class="fa-duotone fa-trees"></i> VƯỜN CỦA TÔI</h1>
+            <h1><i class="fa-duotone fa-trees"></i> Vườn của tôi</h1>
+            <p>Trồng cây, chăm sóc và thu hoạch hoa quả</p>
           </div>
           <button id="btn-daily" class="btn btn-warning">
             <i class="fa-solid fa-gift"></i> Thưởng ngày
@@ -173,9 +178,10 @@
         </div>
       </section>
 
+      <!-- SHOP -->
       <section id="page-shop" class="page">
         <div class="page-header">
-          <h1><i class="fa-solid fa-shop"></i> CỬA HÀNG</h1>
+          <h1><i class="fa-solid fa-shop"></i> Cửa hàng</h1>
           <p>Hơn 1000 loại hạt giống hoa · lá · quả để trồng</p>
         </div>
         <div class="shop-tabs">
@@ -205,9 +211,10 @@
         <div class="shop-pager" id="shop-pager"></div>
       </section>
 
+      <!-- INVENTORY -->
       <section id="page-inventory" class="page">
         <div class="page-header">
-          <h1><i class="fa-solid fa-boxes-stacked"></i> KHO HÀNG</h1>
+          <h1><i class="fa-solid fa-boxes-stacked"></i> Kho hàng</h1>
           <p>Hạt giống, phân bón và sản phẩm thu hoạch</p>
         </div>
         <div class="inventory-tabs">
@@ -237,10 +244,11 @@
         </div>
       </section>
 
+      <!-- STATS -->
       <section id="page-kitchen" class="page">
         <div class="page-header">
-          <h1><i class="fa-solid fa-utensils"></i> NHÀ BẾP</h1>
-          <p>Ghép nông sản thành món ăn - hơn 1000 thực đơn, bán lấy xu</p>
+          <h1><i class="fa-solid fa-utensils"></i> Nhà bếp</h1>
+          <p>Ghép nông sản thành món ăn — hơn 1000 thực đơn, bán lấy xu</p>
         </div>
         <div class="kitchen-tabs">
           <button type="button" class="tab-btn active" data-kitchen="cook"><i class="fa-solid fa-fire-burner"></i> Nấu ăn</button>
@@ -271,10 +279,11 @@
         </div>
       </section>
 
+      <!-- LEVEL / TREE BADGE -->
       <section id="page-level" class="page">
         <div class="page-header">
           <h1><i class="fa-solid fa-tree"></i> Level &amp; Badge Cây</h1>
-          <p>Badge tiến hóa 12 bậc (1 - 10.000) · Kéo thanh để xem trước</p>
+          <p>Badge tiến hóa 12 bậc (1 – 10.000) · Kéo thanh để xem trước</p>
         </div>
         <div class="level-badge-showcase" id="level-badge-showcase">
           <div class="level-badge-ambient" id="levelAmbientGlow"></div>
@@ -286,11 +295,11 @@
                 <i id="activeTreeIcon" class="fa-solid fa-seedling tree-icon"></i>
               </div>
             </div>
-            <div id="activeTreeTag" class="tree-level-tag">LEVEL <span id="activeTreeLvlNum">1</span></div>
+            <div id="activeTreeTag" class="tree-level-tag">LVL <span id="activeTreeLvlNum">1</span></div>
           </div>
           <div id="activePillBadge" class="eco-pill-badge tier-tree-1">
             <i id="activePillIcon" class="fa-solid fa-seedling"></i>
-            <span id="activePillText">LEVEL 1 • Mầm Cây Trong Chậu Đất</span>
+            <span id="activePillText">LVL 1 • Mầm Cây Trong Chậu Đất</span>
           </div>
           <div class="level-tier-meta">
             <span class="level-tier-label">Giai đoạn</span>
@@ -317,6 +326,7 @@
         </div>
       </section>
 
+      <!-- ACTIVITY -->
       <section id="page-activity" class="page">
         <div class="page-header">
           <h1><i class="fa-solid fa-clock-rotate-left"></i> Hoạt động gần đây</h1>
@@ -329,7 +339,7 @@
 
       <section id="page-rank" class="page">
         <div class="page-header">
-          <h1><i class="fa-solid fa-trophy"></i> BẢNG XẾP HẠNG</h1>
+          <h1><i class="fa-solid fa-trophy"></i> Bảng xếp hạng</h1>
           <p>Top người chơi toàn server</p>
         </div>
         <div class="rank-tabs">
@@ -343,7 +353,7 @@
 
       <section id="page-friends" class="page">
         <div class="page-header">
-          <h1><i class="fa-solid fa-user-group"></i> BẠN BÈ & TIN NHẮN</h1>
+          <h1><i class="fa-solid fa-user-group"></i> Bạn bè & Tin nhắn</h1>
           <p>Kết bạn và chat riêng · Streak chat mỗi ngày</p>
         </div>
         <div class="friends-layout">
@@ -372,7 +382,7 @@
 
       <section id="page-quests" class="page">
         <div class="page-header">
-          <h1><i class="fa-solid fa-list-check"></i> NHIỆM VỤ</h1>
+          <h1><i class="fa-solid fa-list-check"></i> Nhiệm vụ</h1>
           <p>Ngày reset 0h · Tuần reset thứ 2</p>
         </div>
         <div id="quests-daily" class="quest-block"></div>
@@ -381,7 +391,7 @@
 
       <section id="page-market" class="page">
         <div class="page-header">
-          <h1><i class="fa-solid fa-store"></i> CHỢ NGƯỜI CHƠI</h1>
+          <h1><i class="fa-solid fa-store"></i> Chợ người chơi</h1>
           <p>Mua bán hạt giống & nông sản với người chơi khác</p>
         </div>
         <div class="market-sell-box card-panel">
@@ -407,7 +417,7 @@
 
       <section id="page-bank" class="page">
         <div class="page-header">
-          <h1><i class="fa-solid fa-building-columns"></i> NGÂN HÀNG</h1>
+          <h1><i class="fa-solid fa-building-columns"></i> Ngân hàng</h1>
           <p>Gửi xu nhận lãi theo ngày / tuần / tháng / năm</p>
         </div>
         <div class="card-panel bank-deposit-box">
@@ -431,7 +441,8 @@
 
       <section id="page-profile" class="page">
         <div class="page-header">
-          <h1><i class="fa-solid fa-user"></i> HỒ SƠ CỦA TÔI</h1>
+          <h1><i class="fa-solid fa-user"></i> Hồ sơ của tôi</h1>
+          <p>Đổi tên, avatar, gift code và buff</p>
         </div>
         <div class="profile-card">
           <div class="profile-avatar-block">
@@ -535,7 +546,7 @@
 
       <section id="page-mail" class="page">
         <div class="page-header">
-          <h1><i class="fa-solid fa-envelope"></i> HỘP THƯ</h1>
+          <h1><i class="fa-solid fa-envelope"></i> Hộp thư</h1>
           <p>Thư hệ thống, admin và sinh nhật</p>
         </div>
         <div class="mail-box" id="player-mailbox">
@@ -546,6 +557,7 @@
     </main>
   </div>
 
+  <!-- Overlay bảo trì / ban -->
   <div id="access-gate" class="access-gate" style="display:none">
     <div class="access-gate-card">
       <div class="access-gate-icon" id="access-gate-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
@@ -555,6 +567,7 @@
     </div>
   </div>
 
+  <!-- Modal trồng cây -->
   <div id="modal-plant" class="modal">
     <div class="modal-content">
       <h2 class="modal-plant-title"><i class="fa-solid fa-seedling"></i> <span>Chọn hạt giống để trồng</span></h2>
@@ -563,6 +576,7 @@
     </div>
   </div>
 
+  <!-- Modal chi tiết ô đất -->
   <div id="modal-plot" class="modal">
     <div class="modal-content">
       <h2 id="plot-title">Chi tiết ô đất</h2>
@@ -577,6 +591,7 @@
     </div>
   </div>
 
+  <!-- Modal chọn phân bón -->
   <div id="modal-fert" class="modal">
     <div class="modal-content">
       <h2><i class="fa-solid fa-flask"></i> Chọn phân bón</h2>
@@ -587,6 +602,7 @@
 
   <div id="rain-overlay" class="rain-overlay" aria-hidden="true"></div>
 
+  <!-- Modal thăm vườn bạn -->
   <div id="modal-visit" class="modal">
     <div class="modal-content modal-visit-content">
       <h2 id="visit-title"><i class="fa-solid fa-house-chimney"></i> Vườn bạn bè</h2>
@@ -599,6 +615,7 @@
     </div>
   </div>
 
+  <!-- Modal chọn số lượng hàng loạt -->
   <div id="modal-bulk" class="modal">
     <div class="modal-content modal-bulk-content">
       <h2 id="bulk-title">Chọn số lượng</h2>
@@ -608,6 +625,7 @@
     </div>
   </div>
 
+  <!-- Modal cấu hình Tiên chăm -->
   <div id="modal-fairy-config" class="modal">
     <div class="modal-content">
       <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Cấu hình Tiên chăm</h2>
@@ -660,6 +678,7 @@
     </div>
   </div>
 
+  <!-- Modal cấu hình Người Yêu Cũ -->
   <div id="modal-nyc-config" class="modal">
     <div class="modal-content">
       <h2><i class="fa-solid fa-heart-crack"></i> Cấu hình Người Yêu Cũ</h2>
@@ -692,6 +711,8 @@
     </div>
   </div>
 
+  
+  <!-- Modal cấu hình Người giúp việc -->
   <div id="modal-helper-config" class="modal">
     <div class="modal-content" style="max-width:520px">
       <h2><i class="fa-solid fa-user-tie"></i> Cấu hình Người giúp việc</h2>
@@ -737,11 +758,11 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.49"></script>
-  <script src="js/data.js?v=1.9.49"></script>
-  <script src="js/fa-icons.js?v=1.9.49"></script>
-  <script src="js/game.js?v=1.9.49"></script>
-  <script src="js/features.js?v=1.9.49"></script>
-  <script src="js/app.js?v=1.9.49"></script>
+  <script src="js/firebase-config.js?v=1.9.50"></script>
+  <script src="js/data.js?v=1.9.50"></script>
+  <script src="js/fa-icons.js?v=1.9.50"></script>
+  <script src="js/game.js?v=1.9.50"></script>
+  <script src="js/features.js?v=1.9.50"></script>
+  <script src="js/app.js?v=1.9.50"></script>
 </body>
 </html>
