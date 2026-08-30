@@ -1699,11 +1699,15 @@ const Game = {
    * Thu 1 ô tại mốc t + (optional) trồng lại cùng mốc.
    * Trả { harvested:0|1, planted:0|1 }
    */
-  _nycHarvestOneAt(plot, t, gi, cfg, doReplant) {
-    if (!plot || !plot.plantId || !plot.plantedAt) return { harvested: 0, planted: 0 };
-    if (!this.isReadyAt(plot, t)) return { harvested: 0, planted: 0 };
+  /**
+   * Thu 1 ô tại mốc t (offline/online NYC).
+   * @param {boolean} [silent] - true khi bù offline: không spam nhật ký từng ô, gọi bên ngoài ghi tổng số vụ
+   */
+  _nycHarvestOneAt(plot, t, gi, cfg, doReplant, silent) {
+    if (!plot || !plot.plantId || !plot.plantedAt) return { harvested: 0, planted: 0, amount: 0, plantName: '', plantId: null, seedStar: false };
+    if (!this.isReadyAt(plot, t)) return { harvested: 0, planted: 0, amount: 0, plantName: '', plantId: null, seedStar: false };
     const plant = this.getPlant(plot.plantId);
-    if (!plant) return { harvested: 0, planted: 0 };
+    if (!plant) return { harvested: 0, planted: 0, amount: 0, plantName: '', plantId: null, seedStar: false };
     let amount = plant.yield || 1;
     if (plot.fertilizerId) {
       const fert = this.getFertilizer(plot.fertilizerId);
@@ -1756,11 +1760,13 @@ const Game = {
         }
       }
     }
-    // Ghi log đúng mốc giờ thu khi vắng
-    let logMsg = 'Thu hoạch ' + amount + ' ' + plantName + (seedStarFlag ? ' ⭐' : '');
-    if (planted && replantName) logMsg += ' · NYC trồng lại ' + replantName;
-    this.addActivity(logMsg, { type: 'harvest_offline', at: t, plotGarden: gi });
-    return { harvested: 1, planted };
+    // Online / không silent: ghi từng dòng; offline silent → tổng hợp ở simulateOfflineCare
+    if (!silent) {
+      let logMsg = 'Thu hoạch ' + amount + ' ' + plantName + (seedStarFlag ? ' ⭐' : '');
+      if (planted && replantName) logMsg += ' · NYC trồng lại ' + replantName;
+      this.addActivity(logMsg, { type: 'harvest_offline', at: t, plotGarden: gi });
+    }
+    return { harvested: 1, planted, amount, plantName, plantId: hid, seedStar: seedStarFlag, replantName };
   },
 
   /** Mốc chín sớm nhất (ms) trên các vườn NYC đang bật, ≤ untilMs. null nếu không có. */
@@ -1821,6 +1827,9 @@ const Game = {
     const notes = [];
     let totalHarvest = 0;
     let totalPlant = 0;
+    let totalYieldAmount = 0;
+    // Tổng hợp theo loại cây: { [name]: { cycles, amount, star } }
+    const harvestByPlant = {};
     let fairyCycles = 0;
     let helperBuys = 0;
     let rainHits = 0;
@@ -1889,7 +1898,20 @@ const Game = {
       }
     }
 
-    /** Thu ô chín tại mốc t; replant=true chỉ khi NYC còn hạn tại t */
+    /** Ghi nhận 1 vụ thu vào bảng tổng hợp (theo tên cây) */
+    const recordHarvestStat = (r) => {
+      if (!r || !r.harvested) return;
+      totalHarvest += r.harvested;
+      totalPlant += r.planted || 0;
+      totalYieldAmount += r.amount || 0;
+      const key = (r.plantName || 'cây') + (r.seedStar ? ' ⭐' : '');
+      if (!harvestByPlant[key]) harvestByPlant[key] = { cycles: 0, amount: 0 };
+      harvestByPlant[key].cycles += 1;
+      harvestByPlant[key].amount += r.amount || 0;
+      changed = true;
+    };
+
+    /** Thu ô chín tại mốc t; replant=true chỉ khi NYC còn hạn tại t. silent=true → không spam log từng ô */
     const nycHarvestReplantAt = (t) => {
       if (!nycBuffOn) return;
       const canReplant = this.isNycActiveAt(t);
@@ -1905,11 +1927,9 @@ const Game = {
           if (!plot || !plot.plantId) continue;
           const readyAt = this.getReadyAtMs(plot);
           if (readyAt == null || readyAt > t) continue;
-          // Thu nếu đã chín; trồng lại chỉ khi còn gói NYC tại mốc t
-          const r = this._nycHarvestOneAt(plot, t, gi, cfg, canReplant && !!cfg.plantId);
-          totalHarvest += r.harvested;
-          totalPlant += r.planted;
-          if (r.harvested) changed = true;
+          // silent: tổng hợp số vụ ở cuối, không ghi từng dòng vào nhật ký
+          const r = this._nycHarvestOneAt(plot, t, gi, cfg, canReplant && !!cfg.plantId, true);
+          recordHarvestStat(r);
         }
         if (canReplant && cfg && cfg.plantId) {
           const extra = this._nycPlantEmptiesAt(plots, cfg, t);
@@ -1945,14 +1965,15 @@ const Game = {
             // Nếu vẫn không nhúc nhích, bỏ qua mốc này bằng cách +1ms plantedAt
             const still = this._nextNycReadyAt(now);
             if (still === nextReady) {
-              this.forEachGarden((plots) => {
+              this.forEachGarden((plots, gi2) => {
+                if (!this.isNycGardenEnabled(gi2)) return;
+                const cfg2 = this.getNycConfigForGarden(gi2);
                 plots.forEach(plot => {
                   if (plot && plot.plantId && plot.plantedAt && this.getReadyAtMs(plot) === nextReady) {
                     plot.plantedAt = nextReady; // coi như vừa trồng lại tại mốc chín → vòng sau tính grow mới
-                    // clear to force progress: harvest without going through isReadyAt fail
-                    const gi2 = currentPlayer.activeGarden || 0;
-                    const cfg2 = this.getNycConfigForGarden(gi2);
-                    this._nycHarvestOneAt(plot, nextReady, gi2, cfg2, this.isNycActiveAt(nextReady));
+                    // silent + ghi vào tổng số vụ
+                    const rStuck = this._nycHarvestOneAt(plot, nextReady, gi2, cfg2, this.isNycActiveAt(nextReady), true);
+                    recordHarvestStat(rStuck);
                   }
                 });
               });
@@ -2005,7 +2026,7 @@ const Game = {
     }
     if (fairyCycles) notes.push(`Tiên ${fairyCycles} lần chu kỳ 3h`);
     if (totalHarvest || totalPlant) {
-      notes.push(`NYC thu ${totalHarvest} · trồng ${totalPlant} (timeline offline)`);
+      notes.push(`NYC: thu ${totalHarvest} vụ · trồng ${totalPlant} ô · sản lượng ${totalYieldAmount} (offline)`);
     }
 
     // Giúp việc
@@ -2054,7 +2075,17 @@ const Game = {
       }
     }
     lines.push('Tiên: ' + (fairyActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · chu kỳ 3 giờ đã chạy: ' + fairyCycles + ' lần · đồng hồ 3h còn: ' + (cycleLeftSec == null ? '—' : this.formatTime(cycleLeftSec)) + ' (không reset full 3h)');
-    lines.push('NYC: ' + (nycActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · thu ' + totalHarvest + ' ô (vụ) · trồng lại ' + totalPlant + ' ô (plantedAt đúng giờ chín)');
+    lines.push('NYC: ' + (nycActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · thu ' + totalHarvest + ' vụ · trồng lại ' + totalPlant + ' ô · sản lượng ' + totalYieldAmount);
+    // Chi tiết theo loại cây (số vụ + sản lượng) — 1 dòng gọn, không spam từng ô
+    const plantDetailParts = Object.keys(harvestByPlant).map(name => {
+      const s = harvestByPlant[name];
+      return name + ' ×' + s.cycles + ' vụ (' + s.amount + ' sp)';
+    });
+    if (plantDetailParts.length) {
+      lines.push('Chi tiết thu offline: ' + plantDetailParts.join(' · '));
+    } else if (!totalHarvest && !totalPlant) {
+      lines.push('Chi tiết thu offline: không có vụ nào trong thời gian vắng');
+    }
     lines.push('Giúp việc: ' + (helperActive ? 'ĐANG BẬT' : 'tắt/hết hạn') + ' · mua theo mốc kho: ' + helperBuys + ' đợt');
     if (fromLog) {
       lines.push('Có log thao tác (trồng/tưới/bón) → mốc bù lấy sớm hơn lastSeen');
@@ -2074,6 +2105,8 @@ const Game = {
       fairyCycles,
       totalHarvest,
       totalPlant,
+      totalYieldAmount,
+      harvestByPlant,
       helperBuys,
       fairyActive,
       nycActive,
@@ -2089,6 +2122,8 @@ const Game = {
       offlineText,
       totalHarvest,
       totalPlant,
+      totalYieldAmount,
+      harvestByPlant,
       fairyCycles,
       helperBuys,
       rainHits,
@@ -3046,6 +3081,8 @@ const Game = {
           fairyCycles: report.fairyCycles,
           totalHarvest: report.totalHarvest,
           totalPlant: report.totalPlant,
+          totalYieldAmount: report.totalYieldAmount,
+          harvestByPlant: report.harvestByPlant || null,
           helperBuys: report.helperBuys,
           fairyActive: report.fairyActive,
           nycActive: report.nycActive,
