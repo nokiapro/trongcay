@@ -391,7 +391,7 @@ const Game = {
             wateredN++;
           }
         });
-        this.addActivity(`🧚 Tiên tưới khi mưa: ${wateredN} ô`);
+        this.addActivity(`Tiên tưới khi mưa: ${wateredN} ô`);
       }
       savePlayer();
       if (typeof renderGarden === 'function') {
@@ -2526,7 +2526,7 @@ const Game = {
     if (harvested > 0 || planted > 0) {
       currentPlayer.lastNycCare = now;
       this.addActivity(
-        `💔 NYC vườn ${gLabel}: thu ${harvested} ô` +
+        `NYC vườn ${gLabel}: thu ${harvested} ô` +
         (totalAmount ? ` (${totalAmount} sp)` : '') +
         (planted ? `, trồng ${planted} ô cùng giờ` : '')
       );
