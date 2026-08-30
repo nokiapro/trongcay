@@ -24,6 +24,8 @@ const Game = {
   getAvatarFrame(id) { return this.getAvatarFrames().find(f => f.id === id); },
   getCompanions() { return typeof getCompanions === 'function' ? getCompanions() : (typeof DEFAULT_COMPANIONS !== 'undefined' ? DEFAULT_COMPANIONS : []); },
   getCompanion(id) { return this.getCompanions().find(c => c.id === id); },
+  getAvatarBadges() { return typeof getAvatarBadges === 'function' ? getAvatarBadges() : (typeof DEFAULT_AVATAR_BADGES !== 'undefined' ? DEFAULT_AVATAR_BADGES : []); },
+  getAvatarBadge(id) { return this.getAvatarBadges().find(b => b.id === id); },
 
 
   getPet(id) { return this.getPets().find(p => p.id === id); },
@@ -359,48 +361,60 @@ const Game = {
   startRain() {
     this.raining = true;
     const durationMs = this.getRainDurationMs();
-    this.rainUntil = (typeof nowMs==="function"?nowMs():Date.now()) + durationMs;
+    const now = (typeof nowMs === 'function' ? nowMs() : Date.now());
+    this.rainUntil = now + durationMs;
     this.rainCollectCount = 0;
-    // Apply rain boost to growing plots (shorten remaining like light fertilizer)
-    if (currentPlayer && currentPlayer.plots) {
-      const plots = Array.isArray(currentPlayer.plots)
-        ? currentPlayer.plots
-        : Object.values(currentPlayer.plots || {});
-      // Đồng bộ lại mảng nếu Firebase trả object
-      if (!Array.isArray(currentPlayer.plots)) {
-        currentPlayer.plots = plots;
-      }
-      plots.forEach((plot) => {
-        if (plot && plot.plantId && plot.plantedAt && !this.isReady(plot)) {
-          // Pull plantedAt forward by 12% of remaining effective time
-          const remain = this.getRemainingSeconds(plot);
-          const cut = Math.floor(remain * 0.12);
-          if (cut > 0) {
-            plot.plantedAt -= cut * 1000;
+    let wateredN = 0;
+    const fairyOn = this.isFairyActive();
+    const fairyName = fairyOn
+      ? ((this.getFairyDisplayName && this.getFairyDisplayName()) || 'Tiên')
+      : '';
+    const fairyEmoji = fairyOn
+      ? ((this.getFairyEmoji && this.getFairyEmoji()) || '🧚')
+      : '';
+
+    if (currentPlayer) {
+      this.ensureGardens();
+      // Buff mưa + (nếu Tiên bật) tưới 3/3 trên MỌI vườn được bật Tiên — giống offline
+      this.forEachGarden((plots, gi) => {
+        if (!Array.isArray(plots)) return;
+        const fairyHere = fairyOn && this.isFairyGardenEnabled(gi);
+        plots.forEach((plot) => {
+          if (!plot || !plot.plantId || !plot.plantedAt) return;
+          if (!this.isReady(plot)) {
+            const remain = this.getRemainingSeconds(plot);
+            const cut = Math.floor(remain * 0.12);
+            if (cut > 0) plot.plantedAt -= cut * 1000;
           }
-        }
-      });
-      // Tiên (đang bật): khi mưa tưới đủ 3/3 TẤT CẢ các ô đang có cây
-      if (this.isFairyActive()) {
-        let wateredN = 0;
-        plots.forEach(plot => {
-          if (plot && plot.plantId) {
+          if (fairyHere) {
             plot.watered = true;
             plot.waterCount = 3;
-            plot.lastWatered = (typeof nowMs==="function"?nowMs():Date.now());
+            plot.lastWatered = now;
             wateredN++;
           }
         });
-        this.addActivity(`Tiên tưới khi mưa: ${wateredN} ô`);
+      });
+      // Luôn ghi nhật ký mưa; có Tiên thì ghi rõ số ô đã tưới
+      this.addActivity(
+        fairyOn
+          ? `🌧️ Mưa · ${fairyEmoji} ${fairyName} tưới khi mưa: ${wateredN} ô`
+          : `🌧️ Mưa bắt đầu (${Math.round(durationMs / 1000)}s)`,
+        { type: fairyOn ? 'fairy_rain' : 'rain', at: now }
+      );
+      if (fairyOn && wateredN > 0 && typeof Features !== 'undefined' && Features.trackQuest) {
+        try { Features.trackQuest('water', wateredN * 3); } catch (_) {}
       }
-      savePlayer();
+      if (typeof savePlayer === 'function') savePlayer();
       if (typeof renderGarden === 'function') {
         try { renderGarden(); } catch (_) {}
       }
+      if (typeof renderActivityPage === 'function') {
+        try { renderActivityPage(); } catch (_) {}
+      }
     }
     if (typeof showRainEffect === 'function') showRainEffect();
-    const tip = this.isFairyActive()
-      ? '🌧️ Mưa + Tiên tưới hết tất cả cây trong vườn!'
+    const tip = fairyOn
+      ? `🌧️ Mưa + ${fairyEmoji} ${fairyName} tưới ${wateredN} ô!`
       : '🌧️ Mưa rồi! Chạm sâu / hạt rơi để nhặt thưởng!';
     if (typeof showToast === 'function') showToast(tip, 'success');
     setTimeout(() => {
@@ -3168,6 +3182,32 @@ const Game = {
     return { ok: true, msg: 'Đã gắn ' + ((c && c.name) || id) };
   },
 
+  async buyAvatarBadge(id) {
+    const item = this.getAvatarBadge(id);
+    if (!item) return { ok: false, msg: 'Không tìm thấy icon badge!' };
+    if (!currentPlayer.avatarBadges) currentPlayer.avatarBadges = {};
+    if (currentPlayer.avatarBadges[id]) return { ok: false, msg: 'Đã sở hữu!' };
+    const price = Number(item.price) || 0;
+    if ((currentPlayer.coins || 0) < price) return { ok: false, msg: 'Không đủ xu!' };
+    currentPlayer.coins -= price;
+    currentPlayer.avatarBadges[id] = { id, boughtAt: (typeof nowMs === 'function' ? nowMs() : Date.now()) };
+    if (!currentPlayer.avatarBadgeId) currentPlayer.avatarBadgeId = id;
+    this.addActivity('Mua badge icon ' + item.name + ' (-' + price + '🪙)');
+    currentPlayer.stats = currentPlayer.stats || {};
+    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + price;
+    return { ok: true, msg: 'Đã mua ' + item.name + '!' };
+  },
+  equipAvatarBadge(id) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập' };
+    if (!id || id === 'none') {
+      currentPlayer.avatarBadgeId = null;
+      return { ok: true, msg: 'Đã gỡ badge icon' };
+    }
+    if (!currentPlayer.avatarBadges || !currentPlayer.avatarBadges[id]) return { ok: false, msg: 'Chưa sở hữu!' };
+    currentPlayer.avatarBadgeId = id;
+    const b = this.getAvatarBadge(id);
+    return { ok: true, msg: 'Đã gắn ' + ((b && b.name) || id) };
+  },
 
   async buyAvatarFrame(frameId) {
     const frame = this.getAvatarFrame(frameId);

@@ -1129,6 +1129,32 @@ function applyProfileCompanion() {
   }
 }
 
+function applyProfileBadge() {
+  const el = document.getElementById('profile-badge');
+  const wrap = document.getElementById('profile-avatar-wrap');
+  if (!el) return;
+  const id = currentPlayer && currentPlayer.avatarBadgeId;
+  const b = id && Game.getAvatarBadge ? Game.getAvatarBadge(id) : null;
+  if (b && b.fa) {
+    el.innerHTML = '<i class="' + b.fa + '"></i>';
+    el.style.display = 'flex';
+    el.title = b.name || '';
+    if (wrap) wrap.classList.add('has-badge');
+  } else {
+    el.innerHTML = '';
+    el.style.display = 'none';
+    if (wrap) wrap.classList.remove('has-badge');
+  }
+}
+
+/** Nhãn sở hữu cửa hàng — icon FA thay ✅ */
+function shopOwnedLabel(state) {
+  if (state === 'equipped') return '<span class="owned-ico"><i class="fa-solid fa-circle-check"></i></span> Đang gắn';
+  if (state === 'owned') return '<span class="owned-ico"><i class="fa-solid fa-check"></i></span> Đã sở hữu';
+  if (state === 'none') return '<span class="owned-ico"><i class="fa-regular fa-circle"></i></span> Chưa có';
+  return String(state || '');
+}
+
 function applyProfileAvatarFrame() {
   const wrap = document.getElementById('profile-avatar-wrap');
   if (!wrap) return;
@@ -1192,6 +1218,7 @@ function renderProfile() {
   }
   applyProfileAvatarFrame();
   applyProfileCompanion();
+  if (typeof applyProfileBadge === 'function') applyProfileBadge();
   const prefs = Game.getBuffPrefs();
   const fEl = document.getElementById('pref-fairy-enabled');
   const nEl = document.getElementById('pref-nyc-enabled');
@@ -2845,7 +2872,7 @@ function renderShop() {
     const eq = (currentPlayer && currentPlayer.companionId) || null;
     const none = document.createElement('div');
     none.className = 'shop-card';
-    none.innerHTML = `<div class="shop-icon" style="font-size:2rem">🚫</div><div class="shop-name">Không thú</div><div class="shop-owned">${!eq ? '✅ Đang dùng' : ''}</div><button class="btn btn-secondary btn-equip-cp" data-id="none">Gỡ</button>`;
+    none.innerHTML = `<div class="shop-icon" style="font-size:2rem">🚫</div><div class="shop-name">Không thú</div><div class="shop-owned">${!eq ? shopOwnedLabel('equipped') : ''}</div><button class="btn btn-secondary btn-equip-cp" data-id="none">Gỡ</button>`;
     grid.appendChild(none);
     items.forEach(it => {
       const have = !!owned[it.id];
@@ -2855,7 +2882,7 @@ function renderShop() {
       card.innerHTML = `<div class="shop-icon" style="font-size:2.2rem">${it.icon}</div>
         <div class="shop-name">${it.name}</div>
         <span class="shop-type">${it.rarity || 'common'}</span>
-        <div class="shop-owned">${on ? '✅ Đang gắn' : (have ? 'Đã có' : 'Chưa có')}</div>
+        <div class="shop-owned">${on ? shopOwnedLabel('equipped') : (have ? shopOwnedLabel('owned') : shopOwnedLabel('none'))}</div>
         <div class="shop-price">${(it.price||0).toLocaleString()} 🪙</div>
         ${have ? `<button class="btn ${on?'btn-secondary':'btn-primary'} btn-equip-cp" data-id="${it.id}">${on?'Đang gắn':'Gắn'}</button>`
                : `<button class="btn btn-primary btn-buy-cp" data-id="${it.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>`}`;
@@ -2874,6 +2901,63 @@ function renderShop() {
     return;
   }
 
+  if (currentShopTab === 'badge') {
+    const countEl = document.getElementById('shop-count');
+    document.getElementById('shop-pager').innerHTML = '';
+    let items = (Game.getAvatarBadges && Game.getAvatarBadges()) || [];
+    const q = (document.getElementById('shop-search')?.value || '').trim().toLowerCase();
+    if (q) {
+      items = items.filter(it =>
+        (it.name || '').toLowerCase().indexOf(q) >= 0 ||
+        (it.fa || '').toLowerCase().indexOf(q) >= 0 ||
+        (it.rarity || '').toLowerCase().indexOf(q) >= 0
+      );
+    }
+    if (countEl) countEl.textContent = items.length + ' icon FA · gắn góc trên-phải avatar (Pro)';
+    const owned = (currentPlayer && currentPlayer.avatarBadges) || {};
+    const eq = (currentPlayer && currentPlayer.avatarBadgeId) || null;
+    const none = document.createElement('div');
+    none.className = 'shop-card';
+    none.innerHTML = `<div class="shop-icon"><i class="fa-solid fa-ban" style="font-size:1.6rem"></i></div>
+      <div class="shop-name">Không badge</div>
+      <div class="shop-owned">${!eq ? shopOwnedLabel('equipped') : ''}</div>
+      <button class="btn btn-secondary btn-equip-badge" data-id="none">Gỡ</button>`;
+    grid.appendChild(none);
+    items.forEach(it => {
+      const have = !!owned[it.id];
+      const on = eq === it.id;
+      const rarityLabel = it.rarity === 'legendary' ? 'Huyền thoại' : it.rarity === 'epic' ? 'Sử thi' : it.rarity === 'rare' ? 'Hiếm' : 'Thường';
+      const card = document.createElement('div');
+      card.className = 'shop-card rarity-' + (it.rarity || 'common');
+      card.innerHTML = `<div class="shop-icon" style="font-size:1.8rem;color:var(--primary,#16a34a)"><i class="${it.fa}"></i></div>
+        <div class="shop-name">${it.name}</div>
+        <span class="shop-type">Icon · ${rarityLabel}</span>
+        <div class="shop-meta"><span style="font-size:0.7rem;opacity:0.75">${it.fa}</span></div>
+        <div class="shop-owned">${on ? shopOwnedLabel('equipped') : (have ? shopOwnedLabel('owned') : shopOwnedLabel('none'))}</div>
+        <div class="shop-price">${(it.price || 0).toLocaleString()} 🪙</div>
+        ${have
+          ? `<button class="btn ${on ? 'btn-secondary' : 'btn-primary'} btn-equip-badge" data-id="${it.id}">${on ? 'Đang gắn' : 'Gắn'}</button>`
+          : `<button class="btn btn-primary btn-buy-badge" data-id="${it.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>`}`;
+      grid.appendChild(card);
+    });
+    grid.querySelectorAll('.btn-buy-badge').forEach(btn => btn.addEventListener('click', async () => {
+      const res = await Game.buyAvatarBadge(btn.dataset.id);
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      updateCoins();
+      renderShop();
+      if (typeof applyProfileBadge === 'function') applyProfileBadge();
+    }));
+    grid.querySelectorAll('.btn-equip-badge').forEach(btn => btn.addEventListener('click', () => {
+      const res = Game.equipAvatarBadge(btn.dataset.id);
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
+      else if (typeof savePlayer === 'function') savePlayer();
+      renderShop();
+      if (typeof applyProfileBadge === 'function') applyProfileBadge();
+    }));
+    return;
+  }
+
   if (currentShopTab === 'khung') {
     const countEl = document.getElementById('shop-count');
     document.getElementById('shop-pager').innerHTML = '';
@@ -2888,7 +2972,7 @@ function renderShop() {
       <div class="shop-icon avatar-frame-preview" style="--af-grad:linear-gradient(135deg,#94a3b8,#e2e8f0)"><span class="af-inner"></span></div>
       <div class="shop-name">Không khung</div>
       <span class="shop-type">Mặc định</span>
-      <div class="shop-owned">${!equipped ? '✅ Đang dùng' : 'Chưa gắn'}</div>
+      <div class="shop-owned">${!equipped ? shopOwnedLabel('equipped') : shopOwnedLabel('none')}</div>
       <div class="shop-price">Miễn phí</div>
       <button class="btn btn-secondary btn-equip-frame" data-id="none">${!equipped ? 'Đang dùng' : 'Gỡ khung'}</button>`;
     grid.appendChild(noneCard);
@@ -2905,7 +2989,7 @@ function renderShop() {
         <div class="shop-name">${fr.name}</div>
         <span class="shop-type">Khung · ${rarityLabel}</span>
         <div class="shop-meta"><span>${fr.desc || ''}</span></div>
-        <div class="shop-owned">${on ? '✅ Đang gắn' : (have ? 'Đã sở hữu' : 'Chưa có')}</div>
+        <div class="shop-owned">${on ? shopOwnedLabel('equipped') : (have ? shopOwnedLabel('owned') : shopOwnedLabel('none'))}</div>
         <div class="shop-price">${(fr.price || 0).toLocaleString()} 🪙</div>
         ${have
           ? `<button class="btn ${on ? 'btn-secondary' : 'btn-primary'} btn-equip-frame" data-id="${fr.id}">${on ? 'Đang gắn' : 'Gắn khung'}</button>`
@@ -2950,7 +3034,7 @@ function renderShop() {
         <div class="shop-name">${pet.name}</div>
         <span class="shop-type">Pet · ${pet.species === 'cat' ? 'Mèo' : pet.species === 'dog' ? 'Chó' : 'Khác'}</span>
         <div class="shop-meta"><span>Nhặt xu ~${((pet.coinChance || 0) * 100).toFixed(1)}%/tick</span></div>
-        <div class="shop-owned">${have ? '✅ Đã sở hữu' : 'Chưa có'}</div>
+        <div class="shop-owned">${have ? shopOwnedLabel('owned') : shopOwnedLabel('none')}</div>
         <div class="shop-price">${pet.price.toLocaleString()} 🪙</div>
         <p class="bulk-hint" style="font-size:0.78rem;margin:6px 0">${pet.desc || ''}</p>
         <button class="btn ${have ? 'btn-secondary' : 'btn-primary'} btn-buy-pet" data-id="${pet.id}" ${have ? 'disabled' : ''}>
@@ -3463,6 +3547,9 @@ function activityFaIcon(text, type) {
   if (t === 'offline' || s.indexOf('BÙ OFFLINE') >= 0 || s.indexOf('Bù offline') >= 0) return 'fa-solid fa-bolt';
   if (t === 'offline_detail') return 'fa-solid fa-circle-info';
   if (t === 'harvest_offline' || s.indexOf('Thu hoạch') >= 0) return 'fa-solid fa-basket-shopping';
+  if (t === 'fairy_rain') return 'fa-solid fa-cloud-sun-rain';
+  if (t === 'rain') return 'fa-solid fa-cloud-rain';
+  if (t === 'fairy_care') return 'fa-solid fa-wand-magic-sparkles';
   if (s.indexOf('Trồng') >= 0 || s.indexOf('trồng lại') >= 0) return 'fa-solid fa-seedling';
   if (s.indexOf('Tưới') >= 0 || s.indexOf('tưới') >= 0) return 'fa-solid fa-droplet';
   if (s.indexOf('Bón') >= 0 || s.indexOf('phân') >= 0) return 'fa-solid fa-flask';
