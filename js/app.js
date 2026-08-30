@@ -3259,12 +3259,24 @@ function renderShop() {
 }
 
 // ===== INVENTORY =====
-document.querySelectorAll('.tab-btn').forEach(btn => {
+(function bindInvSearch() {
+  const el = document.getElementById('inv-search');
+  if (!el || el.__invSearchBound) return;
+  el.__invSearchBound = true;
+  let tmr = null;
+  el.addEventListener('input', () => {
+    clearTimeout(tmr);
+    tmr = setTimeout(() => { if (typeof renderInventory === 'function') renderInventory(); }, 180);
+  });
+})();
+document.querySelectorAll('.inventory-tabs .tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.inventory-tabs .tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.inv-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById('inv-' + btn.dataset.tab).classList.add('active');
+    const panel = document.getElementById('inv-' + btn.dataset.tab);
+    if (panel) panel.classList.add('active');
+    if (typeof renderInventory === 'function') renderInventory();
   });
 });
 
@@ -3560,6 +3572,200 @@ function renderInventory() {
       });
       mountAllPillDropdowns(mergeEl);
     }
+  }
+
+  // ===== Kho: Pet / Khung / Thú cưng / Icon badge (đã mua → gắn lại) =====
+  const invQCos = (document.getElementById('inv-search')?.value || '').trim().toLowerCase();
+
+  // Pet
+  const petEl = document.getElementById('inv-pet');
+  if (petEl) {
+    const ownedPets = (currentPlayer.pets) || {};
+    let petIds = Object.keys(ownedPets);
+    if (invQCos) {
+      petIds = petIds.filter(id => {
+        const p = Game.getPet && Game.getPet(id);
+        return ((p && p.name) || id).toLowerCase().includes(invQCos);
+      });
+    }
+    if (!petIds.length) {
+      petEl.innerHTML = '<p class="empty-state">Chưa có Pet. Mua ở Cửa hàng → Pet!</p>';
+    } else {
+      petEl.innerHTML = '<div class="inv-grid">' + petIds.map(id => {
+        const pet = Game.getPet(id);
+        if (!pet) return '';
+        const on = ownedPets[id] && ownedPets[id].active !== false;
+        return `<div class="inv-item">
+          <div class="icon" style="font-size:1.8rem">${pet.icon || '🐾'}</div>
+          <div class="name">${pet.name || id}</div>
+          <div class="qty">${on ? 'Đang bật' : 'Đang tắt'} · nhặt xu hiếm</div>
+          <div class="actions">
+            <button class="btn ${on ? 'btn-secondary' : 'btn-primary'} btn-toggle-pet" data-id="${id}" data-on="${on ? '0' : '1'}">${on ? 'Tắt' : 'Bật'}</button>
+          </div>
+        </div>`;
+      }).join('') + '</div>';
+      petEl.querySelectorAll('.btn-toggle-pet').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const res = Game.togglePet(btn.dataset.id, btn.dataset.on === '1');
+          showToast(res.msg || (btn.dataset.on === '1' ? 'Đã bật pet' : 'Đã tắt pet'), res.ok !== false ? 'success' : 'error');
+          if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
+          else if (typeof savePlayer === 'function') savePlayer();
+          renderInventory();
+        });
+      });
+    }
+  }
+
+  // Khung avatar
+  const khungEl = document.getElementById('inv-khung');
+  if (khungEl) {
+    const owned = (currentPlayer.avatarFrames) || {};
+    const eq = currentPlayer.avatarFrameId || null;
+    let ids = Object.keys(owned);
+    if (invQCos) {
+      ids = ids.filter(id => {
+        const f = Game.getAvatarFrame && Game.getAvatarFrame(id);
+        return ((f && f.name) || id).toLowerCase().includes(invQCos);
+      });
+    }
+    let html = '<div class="inv-grid">';
+    html += `<div class="inv-item">
+      <div class="icon"><i class="fa-regular fa-circle" style="font-size:1.6rem;opacity:0.5"></i></div>
+      <div class="name">Không khung</div>
+      <div class="qty">${!eq ? 'Đang dùng' : ''}</div>
+      <div class="actions"><button class="btn btn-secondary btn-equip-inv-frame" data-id="none">Gỡ</button></div>
+    </div>`;
+    if (!ids.length) {
+      html += '</div><p class="empty-state">Chưa có khung. Mua ở Cửa hàng → Khung avatar!</p>';
+    } else {
+      html += ids.map(id => {
+        const f = Game.getAvatarFrame(id);
+        if (!f) return '';
+        const on = eq === id;
+        const grad = f.gradient || 'linear-gradient(135deg,#22c55e,#86efac)';
+        return `<div class="inv-item">
+          <div class="icon" style="width:48px;height:48px;border-radius:50%;padding:3px;background:${grad};margin:0 auto">
+            <div style="width:100%;height:100%;border-radius:50%;background:var(--card,#0b3d2e)"></div>
+          </div>
+          <div class="name">${f.name || id}</div>
+          <div class="qty">${on ? 'Đang gắn' : (f.rarity || '')}</div>
+          <div class="actions">
+            <button class="btn ${on ? 'btn-secondary' : 'btn-primary'} btn-equip-inv-frame" data-id="${id}">${on ? 'Đang gắn' : 'Gắn'}</button>
+          </div>
+        </div>`;
+      }).join('') + '</div>';
+    }
+    khungEl.innerHTML = html;
+    khungEl.querySelectorAll('.btn-equip-inv-frame').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const res = Game.equipAvatarFrame(btn.dataset.id);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
+        if (typeof applyProfileAvatarFrame === 'function') applyProfileAvatarFrame();
+        else if (typeof renderProfile === 'function') renderProfile();
+        renderInventory();
+      });
+    });
+  }
+
+  // Thú cưng (companion cạnh avatar)
+  const compEl = document.getElementById('inv-companion');
+  if (compEl) {
+    const owned = (currentPlayer.companions) || {};
+    const eq = currentPlayer.companionId || null;
+    let ids = Object.keys(owned);
+    if (invQCos) {
+      ids = ids.filter(id => {
+        const c = Game.getCompanion && Game.getCompanion(id);
+        return ((c && c.name) || id).toLowerCase().includes(invQCos);
+      });
+    }
+    let html = '<div class="inv-grid">';
+    html += `<div class="inv-item">
+      <div class="icon">—</div>
+      <div class="name">Không thú cưng</div>
+      <div class="qty">${!eq ? 'Đang dùng' : ''}</div>
+      <div class="actions"><button class="btn btn-secondary btn-equip-inv-comp" data-id="none">Gỡ</button></div>
+    </div>`;
+    if (!ids.length) {
+      html += '</div><p class="empty-state">Chưa có thú cưng. Mua ở Cửa hàng → Thú cưng!</p>';
+    } else {
+      html += ids.map(id => {
+        const c = Game.getCompanion(id);
+        if (!c) return '';
+        const on = eq === id;
+        return `<div class="inv-item">
+          <div class="icon" style="font-size:1.8rem">${c.emoji || c.icon || '🐾'}</div>
+          <div class="name">${c.name || id}</div>
+          <div class="qty">${on ? 'Đang gắn' : (c.rarity || '')}</div>
+          <div class="actions">
+            <button class="btn ${on ? 'btn-secondary' : 'btn-primary'} btn-equip-inv-comp" data-id="${id}">${on ? 'Đang gắn' : 'Gắn'}</button>
+          </div>
+        </div>`;
+      }).join('') + '</div>';
+    }
+    compEl.innerHTML = html;
+    compEl.querySelectorAll('.btn-equip-inv-comp').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const res = Game.equipCompanion(btn.dataset.id);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
+        if (typeof applyProfileCompanion === 'function') applyProfileCompanion();
+        renderInventory();
+      });
+    });
+  }
+
+  // Icon badge
+  const badgeEl = document.getElementById('inv-badge');
+  if (badgeEl) {
+    const owned = (currentPlayer.avatarBadges) || {};
+    const eq = currentPlayer.avatarBadgeId || null;
+    let ids = Object.keys(owned);
+    if (invQCos) {
+      ids = ids.filter(id => {
+        const b = Game.getAvatarBadge && Game.getAvatarBadge(id);
+        const slug = (owned[id] && owned[id].slug) || id.replace(/^ab-/, '');
+        const name = (b && b.name) || slug || id;
+        return String(name).toLowerCase().includes(invQCos) || String(slug).toLowerCase().includes(invQCos);
+      });
+    }
+    let html = '<div class="inv-grid">';
+    html += `<div class="inv-item">
+      <div class="icon"><i class="fa-regular fa-circle-xmark" style="font-size:1.6rem;opacity:0.5"></i></div>
+      <div class="name">Không badge</div>
+      <div class="qty">${!eq ? 'Đang dùng' : ''}</div>
+      <div class="actions"><button class="btn btn-secondary btn-equip-inv-badge" data-id="none">Gỡ</button></div>
+    </div>`;
+    if (!ids.length) {
+      html += '</div><p class="empty-state">Chưa có icon badge. Mua ở Cửa hàng → Icon badge!</p>';
+    } else {
+      html += ids.map(id => {
+        const b = Game.getAvatarBadge(id);
+        const ownedRec = owned[id] || {};
+        const fa = ownedRec.fa || (b && b.fa) || ('fa-solid fa-' + id.replace(/^ab-/, ''));
+        const name = (b && b.name) || ownedRec.slug || id.replace(/^ab-/, '');
+        const on = eq === id;
+        return `<div class="inv-item">
+          <div class="icon" style="font-size:1.8rem;color:var(--primary)"><i class="${fa}"></i></div>
+          <div class="name">${name}</div>
+          <div class="qty">${on ? 'Đang gắn' : fa}</div>
+          <div class="actions">
+            <button class="btn ${on ? 'btn-secondary' : 'btn-primary'} btn-equip-inv-badge" data-id="${id}">${on ? 'Đang gắn' : 'Gắn'}</button>
+          </div>
+        </div>`;
+      }).join('') + '</div>';
+    }
+    badgeEl.innerHTML = html;
+    badgeEl.querySelectorAll('.btn-equip-inv-badge').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const res = Game.equipAvatarBadge(btn.dataset.id);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
+        if (typeof applyProfileBadge === 'function') applyProfileBadge();
+        renderInventory();
+      });
+    });
   }
 }
 

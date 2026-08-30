@@ -1876,21 +1876,25 @@ const Game = {
     if (fromLog && fromLog < from) {
       from = Math.max(Number(currentPlayer.lastCatchUpAt) || 0, fromLog - 1000);
     }
-    // Không còn ngưỡng 5 phút — thời gian chạy liên tục, bù ngay khi quay lại
-    const OFFLINE_MIN_MS = 1000;
-    if (now - from < OFFLINE_MIN_MS) {
+    // Ngưỡng: < 30s coi như chưa offline (đổi tab nhanh không spam)
+    // Log nhật ký chỉ khi vắng ≥ 60s hoặc có thu/trồng/mưa/tiên thật
+    const OFFLINE_MIN_MS = 30 * 1000;
+    const OFFLINE_LOG_MIN_MS = 60 * 1000;
+    const offlineGap = now - from;
+    if (offlineGap < OFFLINE_MIN_MS) {
       currentPlayer.lastCatchUpAt = now;
       delete currentPlayer._needOfflineFromLog;
       delete currentPlayer._logEarliest;
-      return { ok: true, changed: false, notes: [], offlineMs: 0, skipped: true };
+      return { ok: true, changed: false, notes: [], offlineMs: offlineGap, skipped: true };
     }
 
     let changed = false;
     const notes = [];
-    let totalHarvest = 0;
-    let totalPlant = 0;
+    let totalHarvest = 0; // số LẦN thu
+    let totalPlant = 0;   // số LẦN trồng lại
     let totalYieldAmount = 0;
-    // Tổng hợp theo loại cây: { [name]: { cycles, amount, star } }
+    const harvestedPlotKeys = new Set(); // "gardenIdx:plotIdx" — số ô vật lý
+    // Tổng hợp theo loại cây: { [name]: { cycles, amount } }
     const harvestByPlant = {};
     let fairyCycles = 0;
     let helperBuys = 0;
@@ -1960,12 +1964,13 @@ const Game = {
       }
     }
 
-    /** Ghi nhận 1 vụ thu vào bảng tổng hợp (theo tên cây) */
-    const recordHarvestStat = (r) => {
+    /** Ghi nhận 1 lần thu; plotKey = "gi:idx" để đếm số ô thật */
+    const recordHarvestStat = (r, plotKey) => {
       if (!r || !r.harvested) return;
       totalHarvest += r.harvested;
       totalPlant += r.planted || 0;
       totalYieldAmount += r.amount || 0;
+      if (plotKey != null && plotKey !== '') harvestedPlotKeys.add(String(plotKey));
       const key = (r.plantName || 'cây') + (r.seedStar ? ' ⭐' : '');
       if (!harvestByPlant[key]) harvestByPlant[key] = { cycles: 0, amount: 0 };
       harvestByPlant[key].cycles += 1;
@@ -1989,9 +1994,9 @@ const Game = {
           if (!plot || !plot.plantId) continue;
           const readyAt = this.getReadyAtMs(plot);
           if (readyAt == null || readyAt > t) continue;
-          // silent: tổng hợp số vụ ở cuối, không ghi từng dòng vào nhật ký
+          // silent: tổng hợp ở cuối, không ghi từng dòng
           const r = this._nycHarvestOneAt(plot, t, gi, cfg, canReplant && !!cfg.plantId, true);
-          recordHarvestStat(r);
+          recordHarvestStat(r, gi + ':' + i);
         }
         if (canReplant && cfg && cfg.plantId) {
           const extra = this._nycPlantEmptiesAt(plots, cfg, t);
@@ -2165,27 +2170,40 @@ const Game = {
     }
     lines.push('Kết thúc bù offline · lastSeen/lastCatchUp cập nhật ' + new Date(now).toLocaleString('vi-VN'));
 
-    // Luôn ghi log chi tiết khi offline ≥ ngưỡng (kể cả changed=false để user thấy đã check)
-    this.logOfflineReport({
-      lines,
-      offlineMs,
-      offlineText,
-      from,
-      to: now,
-      rainHits,
-      rainChance,
-      rainWatered,
-      fairyCycles,
-      totalHarvest,
-      totalPlant,
-      totalYieldAmount,
-      uniquePlotsHarvested: harvestedPlotKeys.size,
-      harvestByPlant,
-      helperBuys,
-      fairyActive,
-      nycActive,
-      helperActive
-    });
+    // Ghi nhật ký khi: vắng ≥ 60s HOẶC có sự kiện thật (thu/trồng/mưa/tiên/giúp việc)
+    const shouldLog =
+      offlineMs >= OFFLINE_LOG_MIN_MS ||
+      totalHarvest > 0 ||
+      totalPlant > 0 ||
+      rainHits > 0 ||
+      fairyCycles > 0 ||
+      helperBuys > 0;
+    if (shouldLog) {
+      try {
+        this.logOfflineReport({
+          lines,
+          offlineMs,
+          offlineText,
+          from,
+          to: now,
+          rainHits,
+          rainChance,
+          rainWatered,
+          fairyCycles,
+          totalHarvest,
+          totalPlant,
+          totalYieldAmount,
+          uniquePlotsHarvested: harvestedPlotKeys.size,
+          harvestByPlant,
+          helperBuys,
+          fairyActive,
+          nycActive,
+          helperActive
+        });
+      } catch (logErr) {
+        console.warn('logOfflineReport', logErr);
+      }
+    }
 
     return {
       ok: true,
