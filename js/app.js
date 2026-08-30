@@ -278,9 +278,15 @@ function bindNycConfigUI() {
     const count = parseInt(document.getElementById('nyc-count-input')?.value, 10) || 1;
     const gi = getSelectedAgentGarden('nyc');
     const enEl = document.getElementById('nyc-garden-enabled');
+    const applyAll = !!document.getElementById('nyc-apply-all-gardens')?.checked;
     const baseGe = Object.assign({}, (Game.getNycConfig().gardensEnabled || {}));
     if (enEl) baseGe[String(gi)] = !!enEl.checked;
-    const res = Game.setNycConfig({
+    // Đảm bảo key rõ ràng cho mọi vườn đã mở (thiếu key = bật)
+    const nGardens = typeof Game.getGardenCount === 'function' ? Game.getGardenCount() : 1;
+    for (let i = 0; i < nGardens; i++) {
+      if (baseGe[String(i)] === undefined && baseGe[i] === undefined) baseGe[String(i)] = true;
+    }
+    const payload = {
       gardenIndex: gi,
       gardenEnabled: enEl ? !!enEl.checked : true,
       gardensEnabled: baseGe,
@@ -290,7 +296,26 @@ function bindNycConfigUI() {
       count,
       customName: (document.getElementById('nyc-custom-name')?.value || '').trim().slice(0, 20),
       gender: document.querySelector('input[name="nyc-gender"]:checked')?.value || 'female'
-    });
+    };
+    let res = Game.setNycConfig(payload);
+    // Áp dụng cùng hạt/mode cho mọi vườn đang bật
+    if (res.ok && applyAll && plantId) {
+      for (let i = 0; i < nGardens; i++) {
+        if (baseGe[String(i)] === false || baseGe[i] === false) continue;
+        Game.setNycConfig({
+          gardenIndex: i,
+          gardenEnabled: true,
+          gardensEnabled: baseGe,
+          plantId,
+          seedKind,
+          mode,
+          count,
+          customName: payload.customName,
+          gender: payload.gender
+        });
+      }
+      res = { ok: true, msg: 'Đã lưu NYC · áp dụng hạt cho tất cả vườn đang bật' };
+    }
     if (res.ok) {
       await savePlayer();
       showToast(res.msg, 'success');
@@ -353,6 +378,12 @@ function renderAgentGardenToggles(hostId, gardensEnabled, kind) {
       <input type="checkbox" class="garden-toggle-switch" id="${k}-garden-enabled" data-garden="${sel}" ${on ? 'checked' : ''} />
     </label>
     <p class="bulk-hint">Đang cấu hình <strong>Vườn ${sel + 1}</strong> — mỗi vườn có cấu hình riêng.</p>`;
+    if (k === 'nyc') {
+      html += `<label class="garden-toggle-row" style="margin-top:6px">
+        <span class="garden-toggle-label"><i class="fa-solid fa-copy"></i> Áp dụng hạt này cho <strong>tất cả vườn đang bật</strong> khi Lưu</span>
+        <input type="checkbox" id="nyc-apply-all-gardens" checked />
+      </label>`;
+    }
   } else {
     html += '<p class="bulk-hint">Chưa có vườn.</p>';
   }

@@ -293,15 +293,29 @@ const Game = {
     const base = this.getNycConfig();
     const key = String(gardenIndex);
     const ov = (base.byGarden && (base.byGarden[key] || base.byGarden[gardenIndex])) || null;
-    if (!ov || typeof ov !== 'object') return { ...base, _gardenIndex: gardenIndex };
-    return {
-      ...base,
-      plantId: ov.plantId !== undefined ? ov.plantId : base.plantId,
-      seedKind: ov.seedKind === 'star' ? 'star' : (ov.seedKind === 'normal' ? 'normal' : base.seedKind),
-      mode: ov.mode === 'count' ? 'count' : (ov.mode === 'all' ? 'all' : base.mode),
-      count: typeof ov.count === 'number' ? ov.count : base.count,
-      _gardenIndex: gardenIndex
-    };
+    let plantId = base.plantId || null;
+    let seedKind = base.seedKind === 'star' ? 'star' : 'normal';
+    let mode = base.mode === 'count' ? 'count' : 'all';
+    let count = typeof base.count === 'number' ? base.count : 1;
+    if (ov && typeof ov === 'object') {
+      // Chỉ override plantId khi vườn đó đã chọn hạt (tránh null đè mất config gốc)
+      if (ov.plantId) plantId = ov.plantId;
+      if (ov.seedKind === 'star' || ov.seedKind === 'normal') seedKind = ov.seedKind;
+      if (ov.mode === 'count' || ov.mode === 'all') mode = ov.mode;
+      if (typeof ov.count === 'number') count = ov.count;
+    }
+    // Fallback: lấy plantId từ bất kỳ vườn nào đã cấu hình
+    if (!plantId && base.byGarden) {
+      for (const k of Object.keys(base.byGarden)) {
+        const o = base.byGarden[k];
+        if (o && o.plantId) {
+          plantId = o.plantId;
+          if (o.seedKind === 'star' || o.seedKind === 'normal') seedKind = o.seedKind;
+          break;
+        }
+      }
+    }
+    return { ...base, plantId, seedKind, mode, count, _gardenIndex: gardenIndex };
   },
 
   setNycConfig(cfg) {
@@ -1923,10 +1937,26 @@ const Game = {
     const harvestedPlotKeys = new Set(); // "gardenIdx:plotIdx" — số ô vật lý
     // Tổng hợp theo loại cây: { [name]: { cycles, amount } }
     const harvestByPlant = {};
+    const harvestByGarden = {}; // gi -> unique plots set size tracked via keys
     let fairyCycles = 0;
     let helperBuys = 0;
     let rainHits = 0;
     let rainWatered = 0;
+    // Thống kê vườn để giải thích log
+    let totalPlotsAll = 0;
+    let nycEnabledGardens = 0;
+    let plotsOnNycGardens = 0;
+    let plotsWithPlantAtStart = 0;
+    for (let gi0 = 0; gi0 < (currentPlayer.gardens || []).length; gi0++) {
+      const pl = currentPlayer.gardens[gi0];
+      if (!Array.isArray(pl)) continue;
+      totalPlotsAll += pl.length;
+      if (this.isNycGardenEnabled(gi0)) {
+        nycEnabledGardens++;
+        plotsOnNycGardens += pl.length;
+        pl.forEach(p => { if (p && p.plantId) plotsWithPlantAtStart++; });
+      }
+    }
 
     // --- Hàng đợi sự kiện: mưa + Tiên (chưa gồm "chín" — tính động) ---
     const events = [];
@@ -2000,7 +2030,13 @@ const Game = {
       totalHarvest += r.harvested;
       totalPlant += r.planted || 0;
       totalYieldAmount += r.amount || 0;
-      if (plotKey != null && plotKey !== '') harvestedPlotKeys.add(String(plotKey));
+      if (plotKey != null && plotKey !== '') {
+        const pk = String(plotKey);
+        harvestedPlotKeys.add(pk);
+        const giPart = pk.split(':')[0];
+        if (!harvestByGarden[giPart]) harvestByGarden[giPart] = new Set();
+        harvestByGarden[giPart].add(pk);
+      }
       const key = (r.plantName || 'cây') + (r.seedStar ? ' ⭐' : '');
       if (!harvestByPlant[key]) harvestByPlant[key] = { cycles: 0, amount: 0 };
       harvestByPlant[key].cycles += 1;
@@ -2190,6 +2226,21 @@ const Game = {
       (totalHarvest > _uniqP ? ' (' + totalHarvest + ' lần thu)' : '') +
       ' · trồng/trồng lại ' + totalPlant + ' lần · sản lượng ' + totalYieldAmount
     );
+    // Giải thích vì sao số ô thu < tổng ô sở hữu
+    const gardenParts = Object.keys(harvestByGarden).sort((a,b)=>Number(a)-Number(b)).map(gi => {
+      return 'Vườn ' + (Number(gi) + 1) + ': ' + harvestByGarden[gi].size + ' ô';
+    });
+    lines.push(
+      'Vườn: tổng ' + totalPlotsAll + ' ô · NYC bật ' + nycEnabledGardens + ' vườn (' + plotsOnNycGardens + ' ô)' +
+      ' · có cây lúc bắt đầu offline (vườn NYC): ' + plotsWithPlantAtStart +
+      (gardenParts.length ? ' · đã thu: ' + gardenParts.join(', ') : ' · chưa thu ô nào')
+    );
+    if (totalPlotsAll > 0 && _uniqP > 0 && _uniqP < totalPlotsAll) {
+      lines.push(
+        'Lưu ý: "thu X ô" = số ô CÓ thu trong thời gian vắng (vườn NYC đang bật + có cây/được trồng). ' +
+        'Không phải tổng ' + totalPlotsAll + ' ô sở hữu. Ô vườn tắt NYC / trống / hết hạt trồng = không vào số này.'
+      );
+    }
     // Chi tiết theo loại cây: số lần thu + sản lượng
     const plantDetailParts = Object.keys(harvestByPlant).map(name => {
       const s = harvestByPlant[name];
@@ -2269,9 +2320,12 @@ const Game = {
     if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
     const bag = kind === 'star' ? currentPlayer.inventory.seedsStar : currentPlayer.inventory.seeds;
     const plantId = cfg.plantId;
-    if ((bag[plantId] || 0) < 1) return false;
-    bag[plantId]--;
-    if (bag[plantId] <= 0) delete bag[plantId];
+    const unlimited = this.isUnlimitedResources();
+    if (!unlimited) {
+      if ((bag[plantId] || 0) < 1) return false;
+      bag[plantId]--;
+      if (bag[plantId] <= 0) delete bag[plantId];
+    }
     plot.plantId = plantId;
     plot.plantedAt = plantTime;
     plot.seedStar = kind === 'star';
