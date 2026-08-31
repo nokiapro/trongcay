@@ -174,6 +174,17 @@ const Game = {
           const n = Number(p.specialMultUntil);
           p.specialMultUntil = Number.isFinite(n) ? n : null;
         }
+        // Đồng bộ: nếu có tốc độ >1 mà chưa có permanent → gán permanent (tránh offline mất buff)
+        const sm = Number(p.specialMult) || 1;
+        const sp = Number(p.specialMultPermanent) || 0;
+        const until = Number(p.specialMultUntil) || 0;
+        const nowT = (typeof nowMs === 'function' ? nowMs() : Date.now());
+        if (sm > 1 && sp < sm && (!until || until <= nowT)) {
+          p.specialMultPermanent = sm;
+        }
+        if ((Number(p.specialMultPermanent) || 0) > 1) {
+          p.specialMult = Math.max(Number(p.specialMult) || 1, Number(p.specialMultPermanent) || 1);
+        }
         if (typeof p.waterCount !== 'number') p.waterCount = p.watered ? 3 : 0;
         if (typeof p.id !== 'number') p.id = i;
       }
@@ -443,20 +454,17 @@ const Game = {
     const t = (atMs != null && Number.isFinite(Number(atMs)))
       ? Number(atMs)
       : ((typeof nowMs === 'function' ? nowMs() : Date.now()));
-    // Permanent upgrade (preferred)
-    let perm = Number(plot.specialMultPermanent) || 0;
-    // Legacy: specialMult without an *active* temp window counts as permanent
+    const perm = Number(plot.specialMultPermanent) || 0;
     const untilN = Number(plot.specialMultUntil) || 0;
     const tempActive = untilN > t;
-    if (!perm && Number(plot.specialMult) > 1 && !tempActive) {
-      perm = Number(plot.specialMult) || 1;
-    }
-    if (!perm) perm = 1;
     let temp = 1;
     if (tempActive) {
       temp = Number(plot.specialMultTemp || plot.specialMult) || 1;
     }
-    return Math.max(perm, temp, 1);
+    // specialMult luôn là sàn tốc độ (nâng vĩnh viễn / legacy / sau khi hết temp vẫn giữ)
+    // Trước đây hết temp + có specialMultUntil cũ → rơi về x1 → offline mất vụ, realtime vẫn thu được
+    const floor = Number(plot.specialMult) > 1 ? Number(plot.specialMult) : 1;
+    return Math.max(perm, temp, floor, 1);
   },
 
   getWeather() {
@@ -2472,12 +2480,25 @@ const Game = {
             }
           }
 
-          // Quét cuối: mọi ô isReady tại endMs (khớp NYC realtime)
+          // Quét cuối: khớp NYC realtime + force theo elapsed
           for (let i = 0; i < plots.length; i++) {
             const plot = plots[i];
-            if (!plot || !plot.plantId || !plot.plantedAt) continue;
-            if (!(this.isReadyAt(plot, endMs) || this.isReady(plot))) continue;
+            if (!plot || !plot.plantId) continue;
+            let plantedAt = Number(plot.plantedAt);
+            if (!Number.isFinite(plantedAt) || plantedAt <= 0) {
+              plantedAt = from;
+              plot.plantedAt = from;
+            }
+            if (fairyOn && (plot.waterCount || 0) < 3) {
+              plot.waterCount = 3;
+              plot.watered = true;
+            }
             const growSec = Math.max(20, this.getEffectiveGrowTime(plot, endMs));
+            const elapsed = (endMs - plantedAt) / 1000;
+            const ready = elapsed + 0.05 >= growSec
+              || this.isReadyAt(plot, endMs)
+              || this.isReady(plot);
+            if (!ready) continue;
             const r = this._nycHarvestOneAt(
               plot, endMs, gi, cfg,
               canReplantNow && !!cfg.plantId,
@@ -2485,6 +2506,15 @@ const Game = {
               true
             );
             if (r && r.harvested) recordHarvestStat(r, gi + ':' + i, growSec);
+          }
+
+          // Lưu diag cho báo cáo (0 vụ)
+          if (gardenDiag[gKey]) {
+            gardenDiag[gKey].afterCycles = (harvestByGarden[gKey] && harvestByGarden[gKey].cycles) || 0;
+            gardenDiag[gKey].sampleGrow = plots[0] && plots[0].plantId
+              ? this.getEffectiveGrowTime(plots[0], endMs) : null;
+            gardenDiag[gKey].sampleMult = plots[0]
+              ? this.getPlotSpeedMult(plots[0], endMs) : 1;
           }
 
           if (canReplantNow && cfg.plantId) {
