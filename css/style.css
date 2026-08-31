@@ -328,14 +328,13 @@ body {
 button.btn,
 .btn-sm,
 .btn.btn-sm,
-.pill-dd-trigger,
 #btn-tools-menu {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
   padding: 8px 16px !important;
-  border: 1px solid transparent;
+  border: none;
   border-radius: 999px !important;
   font-family: inherit;
   font-weight: 600;
@@ -373,7 +372,7 @@ button.btn:active {
 .btn-primary {
   background: linear-gradient(145deg, var(--primary-light), var(--primary) 45%, var(--primary-dark));
   color: #fff;
-  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+  border: none;
   box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 32%, transparent),
               inset 0 1px 0 rgba(255,255,255,0.22);
 }
@@ -409,13 +408,12 @@ button.btn:active {
 .btn-secondary {
   background: color-mix(in srgb, var(--primary) 10%, var(--card, #fff));
   color: var(--primary-dark);
-  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  border: none;
   box-shadow: none;
 }
 
 .btn-secondary:hover {
   background: color-mix(in srgb, var(--primary) 18%, var(--card, #fff));
-  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
   transform: translateY(-1px);
 }
 
@@ -7082,7 +7080,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 #btn-support-menu.btn-primary {
   background: var(--btn-primary-bg) !important;
   color: var(--btn-primary-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   box-shadow: var(--btn-primary-shadow) !important;
   font-weight: 700;
 }
@@ -7093,26 +7091,23 @@ html[data-theme="dark"] .merge-box .merge-sub {
   transform: translateY(-1px);
 }
 
-.btn-secondary,
-.pill-dd-trigger {
+.btn-secondary {
   background: var(--btn-secondary-bg) !important;
   color: var(--btn-secondary-color) !important;
-  border: 1px solid var(--btn-secondary-border) !important;
+  border: none !important;
   box-shadow: none !important;
   font-weight: 600;
 }
-.btn-secondary:hover,
-.pill-dd-trigger:hover {
+.btn-secondary:hover {
   background: var(--primary) !important;
   color: #ffffff !important;
-  border-color: var(--primary) !important;
   transform: translateY(-2px);
 }
 
 .btn-success {
   background: var(--btn-success-bg) !important;
   color: var(--btn-success-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   font-weight: 700;
 }
 .btn-success:hover { filter: brightness(1.06); transform: translateY(-1px); }
@@ -7120,7 +7115,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .btn-danger {
   background: var(--btn-danger-bg) !important;
   color: var(--btn-danger-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   font-weight: 700;
 }
 .btn-danger:hover { filter: brightness(1.08); }
@@ -7128,7 +7123,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .btn-warning {
   background: var(--btn-warning-bg) !important;
   color: var(--btn-warning-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   font-weight: 700;
 }
 .btn-warning:hover { filter: brightness(1.05); transform: translateY(-1px); }
@@ -7136,7 +7131,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .btn-purple {
   background: var(--btn-purple-bg) !important;
   color: var(--btn-purple-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   font-weight: 700;
 }
 .btn-purple:hover { filter: brightness(1.08); }
@@ -7144,7 +7139,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .btn-timer {
   background: var(--btn-timer-bg) !important;
   color: var(--btn-timer-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   font-weight: 700;
 }
 .btn-timer.ready {
@@ -7155,7 +7150,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .btn-icon {
   background: var(--surface-2);
   color: var(--text);
-  border: 1px solid var(--border);
+  border: none;
 }
 .btn-icon:hover {
   background: var(--surface);
@@ -7170,14 +7165,14 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .inventory-tabs .tab-btn {
   background: var(--btn-secondary-bg) !important;
   color: var(--btn-secondary-color) !important;
-  border: 1px solid var(--btn-secondary-border) !important;
+  border: none !important;
 }
 .shop-tab.active,
 .rank-tab.active,
 .tab-btn.active {
   background: var(--btn-primary-bg) !important;
   color: var(--btn-primary-color) !important;
-  border-color: transparent !important;
+  border: none !important;
   font-weight: 700;
 }
 
@@ -7308,10 +7303,9 @@ html[data-theme="dark"] .chat-bubble.me {
 .level-preset {
   background: var(--btn-secondary-bg) !important;
   color: var(--btn-secondary-color) !important;
-  border: 1px solid var(--btn-secondary-border) !important;
+  border: none !important;
 }
 .level-preset:hover {
-  border-color: var(--border-strong) !important;
   filter: brightness(0.98);
 }
 .level-preset-max {
@@ -7404,7 +7398,7 @@ html[data-theme="dark"] .chat-bubble.me {
 .qty-stepper button {
   background: var(--btn-secondary-bg) !important;
   color: var(--btn-secondary-color) !important;
-  border: 1px solid var(--btn-secondary-border) !important;
+  border: none !important;
 }
 
 
