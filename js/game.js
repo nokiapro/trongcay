@@ -1765,8 +1765,12 @@ const Game = {
   
   getReadyAtMs(plot, atMs) {
     if (!plot || !plot.plantId || !plot.plantedAt) return null;
-    const ref = (atMs != null && Number.isFinite(Number(atMs))) ? Number(atMs) : null;
-    const growSec = this.getEffectiveGrowTime(plot, ref != null ? ref : plot.plantedAt);
+    // Dùng thời điểm đang xét (atMs / now) để tính buff tốc độ — KHÔNG dùng plantedAt
+    // (nếu dùng plantedAt, ô mới nâng cấp sau khi trồng sẽ bị offline bỏ sót, NYC realtime vẫn thu được)
+    const ref = (atMs != null && Number.isFinite(Number(atMs)))
+      ? Number(atMs)
+      : ((typeof nowMs === 'function' ? nowMs() : Date.now()));
+    const growSec = this.getEffectiveGrowTime(plot, ref);
     return plot.plantedAt + growSec * 1000;
   },
 
@@ -1936,7 +1940,8 @@ const Game = {
       if (!Array.isArray(plots)) continue;
       for (const plot of plots) {
         if (!plot || !plot.plantId || !plot.plantedAt) continue;
-        const readyAt = this.getReadyAtMs(plot);
+        // Tính ready theo buff tại untilMs (và tại plantedAt nếu cần min)
+        const readyAt = this.getReadyAtMs(plot, untilMs);
         if (readyAt == null || readyAt > untilMs) continue;
         if (best == null || readyAt < best) best = readyAt;
       }
@@ -2220,10 +2225,10 @@ const Game = {
         for (let i = 0; i < plots.length; i++) {
           const plot = plots[i];
           if (!plot || !plot.plantId) continue;
-          const readyAt = this.getReadyAtMs(plot);
+          const readyAt = this.getReadyAtMs(plot, t);
           if (readyAt == null || readyAt > t) continue;
           
-          const growSec = this.getEffectiveGrowTime(plot);
+          const growSec = this.getEffectiveGrowTime(plot, t);
           const r = this._nycHarvestOneAt(plot, t, gi, cfg, canReplant && !!cfg.plantId, true);
           recordHarvestStat(r, gi + ':' + i, growSec);
         }
@@ -2278,7 +2283,7 @@ const Game = {
                 if (!this.isNycGardenEnabled(gi2)) return;
                 (plots || []).forEach((plot) => {
                   if (!plot || !plot.plantId || !plot.plantedAt) return;
-                  const ra = this.getReadyAtMs(plot);
+                  const ra = this.getReadyAtMs(plot, forceT);
                   if (ra != null && ra <= forceT + 1) {
                     // Nudge plantedAt so next cycle can progress
                     plot.plantedAt = Math.min(plot.plantedAt, forceT - 1);
