@@ -730,6 +730,7 @@ function goToPage(page) {
   try { sessionStorage.setItem('vx_page', page); } catch (_) {}
   closeMobileNav();
   if (page === 'garden') renderGarden();
+  if (page === 'livestock') renderLivestock();
   if (page === 'shop') renderShop();
   if (page === 'inventory') renderInventory();
   if (page === 'kitchen') renderKitchen();
@@ -2586,6 +2587,138 @@ function openFertModal(plotId) {
   document.getElementById('modal-plot').classList.remove('show');
   document.getElementById('modal-fert').classList.add('show');
 }
+
+
+// ========== CHĂN NUÔI ==========
+function renderBarnSwitcher() {
+  const el = document.getElementById('barn-switcher');
+  if (!el || !currentPlayer) return;
+  if (typeof Game.ensureLivestock === 'function') Game.ensureLivestock();
+  const count = typeof Game.getBarnCount === 'function' ? Game.getBarnCount() : 1;
+  const active = typeof Game.getActiveBarnIndex === 'function' ? Game.getActiveBarnIndex() : 0;
+  el.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'garden-switch-btn' + (i === active ? ' active' : '');
+    btn.textContent = 'Chuồng ' + (i + 1);
+    btn.dataset.barn = String(i);
+    btn.addEventListener('click', () => {
+      if (typeof Game.switchBarn === 'function') {
+        const res = Game.switchBarn(i);
+        if (res && res.ok === false) {
+          if (typeof showToast === 'function') showToast(res.msg || 'Lỗi', 'error');
+          return;
+        }
+      }
+      renderLivestock();
+    });
+    el.appendChild(btn);
+  }
+}
+
+function renderLivestock() {
+  if (!currentPlayer) return;
+  if (typeof Game.ensureLivestock === 'function') Game.ensureLivestock();
+  renderBarnSwitcher();
+
+  const grid = document.getElementById('livestock-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const pens = Array.isArray(currentPlayer.pens) ? currentPlayer.pens : [];
+  let occupied = 0;
+  let readyCollect = 0;
+
+  pens.forEach((pen, i) => {
+    const div = document.createElement('div');
+    div.className = 'plot pen';
+    div.dataset.penId = String(i);
+
+    const animal = pen && pen.animalId && typeof Game.getAnimal === 'function'
+      ? Game.getAnimal(pen.animalId)
+      : null;
+
+    if (!animal) {
+      div.classList.add('empty');
+      div.innerHTML =
+        '<div class="plot-icon"><i class="fa-solid fa-plus" style="opacity:0.45"></i></div>' +
+        '<div class="plot-name">Trống</div>' +
+        '<div class="plot-status">Chọn để nuôi</div>';
+    } else {
+      occupied++;
+      div.classList.add('growing');
+      const name = animal.name || pen.animalId;
+      const icon = animal.icon || '🐾';
+      let status = 'Đang nuôi';
+      if (pen.grown) {
+        status = 'Trưởng thành';
+        div.classList.add('ready');
+        readyCollect++;
+      }
+      div.innerHTML =
+        '<div class="plot-icon">' + icon + '</div>' +
+        '<div class="plot-name">' + name + '</div>' +
+        '<div class="plot-status">' + status + '</div>';
+    }
+
+    div.addEventListener('click', () => {
+      if (typeof showToast === 'function') {
+        if (!animal) {
+          showToast('Chưa có loài vật. Thêm trong DEFAULT_ANIMALS (data.js) rồi mua ở Cửa hàng.', 'info');
+        } else {
+          showToast((animal.icon || '') + ' ' + (animal.name || pen.animalId) + ' — tính năng thu/cho ăn sẽ mở khi thêm logic.', 'info');
+        }
+      }
+    });
+    grid.appendChild(div);
+  });
+
+  const statusText = document.getElementById('livestock-status-text');
+  if (statusText) {
+    statusText.textContent = occupied
+      ? (occupied + ' con · ' + readyCollect + ' sẵn sàng thu')
+      : 'Chuồng trống';
+  }
+  const feedCount = document.getElementById('livestock-feed-count');
+  if (feedCount) {
+    const inv = (currentPlayer.inventory && currentPlayer.inventory.feed) || 0;
+    feedCount.textContent = String(inv);
+  }
+  updateCoins();
+}
+
+// Dropdown công cụ chăn nuôi
+(function initLivestockTools() {
+  const btn = document.getElementById('btn-livestock-tools');
+  const dd = document.getElementById('livestock-tools-dd');
+  if (btn && dd) {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = dd.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+  document.addEventListener('click', (e) => {
+    if (dd && !dd.contains(e.target)) {
+      dd.classList.remove('open');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    }
+  });
+  document.getElementById('btn-feed-all')?.addEventListener('click', () => {
+    dd?.classList.remove('open');
+    if (typeof showToast === 'function') showToast('Cho ăn hàng loạt — sẽ kích hoạt khi có loài vật & logic cho ăn.', 'info');
+  });
+  document.getElementById('btn-collect-all')?.addEventListener('click', () => {
+    dd?.classList.remove('open');
+    if (typeof showToast === 'function') showToast('Thu hoạch hàng loạt — sẽ kích hoạt khi có sản phẩm chăn nuôi.', 'info');
+  });
+  document.getElementById('btn-livestock-info')?.addEventListener('click', () => {
+    if (typeof showToast === 'function') {
+      showToast('Chăn nuôi: mỗi ô là 1 chuồng. Thêm loài trong data.js (DEFAULT_ANIMALS), sau đó mua & nuôi như trồng cây.', 'info');
+    }
+  });
+})();
 
 
 function renderUxPager(el, { page, totalPages, onChange }) {

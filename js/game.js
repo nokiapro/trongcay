@@ -20,6 +20,8 @@ const Game = {
   getHelperPacks() { return (typeof DEFAULT_HELPER_PACKS !== 'undefined') ? DEFAULT_HELPER_PACKS : []; },
   getNycPacks() { return DEFAULT_NYC_PACKS; },
   getPets() { return typeof getPets === 'function' ? getPets() : (typeof DEFAULT_PETS !== 'undefined' ? DEFAULT_PETS : []); },
+  getAnimals() { return typeof getAnimals === 'function' ? getAnimals() : (typeof DEFAULT_ANIMALS !== 'undefined' ? DEFAULT_ANIMALS : []); },
+  getAnimal(id) { return this.getAnimals().find(a => a && a.id === id); },
   getAvatarFrames() { return typeof getAvatarFrames === 'function' ? getAvatarFrames() : (typeof DEFAULT_AVATAR_FRAMES !== 'undefined' ? DEFAULT_AVATAR_FRAMES : []); },
   getAvatarFrame(id) { return this.getAvatarFrames().find(f => f.id === id); },
   getCompanions() { return typeof getCompanions === 'function' ? getCompanions() : (typeof DEFAULT_COMPANIONS !== 'undefined' ? DEFAULT_COMPANIONS : []); },
@@ -73,6 +75,8 @@ const Game = {
 
   
   MAX_PLOTS_PER_GARDEN: 99,
+  MAX_PENS_PER_BARN: 24,
+  DEFAULT_PENS: 4,
 
   makeEmptyPlots(count) {
     const n = Math.max(1, count || (currentSettings && currentSettings.plotCount) || 4);
@@ -85,6 +89,79 @@ const Game = {
       lastWatered: null,
       fertilizerId: null
     }));
+  },
+
+  // --- Chăn nuôi: chuồng (pen) giống ô đất ---
+  makeEmptyPens(count) {
+    const n = Math.max(1, Math.min(this.MAX_PENS_PER_BARN, count || this.DEFAULT_PENS));
+    return Array.from({ length: n }, (_, i) => ({
+      id: i,
+      animalId: null,
+      placedAt: null,
+      fed: false,
+      feedCount: 0,
+      lastFed: null,
+      lastCollect: null,
+      grown: false
+    }));
+  },
+
+  ensureLivestock() {
+    if (!currentPlayer) return;
+    if (!Array.isArray(currentPlayer.barns) || !currentPlayer.barns.length) {
+      let pens = currentPlayer.pens;
+      if (!Array.isArray(pens)) pens = [];
+      if (!pens.length) pens = this.makeEmptyPens();
+      pens = pens.map((p, i) => ({ ...(p || {}), id: (p && typeof p.id === 'number') ? p.id : i }));
+      currentPlayer.barns = [pens];
+    } else {
+      currentPlayer.barns = currentPlayer.barns.map((b) => {
+        let pens;
+        if (Array.isArray(b)) pens = b;
+        else if (b && Array.isArray(b.pens)) pens = b.pens;
+        else pens = [];
+        if (!pens.length) pens = this.makeEmptyPens();
+        return pens.map((p, i) => ({ ...(p || {}), id: i }));
+      });
+    }
+    if (typeof currentPlayer.activeBarn !== 'number' || currentPlayer.activeBarn < 0) {
+      currentPlayer.activeBarn = 0;
+    }
+    if (currentPlayer.activeBarn >= currentPlayer.barns.length) {
+      currentPlayer.activeBarn = 0;
+    }
+    currentPlayer.pens = currentPlayer.barns[currentPlayer.activeBarn];
+    if (!currentPlayer.inventory) currentPlayer.inventory = {};
+    if (!currentPlayer.inventory.livestock) currentPlayer.inventory.livestock = {};
+    if (!currentPlayer.inventory.animalProducts) currentPlayer.inventory.animalProducts = {};
+  },
+
+  getBarnCount() {
+    this.ensureLivestock();
+    return (currentPlayer && currentPlayer.barns) ? currentPlayer.barns.length : 0;
+  },
+
+  getActiveBarnIndex() {
+    this.ensureLivestock();
+    return (currentPlayer && typeof currentPlayer.activeBarn === 'number') ? currentPlayer.activeBarn : 0;
+  },
+
+  switchBarn(index) {
+    this.ensureLivestock();
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập' };
+    const i = Number(index);
+    if (!Number.isFinite(i) || i < 0 || i >= currentPlayer.barns.length) {
+      return { ok: false, msg: 'Chuồng không tồn tại' };
+    }
+    currentPlayer.activeBarn = i;
+    currentPlayer.pens = currentPlayer.barns[i];
+    return { ok: true, msg: 'Đã chuyển sang Chuồng ' + (i + 1) };
+  },
+
+  forEachBarn(fn) {
+    this.ensureLivestock();
+    if (!currentPlayer || !currentPlayer.barns) return;
+    currentPlayer.barns.forEach((pens, gi) => fn(pens, gi));
   },
 
   ensureGardens() {

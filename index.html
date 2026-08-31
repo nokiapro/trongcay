@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vườn Xanh - Trồng Cây & Thu Hoạch</title>
-  <link rel="stylesheet" href="css/style.css?v=1.9.62" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.63" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -85,6 +85,7 @@
     
     <nav id="bottom-nav" class="bottom-nav">
 <button class="nav-btn active" data-page="garden"><i class="fa-solid fa-house-tree"></i><span>Vườn</span></button>
+      <button class="nav-btn" data-page="livestock"><i class="fa-solid fa-cow"></i><span>Chăn nuôi</span></button>
       <button class="nav-btn" data-page="shop"><i class="fa-solid fa-shop"></i><span>Cửa hàng</span></button>
       <button class="nav-btn" data-page="inventory"><i class="fa-solid fa-boxes-stacked"></i><span>Kho</span></button>
       <button class="nav-btn" data-page="kitchen"><i class="fa-solid fa-utensils"></i><span>Bếp</span></button>
@@ -175,6 +176,50 @@
             <div id="garden-agents" class="garden-agents" aria-hidden="true"></div>
           </div>
         </div>
+      </section>
+
+      <!-- ========== CHĂN NUÔI (cấu trúc giống Vườn — thêm loài sau) ========== -->
+      <section id="page-livestock" class="page">
+        <div class="page-header">
+          <div>
+            <h1><i class="fa-solid fa-cow"></i> CHĂN NUÔI</h1>
+          </div>
+          <button type="button" id="btn-livestock-info" class="btn btn-secondary" title="Hướng dẫn">
+            <i class="fa-solid fa-circle-info"></i> Hướng dẫn
+          </button>
+        </div>
+        <div class="garden-controls livestock-controls">
+          <div class="garden-controls-main">
+            <div class="weather" id="livestock-status-chip" title="Trạng thái chuồng">
+              <span id="livestock-status-icon"><i class="fa-solid fa-barn"></i></span>
+              <span id="livestock-status-text">Chuồng trống</span>
+            </div>
+            <div class="fertilizer-info" id="livestock-feed-info">
+              <i class="fa-solid fa-wheat-awn"></i> Thức ăn: <strong id="livestock-feed-count">0</strong>
+            </div>
+            <div class="garden-toolbar">
+              <div id="barn-switcher" class="garden-switcher" aria-label="Chuyển chuồng"></div>
+              <div class="garden-tools-dd" id="livestock-tools-dd">
+                <button type="button" id="btn-livestock-tools" class="btn btn-primary" aria-haspopup="true" aria-expanded="false">
+                  <i class="fa-solid fa-toolbox"></i> Công cụ
+                  <i class="fa-solid fa-chevron-down" style="font-size:0.65rem;opacity:0.9"></i>
+                </button>
+                <div class="garden-tools-menu" id="livestock-tools-menu" role="menu">
+                  <button type="button" id="btn-feed-all" role="menuitem"><i class="fa-solid fa-wheat-awn"></i> Cho ăn</button>
+                  <button type="button" id="btn-collect-all" role="menuitem"><i class="fa-solid fa-basket-shopping"></i> Thu hoạch</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="garden-stage livestock-stage" id="livestock-stage">
+          <div class="garden-world" id="livestock-world">
+            <div class="garden-grid livestock-grid" id="livestock-grid"></div>
+          </div>
+        </div>
+        <p class="livestock-hint" id="livestock-hint">
+          Khu chăn nuôi sẵn sàng. Thêm loài vật trong <code>DEFAULT_ANIMALS</code> (data.js) để bắt đầu nuôi.
+        </p>
       </section>
 
       
@@ -781,11 +826,11 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.62"></script>
-  <script src="js/data.js?v=1.9.62"></script>
-  <script src="js/fa-icons.js?v=1.9.62"></script>
-  <script src="js/game.js?v=1.9.62"></script>
-  <script src="js/features.js?v=1.9.62"></script>
-  <script src="js/app.js?v=1.9.62"></script>
+  <script src="js/firebase-config.js?v=1.9.63"></script>
+  <script src="js/data.js?v=1.9.63"></script>
+  <script src="js/fa-icons.js?v=1.9.63"></script>
+  <script src="js/game.js?v=1.9.63"></script>
+  <script src="js/features.js?v=1.9.63"></script>
+  <script src="js/app.js?v=1.9.63"></script>
 </body>
 </html>

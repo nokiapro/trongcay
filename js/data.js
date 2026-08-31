@@ -14358,6 +14358,20 @@ function getKitchenRecipe(id) {
 function getPets() { return DEFAULT_PETS; }
 function getPet(id) { return DEFAULT_PETS.find(p => p.id === id); }
 
+// ========== CHĂN NUÔI (nền tảng — thêm loài sau) ==========
+// Mỗi loài: id, name, icon, type (ga|lon|bo|...), buyPrice, growTime (giây đến trưởng thành),
+// productId/productName/productIcon, productInterval (giây giữa các lần thu), productYield, feedCost, sellPrice, xp
+const DEFAULT_ANIMALS = [
+  // Ví dụ khung — bạn có thể thêm gà, lợn, bò... sau
+  // {
+  //   id: 'ga-thuong', icon: '🐔', name: 'Gà ta', type: 'ga', buyPrice: 200,
+  //   growTime: 600, productId: 'trung', productName: 'Trứng', productIcon: '🥚',
+  //   productInterval: 300, productYield: 1, feedCost: 10, sellPrice: 80, xp: 5
+  // },
+];
+function getAnimals() { return DEFAULT_ANIMALS; }
+function getAnimal(id) { return DEFAULT_ANIMALS.find(a => a && a.id === id); }
+
 const DEFAULT_COMPANIONS = [
   { id: 'cp-001', icon: '🐶', name: 'Cún', price: 400, rarity: 'common', desc: 'Thú cưng ngồi cạnh avatar' },
   { id: 'cp-002', icon: '🐱', name: 'Mèo', price: 435, rarity: 'common', desc: 'Thú cưng ngồi cạnh avatar' },
