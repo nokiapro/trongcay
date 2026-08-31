@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vườn Xanh - Trồng Cây & Thu Hoạch</title>
-  <link rel="stylesheet" href="css/style.css?v=1.9.60" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.61" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -12,7 +12,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
 </head>
 <body>
-  <!-- LOGIN SCREEN -->
+  
     <div id="auth-loading" class="auth-loading">
     <div class="auth-loading-card">
       <i class="fa-solid fa-spinner fa-spin"></i>
@@ -40,7 +40,7 @@
     </div>
   </div>
 
-  <!-- APP SCREEN -->
+  
   <div id="app-screen" style="display:none">
     <div id="server-announce" class="server-announce" style="display:none" role="status">
       <span id="server-announce-text"></span>
@@ -79,10 +79,10 @@
       </div>
     </header>
 
-    <!-- Hamburger (mobile) -->
+    
     <button id="menu-toggle" class="menu-toggle" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
 
-    <!-- Bottom / side menu -->
+    
     <nav id="bottom-nav" class="bottom-nav">
 <button class="nav-btn active" data-page="garden"><i class="fa-solid fa-house-tree"></i><span>Vườn</span></button>
       <button class="nav-btn" data-page="shop"><i class="fa-solid fa-shop"></i><span>Cửa hàng</span></button>
@@ -104,7 +104,7 @@
     <div id="nav-backdrop" class="nav-backdrop"></div>
 
     <main class="main">
-      <!-- GARDEN -->
+      
       <section id="page-garden" class="page active">
         <div class="page-header">
           <div>
@@ -178,7 +178,7 @@
         </div>
       </section>
 
-      <!-- SHOP -->
+      
       <section id="page-shop" class="page">
         <div class="page-header">
           <h1><i class="fa-solid fa-shop"></i> Cửa hàng</h1>
@@ -211,7 +211,7 @@
         <div class="shop-pager" id="shop-pager"></div>
       </section>
 
-      <!-- INVENTORY -->
+      
       <section id="page-inventory" class="page">
         <div class="page-header">
           <h1><i class="fa-solid fa-boxes-stacked"></i> Kho hàng</h1>
@@ -244,7 +244,7 @@
         </div>
       </section>
 
-      <!-- STATS -->
+      
       <section id="page-kitchen" class="page">
         <div class="page-header">
           <h1><i class="fa-solid fa-utensils"></i> Nhà bếp</h1>
@@ -279,7 +279,7 @@
         </div>
       </section>
 
-      <!-- LEVEL / TREE BADGE -->
+      
       <section id="page-level" class="page">
         <div class="page-header">
           <h1><i class="fa-solid fa-tree"></i> Level &amp; Badge Cây</h1>
@@ -326,7 +326,7 @@
         </div>
       </section>
 
-      <!-- ACTIVITY -->
+      
       <section id="page-activity" class="page">
         <div class="page-header">
           <h1><i class="fa-solid fa-clock-rotate-left"></i> Hoạt động gần đây</h1>
@@ -557,7 +557,7 @@
     </main>
   </div>
 
-  <!-- Overlay bảo trì / ban -->
+  
   <div id="access-gate" class="access-gate" style="display:none">
     <div class="access-gate-card">
       <div class="access-gate-icon" id="access-gate-icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
@@ -567,7 +567,7 @@
     </div>
   </div>
 
-  <!-- Modal trồng cây -->
+  
   <div id="modal-plant" class="modal">
     <div class="modal-content">
       <h2 class="modal-plant-title"><i class="fa-solid fa-seedling"></i> <span>Chọn hạt giống để trồng</span></h2>
@@ -576,7 +576,7 @@
     </div>
   </div>
 
-  <!-- Modal chi tiết ô đất -->
+  
   <div id="modal-plot" class="modal">
     <div class="modal-content">
       <h2 id="plot-title">Chi tiết ô đất</h2>
@@ -591,7 +591,7 @@
     </div>
   </div>
 
-  <!-- Modal chọn phân bón -->
+  
   <div id="modal-fert" class="modal">
     <div class="modal-content">
       <h2><i class="fa-solid fa-flask"></i> Chọn phân bón</h2>
@@ -602,7 +602,7 @@
 
   <div id="rain-overlay" class="rain-overlay" aria-hidden="true"></div>
 
-  <!-- Modal thăm vườn bạn -->
+  
   <div id="modal-visit" class="modal">
     <div class="modal-content modal-visit-content">
       <h2 id="visit-title"><i class="fa-solid fa-house-chimney"></i> Vườn bạn bè</h2>
@@ -615,7 +615,7 @@
     </div>
   </div>
 
-  <!-- Modal chọn số lượng hàng loạt -->
+  
   <div id="modal-bulk" class="modal">
     <div class="modal-content modal-bulk-content">
       <h2 id="bulk-title">Chọn số lượng</h2>
@@ -625,7 +625,7 @@
     </div>
   </div>
 
-  <!-- Modal cấu hình Tiên chăm -->
+  
   <div id="modal-fairy-config" class="modal">
     <div class="modal-content">
       <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Cấu hình Tiên chăm</h2>
@@ -678,7 +678,7 @@
     </div>
   </div>
 
-  <!-- Modal cấu hình Người Yêu Cũ -->
+  
   <div id="modal-nyc-config" class="modal">
     <div class="modal-content">
       <h2><i class="fa-solid fa-heart-crack"></i> Cấu hình Người Yêu Cũ</h2>
@@ -712,7 +712,7 @@
   </div>
 
   
-  <!-- Modal cấu hình Người giúp việc -->
+  
   <div id="modal-helper-config" class="modal">
     <div class="modal-content" style="max-width:520px">
       <h2><i class="fa-solid fa-user-tie"></i> Cấu hình Người giúp việc</h2>
@@ -758,11 +758,11 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.60"></script>
-  <script src="js/data.js?v=1.9.60"></script>
-  <script src="js/fa-icons.js?v=1.9.60"></script>
-  <script src="js/game.js?v=1.9.60"></script>
-  <script src="js/features.js?v=1.9.60"></script>
-  <script src="js/app.js?v=1.9.60"></script>
+  <script src="js/firebase-config.js?v=1.9.61"></script>
+  <script src="js/data.js?v=1.9.61"></script>
+  <script src="js/fa-icons.js?v=1.9.61"></script>
+  <script src="js/game.js?v=1.9.61"></script>
+  <script src="js/features.js?v=1.9.61"></script>
+  <script src="js/app.js?v=1.9.61"></script>
 </body>
 </html>
