@@ -2581,8 +2581,8 @@ html[data-theme="dark"] .plot-progress {
 
 html[data-theme="dark"] {
   
-  --bg-main: #0a3d32;
-  --bg-card: #0f5243;
+  --bg-main: #022c22;
+  --bg-card: #064e3b;
   --text-main: #ecfdf5;
   --text-muted: #a7f3d0;
   --primary: #10b981;
@@ -2590,22 +2590,22 @@ html[data-theme="dark"] {
   --primary-light: #34d399;
   --primary-dark: #047857;
   --accent: #6ee7b7;
-  --border-color: #1a6b56;
-  --input-bg: #0c463a;
+  --border-color: #047857;
+  --input-bg: #022c22;
   --soil-bg: #451a03;
   --soil-border: #78350f;
-  --shadow-card: 0 8px 20px -6px rgba(0, 0, 0, 0.18), 0 4px 10px -4px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 8px 20px -6px rgba(0, 0, 0, 0.28), 0 4px 10px -4px rgba(0, 0, 0, 0.18);
 
   --bg: var(--bg-main);
   --card: var(--bg-card);
-  --surface: #0c463a;
-  --surface-2: #12705a;
+  --surface: #022c22;
+  --surface-2: #065f46;
   --text: var(--text-main);
   --text-on-primary: #022c22;
   --border: var(--border-color);
   --border-strong: #059669;
   --shadow: var(--shadow-card);
-  --shadow-lg: 0 16px 40px -8px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 16px 40px -8px rgba(0, 0, 0, 0.55);
 
   --danger: #f87171;
   --success: #34d399;
@@ -2646,9 +2646,9 @@ html[data-theme="dark"] .header {
 }
 
 html[data-theme="dark"] .bottom-nav {
-  background: #0d3d32;
-  border-top-color: #1a6b56;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.22);
+  background: #0c1410;
+  border-top-color: #1a2f24;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45);
 }
 
 html[data-theme="dark"] .nav-btn,
@@ -7853,4 +7853,41 @@ button.btn:focus,
 .btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+/* no-btn-borders */
+
+
+/* no-btn-borders: gỡ viền nút cho gọn */
+.btn,
+button.btn,
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-warning,
+.btn-purple,
+.btn-timer,
+.btn-block,
+.btn-sm,
+#btn-tools-menu,
+#btn-support-menu,
+#btn-add-friend,
+#btn-send-chat,
+.friend-actions .btn,
+.shop-tab,
+.tab-btn,
+.rank-tab,
+.level-preset,
+.qty-stepper button {
+  border: none !important;
+  outline: none;
+}
+.btn-secondary,
+.pill-dd-trigger {
+  border: none !important;
+  outline: none;
+}
+.btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  outline-offset: 2px;
 }
