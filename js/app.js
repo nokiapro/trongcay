@@ -42,7 +42,8 @@ function updateCoins() {
       coinEl.title = '';
     }
   }
-  document.getElementById('level-display').textContent = currentPlayer.level || 1;
+  const lvEl = document.getElementById('level-display');
+  if (lvEl) lvEl.textContent = currentPlayer.level || 1;
   if (typeof updateProfileLevelTag === 'function') updateProfileLevelTag(currentPlayer.level || 1);
   const fertEl = document.getElementById('fertilizer-count');
   if (fertEl) fertEl.textContent = Game.totalFertilizerCount();
@@ -4122,37 +4123,44 @@ let _levelPageBound = false;
 
 function updateTreeLevelUI(val) {
   const level = Math.min(TREE_MAX_LEVEL, Math.max(1, parseInt(val, 10) || 1));
-  const tier = getTreeTier(level);
+  const tier = getTreeTier(level) || TREE_TIERS[0];
 
   const range = document.getElementById('levelInputRange');
-  if (range) range.value = level;
+  if (range) {
+    range.value = level;
+    range.setAttribute('aria-valuenow', String(level));
+  }
 
   const progress = (level / TREE_MAX_LEVEL) * 100;
   const bar = document.getElementById('levelProgressBar');
   const pct = document.getElementById('xpPercentText');
-  if (bar) bar.style.width = progress + '%';
+  if (bar) bar.style.width = Math.min(100, Math.max(0, progress)) + '%';
   if (pct) pct.textContent = Math.round(progress) + '%';
 
   const glow = document.getElementById('levelAmbientGlow');
-  if (glow) glow.style.background = tier.glow;
+  if (glow) glow.style.background = tier.glow || 'rgba(74, 222, 128, 0.45)';
 
   const wrapper = document.getElementById('activeTreeWrapper');
   const pill = document.getElementById('activePillBadge');
   TREE_TIERS.forEach(t => {
-    wrapper?.classList.remove(t.class);
-    pill?.classList.remove(t.class);
+    if (wrapper) wrapper.classList.remove(t.class);
+    if (pill) pill.classList.remove(t.class);
   });
-  wrapper?.classList.add(tier.class);
-  pill?.classList.add(tier.class);
+  if (wrapper) wrapper.classList.add(tier.class);
+  if (pill) pill.classList.add(tier.class);
 
   const icon = document.getElementById('activeTreeIcon');
   const lvlNum = document.getElementById('activeTreeLvlNum');
   const pillIcon = document.getElementById('activePillIcon');
   const pillText = document.getElementById('activePillText');
-  if (icon) icon.className = 'fa-solid ' + tier.icon + ' tree-icon';
+  if (icon) icon.className = 'fa-solid ' + (tier.icon || 'fa-seedling') + ' tree-icon';
   if (lvlNum) lvlNum.textContent = level;
-  if (pillIcon) pillIcon.className = 'fa-solid ' + tier.icon;
-  if (pillText) pillText.textContent = 'LEVEL ' + level + ' • ' + tier.title;
+  if (pillIcon) pillIcon.className = 'fa-solid ' + (tier.icon || 'fa-seedling');
+  if (pillText) pillText.textContent = 'LEVEL ' + level + ' • ' + (tier.title || '');
+
+  // Tránh transform 3D kẹt khi đổi tier
+  const container = document.getElementById('activeTreeContainer');
+  if (container) container.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
 }
 
 function bindLevelPageControls() {
