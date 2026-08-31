@@ -1476,7 +1476,11 @@ const Game = {
   isNycGardenEnabled(gardenIndex) {
     const cfg = this.getNycConfig();
     const ge = cfg.gardensEnabled || {};
-    if (ge[gardenIndex] === false || ge[String(gardenIndex)] === false) return false;
+    const k = String(gardenIndex);
+    // Chỉ tắt khi ghi nhận explicit false (boolean)
+    if (ge[k] === false || ge[gardenIndex] === false) return false;
+    // Array-style (hiếm): phần tử false
+    if (Array.isArray(ge) && ge[Number(gardenIndex)] === false) return false;
     return true;
   },
 
@@ -1922,9 +1926,9 @@ const Game = {
 
 
 
-  _nycHarvestOneAt(plot, t, gi, cfg, doReplant, silent) {
+  _nycHarvestOneAt(plot, t, gi, cfg, doReplant, silent, force) {
     if (!plot || !plot.plantId || !plot.plantedAt) return { harvested: 0, planted: 0, amount: 0, plantName: '', plantId: null, seedStar: false };
-    if (!this.isReadyAt(plot, t)) return { harvested: 0, planted: 0, amount: 0, plantName: '', plantId: null, seedStar: false };
+    if (!force && !this.isReadyAt(plot, t)) return { harvested: 0, planted: 0, amount: 0, plantName: '', plantId: null, seedStar: false };
     const plant = this.getPlant(plot.plantId);
     if (!plant) return { harvested: 0, planted: 0, amount: 0, plantName: '', plantId: null, seedStar: false };
     let amount = plant.yield || 1;
@@ -2380,75 +2384,93 @@ const Game = {
     }
 
     
-    if (nycCovered || this.isNycActive()) {
-      nycHarvestReplantAt(now);
-    }
-
-    // ── Final parity pass ──────────────────────────────────────────
-    // Bắt mọi ô isReady()/isReadyAt(now) giống NYC realtime, tránh lệch Vườn 1.
-    // Nếu vườn NYC có cây nhưng event-loop không thu được vòng nào trong lúc vắng,
-    // fast-forward theo grow hiệu lực để không mất vụ.
+    // ── Continuous per-plot offline NYC (primary, reliable for every garden incl. index 0) ──
     if (nycCovered || this.isNycActive()) {
       const canReplantNow = this.isNycActiveAt(now) || this.isNycActive();
+      const maxCyclesPerPlot = 500;
       for (let gi = 0; gi < (currentPlayer.gardens || []).length; gi++) {
         if (!this.isNycGardenEnabled(gi)) continue;
-        const cfg = this.getNycConfigForGarden(gi);
-        currentPlayer.activeGarden = gi;
-        currentPlayer.plots = currentPlayer.gardens[gi];
-        const plots = currentPlayer.plots;
+        const cfg = this.getNycConfigForGarden(gi) || {};
+        const plots = currentPlayer.gardens[gi];
         if (!Array.isArray(plots)) continue;
-        const gKey = String(gi);
-        const beforeCyc = (harvestByGarden[gKey] && harvestByGarden[gKey].cycles) || 0;
+        currentPlayer.activeGarden = gi;
+        currentPlayer.plots = plots;
 
-        // 1) Thu mọi ô đã chín tại now (cùng điều kiện live NYC)
-        for (let i = 0; i < plots.length; i++) {
-          const plot = plots[i];
-          if (!plot || !plot.plantId || !plot.plantedAt) continue;
-          const ready = this.isReadyAt(plot, now) || this.isReady(plot);
-          if (!ready) continue;
-          const growSec = this.getEffectiveGrowTime(plot, now);
-          const r = this._nycHarvestOneAt(plot, now, gi, cfg, canReplantNow && !!cfg.plantId, true);
-          recordHarvestStat(r, gi + ':' + i, growSec);
+        // Plant empties once at 'from' if needed (already done earlier; safety net)
+        if (canReplantNow && cfg.plantId) {
+          const extra0 = this._nycPlantEmptiesAt(plots, cfg, from, gi);
+          if (extra0 > 0) {
+            totalPlant += extra0;
+            changed = true;
+            const gKey = String(gi);
+            if (!harvestByGarden[gKey]) {
+              harvestByGarden[gKey] = {
+                plots: new Set(), cycles: 0, amount: 0, planted: 0,
+                plantIds: {}, growSamples: []
+              };
+            }
+            harvestByGarden[gKey].planted += extra0;
+            harvestByGarden[gKey].plantIds[cfg.plantId] =
+              (harvestByGarden[gKey].plantIds[cfg.plantId] || 0) + extra0;
+          }
         }
 
-        // 2) Fast-forward nếu vườn này vẫn 0 vụ nhưng có cây từ đầu offline / vừa trồng
-        const afterCyc = (harvestByGarden[gKey] && harvestByGarden[gKey].cycles) || 0;
-        if (afterCyc === beforeCyc) {
-          let guardFF = 0;
-          const maxFF = 200; // mỗi ô tối đa ~200 vòng trong 1 lần bù
-          let progress = true;
-          while (progress && guardFF++ < maxFF * Math.max(1, plots.length)) {
-            progress = false;
-            for (let i = 0; i < plots.length; i++) {
-              const plot = plots[i];
-              if (!plot || !plot.plantId || !plot.plantedAt) continue;
-              const growSec = Math.max(20, this.getEffectiveGrowTime(plot, now));
-              const readyAt = plot.plantedAt + growSec * 1000;
-              if (readyAt > now) continue;
-              // Đủ thời gian chín → thu + trồng lại, lặp đến hết offline
-              const r = this._nycHarvestOneAt(plot, Math.min(now, readyAt), gi, cfg, canReplantNow && !!cfg.plantId, true);
-              if (r && r.harvested) {
-                recordHarvestStat(r, gi + ':' + i, growSec);
-                progress = true;
-              }
+        for (let i = 0; i < plots.length; i++) {
+          let plot = plots[i];
+          if (!plot) continue;
+          let cycles = 0;
+          while (cycles < maxCyclesPerPlot) {
+            plot = plots[i];
+            if (!plot || !plot.plantId || !plot.plantedAt) break;
+            // Grow time at harvest moment; min 20s
+            let growSec = Math.max(20, this.getEffectiveGrowTime(plot, now));
+            // Also try with water/fert as if fairy kept them boosted during offline
+            if ((plot.waterCount || 0) < 3 && this.isFairyActiveAt(Math.min(now, (plot.plantedAt || from) + 1)) && this.isFairyGardenEnabled(gi)) {
+              plot.waterCount = 3;
+              plot.watered = true;
+              growSec = Math.max(20, this.getEffectiveGrowTime(plot, now));
             }
-            if (canReplantNow && cfg && cfg.plantId) {
-              const extra = this._nycPlantEmptiesAt(plots, cfg, now, gi);
-              if (extra > 0) {
-                totalPlant += extra;
-                changed = true;
-                if (!harvestByGarden[gKey]) {
-                  harvestByGarden[gKey] = {
-                    plots: new Set(), cycles: 0, amount: 0, planted: 0,
-                    plantIds: {}, growSamples: []
-                  };
-                }
-                harvestByGarden[gKey].planted += extra;
-                harvestByGarden[gKey].plantIds[cfg.plantId] =
-                  (harvestByGarden[gKey].plantIds[cfg.plantId] || 0) + extra;
-                progress = true;
-              }
+            const readyAt = (Number(plot.plantedAt) || 0) + growSec * 1000;
+            if (readyAt > now) break;
+            // Harvest at readyAt (force=true: skip isReadyAt edge mismatch)
+            const r = this._nycHarvestOneAt(
+              plot,
+              Math.min(now, readyAt),
+              gi,
+              cfg,
+              canReplantNow && !!cfg.plantId,
+              true,
+              true
+            );
+            if (!r || !r.harvested) {
+              // Force-clear stuck plant so we don't infinite-loop
+              plot.plantId = null;
+              plot.plantedAt = null;
+              break;
             }
+            recordHarvestStat(r, gi + ':' + i, growSec);
+            cycles++;
+            // After harvest+replant, plot may have new plantedAt == readyAt
+            // Continue loop for next cycle within offline window
+          }
+        }
+
+        // Fill any empties at end
+        if (canReplantNow && cfg.plantId) {
+          const extra = this._nycPlantEmptiesAt(plots, cfg, now, gi);
+          if (extra > 0) {
+            totalPlant += extra;
+            changed = true;
+            const gKey = String(gi);
+            if (!harvestByGarden[gKey]) {
+              harvestByGarden[gKey] = {
+                plots: new Set(), cycles: 0, amount: 0, planted: 0,
+                plantIds: {}, growSamples: []
+              };
+            }
+            harvestByGarden[gKey].planted += extra;
+            harvestByGarden[gKey].plantIds[cfg.plantId] =
+              (harvestByGarden[gKey].plantIds[cfg.plantId] || 0) + extra;
           }
         }
         currentPlayer.gardens[gi] = plots;
