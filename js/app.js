@@ -2591,37 +2591,84 @@ function openFertModal(plotId) {
 
 // ========== CHĂN NUÔI ==========
 function renderBarnSwitcher() {
-  const el = document.getElementById('barn-switcher');
-  if (!el || !currentPlayer) return;
+  const host = document.getElementById('barn-switcher');
+  if (!host || !currentPlayer || typeof Game === 'undefined') return;
   if (typeof Game.ensureLivestock === 'function') Game.ensureLivestock();
-  const count = typeof Game.getBarnCount === 'function' ? Game.getBarnCount() : 1;
+  const n = typeof Game.getBarnCount === 'function' ? Game.getBarnCount() : 1;
   const active = typeof Game.getActiveBarnIndex === 'function' ? Game.getActiveBarnIndex() : 0;
-  el.innerHTML = '';
-  for (let i = 0; i < count; i++) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'garden-switch-btn' + (i === active ? ' active' : '');
-    btn.textContent = 'Chuồng ' + (i + 1);
-    btn.dataset.barn = String(i);
-    btn.addEventListener('click', () => {
-      if (typeof Game.switchBarn === 'function') {
-        const res = Game.switchBarn(i);
-        if (res && res.ok === false) {
-          if (typeof showToast === 'function') showToast(res.msg || 'Lỗi', 'error');
-          return;
-        }
-      }
-      renderLivestock();
-    });
-    el.appendChild(btn);
+  const maxP = Game.MAX_PENS_PER_BARN || 24;
+  const activePens = (currentPlayer.barns && currentPlayer.barns[active]) || currentPlayer.pens || [];
+  const activeCount = activePens.length || 0;
+
+  let menuItems = '';
+  for (let i = 0; i < n; i++) {
+    const pens = (currentPlayer.barns && currentPlayer.barns[i]) || [];
+    const count = pens.length || 0;
+    const isActive = i === active;
+    menuItems += `<button type="button" class="pill-dd-item ${isActive ? 'active' : ''}" data-barn="${i}" role="option" aria-selected="${isActive}">
+      <span class="pill-dd-item-text"><i class="fa-solid fa-barn"></i> Chuồng ${i + 1} <small>${count}/${maxP}</small></span>
+      ${typeof PILL_CHECK_SVG !== 'undefined' ? PILL_CHECK_SVG : ''}
+    </button>`;
   }
+
+  host.innerHTML = `
+    <div class="pill-dd" id="barn-dropdown">
+      <button type="button" class="pill-dd-trigger" id="barn-dd-trigger" aria-haspopup="listbox" aria-expanded="false" title="Chọn chuồng">
+        <span class="pill-dd-trigger-label">Chuồng ${active + 1} · ${activeCount}/${maxP}</span>
+        ${typeof PILL_ARROW_SVG !== 'undefined' ? PILL_ARROW_SVG : ''}
+      </button>
+      <div class="pill-dd-menu" id="barn-dd-menu" role="listbox" hidden>
+        ${menuItems}
+      </div>
+    </div>`;
+
+  const dropdown = host.querySelector('#barn-dropdown');
+  const trigger = host.querySelector('#barn-dd-trigger');
+  const menu = host.querySelector('#barn-dd-menu');
+  if (!trigger || !menu) return;
+
+  const closeMenu = () => {
+    menu.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    dropdown.classList.remove('open');
+  };
+  const openMenu = () => {
+    if (typeof closeAllPillMenus === 'function') closeAllPillMenus();
+    menu.hidden = false;
+    trigger.setAttribute('aria-expanded', 'true');
+    dropdown.classList.add('open');
+  };
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (menu.hidden) openMenu();
+    else closeMenu();
+  });
+  menu.querySelectorAll('.pill-dd-item').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.barn, 10);
+      closeMenu();
+      if (idx === Game.getActiveBarnIndex()) return;
+      const res = Game.switchBarn(idx);
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      if (res.ok) {
+        try { await savePlayer(); } catch (_) {}
+        renderLivestock();
+        updateCoins();
+      }
+    });
+  });
 }
 
 function openPlaceAnimalModal(penId) {
   if (!currentPlayer) return;
   Game.ensureLivestock();
   const stock = (currentPlayer.inventory && currentPlayer.inventory.livestock) || {};
-  const ids = Object.keys(stock).filter(id => stock[id] > 0);
+  const stockStar = (currentPlayer.inventory && currentPlayer.inventory.livestockStar) || {};
+  const ids = Array.from(new Set([
+    ...Object.keys(stock).filter(id => stock[id] > 0),
+    ...Object.keys(stockStar).filter(id => stockStar[id] > 0)
+  ]));
   if (!ids.length) {
     showToast('Kho chưa có vật nuôi. Mua ở Cửa hàng → Vật nuôi.', 'info');
     return;
@@ -2642,23 +2689,39 @@ function openPlaceAnimalModal(penId) {
   ids.forEach(id => {
     const a = Game.getAnimal(id);
     if (!a) return;
-    const opt = document.createElement('button');
-    opt.type = 'button';
-    opt.className = 'btn btn-secondary';
-    opt.style.cssText = 'width:100%;margin:4px 0;text-align:left;display:flex;gap:10px;align-items:center';
-    opt.innerHTML = `<span style="font-size:1.6rem">${a.icon || '🐾'}</span><span><strong>${a.name}</strong> ×${stock[id]}</span>`;
-    opt.addEventListener('click', async () => {
-      const res = await Game.placeAnimal(penId, id);
-      showToast(res.msg, res.ok ? 'success' : 'error');
-      if (typeof closeModals === 'function') closeModals();
-      renderLivestock();
-    });
-    list.appendChild(opt);
+    if ((stock[id] || 0) > 0) {
+      const opt = document.createElement('button');
+      opt.type = 'button';
+      opt.className = 'btn btn-secondary';
+      opt.style.cssText = 'width:100%;margin:4px 0;text-align:left;display:flex;gap:10px;align-items:center';
+      opt.innerHTML = `<span style="font-size:1.6rem">${a.icon || '🐾'}</span><span><strong>${a.name}</strong> ×${stock[id]}</span>`;
+      opt.addEventListener('click', async () => {
+        const res = await Game.placeAnimal(penId, id, 'normal');
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        if (typeof closeModals === 'function') closeModals();
+        else modal.classList.remove('show');
+        renderLivestock();
+      });
+      list.appendChild(opt);
+    }
+    if ((stockStar[id] || 0) > 0) {
+      const opt = document.createElement('button');
+      opt.type = 'button';
+      opt.className = 'btn btn-warning';
+      opt.style.cssText = 'width:100%;margin:4px 0;text-align:left;display:flex;gap:10px;align-items:center';
+      opt.innerHTML = `<span style="font-size:1.6rem">${a.icon || '🐾'}⭐</span><span><strong>${a.name} ⭐</strong> ×${stockStar[id]}</span>`;
+      opt.addEventListener('click', async () => {
+        const res = await Game.placeAnimal(penId, id, 'star');
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        if (typeof closeModals === 'function') closeModals();
+        else modal.classList.remove('show');
+        renderLivestock();
+      });
+      list.appendChild(opt);
+    }
   });
-  if (modal) {
-    document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'));
-    modal.classList.add('show');
-  }
+  document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'));
+  modal.classList.add('show');
 }
 
 function openPenActions(penId) {
@@ -2718,6 +2781,15 @@ function openPenActions(penId) {
   };
   mkBtn('<i class="fa-solid fa-wheat-awn"></i> Cho ăn', 'btn-primary', () => Game.feedPen(penId));
   mkBtn('<i class="fa-solid fa-basket-shopping"></i> Thu hoạch', canCollect ? 'btn-primary' : 'btn-secondary', () => Game.collectPen(penId));
+  // Nâng cấp ô
+  if (typeof Features !== 'undefined' && Features.PLOT_UPGRADE_TIERS) {
+    const cur = Number(pen.specialMultPermanent) || Number(pen.specialMult) || 1;
+    const next = Features.PLOT_UPGRADE_TIERS.find(t => t.mult > cur);
+    if (next) {
+      const cost = Features.getPlotUpgradeCost(cur, next.mult);
+      mkBtn(`<i class="fa-solid fa-bolt"></i> Nâng ô → x${next.mult} (${(cost || 0).toLocaleString()}🪙)`, 'btn-warning', () => Game.upgradePen(penId, next.mult));
+    }
+  }
   mkBtn('<i class="fa-solid fa-box"></i> Nhận về kho', 'btn-secondary', () => Game.removeAnimal(penId));
 
   document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'));
@@ -2743,35 +2815,75 @@ function renderLivestock() {
     div.className = 'plot pen';
     div.dataset.penId = String(i);
 
+    const speedM = typeof Game.getPenSpeedMult === 'function' ? Game.getPenSpeedMult(pen) : 1;
+    if (pen && speedM > 1) {
+      div.classList.add('special-plot');
+      const badge = document.createElement('span');
+      badge.className = 'plot-special-badge';
+      const tempOn = pen.specialMultUntil && pen.specialMultUntil > now;
+      badge.textContent = 'x' + speedM + (tempOn ? '⏱' : '');
+      badge.title = tempOn
+        ? ('Tạm x' + (pen.specialMultTemp || speedM))
+        : ('Vĩnh viễn x' + (pen.specialMultPermanent || speedM));
+      div.appendChild(badge);
+    }
+
     const animal = pen && pen.animalId && typeof Game.getAnimal === 'function'
       ? Game.getAnimal(pen.animalId)
       : null;
 
     if (!animal) {
       div.classList.add('empty');
-      div.innerHTML =
-        '<div class="plot-icon"><i class="fa-solid fa-plus" style="opacity:0.45"></i></div>' +
-        '<div class="plot-name">Trống</div>' +
-        '<div class="plot-status">Chọn để nuôi</div>';
+      const iconEl = document.createElement('div');
+      iconEl.className = 'plot-icon';
+      iconEl.innerHTML = '<i class="fa-solid fa-plus" style="opacity:0.45"></i>';
+      div.appendChild(iconEl);
+      const nameEl = document.createElement('div');
+      nameEl.className = 'plot-name';
+      nameEl.textContent = 'Ô trống';
+      div.appendChild(nameEl);
+      const st = document.createElement('div');
+      st.className = 'plot-status';
+      st.textContent = 'Nhấn để nuôi';
+      div.appendChild(st);
     } else {
       occupied++;
       if (Game.isAnimalGrown(pen, now)) pen.grown = true;
-      div.classList.add(pen.grown ? 'ready' : 'growing');
       const canCol = Game.canCollectProduct(pen, now);
-      if (canCol) readyCollect++;
-      const sec = Game.getAnimalReadyInSec(pen);
-      let status;
-      if (!pen.grown) {
-        status = 'Lớn: ' + (typeof Game.formatTime === 'function' ? Game.formatTime(sec) : sec + 's');
-      } else if (canCol) {
-        status = (animal.productIcon || '✨') + ' Thu ngay';
+      if (canCol) {
+        readyCollect++;
+        div.classList.add('ready');
       } else {
-        status = 'Thu: ' + (typeof Game.formatTime === 'function' ? Game.formatTime(sec) : sec + 's');
+        div.classList.add(pen.grown ? 'ready' : 'growing');
       }
-      div.innerHTML =
-        '<div class="plot-icon">' + (animal.icon || '🐾') + '</div>' +
-        '<div class="plot-name">' + (animal.name || pen.animalId) + '</div>' +
-        '<div class="plot-status">' + status + '</div>';
+
+      let feedBadge = '';
+      if (pen.feedCount > 0 || pen.fed) {
+        const f = Game.getFeed(animal.feedId);
+        feedBadge = `<span class="plot-badge-fert" title="${f ? f.name : 'Đã cho ăn'}">${f ? f.icon : '🌾'}${pen.feedCount > 1 ? pen.feedCount : ''}</span>`;
+      }
+      const starBadge = pen.animalStar ? `<span class="plot-badge-star" title="Sao">⭐</span>` : '';
+      const progress = typeof Game.getAnimalProgress === 'function' ? Game.getAnimalProgress(pen) : 0;
+      const remain = Game.getAnimalReadyInSec(pen);
+      let statusText;
+      if (!pen.grown) {
+        statusText = 'Đang lớn · ' + progress + '%';
+      } else if (canCol) {
+        statusText = '✨ ' + (animal.productName || 'Thu hoạch') + '!';
+      } else {
+        statusText = 'Chờ sản phẩm · ' + progress + '%';
+      }
+
+      const wrap = document.createElement('div');
+      wrap.innerHTML = `
+          <div class="plot-badges"><span class="plot-badge-left">${starBadge}</span><span class="plot-badge-right">${feedBadge}</span></div>
+          <div class="plot-icon">${animal.icon || '🐾'}</div>
+          <div class="plot-name">${animal.name}${pen.animalStar ? ' ⭐' : ''}</div>
+          <div class="plot-status" data-role="status">${statusText}</div>
+          ${(!canCol && remain != null) ? `<div class="plot-timer" data-role="timer"><i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}</div>` : ''}
+          ${(!pen.grown) ? `<div class="plot-progress"><div class="plot-progress-bar" data-role="bar" style="width:${progress}%"></div></div>` : ''}
+        `;
+      while (wrap.firstChild) div.appendChild(wrap.firstChild);
     }
 
     div.addEventListener('click', () => openPenActions(i));
@@ -2788,48 +2900,163 @@ function renderLivestock() {
   if (feedCount) {
     feedCount.textContent = String(typeof Game.getTotalFeedCount === 'function' ? Game.getTotalFeedCount() : 0);
   }
-  const hint = document.getElementById('livestock-hint');
-  if (hint) {
-    hint.innerHTML = 'Mua <strong>Vật nuôi</strong> & <strong>Cám</strong> ở Cửa hàng → thả vào ô → cho ăn → thu sản phẩm khi chín.';
+
+  // Decor Tiên / NYC / Giúp việc (dùng chung buff account)
+  const agents = document.getElementById('livestock-agents');
+  if (agents) {
+    agents.innerHTML = '';
+    const addDecor = (cls, emoji, n) => {
+      for (let k = 0; k < n; k++) {
+        const el = document.createElement('div');
+        el.className = 'garden-decor ' + cls + ' garden-roamer';
+        el.textContent = emoji;
+        el.dataset.path = String(k + 1);
+        el.style.setProperty('--delay', (k * 1.4) + 's');
+        el.style.left = (10 + k * 28) + '%';
+        el.style.top = (15 + k * 22) + '%';
+        agents.appendChild(el);
+      }
+    };
+    if (Game.showFairyDecor && Game.showFairyDecor()) addDecor('garden-decor-fairy', (Game.getFairyEmoji && Game.getFairyEmoji()) || '🧚', 2);
+    if (Game.showNycDecor && Game.showNycDecor()) addDecor('garden-decor-nyc', (Game.getNycEmoji && Game.getNycEmoji()) || '👩‍🌾', 2);
+    if (Game.showHelperDecor && Game.showHelperDecor()) addDecor('garden-decor-helper', (Game.getHelperEmoji && Game.getHelperEmoji()) || '💁', 2);
   }
+
+  // Sync support status labels
+  const copyStatus = (fromId, toId) => {
+    const a = document.getElementById(fromId);
+    const b = document.getElementById(toId);
+    if (a && b) b.textContent = a.textContent;
+  };
+  copyStatus('support-status-fairy', 'ls-support-status-fairy');
+  copyStatus('support-status-nyc', 'ls-support-status-nyc');
+  copyStatus('support-status-helper', 'ls-support-status-helper');
+
   updateCoins();
 }
 
-// Dropdown công cụ chăn nuôi
+function softUpdateLivestockUI() {
+  if (!currentPlayer) return;
+  const page = document.getElementById('page-livestock');
+  if (page && !page.classList.contains('active')) return;
+  const pens = Array.isArray(currentPlayer.pens) ? currentPlayer.pens : [];
+  let needFull = false;
+  const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
+  pens.forEach((pen, i) => {
+    const el = document.querySelector(`.pen[data-pen-id="${i}"]`);
+    if (!el) { needFull = true; return; }
+    if (!pen || !pen.animalId) {
+      if (!el.classList.contains('empty')) needFull = true;
+      return;
+    }
+    const grown = Game.isAnimalGrown(pen, now);
+    if (grown) pen.grown = true;
+    const canCol = Game.canCollectProduct(pen, now);
+    if (canCol && !el.classList.contains('ready')) { needFull = true; return; }
+    const remain = Game.getAnimalReadyInSec(pen);
+    const progress = Game.getAnimalProgress(pen);
+    const animal = Game.getAnimal(pen.animalId);
+    const st = el.querySelector('[data-role="status"]');
+    const tm = el.querySelector('[data-role="timer"]');
+    const bar = el.querySelector('[data-role="bar"]');
+    if (!grown) {
+      if (st) st.textContent = 'Đang lớn · ' + progress + '%';
+      if (tm) tm.innerHTML = '<i class="fa-regular fa-clock"></i> ' + Game.formatTime(remain);
+      else needFull = true;
+      if (bar) bar.style.width = progress + '%';
+    } else if (canCol) {
+      if (st) st.textContent = '✨ ' + ((animal && animal.productName) || 'Thu hoạch') + '!';
+      if (tm) tm.remove();
+    } else {
+      if (st) st.textContent = 'Chờ sản phẩm';
+      if (tm) tm.innerHTML = '<i class="fa-regular fa-clock"></i> ' + Game.formatTime(remain);
+      else needFull = true;
+    }
+  });
+  if (needFull && typeof renderLivestock === 'function') renderLivestock();
+  const feedCount = document.getElementById('livestock-feed-count');
+  if (feedCount && Game.getTotalFeedCount) feedCount.textContent = String(Game.getTotalFeedCount());
+}
+
+// Dropdown công cụ + hỗ trợ chăn nuôi
 (function initLivestockTools() {
-  const btn = document.getElementById('btn-livestock-tools');
-  const dd = document.getElementById('livestock-tools-dd');
-  if (btn && dd) {
+  const bindDd = (btnId, ddId) => {
+    const btn = document.getElementById(btnId);
+    const dd = document.getElementById(ddId);
+    if (!btn || !dd) return { btn, dd };
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
+      document.querySelectorAll('.garden-tools-dd.open').forEach(x => {
+        if (x !== dd) x.classList.remove('open');
+      });
       const open = dd.classList.toggle('open');
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
-  }
-  document.addEventListener('click', (e) => {
-    if (dd && !dd.contains(e.target)) {
-      dd.classList.remove('open');
-      if (btn) btn.setAttribute('aria-expanded', 'false');
-    }
-  });
+    document.addEventListener('click', (e) => {
+      if (!dd.contains(e.target)) {
+        dd.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    return { btn, dd };
+  };
+  const tools = bindDd('btn-livestock-tools', 'livestock-tools-dd');
+  const support = bindDd('btn-livestock-support', 'livestock-support-dd');
+
   document.getElementById('btn-feed-all')?.addEventListener('click', async () => {
-    dd?.classList.remove('open');
+    tools.dd?.classList.remove('open');
     if (!Game.feedAllPens) return;
     const res = await Game.feedAllPens();
     showToast(res.msg, res.ok ? 'success' : 'error');
     renderLivestock();
   });
   document.getElementById('btn-collect-all')?.addEventListener('click', async () => {
-    dd?.classList.remove('open');
+    tools.dd?.classList.remove('open');
     if (!Game.collectAllPens) return;
     const res = await Game.collectAllPens();
     showToast(res.msg, res.ok ? 'success' : 'error');
     renderLivestock();
     updateCoins();
   });
-  document.getElementById('btn-livestock-info')?.addEventListener('click', () => {
-    showToast('Mua vật nuôi & cám ở Cửa hàng → Chăn nuôi → thả vào ô → cho ăn (giảm 15% thời gian lớn) → thu sản phẩm.', 'info');
-  });
+
+  // Hỗ trợ: mở cùng modal cấu hình như bên vườn
+  const proxySupport = (lsBtnId, gardenBtnId) => {
+    document.getElementById(lsBtnId)?.addEventListener('click', (e) => {
+      support.dd?.classList.remove('open');
+      const gear = e.target.closest('.support-row-gear') || e.target.closest('i.fa-gear');
+      const src = document.getElementById(gardenBtnId);
+      if (src) src.click();
+      else if (gear) {
+        // fallback open config by id
+        if (lsBtnId.includes('fairy')) document.getElementById('modal-fairy-config')?.classList.add('show');
+        if (lsBtnId.includes('nyc')) document.getElementById('modal-nyc-config')?.classList.add('show');
+        if (lsBtnId.includes('helper')) document.getElementById('modal-helper-config')?.classList.add('show');
+      }
+    });
+  };
+  proxySupport('btn-ls-support-fairy', 'btn-support-fairy');
+  proxySupport('btn-ls-support-nyc', 'btn-support-nyc');
+  proxySupport('btn-ls-support-helper', 'btn-support-helper');
+})();
+
+// Tick timer chăn nuôi cùng nhịp vườn
+(function hookLivestockSoftTick() {
+  const prev = typeof softUpdateGarden === 'function' ? softUpdateGarden : null;
+  if (prev && !softUpdateGarden._lsHooked) {
+    window.softUpdateGarden = function () {
+      prev.apply(this, arguments);
+      if (typeof softUpdateLivestockUI === 'function') softUpdateLivestockUI();
+    };
+    window.softUpdateGarden._lsHooked = true;
+  }
+  setInterval(() => {
+    try {
+      const page = document.getElementById('page-livestock');
+      if (page && page.classList.contains('active') && typeof softUpdateLivestockUI === 'function') {
+        softUpdateLivestockUI();
+      }
+    } catch (_) {}
+  }, 1000);
 })();
 
 
@@ -3044,7 +3271,126 @@ function renderShop() {
     return;
   }
 
+  if (currentShopTab === 'ochuong') {
+    const countEl = document.getElementById('shop-count');
+    const price = (currentSettings && currentSettings.penPrice) || 400;
+    if (typeof Game.ensureLivestock === 'function') Game.ensureLivestock();
+    const have = currentPlayer?.pens?.length || 0;
+    const maxP = Game.MAX_PENS_PER_BARN || 24;
+    const bIdx = (typeof Game.getActiveBarnIndex === 'function' ? Game.getActiveBarnIndex() : 0) + 1;
+    const bCount = typeof Game.getBarnCount === 'function' ? Game.getBarnCount() : 1;
+    if (countEl) countEl.textContent = 'Mở rộng Chuồng ' + bIdx;
+    document.getElementById('shop-pager').innerHTML = '';
+    let upgradeAllNeed = 0;
+    let upgradeAllCount = 0;
+    try {
+      if (typeof Features !== 'undefined' && Features.getPlotUpgradeCost) {
+        (currentPlayer.barns || [currentPlayer.pens || []]).forEach(g => {
+          (Array.isArray(g) ? g : []).forEach(pl => {
+            if (!pl) return;
+            const base = Number(pl.specialMultPermanent) || 1;
+            if (base >= 50) return;
+            const c = Features.getPlotUpgradeCost(base, 50);
+            if (c != null && c >= 0) { upgradeAllNeed += c; upgradeAllCount++; }
+          });
+        });
+      }
+    } catch (_) {}
+    grid.innerHTML = `
+      <div class="shop-plot-row">
+        <div class="shop-card shop-plot-card">
+          <div class="shop-icon">🏡</div>
+          <div class="shop-name">Mua thêm ô chuồng · Chuồng ${bIdx}</div>
+          <span class="shop-type">Tối đa ${maxP} ô / chuồng</span>
+          <div class="shop-meta"><span>Chuồng ${bIdx}: <strong>${have}/${maxP}</strong> ô · Tổng ${bCount} chuồng</span></div>
+          <div class="shop-price">${price.toLocaleString()} 🪙 / ô</div>
+          <div class="buy-qty">
+            <input type="number" id="pen-qty-input" class="qty-input" min="1" max="20" value="1" />
+            <button class="btn btn-warning" id="btn-buy-pen"><i class="fa-solid fa-cart-plus"></i> Mua ô</button>
+          </div>
+        </div>
+        <div class="shop-card shop-plot-card">
+          <div class="shop-icon">⚡</div>
+          <div class="shop-name">Nâng tất cả ô chuồng → x50</div>
+          <span class="shop-type">Mọi chuồng · chỉ ô dưới x50</span>
+          <div class="shop-desc">Nâng vĩnh viễn hệ số tốc độ mọi ô chuồng lên x50.</div>
+          <div class="shop-meta"><span>${upgradeAllCount ? (upgradeAllCount + ' ô cần nâng') : 'Đã đủ x50'}</span></div>
+          <div class="shop-price">${upgradeAllCount ? (upgradeAllNeed.toLocaleString() + ' 🪙') : '—'}</div>
+          <button class="btn btn-warning" id="btn-upgrade-all-pens-x50" ${upgradeAllCount ? '' : 'disabled'}>
+            <i class="fa-solid fa-bolt"></i> Nâng hết → x50
+          </button>
+        </div>
+      </div>`;
+    document.getElementById('btn-buy-pen')?.addEventListener('click', async () => {
+      const q = parseInt(document.getElementById('pen-qty-input')?.value || '1', 10);
+      const res = await Game.buyPen(q);
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      updateCoins();
+      renderShop();
+      if (res.ok && typeof renderLivestock === 'function') renderLivestock();
+    });
+    document.getElementById('btn-upgrade-all-pens-x50')?.addEventListener('click', async () => {
+      if (!upgradeAllCount) return;
+      if (!confirm('Nâng ' + upgradeAllCount + ' ô chuồng → x50?\nChi phí: ' + upgradeAllNeed.toLocaleString() + ' 🪙')) return;
+      const res = await Game.upgradeAllPensTo(50);
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      updateCoins();
+      renderShop();
+      if (res.ok && typeof renderLivestock === 'function') renderLivestock();
+    });
+    return;
+  }
 
+  if (currentShopTab === 'tangtoc-cn') {
+    const countEl = document.getElementById('shop-count');
+    document.getElementById('shop-pager').innerHTML = '';
+    if (countEl) countEl.textContent = 'Nâng cấp ô chuồng vĩnh viễn';
+    if (typeof Game.ensureLivestock === 'function') Game.ensureLivestock();
+    const pens = currentPlayer.pens || [];
+    const tiers = (typeof Features !== 'undefined' && Features.PLOT_UPGRADE_TIERS) ? Features.PLOT_UPGRADE_TIERS : [];
+    const hint = document.createElement('div');
+    hint.className = 'shop-event-banner';
+    hint.innerHTML = '⚡ Nâng <strong>vĩnh viễn</strong> tốc độ lớn & thu sản phẩm của từng ô chuồng (chuồng đang chọn).';
+    grid.appendChild(hint);
+    if (!pens.length) {
+      grid.innerHTML += '<p class="empty-state">Chưa có ô chuồng.</p>';
+      return;
+    }
+    pens.forEach((pen, i) => {
+      const cur = Number(pen.specialMultPermanent) || Number(pen.specialMult) || 1;
+      const animal = pen.animalId ? Game.getAnimal(pen.animalId) : null;
+      const card = document.createElement('div');
+      card.className = 'shop-card';
+      let opts = (tiers || []).filter(t => t.mult > cur).map(t => {
+        const cost = Features.getPlotUpgradeCost ? Features.getPlotUpgradeCost(cur, t.mult) : t.price;
+        return `<option value="${t.mult}">→ x${t.mult} (${(cost || 0).toLocaleString()}🪙)</option>`;
+      }).join('');
+      if (!opts) opts = '<option value="">Đã max</option>';
+      card.innerHTML = `
+        <div class="shop-icon">${animal ? animal.icon : '🏡'}</div>
+        <div class="shop-name">Ô chuồng #${i + 1}</div>
+        <span class="shop-type">Hiện x${cur}${animal ? ' · ' + animal.name : ' · trống'}</span>
+        <select class="pen-upgrade-select" data-pen="${i}">${opts}</select>
+        <button class="btn btn-primary btn-upgrade-pen" data-pen="${i}" ${!opts || cur >= 50 ? 'disabled' : ''}>
+          <i class="fa-solid fa-bolt"></i> Nâng cấp
+        </button>`;
+      grid.appendChild(card);
+    });
+    grid.querySelectorAll('.btn-upgrade-pen').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const penId = parseInt(btn.dataset.pen, 10);
+        const sel = grid.querySelector(`.pen-upgrade-select[data-pen="${penId}"]`);
+        const tgt = parseInt(sel && sel.value, 10);
+        if (!tgt) return;
+        const res = await Game.upgradePen(penId, tgt);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        updateCoins();
+        renderShop();
+        if (res.ok && typeof renderLivestock === 'function') renderLivestock();
+      });
+    });
+    return;
+  }
 
   if (currentShopTab === 'tangtoc') {
     const countEl = document.getElementById('shop-count');
@@ -4169,6 +4515,59 @@ function renderInventory() {
     }
   }
 
+  // Ghép vật nuôi → sao
+  const mergeAnEl = document.getElementById('inv-merge-animal');
+  if (mergeAnEl) {
+    if (!window._mergeAnSel) window._mergeAnSel = { animalId: null };
+    const bag = (currentPlayer.inventory && currentPlayer.inventory.livestock) || {};
+    const mergeable = Object.keys(bag).filter(id => (bag[id] || 0) >= 2);
+    if (!mergeable.length) {
+      mergeAnEl.innerHTML = '<p class="empty-state">Cần ≥ 2 <strong>vật nuôi thường</strong> cùng loại để ghép thành ⭐ (+50% sản phẩm).</p>';
+    } else {
+      let sel = window._mergeAnSel.animalId;
+      if (!sel || !mergeable.includes(sel)) sel = mergeable[0];
+      const opts = mergeable.map(id => {
+        const a = Game.getAnimal(id);
+        return `<option value="${id}" ${id === sel ? 'selected' : ''}>${a ? a.icon + ' ' + a.name : id} ×${bag[id]}</option>`;
+      }).join('');
+      mergeAnEl.innerHTML = `
+        <div class="merge-box">
+          <p class="merge-lead">Ghép <strong>2 vật nuôi thường</strong> → <strong>1 vật nuôi ⭐</strong></p>
+          <p class="merge-sub">Thành công ~55%. Thất bại mất 1 con.</p>
+          <label>Loài:</label>
+          <select id="merge-animal">${opts}</select>
+          <button id="btn-do-merge-animal" class="btn btn-primary" style="margin-top:12px"><i class="fa-solid fa-paw"></i> Ghép ngay</button>
+        </div>`;
+      const selEl = document.getElementById('merge-animal');
+      selEl?.addEventListener('change', () => { window._mergeAnSel.animalId = selEl.value; });
+      window._mergeAnSel.animalId = selEl?.value || sel;
+      const doMergeAn = async (n) => {
+        const id = selEl?.value;
+        const res = await Game.mergeAnimals(id, null, n);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        renderInventory();
+      };
+      const mergeBtn = document.getElementById('btn-do-merge-animal');
+      if (typeof bindPressHold === 'function') {
+        bindPressHold(mergeBtn, {
+          onClick: () => doMergeAn(1),
+          onHold: () => {
+            const id = selEl?.value;
+            const have = id ? (bag[id] || 0) : 0;
+            openQtyPickModal({
+              title: 'Ghép bao nhiêu lần?',
+              hint: 'Tối đa ~' + Math.floor(have / 2) + ' lần.',
+              confirmLabel: 'Ghép',
+              onConfirm: (n) => doMergeAn(n)
+            });
+          }
+        });
+      } else {
+        mergeBtn?.addEventListener('click', () => doMergeAn(1));
+      }
+    }
+  }
+
   
   const invQCos = (document.getElementById('inv-search')?.value || '').trim().toLowerCase();
 
@@ -4591,14 +4990,64 @@ function updateTreeLevelUI(val) {
   if (pillText) pillText.textContent = 'LEVEL ' + level + ' • ' + tier.title;
 }
 
+// Badge chăn nuôi: cùng tier/style, icon đổi sang cow/paw
+const LS_TIER_ICONS = {
+  'tier-tree-1': 'fa-egg',
+  'tier-tree-2': 'fa-kiwi-bird',
+  'tier-tree-3': 'fa-cow',
+  'tier-tree-4': 'fa-horse',
+  'tier-tree-5': 'fa-dragon'
+};
+const LS_TIER_TITLES = {
+  'tier-tree-1': 'Chuồng non',
+  'tier-tree-2': 'Trại nhỏ',
+  'tier-tree-3': 'Trại lớn',
+  'tier-tree-4': 'Nông trại',
+  'tier-tree-5': 'Đế chế chăn nuôi'
+};
+
+function updateLivestockLevelUI(val) {
+  const level = Math.min(TREE_MAX_LEVEL, Math.max(1, parseInt(val, 10) || 1));
+  const tier = getTreeTier(level);
+  const lsIcon = LS_TIER_ICONS[tier.class] || 'fa-cow';
+  const lsTitle = LS_TIER_TITLES[tier.class] || tier.title;
+
+  const glow = document.getElementById('levelAmbientGlowLs');
+  if (glow) glow.style.background = tier.glow;
+
+  const wrapper = document.getElementById('activeLsWrapper');
+  const pill = document.getElementById('activeLsPillBadge');
+  TREE_TIERS.forEach(t => {
+    wrapper?.classList.remove(t.class);
+    pill?.classList.remove(t.class);
+  });
+  wrapper?.classList.add(tier.class);
+  pill?.classList.add(tier.class);
+
+  const icon = document.getElementById('activeLsIcon');
+  const lvlNum = document.getElementById('activeLsLvlNum');
+  const pillIcon = document.getElementById('activeLsPillIcon');
+  const pillText = document.getElementById('activeLsPillText');
+  if (icon) icon.className = 'fa-solid ' + lsIcon + ' tree-icon';
+  if (lvlNum) lvlNum.textContent = level;
+  if (pillIcon) pillIcon.className = 'fa-solid ' + lsIcon;
+  if (pillText) pillText.textContent = 'LEVEL ' + level + ' • ' + lsTitle;
+}
+
 function bindLevelPageControls() {
   if (_levelPageBound) return;
   _levelPageBound = true;
   const range = document.getElementById('levelInputRange');
-  range?.addEventListener('input', e => updateTreeLevelUI(e.target.value));
+  range?.addEventListener('input', e => {
+    updateTreeLevelUI(e.target.value);
+    updateLivestockLevelUI(e.target.value);
+  });
   document.getElementById('btn-level-my')?.addEventListener('click', () => {
     const lv = (currentPlayer && currentPlayer.level) ? currentPlayer.level : 1;
+    const ls = (currentPlayer && currentPlayer.livestockLevel) ? currentPlayer.livestockLevel : 1;
     updateTreeLevelUI(lv);
+    updateLivestockLevelUI(ls);
+    if (range) range.value = lv;
   });
   const showcase = document.getElementById('level-badge-showcase');
   const container = document.getElementById('activeTreeContainer');
@@ -4615,12 +5064,27 @@ function bindLevelPageControls() {
       container.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
     });
   }
+  const showcaseLs = document.getElementById('level-badge-showcase-ls');
+  const containerLs = document.getElementById('activeLsContainer');
+  if (showcaseLs && containerLs) {
+    showcaseLs.addEventListener('mousemove', e => {
+      const rect = showcaseLs.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width / 2;
+      const y = e.clientY - rect.top - rect.height / 2;
+      containerLs.style.transform = `rotateX(${(-y / rect.height) * 18}deg) rotateY(${(x / rect.width) * 18}deg) scale(1.05)`;
+    });
+    showcaseLs.addEventListener('mouseleave', () => {
+      containerLs.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+    });
+  }
 }
 
 function renderLevelPage() {
   bindLevelPageControls();
   const myLv = (currentPlayer && currentPlayer.level) ? currentPlayer.level : 1;
+  const lsLv = (currentPlayer && currentPlayer.livestockLevel) ? currentPlayer.livestockLevel : 1;
   updateTreeLevelUI(myLv);
+  updateLivestockLevelUI(lsLv);
 }
 
 

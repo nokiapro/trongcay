@@ -8057,3 +8057,22 @@ html[data-theme="dark"] .livestock-grid .pen.empty {
 html[data-theme="dark"] .livestock-hint code {
   background: rgba(255, 255, 255, 0.08);
 }
+
+/* Level dual: cây trái · chăn nuôi phải */
+.level-dual-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+  align-items: flex-start;
+}
+.level-dual-row .level-badge-showcase {
+  flex: 1 1 280px;
+  max-width: 420px;
+}
+.level-col-title {
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 8px;
+  opacity: 0.9;
+}
