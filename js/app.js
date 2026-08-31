@@ -2617,6 +2617,113 @@ function renderBarnSwitcher() {
   }
 }
 
+function openPlaceAnimalModal(penId) {
+  if (!currentPlayer) return;
+  Game.ensureLivestock();
+  const stock = (currentPlayer.inventory && currentPlayer.inventory.livestock) || {};
+  const ids = Object.keys(stock).filter(id => stock[id] > 0);
+  if (!ids.length) {
+    showToast('Kho chưa có vật nuôi. Mua ở Cửa hàng → Vật nuôi.', 'info');
+    return;
+  }
+  const list = document.getElementById('fert-pick-list');
+  const modal = document.getElementById('modal-fert');
+  const title = modal && modal.querySelector('h2');
+  if (!list || !modal) {
+    const first = ids[0];
+    Game.placeAnimal(penId, first).then(res => {
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      renderLivestock();
+    });
+    return;
+  }
+  list.innerHTML = '';
+  if (title) title.innerHTML = '<i class="fa-solid fa-cow"></i> Thả vật nuôi · ô #' + (penId + 1);
+  ids.forEach(id => {
+    const a = Game.getAnimal(id);
+    if (!a) return;
+    const opt = document.createElement('button');
+    opt.type = 'button';
+    opt.className = 'btn btn-secondary';
+    opt.style.cssText = 'width:100%;margin:4px 0;text-align:left;display:flex;gap:10px;align-items:center';
+    opt.innerHTML = `<span style="font-size:1.6rem">${a.icon || '🐾'}</span><span><strong>${a.name}</strong> ×${stock[id]}</span>`;
+    opt.addEventListener('click', async () => {
+      const res = await Game.placeAnimal(penId, id);
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      if (typeof closeModals === 'function') closeModals();
+      renderLivestock();
+    });
+    list.appendChild(opt);
+  });
+  if (modal) {
+    document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'));
+    modal.classList.add('show');
+  }
+}
+
+function openPenActions(penId) {
+  if (!currentPlayer) return;
+  Game.ensureLivestock();
+  const pen = currentPlayer.pens && currentPlayer.pens[penId];
+  if (!pen || !pen.animalId) {
+    openPlaceAnimalModal(penId);
+    return;
+  }
+  const animal = Game.getAnimal(pen.animalId);
+  const name = (animal && animal.name) || pen.animalId;
+  const icon = (animal && animal.icon) || '🐾';
+  const canCollect = Game.canCollectProduct(pen);
+  const sec = Game.getAnimalReadyInSec(pen);
+  const feed = animal && Game.getFeed(animal.feedId);
+  const feedHave = (currentPlayer.inventory.feeds && animal && currentPlayer.inventory.feeds[animal.feedId]) || 0;
+
+  const list = document.getElementById('fert-pick-list');
+  const modal = document.getElementById('modal-fert');
+  const titleEl = modal && modal.querySelector('h2');
+  if (!list || !modal) {
+    showToast(icon + ' ' + name, 'info');
+    return;
+  }
+  if (titleEl) titleEl.innerHTML = icon + ' ' + name + ' · ô #' + (penId + 1);
+  list.innerHTML = '';
+  const info = document.createElement('p');
+  info.className = 'bulk-hint';
+  info.style.margin = '4px 0 10px';
+  let infoText = '';
+  if (!Game.isAnimalGrown(pen)) {
+    infoText = 'Đang lớn — còn ' + (typeof Game.formatTime === 'function' ? Game.formatTime(sec) : sec + 's');
+  } else if (canCollect) {
+    infoText = 'Sẵn sàng thu ' + (animal.productIcon || '') + ' ' + (animal.productName || '');
+  } else {
+    infoText = 'Thu tiếp sau ' + (typeof Game.formatTime === 'function' ? Game.formatTime(sec) : sec + 's');
+  }
+  infoText += ' · Cám: ' + (feed ? feed.icon + ' ' + feed.name : '—') + ' (có ' + feedHave + ')';
+  info.textContent = infoText;
+  list.appendChild(info);
+
+  const mkBtn = (label, cls, fn) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'btn ' + cls;
+    b.style.cssText = 'width:100%;margin:4px 0';
+    b.innerHTML = label;
+    b.addEventListener('click', async () => {
+      const res = await fn();
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      if (typeof closeModals === 'function') closeModals();
+      renderLivestock();
+      updateCoins();
+    });
+    list.appendChild(b);
+  };
+  mkBtn('<i class="fa-solid fa-wheat-awn"></i> Cho ăn', 'btn-primary', () => Game.feedPen(penId));
+  mkBtn('<i class="fa-solid fa-basket-shopping"></i> Thu hoạch', canCollect ? 'btn-primary' : 'btn-secondary', () => Game.collectPen(penId));
+  mkBtn('<i class="fa-solid fa-box"></i> Nhận về kho', 'btn-secondary', () => Game.removeAnimal(penId));
+
+  document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'));
+  modal.classList.add('show');
+}
+
 function renderLivestock() {
   if (!currentPlayer) return;
   if (typeof Game.ensureLivestock === 'function') Game.ensureLivestock();
@@ -2629,6 +2736,7 @@ function renderLivestock() {
   const pens = Array.isArray(currentPlayer.pens) ? currentPlayer.pens : [];
   let occupied = 0;
   let readyCollect = 0;
+  const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
 
   pens.forEach((pen, i) => {
     const div = document.createElement('div');
@@ -2647,30 +2755,26 @@ function renderLivestock() {
         '<div class="plot-status">Chọn để nuôi</div>';
     } else {
       occupied++;
-      div.classList.add('growing');
-      const name = animal.name || pen.animalId;
-      const icon = animal.icon || '🐾';
-      let status = 'Đang nuôi';
-      if (pen.grown) {
-        status = 'Trưởng thành';
-        div.classList.add('ready');
-        readyCollect++;
+      if (Game.isAnimalGrown(pen, now)) pen.grown = true;
+      div.classList.add(pen.grown ? 'ready' : 'growing');
+      const canCol = Game.canCollectProduct(pen, now);
+      if (canCol) readyCollect++;
+      const sec = Game.getAnimalReadyInSec(pen);
+      let status;
+      if (!pen.grown) {
+        status = 'Lớn: ' + (typeof Game.formatTime === 'function' ? Game.formatTime(sec) : sec + 's');
+      } else if (canCol) {
+        status = (animal.productIcon || '✨') + ' Thu ngay';
+      } else {
+        status = 'Thu: ' + (typeof Game.formatTime === 'function' ? Game.formatTime(sec) : sec + 's');
       }
       div.innerHTML =
-        '<div class="plot-icon">' + icon + '</div>' +
-        '<div class="plot-name">' + name + '</div>' +
+        '<div class="plot-icon">' + (animal.icon || '🐾') + '</div>' +
+        '<div class="plot-name">' + (animal.name || pen.animalId) + '</div>' +
         '<div class="plot-status">' + status + '</div>';
     }
 
-    div.addEventListener('click', () => {
-      if (typeof showToast === 'function') {
-        if (!animal) {
-          showToast('Chưa có loài vật. Thêm trong DEFAULT_ANIMALS (data.js) rồi mua ở Cửa hàng.', 'info');
-        } else {
-          showToast((animal.icon || '') + ' ' + (animal.name || pen.animalId) + ' — tính năng thu/cho ăn sẽ mở khi thêm logic.', 'info');
-        }
-      }
-    });
+    div.addEventListener('click', () => openPenActions(i));
     grid.appendChild(div);
   });
 
@@ -2682,8 +2786,11 @@ function renderLivestock() {
   }
   const feedCount = document.getElementById('livestock-feed-count');
   if (feedCount) {
-    const inv = (currentPlayer.inventory && currentPlayer.inventory.feed) || 0;
-    feedCount.textContent = String(inv);
+    feedCount.textContent = String(typeof Game.getTotalFeedCount === 'function' ? Game.getTotalFeedCount() : 0);
+  }
+  const hint = document.getElementById('livestock-hint');
+  if (hint) {
+    hint.innerHTML = 'Mua <strong>Vật nuôi</strong> & <strong>Cám</strong> ở Cửa hàng → thả vào ô → cho ăn → thu sản phẩm khi chín.';
   }
   updateCoins();
 }
@@ -2705,18 +2812,23 @@ function renderLivestock() {
       if (btn) btn.setAttribute('aria-expanded', 'false');
     }
   });
-  document.getElementById('btn-feed-all')?.addEventListener('click', () => {
+  document.getElementById('btn-feed-all')?.addEventListener('click', async () => {
     dd?.classList.remove('open');
-    if (typeof showToast === 'function') showToast('Cho ăn hàng loạt — sẽ kích hoạt khi có loài vật & logic cho ăn.', 'info');
+    if (!Game.feedAllPens) return;
+    const res = await Game.feedAllPens();
+    showToast(res.msg, res.ok ? 'success' : 'error');
+    renderLivestock();
   });
-  document.getElementById('btn-collect-all')?.addEventListener('click', () => {
+  document.getElementById('btn-collect-all')?.addEventListener('click', async () => {
     dd?.classList.remove('open');
-    if (typeof showToast === 'function') showToast('Thu hoạch hàng loạt — sẽ kích hoạt khi có sản phẩm chăn nuôi.', 'info');
+    if (!Game.collectAllPens) return;
+    const res = await Game.collectAllPens();
+    showToast(res.msg, res.ok ? 'success' : 'error');
+    renderLivestock();
+    updateCoins();
   });
   document.getElementById('btn-livestock-info')?.addEventListener('click', () => {
-    if (typeof showToast === 'function') {
-      showToast('Chăn nuôi: mỗi ô là 1 chuồng. Thêm loài trong data.js (DEFAULT_ANIMALS), sau đó mua & nuôi như trồng cây.', 'info');
-    }
+    showToast('Mua vật nuôi & cám ở Cửa hàng → Chăn nuôi → thả vào ô → cho ăn (giảm 15% thời gian lớn) → thu sản phẩm.', 'info');
   });
 })();
 
@@ -3205,6 +3317,118 @@ function renderShop() {
     return;
   }
 
+  if (currentShopTab === 'vatnuoi') {
+    const animals = (typeof Game.getAnimals === 'function') ? Game.getAnimals() : [];
+    const countEl = document.getElementById('shop-count');
+    if (countEl) countEl.textContent = animals.length + ' loài vật nuôi';
+    document.getElementById('shop-pager').innerHTML = '';
+    animals.forEach(a => {
+      const have = (currentPlayer?.inventory?.livestock?.[a.id]) || 0;
+      const feed = (typeof Game.getFeed === 'function') ? Game.getFeed(a.feedId) : null;
+      const card = document.createElement('div');
+      card.className = 'shop-card';
+      card.innerHTML = `
+        <div class="shop-icon" style="font-size:2.2rem">${a.icon || '🐾'}</div>
+        <div class="shop-name">${a.name}</div>
+        <span class="shop-type">Vật nuôi</span>
+        <div class="shop-desc">${a.desc || ''}</div>
+        <div class="shop-meta">
+          <span>⏱ Lớn ${(a.growTime || 0)}s</span>
+          <span>${a.productIcon || '📦'} ${a.productName || ''}</span>
+        </div>
+        <div class="shop-meta"><span>🍽 ${feed ? (feed.icon + ' ' + feed.name) : (a.feedId || '—')}</span></div>
+        <div class="shop-owned">Bạn có: <strong>${have}</strong></div>
+        <div class="shop-price">${(a.buyPrice || 0).toLocaleString()} 🪙</div>
+        <button class="btn btn-primary btn-buy-animal" data-id="${a.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>
+      `;
+      grid.appendChild(card);
+    });
+    document.querySelectorAll('.btn-buy-animal').forEach(btn => {
+      const buy = async (qty) => {
+        const a = Game.getAnimal && Game.getAnimal(btn.dataset.id);
+        const price = a ? (Number(a.buyPrice) || 1) : 1;
+        const buyMax = Game.BUY_MAX_QTY || 100000;
+        let n = qty;
+        if (n === 'all') {
+          const coins = currentPlayer.coins || 0;
+          n = price > 0 ? Math.floor(coins / price) : 1;
+        }
+        n = Math.max(1, Math.floor(Number(n) || 1));
+        if (n > buyMax) n = buyMax;
+        const res = await Game.buyAnimal(btn.dataset.id, n);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        updateCoins();
+        renderShop();
+      };
+      bindPressHold(btn, {
+        onClick: () => buy(1),
+        onHold: () => openQtyPickModal({
+          title: 'Mua bao nhiêu con?',
+          hint: 'Giữ để chọn số lượng.',
+          confirmLabel: 'Mua',
+          maxQty: Game.BUY_MAX_QTY || 100000,
+          onConfirm: (n) => buy(n)
+        })
+      });
+    });
+    return;
+  }
+
+  if (currentShopTab === 'cam') {
+    const feeds = (typeof Game.getFeeds === 'function') ? Game.getFeeds() : [];
+    const countEl = document.getElementById('shop-count');
+    if (countEl) countEl.textContent = feeds.length + ' loại cám';
+    document.getElementById('shop-pager').innerHTML = '';
+    feeds.forEach(f => {
+      const have = (currentPlayer?.inventory?.feeds?.[f.id]) || 0;
+      const forNames = (f.forTypes || []).map(t => {
+        const a = (Game.getAnimals() || []).find(x => x.type === t);
+        return a ? (a.icon + ' ' + a.name) : t;
+      }).join(', ');
+      const card = document.createElement('div');
+      card.className = 'shop-card';
+      card.innerHTML = `
+        <div class="shop-icon" style="font-size:2rem">${f.icon || '🌾'}</div>
+        <div class="shop-name">${f.name}</div>
+        <span class="shop-type">Cám chăn nuôi</span>
+        <div class="shop-desc">${f.desc || ''}</div>
+        <div class="shop-meta"><span>Cho: ${forNames || '—'}</span></div>
+        <div class="shop-owned">Bạn có: <strong>${have}</strong></div>
+        <div class="shop-price">${(f.price || 0).toLocaleString()} 🪙</div>
+        <button class="btn btn-primary btn-buy-feed" data-id="${f.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>
+      `;
+      grid.appendChild(card);
+    });
+    document.querySelectorAll('.btn-buy-feed').forEach(btn => {
+      const buy = async (qty) => {
+        const f = Game.getFeed && Game.getFeed(btn.dataset.id);
+        const price = f ? (Number(f.price) || 1) : 1;
+        const buyMax = Game.BUY_MAX_QTY || 100000;
+        let n = qty;
+        if (n === 'all') {
+          const coins = currentPlayer.coins || 0;
+          n = price > 0 ? Math.floor(coins / price) : 1;
+        }
+        n = Math.max(1, Math.floor(Number(n) || 1));
+        if (n > buyMax) n = buyMax;
+        const res = await Game.buyFeed(btn.dataset.id, n);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        updateCoins();
+        renderShop();
+      };
+      bindPressHold(btn, {
+        onClick: () => buy(1),
+        onHold: () => openQtyPickModal({
+          title: 'Mua bao nhiêu?',
+          hint: 'Giữ để chọn số lượng cám.',
+          confirmLabel: 'Mua',
+          maxQty: Game.BUY_MAX_QTY || 100000,
+          onConfirm: (n) => buy(n)
+        })
+      });
+    });
+    return;
+  }
 
 
 
@@ -3668,6 +3892,107 @@ function renderInventory() {
         renderInventory();
       });
     });
+  }
+
+  // Kho vật nuôi
+  const invLive = document.getElementById('inv-vatnuoi');
+  if (invLive) {
+    const bag = (currentPlayer.inventory && currentPlayer.inventory.livestock) || {};
+    let ids = Object.keys(bag).filter(id => (bag[id] || 0) > 0);
+    if (invQ) {
+      ids = ids.filter(id => {
+        const a = Game.getAnimal(id);
+        return ((a && a.name) || id).toLowerCase().includes(invQ);
+      });
+    }
+    if (!ids.length) {
+      invLive.innerHTML = '<p class="empty-state">Chưa có vật nuôi. Mua ở Cửa hàng → Vật nuôi!</p>';
+    } else {
+      invLive.innerHTML = '<div class="inv-grid">' + ids.map(id => {
+        const a = Game.getAnimal(id);
+        if (!a) return '';
+        return `
+          <div class="inv-item">
+            <div class="icon" style="font-size:1.8rem">${a.icon || '🐾'}</div>
+            <div class="name">${a.name}</div>
+            <div class="qty">x${bag[id]} · ${a.productIcon || ''} ${a.productName || ''}</div>
+            <div class="qty" style="font-size:0.78rem;opacity:0.85">Thả ở tab Chăn nuôi</div>
+          </div>`;
+      }).join('') + '</div>';
+    }
+  }
+
+  // Kho cám
+  const invCam = document.getElementById('inv-cam');
+  if (invCam) {
+    const bag = (currentPlayer.inventory && currentPlayer.inventory.feeds) || {};
+    let ids = Object.keys(bag).filter(id => (bag[id] || 0) > 0);
+    if (invQ) {
+      ids = ids.filter(id => {
+        const f = Game.getFeed(id);
+        return ((f && f.name) || id).toLowerCase().includes(invQ);
+      });
+    }
+    if (!ids.length) {
+      invCam.innerHTML = '<p class="empty-state">Chưa có cám. Mua ở Cửa hàng → Cám!</p>';
+    } else {
+      invCam.innerHTML = '<div class="inv-grid">' + ids.map(id => {
+        const f = Game.getFeed(id);
+        if (!f) return '';
+        return `
+          <div class="inv-item">
+            <div class="icon" style="font-size:1.6rem">${f.icon || '🌾'}</div>
+            <div class="name">${f.name}</div>
+            <div class="qty">x${bag[id]} · ${(f.price || 0)}🪙/bao</div>
+            <div class="qty" style="font-size:0.78rem;opacity:0.85">${f.desc || ''}</div>
+          </div>`;
+      }).join('') + '</div>';
+    }
+  }
+
+  // Sản phẩm chăn nuôi
+  const invSp = document.getElementById('inv-sanpham-cn');
+  if (invSp) {
+    const bag = (currentPlayer.inventory && currentPlayer.inventory.animalProducts) || {};
+    let ids = Object.keys(bag).filter(id => (bag[id] || 0) > 0);
+    if (invQ) {
+      ids = ids.filter(id => {
+        const a = (Game.getAnimals() || []).find(x => x.productId === id);
+        return ((a && a.productName) || id).toLowerCase().includes(invQ);
+      });
+    }
+    if (!ids.length) {
+      invSp.innerHTML = '<p class="empty-state">Chưa có sản phẩm chăn nuôi. Nuôi & thu ở tab Chăn nuôi!</p>';
+    } else {
+      invSp.innerHTML = '<div class="inv-grid">' + ids.map(id => {
+        const a = (Game.getAnimals() || []).find(x => x.productId === id);
+        const icon = (a && a.productIcon) || '📦';
+        const name = (a && a.productName) || id;
+        const sell = (a && a.productSell) || 10;
+        return `
+          <div class="inv-item">
+            <div class="icon" style="font-size:1.6rem">${icon}</div>
+            <div class="name">${name}</div>
+            <div class="qty">x${bag[id]} · ${sell}🪙/sp</div>
+            <div class="actions">
+              <button class="btn btn-success btn-sell-animal-prod" data-id="${id}" data-qty="1">Bán 1</button>
+              <button class="btn btn-primary btn-sell-animal-prod" data-id="${id}" data-qty="all">Bán hết</button>
+            </div>
+          </div>`;
+      }).join('') + '</div>';
+      invSp.querySelectorAll('.btn-sell-animal-prod').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          let qty = btn.dataset.qty;
+          if (qty === 'all') qty = (currentPlayer.inventory.animalProducts && currentPlayer.inventory.animalProducts[id]) || 0;
+          else qty = 1;
+          const res = await Game.sellAnimalProduct(id, qty);
+          showToast(res.msg, res.ok ? 'success' : 'error');
+          updateCoins();
+          renderInventory();
+        });
+      });
+    }
   }
 
   

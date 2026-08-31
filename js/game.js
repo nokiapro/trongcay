@@ -22,6 +22,8 @@ const Game = {
   getPets() { return typeof getPets === 'function' ? getPets() : (typeof DEFAULT_PETS !== 'undefined' ? DEFAULT_PETS : []); },
   getAnimals() { return typeof getAnimals === 'function' ? getAnimals() : (typeof DEFAULT_ANIMALS !== 'undefined' ? DEFAULT_ANIMALS : []); },
   getAnimal(id) { return this.getAnimals().find(a => a && a.id === id); },
+  getFeeds() { return typeof getFeeds === 'function' ? getFeeds() : (typeof DEFAULT_FEEDS !== 'undefined' ? DEFAULT_FEEDS : []); },
+  getFeed(id) { return this.getFeeds().find(f => f && f.id === id); },
   getAvatarFrames() { return typeof getAvatarFrames === 'function' ? getAvatarFrames() : (typeof DEFAULT_AVATAR_FRAMES !== 'undefined' ? DEFAULT_AVATAR_FRAMES : []); },
   getAvatarFrame(id) { return this.getAvatarFrames().find(f => f.id === id); },
   getCompanions() { return typeof getCompanions === 'function' ? getCompanions() : (typeof DEFAULT_COMPANIONS !== 'undefined' ? DEFAULT_COMPANIONS : []); },
@@ -133,6 +135,7 @@ const Game = {
     currentPlayer.pens = currentPlayer.barns[currentPlayer.activeBarn];
     if (!currentPlayer.inventory) currentPlayer.inventory = {};
     if (!currentPlayer.inventory.livestock) currentPlayer.inventory.livestock = {};
+    if (!currentPlayer.inventory.feeds) currentPlayer.inventory.feeds = {};
     if (!currentPlayer.inventory.animalProducts) currentPlayer.inventory.animalProducts = {};
   },
 
@@ -162,6 +165,285 @@ const Game = {
     this.ensureLivestock();
     if (!currentPlayer || !currentPlayer.barns) return;
     currentPlayer.barns.forEach((pens, gi) => fn(pens, gi));
+  },
+
+  getTotalFeedCount() {
+    this.ensureLivestock();
+    const feeds = (currentPlayer && currentPlayer.inventory && currentPlayer.inventory.feeds) || {};
+    return Object.keys(feeds).reduce((s, k) => s + (Number(feeds[k]) || 0), 0);
+  },
+
+  isAnimalGrown(pen, atMs) {
+    if (!pen || !pen.animalId || !pen.placedAt) return false;
+    if (pen.grown) return true;
+    const animal = this.getAnimal(pen.animalId);
+    if (!animal) return false;
+    const t = atMs != null ? atMs : ((typeof nowMs === 'function') ? nowMs() : Date.now());
+    const need = (Number(animal.growTime) || 300) * 1000;
+    return (t - Number(pen.placedAt)) >= need;
+  },
+
+  canCollectProduct(pen, atMs) {
+    if (!pen || !pen.animalId) return false;
+    const animal = this.getAnimal(pen.animalId);
+    if (!animal || !animal.productId) return false;
+    const t = atMs != null ? atMs : ((typeof nowMs === 'function') ? nowMs() : Date.now());
+    if (!this.isAnimalGrown(pen, t)) return false;
+    const interval = (Number(animal.productInterval) || 300) * 1000;
+    const last = Number(pen.lastCollect) || Number(pen.placedAt) || 0;
+    return (t - last) >= interval;
+  },
+
+  getAnimalReadyInSec(pen) {
+    if (!pen || !pen.animalId || !pen.placedAt) return null;
+    const animal = this.getAnimal(pen.animalId);
+    if (!animal) return null;
+    const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
+    if (!this.isAnimalGrown(pen, now)) {
+      const need = (Number(animal.growTime) || 300) * 1000;
+      return Math.max(0, Math.ceil((Number(pen.placedAt) + need - now) / 1000));
+    }
+    if (!animal.productId) return 0;
+    const interval = (Number(animal.productInterval) || 300) * 1000;
+    const last = Number(pen.lastCollect) || Number(pen.placedAt) || 0;
+    return Math.max(0, Math.ceil((last + interval - now) / 1000));
+  },
+
+  async buyAnimal(animalId, qty = 1) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    this.ensureLivestock();
+    const animal = this.getAnimal(animalId);
+    if (!animal) return { ok: false, msg: 'Không tìm thấy vật nuôi!' };
+    qty = Math.max(1, Math.floor(Number(qty) || 1));
+    const buyMax = this.BUY_MAX_QTY || 100000;
+    if (qty > buyMax) qty = buyMax;
+    const cost = (Number(animal.buyPrice) || 0) * qty;
+    if (!this.isUnlimitedResources() && !this.chargeCoins(cost)) {
+      return { ok: false, msg: 'Không đủ tiền!' };
+    }
+    if (!currentPlayer.inventory.livestock) currentPlayer.inventory.livestock = {};
+    currentPlayer.inventory.livestock[animalId] =
+      (currentPlayer.inventory.livestock[animalId] || 0) + qty;
+    this.addActivity(this.isUnlimitedResources()
+      ? `Mua ${qty} ${animal.name} (unlimited)`
+      : `Mua ${qty} ${animal.name} (-${cost}🪙)`);
+    await savePlayer();
+    return { ok: true, msg: `Đã mua ${qty} ${animal.icon || ''} ${animal.name}!` };
+  },
+
+  async buyFeed(feedId, qty = 1) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    this.ensureLivestock();
+    const feed = this.getFeed(feedId);
+    if (!feed) return { ok: false, msg: 'Không tìm thấy cám!' };
+    qty = Math.max(1, Math.floor(Number(qty) || 1));
+    const buyMax = this.BUY_MAX_QTY || 100000;
+    if (qty > buyMax) qty = buyMax;
+    const cost = (Number(feed.price) || 0) * qty;
+    if (!this.isUnlimitedResources() && !this.chargeCoins(cost)) {
+      return { ok: false, msg: 'Không đủ tiền!' };
+    }
+    if (!currentPlayer.inventory.feeds) currentPlayer.inventory.feeds = {};
+    currentPlayer.inventory.feeds[feedId] =
+      (currentPlayer.inventory.feeds[feedId] || 0) + qty;
+    this.addActivity(this.isUnlimitedResources()
+      ? `Mua ${qty} ${feed.name} (unlimited)`
+      : `Mua ${qty} ${feed.name} (-${cost}🪙)`);
+    await savePlayer();
+    return { ok: true, msg: `Đã mua ${qty} ${feed.icon || ''} ${feed.name}!` };
+  },
+
+  async placeAnimal(penId, animalId) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    this.ensureLivestock();
+    const pens = currentPlayer.pens;
+    if (!Array.isArray(pens) || penId < 0 || penId >= pens.length) {
+      return { ok: false, msg: 'Ô chuồng không tồn tại!' };
+    }
+    const pen = pens[penId];
+    if (pen.animalId) return { ok: false, msg: 'Ô chuồng đã có vật nuôi!' };
+    const animal = this.getAnimal(animalId);
+    if (!animal) return { ok: false, msg: 'Không tìm thấy vật nuôi!' };
+    const unlimited = this.isUnlimitedResources();
+    const have = (currentPlayer.inventory.livestock && currentPlayer.inventory.livestock[animalId]) || 0;
+    if (!unlimited && have < 1) return { ok: false, msg: 'Không có ' + animal.name + ' trong kho!' };
+    if (!unlimited) {
+      currentPlayer.inventory.livestock[animalId]--;
+      if (currentPlayer.inventory.livestock[animalId] <= 0) {
+        delete currentPlayer.inventory.livestock[animalId];
+      }
+    }
+    const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
+    pen.animalId = animalId;
+    pen.placedAt = now;
+    pen.fed = false;
+    pen.feedCount = 0;
+    pen.lastFed = null;
+    pen.lastCollect = null;
+    pen.grown = false;
+    this.addActivity(`Thả ${animal.icon || ''} ${animal.name} vào ô chuồng #${penId + 1}`);
+    await savePlayer();
+    return { ok: true, msg: `Đã thả ${animal.name} vào ô #${penId + 1}!` };
+  },
+
+  async feedPen(penId) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    this.ensureLivestock();
+    const pens = currentPlayer.pens;
+    if (!Array.isArray(pens) || penId < 0 || penId >= pens.length) {
+      return { ok: false, msg: 'Ô chuồng không tồn tại!' };
+    }
+    const pen = pens[penId];
+    if (!pen.animalId) return { ok: false, msg: 'Ô trống!' };
+    const animal = this.getAnimal(pen.animalId);
+    if (!animal) return { ok: false, msg: 'Vật nuôi không hợp lệ!' };
+    const feedId = animal.feedId;
+    const need = Math.max(1, Number(animal.feedPerTime) || 1);
+    const unlimited = this.isUnlimitedResources();
+    const have = (currentPlayer.inventory.feeds && currentPlayer.inventory.feeds[feedId]) || 0;
+    if (!unlimited && have < need) {
+      const feed = this.getFeed(feedId);
+      return { ok: false, msg: 'Không đủ ' + ((feed && feed.name) || 'cám') + ' (cần ' + need + ')!' };
+    }
+    if (!unlimited) {
+      currentPlayer.inventory.feeds[feedId] -= need;
+      if (currentPlayer.inventory.feeds[feedId] <= 0) delete currentPlayer.inventory.feeds[feedId];
+    }
+    const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
+    pen.fed = true;
+    pen.feedCount = (pen.feedCount || 0) + 1;
+    pen.lastFed = now;
+    // Cho ăn giảm 15% thời gian còn lại đến trưởng thành
+    if (!pen.grown && pen.placedAt) {
+      const growMs = (Number(animal.growTime) || 300) * 1000;
+      const elapsed = now - Number(pen.placedAt);
+      const remain = Math.max(0, growMs - elapsed);
+      const cut = Math.floor(remain * 0.15);
+      if (cut > 0) pen.placedAt -= cut;
+    }
+    if (this.isAnimalGrown(pen, now)) pen.grown = true;
+    this.addActivity(`Cho ăn ${animal.icon || ''} ${animal.name} ô #${penId + 1}`);
+    await savePlayer();
+    return { ok: true, msg: `Đã cho ${animal.name} ăn!` };
+  },
+
+  async collectPen(penId) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    this.ensureLivestock();
+    const pens = currentPlayer.pens;
+    if (!Array.isArray(pens) || penId < 0 || penId >= pens.length) {
+      return { ok: false, msg: 'Ô chuồng không tồn tại!' };
+    }
+    const pen = pens[penId];
+    if (!pen.animalId) return { ok: false, msg: 'Ô trống!' };
+    const animal = this.getAnimal(pen.animalId);
+    if (!animal) return { ok: false, msg: 'Vật nuôi không hợp lệ!' };
+    const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
+    if (this.isAnimalGrown(pen, now)) pen.grown = true;
+    if (!this.canCollectProduct(pen, now)) {
+      const sec = this.getAnimalReadyInSec(pen);
+      return { ok: false, msg: 'Chưa đến lúc thu' + (sec != null ? ' (còn ' + this.formatTime(sec) + ')' : '') };
+    }
+    const amount = Math.max(1, Number(animal.productYield) || 1);
+    if (!currentPlayer.inventory.animalProducts) currentPlayer.inventory.animalProducts = {};
+    const pid = animal.productId;
+    currentPlayer.inventory.animalProducts[pid] =
+      (currentPlayer.inventory.animalProducts[pid] || 0) + amount;
+    pen.lastCollect = now;
+    const xp = Number(animal.xp) || 5;
+    if (typeof this.addXp === 'function') this.addXp(xp);
+    this.addActivity(
+      `Thu ${amount} ${animal.productIcon || ''} ${animal.productName || pid} từ ${animal.name}` +
+      (xp ? ` (+${xp} XP)` : '')
+    );
+    await savePlayer();
+    return {
+      ok: true,
+      msg: `+${amount} ${animal.productName || pid}!`,
+      amount,
+      productId: pid
+    };
+  },
+
+  async feedAllPens() {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    this.ensureLivestock();
+    let done = 0;
+    const pens = currentPlayer.pens || [];
+    for (let i = 0; i < pens.length; i++) {
+      if (!pens[i] || !pens[i].animalId) continue;
+      const res = await this.feedPen(i);
+      if (res && res.ok) done++;
+    }
+    if (!done) return { ok: false, msg: 'Không cho ăn được ô nào (thiếu cám hoặc chuồng trống).' };
+    return { ok: true, msg: `Đã cho ăn ${done} ô!` };
+  },
+
+  async collectAllPens() {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    this.ensureLivestock();
+    let done = 0;
+    let totalAmt = 0;
+    const pens = currentPlayer.pens || [];
+    for (let i = 0; i < pens.length; i++) {
+      if (!pens[i] || !pens[i].animalId) continue;
+      const res = await this.collectPen(i);
+      if (res && res.ok) {
+        done++;
+        totalAmt += res.amount || 0;
+      }
+    }
+    if (!done) return { ok: false, msg: 'Chưa có sản phẩm nào sẵn sàng thu.' };
+    return { ok: true, msg: `Thu ${done} ô · ${totalAmt} sản phẩm!` };
+  },
+
+  async removeAnimal(penId) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    this.ensureLivestock();
+    const pens = currentPlayer.pens;
+    if (!Array.isArray(pens) || penId < 0 || penId >= pens.length) {
+      return { ok: false, msg: 'Ô chuồng không tồn tại!' };
+    }
+    const pen = pens[penId];
+    if (!pen.animalId) return { ok: false, msg: 'Ô trống!' };
+    const animal = this.getAnimal(pen.animalId);
+    const name = (animal && animal.name) || pen.animalId;
+    // Trả lại kho 1 con
+    if (!currentPlayer.inventory.livestock) currentPlayer.inventory.livestock = {};
+    currentPlayer.inventory.livestock[pen.animalId] =
+      (currentPlayer.inventory.livestock[pen.animalId] || 0) + 1;
+    pen.animalId = null;
+    pen.placedAt = null;
+    pen.fed = false;
+    pen.feedCount = 0;
+    pen.lastFed = null;
+    pen.lastCollect = null;
+    pen.grown = false;
+    this.addActivity(`Nhận lại ${name} vào kho (ô #${penId + 1})`);
+    await savePlayer();
+    return { ok: true, msg: `Đã nhận ${name} về kho!` };
+  },
+
+  async sellAnimalProduct(productId, qty = 1) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    this.ensureLivestock();
+    if (!currentPlayer.inventory.animalProducts) currentPlayer.inventory.animalProducts = {};
+    const have = currentPlayer.inventory.animalProducts[productId] || 0;
+    qty = Math.max(1, Math.floor(Number(qty) || 1));
+    if (have < 1) return { ok: false, msg: 'Không có sản phẩm này!' };
+    if (qty > have) qty = have;
+    const animal = this.getAnimals().find(a => a && a.productId === productId);
+    const unit = (animal && Number(animal.productSell)) || 10;
+    const earn = unit * qty;
+    currentPlayer.inventory.animalProducts[productId] -= qty;
+    if (currentPlayer.inventory.animalProducts[productId] <= 0) {
+      delete currentPlayer.inventory.animalProducts[productId];
+    }
+    currentPlayer.coins = (currentPlayer.coins || 0) + earn;
+    const label = (animal && animal.productName) || productId;
+    this.addActivity(`Bán ${qty} ${label} (+${earn}🪙)`);
+    await savePlayer();
+    return { ok: true, msg: `Đã bán ${qty} ${label} (+${earn}🪙)!` };
   },
 
   ensureGardens() {
