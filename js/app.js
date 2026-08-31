@@ -3985,28 +3985,30 @@ function renderStats() {
         <span class="album-icon">${unlocked ? p.icon : '❔'}</span>
         <span class="album-name">${unlocked ? p.name : 'Chưa mở'}</span>
       </div>`;
-    }).join('') + `<div class="album-pager" style="grid-column:1/-1">
-      <button type="button" class="btn btn-secondary btn-sm" id="album-prev" ${page<=0?'disabled':''}><i class="fa-solid fa-chevron-left"></i></button>
-      <span class="album-page-info">Trang ${page+1}/${totalPages} · ${plants.length} loại</span>
-      <button type="button" class="btn btn-secondary btn-sm" id="album-next" ${page>=totalPages-1?'disabled':''}><i class="fa-solid fa-chevron-right"></i></button>
-    </div>`;
-    const prevBtn = document.getElementById('album-prev');
-    const nextBtn = document.getElementById('album-next');
-    if (prevBtn) {
-      prevBtn.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        window._albumPage = Math.max(0, (window._albumPage || 0) - 1);
+    }).join('') + `<div class="album-pager ux-pager shop-pager" id="album-pager" style="grid-column:1/-1"></div>`;
+    const albumPager = document.getElementById('album-pager');
+    if (typeof renderUxPager === 'function') {
+      renderUxPager(albumPager, {
+        page: page + 1,
+        totalPages: totalPages,
+        onChange: (p) => {
+          window._albumPage = Math.max(0, Math.min(totalPages - 1, p - 1));
+          renderStats();
+        }
+      });
+    } else if (albumPager) {
+      albumPager.innerHTML = `
+        <button type="button" class="btn btn-secondary" id="album-prev" ${page<=0?'disabled':''}><i class="fa-solid fa-chevron-left"></i></button>
+        <span class="ux-pager-info">${page+1}/${totalPages}</span>
+        <button type="button" class="btn btn-secondary" id="album-next" ${page>=totalPages-1?'disabled':''}><i class="fa-solid fa-chevron-right"></i></button>`;
+      document.getElementById('album-prev')?.addEventListener('click', () => {
+        window._albumPage = Math.max(0, page - 1);
         renderStats();
-      };
-    }
-    if (nextBtn) {
-      nextBtn.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        window._albumPage = Math.min(totalPages - 1, (window._albumPage || 0) + 1);
+      });
+      document.getElementById('album-next')?.addEventListener('click', () => {
+        window._albumPage = Math.min(totalPages - 1, page + 1);
         renderStats();
-      };
+      });
     }
   }
 

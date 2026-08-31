@@ -1056,20 +1056,20 @@ button.btn:active {
 }
 
 .stat-card .value {
-  font-size: clamp(0.72rem, 2.1vw, 1.9rem);
+  font-size: clamp(0.7rem, 2.2vw, 1.9rem);
   font-weight: 700;
   color: var(--primary);
-  overflow: visible;
+  overflow: hidden;
   text-overflow: clip;
-  white-space: normal;
-  word-break: break-all;
+  white-space: nowrap;
   max-width: 100%;
-  line-height: 1.15;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
+  display: block;
 }
 .stat-card .value.stat-value-long {
-  font-size: clamp(0.65rem, 1.8vw, 1.35rem);
-  letter-spacing: -0.02em;
+  font-size: clamp(0.58rem, 1.5vw, 1.1rem);
+  letter-spacing: -0.03em;
 }
 
 .stat-card .label {
@@ -3393,7 +3393,8 @@ html[data-theme="dark"] .plot-boost-badge {
   margin-top: 12px;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
   box-sizing: border-box;
 }
 .profile-buff-dropdown > label {
@@ -3404,24 +3405,67 @@ html[data-theme="dark"] .plot-boost-badge {
   font-weight: 600;
 }
 .profile-buff-dropdown #pref-combo-select,
-.profile-buff-dropdown .ux-select {
+.profile-buff-dropdown .ux-select,
+.profile-buff-dropdown select {
   width: 100% !important;
   max-width: 100% !important;
+  min-width: 0 !important;
   box-sizing: border-box !important;
+  display: block;
 }
 .profile-buff-prefs,
 .profile-field.profile-buff-prefs {
-  overflow-x: hidden;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
   max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+.profile-card {
+  overflow-x: hidden !important;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+#page-profile,
+#page-profile .profile-card,
+#page-profile .profile-field {
+  overflow-x: hidden !important;
+  max-width: 100%;
+}
+.collection-album .album-pager,
+.album-pager {
+  grid-column: 1 / -1 !important;
 }
 .buff-toggle-cards {
   grid-template-columns: repeat(3, 1fr) !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.buff-toggle-cards .buff-card {
+  min-width: 0 !important;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.buff-toggle-cards .buff-card-body strong,
+.buff-toggle-cards .buff-card-body small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 @media (max-width: 560px) {
   .buff-toggle-cards {
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 6px !important;
   }
+}
+html, body, .main, .page {
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 .buff-card.helper-card {
   background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(99,102,241,0.12));
@@ -4809,8 +4853,9 @@ html[data-theme="dark"] .pill-dd-item.active {
     flex-wrap: wrap;
   }
   .weather,
-  .fertilizer-info {
-    flex: 1 1 auto;
+  .fertilizer-info,
+  #btn-global-timer.garden-cycle-chip {
+    flex: 0 0 auto !important;
     min-width: 0;
     justify-content: center;
   }
@@ -6051,26 +6096,31 @@ html[data-theme="dark"] .garden-support-menu button[role="menuitem"] {
 #btn-global-timer.garden-cycle-chip,
 #btn-global-timer.weather {
   background: var(--card) !important;
-  padding: 7px 12px !important;
+  padding: 6px 10px !important;
   border-radius: 999px !important;
   box-shadow: var(--shadow) !important;
   font-weight: 600 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 6px !important;
+  gap: 5px !important;
   border: none !important;
   color: var(--text, #1b4332) !important;
   cursor: default !important;
   min-width: 0 !important;
   width: auto !important;
   max-width: none !important;
-  height: 36px !important;
-  min-height: 36px !important;
-  font-size: 0.82rem !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  font-size: 0.78rem !important;
   justify-content: center;
   font-variant-numeric: tabular-nums;
   font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
   box-sizing: border-box !important;
+  flex: 0 0 auto !important;
+}
+#btn-global-timer.garden-cycle-chip i,
+#btn-global-timer.weather i {
+  font-size: 0.75rem !important;
 }
 #btn-global-timer.garden-cycle-chip.ready {
   color: #0d9488 !important;
@@ -6083,20 +6133,31 @@ html[data-theme="dark"] #btn-global-timer.garden-cycle-chip {
   background: var(--card) !important;
   color: #e8f5e9 !important;
 }
+#global-timer-text {
+  min-width: 0 !important;
+  font-size: inherit !important;
+}
 @media (max-width: 768px) {
   .garden-cycle-chip,
   #btn-global-timer.garden-cycle-chip,
   #btn-global-timer.weather,
   .garden-controls-main #btn-global-timer {
-    padding: 6px 10px !important;
-    height: 34px !important;
-    min-height: 34px !important;
-    font-size: 0.78rem !important;
-    gap: 4px !important;
+    padding: 5px 8px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    font-size: 0.72rem !important;
+    gap: 3px !important;
   }
   #global-timer-text {
     min-width: 0 !important;
-    font-size: 0.78rem !important;
+    font-size: 0.72rem !important;
+  }
+  .garden-controls-main .weather,
+  .garden-controls-main .fertilizer-info {
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 5px 8px !important;
+    font-size: 0.72rem !important;
   }
 }
 
