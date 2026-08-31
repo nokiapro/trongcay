@@ -486,8 +486,8 @@ const Game = {
       }
       
       let actMsg = fairyOn
-        ? `🌧️ Mưa · ${fairyEmoji} ${fairyName} tưới khi mưa: ${wateredN} ô`
-        : `🌧️ Mưa bắt đầu (${Math.round(durationMs / 1000)}s)`;
+        ? `Mưa · ${fairyEmoji} ${fairyName} tưới khi mưa: ${wateredN} ô`
+        : `Mưa bắt đầu (${Math.round(durationMs / 1000)}s)`;
       if (autoCollectN > 0) {
         actMsg += ` · nhặt ${autoCollectN} vật phẩm`;
         if (autoCoins) actMsg += ` (+${autoCoins}🪙)`;
@@ -979,7 +979,7 @@ const Game = {
     }
     currentPlayer.stats.planted = (currentPlayer.stats.planted || 0) + 1;
     const plant = this.getPlant(plantId);
-    this.addActivity(`Trồng ${usedStar ? '⭐ ' : ''}${plant.name} vào ô #${plotId + 1}` + (fairyWatered ? ' · 🧚 Tiên tưới ngay' : ''));
+    this.addActivity(`Trồng ${usedStar ? '⭐ ' : ''}${plant.name} vào ô #${plotId + 1}` + (fairyWatered ? ' · Tiên tưới ngay' : ''));
     if (typeof Features !== 'undefined') Features.trackQuest('plant', 1);
     if (typeof recordGameEvent === 'function') {
       recordGameEvent('plant', {
