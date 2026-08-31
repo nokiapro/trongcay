@@ -4014,6 +4014,9 @@ function updateTreeLevelUI(val) {
   const range = document.getElementById('levelInputRange');
   if (range) range.value = level;
 
+  const titleEl = document.getElementById('tierTitleText');
+  if (titleEl) titleEl.textContent = tier.title;
+
   const progress = (level / TREE_MAX_LEVEL) * 100;
   const bar = document.getElementById('levelProgressBar');
   const pct = document.getElementById('xpPercentText');
@@ -4039,7 +4042,7 @@ function updateTreeLevelUI(val) {
   if (icon) icon.className = 'fa-solid ' + tier.icon + ' tree-icon';
   if (lvlNum) lvlNum.textContent = level;
   if (pillIcon) pillIcon.className = 'fa-solid ' + tier.icon;
-  if (pillText) pillText.textContent = 'Level ' + level + ' • ' + tier.title;
+  if (pillText) pillText.textContent = 'LVL ' + level + ' • ' + tier.title;
 }
 
 function bindLevelPageControls() {
