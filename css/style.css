@@ -7943,7 +7943,7 @@ html[data-theme="dark"] .profile-badge {
 }
 
 
-/* ===== Buttons + Friends UI polish ===== */
+
 .friend-actions .btn {
   border-radius: 999px !important;
   padding: 6px 12px !important;
@@ -7975,7 +7975,7 @@ html[data-theme="dark"] .chat-input-row {
 html[data-theme="dark"] .chat-messages {
   background: transparent;
 }
-/* Bỏ khung/nền đen thừa trên trang bạn bè */
+
 #page-friends,
 #page-friends .friends-layout,
 #page-friends .friends-panel {

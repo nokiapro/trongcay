@@ -18,4 +18,3 @@ const db = firebase.database();
 try {
   auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 } catch (e) { console.warn('auth persistence', e); }
-

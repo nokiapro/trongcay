@@ -14675,4 +14675,3 @@ const DEFAULT_AVATAR_FRAMES = [
 ];
 function getAvatarFrames() { return DEFAULT_AVATAR_FRAMES; }
 function getAvatarFrame(id) { return DEFAULT_AVATAR_FRAMES.find(f => f.id === id); }
-
