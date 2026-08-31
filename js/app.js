@@ -1295,12 +1295,16 @@ function renderProfile() {
   const prefs = Game.getBuffPrefs();
   const fEl = document.getElementById('pref-fairy-enabled');
   const nEl = document.getElementById('pref-nyc-enabled');
+  const hEl = document.getElementById('pref-helper-enabled');
   const fvEl = document.getElementById('pref-fairy-visual');
   const nvEl = document.getElementById('pref-nyc-visual');
+  const hvEl = document.getElementById('pref-helper-visual');
   if (fEl) fEl.checked = !!prefs.fairyEnabled;
   if (nEl) nEl.checked = !!prefs.nycEnabled;
+  if (hEl) hEl.checked = !!prefs.helperEnabled;
   if (fvEl) fvEl.checked = !!prefs.fairyVisual;
   if (nvEl) nvEl.checked = !!prefs.nycVisual;
+  if (hvEl) hvEl.checked = !!prefs.helperVisual;
   highlightPrefComboButtons();
 }
 
@@ -1347,8 +1351,10 @@ document.getElementById('btn-save-profile')?.addEventListener('click', async () 
   Game.setBuffPrefs({
     fairyEnabled: !!document.getElementById('pref-fairy-enabled')?.checked,
     nycEnabled: !!document.getElementById('pref-nyc-enabled')?.checked,
+    helperEnabled: !!document.getElementById('pref-helper-enabled')?.checked,
     fairyVisual: !!document.getElementById('pref-fairy-visual')?.checked,
-    nycVisual: !!document.getElementById('pref-nyc-visual')?.checked
+    nycVisual: !!document.getElementById('pref-nyc-visual')?.checked,
+    helperVisual: !!document.getElementById('pref-helper-visual')?.checked
   });
   await savePlayer();
   
@@ -1379,6 +1385,9 @@ document.getElementById('btn-save-profile')?.addEventListener('click', async () 
     document.querySelectorAll('.garden-decor-nyc').forEach(el => {
       el.style.display = Game.showNycDecor && Game.showNycDecor() ? '' : 'none';
     });
+    document.querySelectorAll('.garden-decor-helper').forEach(el => {
+      el.style.display = Game.showHelperDecor && Game.showHelperDecor() ? '' : 'none';
+    });
   } catch (_) {}
 });
 
@@ -1386,8 +1395,10 @@ function readPrefFromUI() {
   return {
     fairyEnabled: !!document.getElementById('pref-fairy-enabled')?.checked,
     nycEnabled: !!document.getElementById('pref-nyc-enabled')?.checked,
+    helperEnabled: !!document.getElementById('pref-helper-enabled')?.checked,
     fairyVisual: !!document.getElementById('pref-fairy-visual')?.checked,
-    nycVisual: !!document.getElementById('pref-nyc-visual')?.checked
+    nycVisual: !!document.getElementById('pref-nyc-visual')?.checked,
+    helperVisual: !!document.getElementById('pref-helper-visual')?.checked
   };
 }
 
@@ -1395,8 +1406,10 @@ function writePrefToUI(prefs) {
   const map = [
     ['pref-fairy-enabled', 'fairyEnabled'],
     ['pref-nyc-enabled', 'nycEnabled'],
+    ['pref-helper-enabled', 'helperEnabled'],
     ['pref-fairy-visual', 'fairyVisual'],
-    ['pref-nyc-visual', 'nycVisual']
+    ['pref-nyc-visual', 'nycVisual'],
+    ['pref-helper-visual', 'helperVisual']
   ];
   map.forEach(([id, key]) => {
     const el = document.getElementById(id);
@@ -1429,6 +1442,8 @@ async function applyPrefCombo(btn) {
   if (btn.dataset.fb !== '') next.fairyEnabled = btn.dataset.fb === '1';
   if (btn.dataset.nv !== '') next.nycVisual = btn.dataset.nv === '1';
   if (btn.dataset.nb !== '') next.nycEnabled = btn.dataset.nb === '1';
+  if (btn.dataset.hv !== '') next.helperVisual = btn.dataset.hv === '1';
+  if (btn.dataset.hb !== '') next.helperEnabled = btn.dataset.hb === '1';
   writePrefToUI(next);
   if (!currentPlayer) return;
   
@@ -1440,15 +1455,17 @@ async function applyPrefCombo(btn) {
   updateNycBadge();
   updateHelperBadge();
   try {
-    const stage = document.querySelector('.garden-stage') || document.getElementById('garden-grid');
-    if (stage && typeof Game !== 'undefined') {
-      
+    if (typeof Game !== 'undefined') {
       document.querySelectorAll('.garden-decor-fairy').forEach(el => {
         el.style.display = Game.showFairyDecor && Game.showFairyDecor() ? '' : 'none';
       });
       document.querySelectorAll('.garden-decor-nyc').forEach(el => {
         el.style.display = Game.showNycDecor && Game.showNycDecor() ? '' : 'none';
       });
+      document.querySelectorAll('.garden-decor-helper').forEach(el => {
+        el.style.display = Game.showHelperDecor && Game.showHelperDecor() ? '' : 'none';
+      });
+      if (typeof renderGarden === 'function') renderGarden();
     }
   } catch (_) {}
 }
@@ -1466,14 +1483,16 @@ document.getElementById('pref-combo-select')?.addEventListener('change', async (
       fv: parts[0] !== undefined ? parts[0] : '',
       fb: parts[1] !== undefined ? parts[1] : '',
       nv: parts[2] !== undefined ? parts[2] : '',
-      nb: parts[3] !== undefined ? parts[3] : ''
+      nb: parts[3] !== undefined ? parts[3] : '',
+      hv: parts[4] !== undefined ? parts[4] : '',
+      hb: parts[5] !== undefined ? parts[5] : ''
     }
   };
   await applyPrefCombo(fakeBtn);
   e.target.value = '';
 });
 
-['pref-fairy-enabled', 'pref-nyc-enabled'].forEach(id => {
+['pref-fairy-enabled', 'pref-nyc-enabled', 'pref-helper-enabled'].forEach(id => {
   document.getElementById(id)?.addEventListener('change', highlightPrefComboButtons);
 });
 
@@ -1965,6 +1984,19 @@ function renderGarden() {
       p.style.left = (20 + k * 26) + '%';
       p.style.top = (28 + k * 20) + '%';
       agentHost.appendChild(p);
+    }
+  }
+  if (Game.showHelperDecor && Game.showHelperDecor()) {
+    const emoji = (Game.getHelperEmoji && Game.getHelperEmoji()) || '💁';
+    for (let k = 0; k < 3; k++) {
+      const h = document.createElement('div');
+      h.className = 'garden-decor garden-decor-helper garden-roamer';
+      h.textContent = emoji;
+      h.dataset.path = String(k + 1);
+      h.style.setProperty('--delay', (k * 1.5 + 0.8) + 's');
+      h.style.left = (14 + k * 28) + '%';
+      h.style.top = (35 + k * 18) + '%';
+      agentHost.appendChild(h);
     }
   }
   updateGlobalTimer();
@@ -2724,27 +2756,29 @@ function renderShop() {
       }
     } catch (_) {}
     grid.innerHTML = `
-      <div class="shop-card shop-plot-card" style="grid-column: 1 / -1; max-width: 360px;">
-        <div class="shop-icon">🟫</div>
-        <div class="shop-name">Mua thêm ô đất · Vườn ${gIdx}</div>
-        <span class="shop-type">Tối đa ${maxP} ô / vườn · Đủ ${maxP} ô mở vườn mới</span>
-        <div class="shop-meta"><span>Vườn ${gIdx}: <strong>${have}/${maxP}</strong> ô · Tổng ${gCount} vườn</span></div>
-        <div class="shop-price">${price.toLocaleString()} 🪙 / ô</div>
-        <div class="buy-qty">
-          <input type="number" id="plot-qty-input" class="qty-input" min="1" max="20" value="1" />
-          <button class="btn btn-warning" id="btn-buy-plot"><i class="fa-solid fa-cart-plus"></i> Mua ô</button>
+      <div class="shop-plot-row">
+        <div class="shop-card shop-plot-card">
+          <div class="shop-icon">🟫</div>
+          <div class="shop-name">Mua thêm ô đất · Vườn ${gIdx}</div>
+          <span class="shop-type">Tối đa ${maxP} ô / vườn · Đủ ${maxP} ô mở vườn mới</span>
+          <div class="shop-meta"><span>Vườn ${gIdx}: <strong>${have}/${maxP}</strong> ô · Tổng ${gCount} vườn</span></div>
+          <div class="shop-price">${price.toLocaleString()} 🪙 / ô</div>
+          <div class="buy-qty">
+            <input type="number" id="plot-qty-input" class="qty-input" min="1" max="20" value="1" />
+            <button class="btn btn-warning" id="btn-buy-plot"><i class="fa-solid fa-cart-plus"></i> Mua ô</button>
+          </div>
         </div>
-      </div>
-      <div class="shop-card shop-plot-card" style="grid-column: 1 / -1; max-width: 360px;">
-        <div class="shop-icon">⚡</div>
-        <div class="shop-name">Nâng tất cả ô → x50 vĩnh viễn</div>
-        <span class="shop-type">Mọi vườn · chỉ ô dưới x50</span>
-        <div class="shop-desc">Nâng vĩnh viễn hệ số tốc độ mọi ô đất (mọi vườn) lên x50. Ô đã ≥ x50 bỏ qua.</div>
-        <div class="shop-meta"><span>${upgradeAllCount ? (upgradeAllCount + ' ô cần nâng') : 'Đã đủ x50'}</span></div>
-        <div class="shop-price">${upgradeAllCount ? (upgradeAllNeed.toLocaleString() + ' 🪙') : '—'}</div>
-        <button class="btn btn-warning" id="btn-upgrade-all-x50" ${upgradeAllCount ? '' : 'disabled'}>
-          <i class="fa-solid fa-bolt"></i> Nâng hết → x50
-        </button>
+        <div class="shop-card shop-plot-card">
+          <div class="shop-icon">⚡</div>
+          <div class="shop-name">Nâng tất cả ô → x50 vĩnh viễn</div>
+          <span class="shop-type">Mọi vườn · chỉ ô dưới x50</span>
+          <div class="shop-desc">Nâng vĩnh viễn hệ số tốc độ mọi ô đất (mọi vườn) lên x50. Ô đã ≥ x50 bỏ qua.</div>
+          <div class="shop-meta"><span>${upgradeAllCount ? (upgradeAllCount + ' ô cần nâng') : 'Đã đủ x50'}</span></div>
+          <div class="shop-price">${upgradeAllCount ? (upgradeAllNeed.toLocaleString() + ' 🪙') : '—'}</div>
+          <button class="btn btn-warning" id="btn-upgrade-all-x50" ${upgradeAllCount ? '' : 'disabled'}>
+            <i class="fa-solid fa-bolt"></i> Nâng hết → x50
+          </button>
+        </div>
       </div>`;
     document.getElementById('btn-buy-plot')?.addEventListener('click', async () => {
       const q = parseInt(document.getElementById('plot-qty-input')?.value || '1', 10);
@@ -3883,6 +3917,12 @@ function renderStats() {
   const achUnlocked = Object.keys(currentPlayer.achievements || {}).length;
   const achTotal = Game.getAchievementsDef().length;
 
+  const coinsStr = (currentPlayer.coins || 0).toLocaleString('vi-VN');
+  const earnedStr = (s.earned || 0).toLocaleString('vi-VN');
+  const spentStr = (s.spent || 0).toLocaleString('vi-VN');
+  const longCoins = coinsStr.replace(/\D/g, '').length >= 9 ? ' stat-value-long' : '';
+  const longEarned = earnedStr.replace(/\D/g, '').length >= 9 ? ' stat-value-long' : '';
+  const longSpent = spentStr.replace(/\D/g, '').length >= 9 ? ' stat-value-long' : '';
   document.getElementById('stats-grid').innerHTML = `
     <div class="stat-card">
       <div class="value">${currentPlayer.level || 1}</div>
@@ -3893,7 +3933,7 @@ function renderStats() {
       <div class="label"><i class="fa-solid fa-bolt"></i> Kinh nghiệm</div>
     </div>
     <div class="stat-card">
-      <div class="value">${(currentPlayer.coins || 0).toLocaleString()}</div>
+      <div class="value${longCoins}">${coinsStr}</div>
       <div class="label"><i class="fa-solid fa-coins"></i> Tiền hiện có</div>
     </div>
     <div class="stat-card">
@@ -3905,11 +3945,11 @@ function renderStats() {
       <div class="label"><i class="fa-solid fa-basket-shopping"></i> Đã thu hoạch</div>
     </div>
     <div class="stat-card">
-      <div class="value">${(s.earned || 0).toLocaleString()}</div>
+      <div class="value${longEarned}">${earnedStr}</div>
       <div class="label"><i class="fa-solid fa-arrow-trend-up"></i> Tổng thu nhập</div>
     </div>
     <div class="stat-card">
-      <div class="value">${(s.spent || 0).toLocaleString()}</div>
+      <div class="value${longSpent}">${spentStr}</div>
       <div class="label"><i class="fa-solid fa-cart-shopping"></i> Tổng chi tiêu</div>
     </div>
     <div class="stat-card">
@@ -3945,13 +3985,29 @@ function renderStats() {
         <span class="album-icon">${unlocked ? p.icon : '❔'}</span>
         <span class="album-name">${unlocked ? p.name : 'Chưa mở'}</span>
       </div>`;
-    }).join('') + `<div class="album-pager">
+    }).join('') + `<div class="album-pager" style="grid-column:1/-1">
       <button type="button" class="btn btn-secondary btn-sm" id="album-prev" ${page<=0?'disabled':''}><i class="fa-solid fa-chevron-left"></i></button>
       <span class="album-page-info">Trang ${page+1}/${totalPages} · ${plants.length} loại</span>
       <button type="button" class="btn btn-secondary btn-sm" id="album-next" ${page>=totalPages-1?'disabled':''}><i class="fa-solid fa-chevron-right"></i></button>
     </div>`;
-    document.getElementById('album-prev')?.addEventListener('click', () => { window._albumPage = Math.max(0, page - 1); renderStats(); });
-    document.getElementById('album-next')?.addEventListener('click', () => { window._albumPage = Math.min(totalPages - 1, page + 1); renderStats(); });
+    const prevBtn = document.getElementById('album-prev');
+    const nextBtn = document.getElementById('album-next');
+    if (prevBtn) {
+      prevBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window._albumPage = Math.max(0, (window._albumPage || 0) - 1);
+        renderStats();
+      };
+    }
+    if (nextBtn) {
+      nextBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        window._albumPage = Math.min(totalPages - 1, (window._albumPage || 0) + 1);
+        renderStats();
+      };
+    }
   }
 
   

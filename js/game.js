@@ -202,6 +202,9 @@ const Game = {
   showNycDecor() {
     return this.hasNyc() && !!this.getBuffPrefs().nycVisual;
   },
+  showHelperDecor() {
+    return this.hasHelper() && !!this.getBuffPrefs().helperVisual;
+  },
 
   fairyRemainingSec() {
     if (!this.hasFairy()) return 0;
@@ -259,12 +262,15 @@ const Game = {
     currentPlayer.buffPrefs = {
       fairyEnabled: prefs && typeof prefs.fairyEnabled === 'boolean' ? prefs.fairyEnabled : cur.fairyEnabled,
       nycEnabled: prefs && typeof prefs.nycEnabled === 'boolean' ? prefs.nycEnabled : cur.nycEnabled,
+      helperEnabled: prefs && typeof prefs.helperEnabled === 'boolean' ? prefs.helperEnabled : cur.helperEnabled,
       fairyVisual: prefs && typeof prefs.fairyVisual === 'boolean' ? prefs.fairyVisual : cur.fairyVisual,
-      nycVisual: prefs && typeof prefs.nycVisual === 'boolean' ? prefs.nycVisual : cur.nycVisual
+      nycVisual: prefs && typeof prefs.nycVisual === 'boolean' ? prefs.nycVisual : cur.nycVisual,
+      helperVisual: prefs && typeof prefs.helperVisual === 'boolean' ? prefs.helperVisual : cur.helperVisual
     };
     const a = [];
     a.push('Tiên hình:' + (currentPlayer.buffPrefs.fairyVisual ? 'bật' : 'tắt') + '/buff:' + (currentPlayer.buffPrefs.fairyEnabled ? 'bật' : 'tắt'));
     a.push('NYC hình:' + (currentPlayer.buffPrefs.nycVisual ? 'bật' : 'tắt') + '/buff:' + (currentPlayer.buffPrefs.nycEnabled ? 'bật' : 'tắt'));
+    a.push('Giúp việc hình:' + (currentPlayer.buffPrefs.helperVisual ? 'bật' : 'tắt') + '/buff:' + (currentPlayer.buffPrefs.helperEnabled ? 'bật' : 'tắt'));
     return { ok: true, msg: 'Đã lưu: ' + a.join(' · ') };
   },
 

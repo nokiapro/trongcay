@@ -526,25 +526,38 @@
                 </span>
                 <input type="checkbox" id="pref-nyc-enabled" checked class="buff-switch" />
               </label>
+              <label class="buff-card helper-card">
+                <span class="buff-card-icon">💁</span>
+                <span class="buff-card-body">
+                  <strong>Buff Giúp việc</strong>
+                  <small>Tự mua theo cấu hình</small>
+                </span>
+                <input type="checkbox" id="pref-helper-enabled" checked class="buff-switch" />
+              </label>
             </div>
             <input type="checkbox" id="pref-fairy-visual" checked class="pref-visual-hidden" aria-hidden="true" tabindex="-1" />
             <input type="checkbox" id="pref-nyc-visual" checked class="pref-visual-hidden" aria-hidden="true" tabindex="-1" />
+            <input type="checkbox" id="pref-helper-visual" checked class="pref-visual-hidden" aria-hidden="true" tabindex="-1" />
             <div class="profile-buff-quick profile-buff-dropdown">
-              <label style="display:block;margin:10px 0 6px;font-weight:600">Tuỳ chọn nhanh hình &amp; buff</label>
-              <select id="pref-combo-select" class="ux-select" style="width:100%">
+              <label>Tuỳ chọn nhanh hình &amp; buff</label>
+              <select id="pref-combo-select" class="ux-select">
                 <option value="">— Chọn cấu hình —</option>
-                <option value="1|0||">Bật hình Tiên · không buff</option>
-                <option value="1|1||">Bật hình Tiên · có buff</option>
-                <option value="0|0||">Tắt hình Tiên · không buff</option>
-                <option value="0|1||">Tắt hình Tiên · có buff</option>
-                <option value="||1|0">Bật hình NYC · không buff</option>
-                <option value="||1|1">Bật hình NYC · có buff</option>
-                <option value="||0|0">Tắt hình NYC · không buff</option>
-                <option value="||0|1">Tắt hình NYC · có buff</option>
-                <option value="0|0|0|0">Tắt cả 2 · không buff</option>
-                <option value="0|1|0|1">Tắt cả 2 · có buff</option>
-                <option value="1|1|1|1">Bật cả 2 · có buff</option>
-                <option value="1|0|1|0">Bật cả 2 · không buff</option>
+                <option value="1|0|||||">Bật hình Tiên · không buff</option>
+                <option value="1|1|||||">Bật hình Tiên · có buff</option>
+                <option value="0|0|||||">Tắt hình Tiên · không buff</option>
+                <option value="0|1|||||">Tắt hình Tiên · có buff</option>
+                <option value="||1|0|||">Bật hình NYC · không buff</option>
+                <option value="||1|1|||">Bật hình NYC · có buff</option>
+                <option value="||0|0|||">Tắt hình NYC · không buff</option>
+                <option value="||0|1|||">Tắt hình NYC · có buff</option>
+                <option value="||||1|0">Bật hình Giúp việc · không buff</option>
+                <option value="||||1|1">Bật hình Giúp việc · có buff</option>
+                <option value="||||0|0">Tắt hình Giúp việc · không buff</option>
+                <option value="||||0|1">Tắt hình Giúp việc · có buff</option>
+                <option value="0|0|0|0|0|0">Tắt cả 3 · không buff</option>
+                <option value="0|1|0|1|0|1">Tắt cả 3 · có buff</option>
+                <option value="1|1|1|1|1|1">Bật cả 3 · có buff</option>
+                <option value="1|0|1|0|1|0">Bật cả 3 · không buff</option>
               </select>
             </div>
           </div>

@@ -730,6 +730,26 @@ button.btn:active {
   gap: 10px;
   margin-top: 10px;
 }
+.collection-album .album-pager,
+.album-pager {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 8px 0;
+  width: 100%;
+}
+.album-page-info {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.album-pc-grid {
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+}
 
 .album-item {
   background: var(--card);
@@ -1036,14 +1056,20 @@ button.btn:active {
 }
 
 .stat-card .value {
-  font-size: clamp(0.95rem, 2.6vw, 1.9rem);
+  font-size: clamp(0.72rem, 2.1vw, 1.9rem);
   font-weight: 700;
   color: var(--primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  word-break: break-all;
   max-width: 100%;
-  line-height: 1.2;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.stat-card .value.stat-value-long {
+  font-size: clamp(0.65rem, 1.8vw, 1.35rem);
+  letter-spacing: -0.02em;
 }
 
 .stat-card .label {
@@ -3358,6 +3384,86 @@ html[data-theme="dark"] .plot-boost-badge {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
+}
+.profile-buff-dropdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+.profile-buff-dropdown > label {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin: 0 !important;
+  font-weight: 600;
+}
+.profile-buff-dropdown #pref-combo-select,
+.profile-buff-dropdown .ux-select {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+.profile-buff-prefs,
+.profile-field.profile-buff-prefs {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+.buff-toggle-cards {
+  grid-template-columns: repeat(3, 1fr) !important;
+}
+@media (max-width: 560px) {
+  .buff-toggle-cards {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+}
+.buff-card.helper-card {
+  background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(99,102,241,0.12));
+}
+.buff-card.helper-card:has(input:checked) {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 14px rgba(59,130,246,0.15);
+}
+.buff-card.helper-card .buff-switch {
+  accent-color: #3b82f6;
+}
+.garden-decor-helper,
+.garden-decor-helper.garden-roamer {
+  animation-name: roam-path-3;
+  animation-duration: 19s;
+  animation-timing-function: linear;
+  font-size: 1.65rem;
+}
+.garden-decor-helper[data-path="1"] {
+  animation-name: roam-path-1;
+  animation-duration: 23s;
+}
+.garden-decor-helper[data-path="2"] {
+  animation-name: roam-path-2;
+  animation-duration: 17s;
+}
+.shop-plot-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  grid-column: 1 / -1;
+  width: 100%;
+}
+.shop-plot-row .shop-plot-card {
+  grid-column: auto !important;
+  max-width: none !important;
+  width: 100%;
+}
+@media (max-width: 640px) {
+  .shop-plot-row {
+    grid-template-columns: 1fr;
+  }
 }
 .access-gate {
   position: fixed;
@@ -5945,20 +6051,26 @@ html[data-theme="dark"] .garden-support-menu button[role="menuitem"] {
 #btn-global-timer.garden-cycle-chip,
 #btn-global-timer.weather {
   background: var(--card) !important;
-  padding: 10px 16px !important;
-  border-radius: 14px !important;
+  padding: 7px 12px !important;
+  border-radius: 999px !important;
   box-shadow: var(--shadow) !important;
   font-weight: 600 !important;
   display: inline-flex !important;
   align-items: center !important;
-  gap: 8px !important;
+  gap: 6px !important;
   border: none !important;
   color: var(--text, #1b4332) !important;
   cursor: default !important;
-  min-width: 7.5rem;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  font-size: 0.82rem !important;
   justify-content: center;
   font-variant-numeric: tabular-nums;
   font-family: 'Roboto Condensed', 'Roboto', sans-serif !important;
+  box-sizing: border-box !important;
 }
 #btn-global-timer.garden-cycle-chip.ready {
   color: #0d9488 !important;
@@ -5970,6 +6082,22 @@ html[data-theme="dark"] .garden-support-menu button[role="menuitem"] {
 html[data-theme="dark"] #btn-global-timer.garden-cycle-chip {
   background: var(--card) !important;
   color: #e8f5e9 !important;
+}
+@media (max-width: 768px) {
+  .garden-cycle-chip,
+  #btn-global-timer.garden-cycle-chip,
+  #btn-global-timer.weather,
+  .garden-controls-main #btn-global-timer {
+    padding: 6px 10px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    font-size: 0.78rem !important;
+    gap: 4px !important;
+  }
+  #global-timer-text {
+    min-width: 0 !important;
+    font-size: 0.78rem !important;
+  }
 }
 
 
