@@ -2058,7 +2058,7 @@ const Game = {
     }
 
     /** Ghi nhận 1 lần thu; plotKey = "gi:idx" để đếm số ô thật */
-    const recordHarvestStat = (r, plotKey) => {
+    const recordHarvestStat = (r, plotKey, growSecSample) => {
       if (!r || !r.harvested) return;
       totalHarvest += r.harvested;
       totalPlant += r.planted || 0;
@@ -2068,13 +2068,22 @@ const Game = {
         harvestedPlotKeys.add(pk);
         const giPart = pk.split(':')[0];
         if (!harvestByGarden[giPart]) {
-          harvestByGarden[giPart] = { plots: new Set(), cycles: 0, amount: 0, planted: 0 };
+          harvestByGarden[giPart] = {
+            plots: new Set(), cycles: 0, amount: 0, planted: 0,
+            plantIds: {}, growSamples: []
+          };
         }
         const g = harvestByGarden[giPart];
         g.plots.add(pk);
         g.cycles += 1;
         g.amount += r.amount || 0;
         g.planted += r.planted || 0;
+        if (r.plantId) {
+          g.plantIds[r.plantId] = (g.plantIds[r.plantId] || 0) + 1;
+        }
+        if (typeof growSecSample === 'number' && growSecSample > 0 && g.growSamples.length < 5) {
+          g.growSamples.push(growSecSample);
+        }
       }
       const key = (r.plantName || 'cây') + (r.seedStar ? ' ⭐' : '');
       if (!harvestByPlant[key]) harvestByPlant[key] = { cycles: 0, amount: 0 };
@@ -2099,9 +2108,10 @@ const Game = {
           if (!plot || !plot.plantId) continue;
           const readyAt = this.getReadyAtMs(plot);
           if (readyAt == null || readyAt > t) continue;
-          // silent: tổng hợp ở cuối, không ghi từng dòng
+          // Lấy thời gian chín hiệu lực TRƯỚC khi thu (sau thu plantId bị xóa)
+          const growSec = this.getEffectiveGrowTime(plot);
           const r = this._nycHarvestOneAt(plot, t, gi, cfg, canReplant && !!cfg.plantId, true);
-          recordHarvestStat(r, gi + ':' + i);
+          recordHarvestStat(r, gi + ':' + i, growSec);
         }
         if (canReplant && cfg && cfg.plantId) {
           const extra = this._nycPlantEmptiesAt(plots, cfg, t);
@@ -2274,7 +2284,7 @@ const Game = {
       ' · trồng/trồng lại ' + totalPlant + ' lần · sản lượng ' + totalYieldAmount
     );
     // Giải thích vì sao số ô thu < tổng ô sở hữu
-    // Chi tiết TỪNG VƯỜN: số ô · số lần thu · sản lượng
+    // Chi tiết TỪNG VƯỜN: số ô · lần thu · sản lượng · loại hạt · thời gian chín hiệu lực
     const gardenKeys = Object.keys(harvestByGarden).sort((a, b) => Number(a) - Number(b));
     if (gardenKeys.length) {
       gardenKeys.forEach(gi => {
@@ -2283,12 +2293,35 @@ const Game = {
         const nCyc = g.cycles || 0;
         const nAmt = g.amount || 0;
         const nPlant = g.planted || 0;
+        // Tên hạt chính của vườn
+        let plantLabel = '';
+        if (g.plantIds) {
+          const top = Object.keys(g.plantIds).sort((a, b) => g.plantIds[b] - g.plantIds[a])[0];
+          if (top) {
+            const pl = this.getPlant(top);
+            plantLabel = (pl && pl.name) ? pl.name : top;
+            if (pl && pl.growTime) plantLabel += ' (gốc ' + Math.round(pl.growTime) + 's)';
+          }
+        }
+        // Trung bình thời gian chín hiệu lực (đã tính tưới/phân/tăng tốc)
+        let growLabel = '';
+        if (g.growSamples && g.growSamples.length) {
+          const avg = g.growSamples.reduce((s, x) => s + x, 0) / g.growSamples.length;
+          growLabel = ' · chín ~' + Math.round(avg) + 's/vòng';
+        } else if (nPlots > 0 && nCyc > 0 && offlineMs > 0) {
+          // Ước lượng từ số vòng
+          const perPlot = nCyc / nPlots;
+          if (perPlot > 0) {
+            const est = (offlineMs / 1000) / perPlot;
+            growLabel = ' · chín ~' + Math.round(est) + 's/vòng (ước lượng)';
+          }
+        }
         lines.push(
           'Vườn ' + (Number(gi) + 1) + ': ' +
-          nPlots + ' ô' +
-          (nCyc > nPlots ? ' · ' + nCyc + ' lần thu' : (nCyc ? ' · ' + nCyc + ' lần thu' : '')) +
-          ' · sản lượng ' + nAmt +
-          (nPlant ? ' · trồng lại ' + nPlant : '')
+          nPlots + ' ô · ' + nCyc + ' lần thu · sản lượng ' + nAmt +
+          (nPlant ? ' · trồng lại ' + nPlant : '') +
+          (plantLabel ? ' · ' + plantLabel : '') +
+          growLabel
         );
       });
     } else if (totalHarvest || totalPlant) {
