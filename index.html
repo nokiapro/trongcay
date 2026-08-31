@@ -295,15 +295,11 @@
                 <i id="activeTreeIcon" class="fa-solid fa-seedling tree-icon"></i>
               </div>
             </div>
-            <div id="activeTreeTag" class="tree-level-tag">LVL <span id="activeTreeLvlNum">1</span></div>
+            <div id="activeTreeTag" class="tree-level-tag">LEVEL <span id="activeTreeLvlNum">1</span></div>
           </div>
           <div id="activePillBadge" class="eco-pill-badge tier-tree-1">
             <i id="activePillIcon" class="fa-solid fa-seedling"></i>
-            <span id="activePillText">LVL 1 • Mầm Cây Trong Chậu Đất</span>
-          </div>
-          <div class="level-tier-meta">
-            <span class="level-tier-label">Giai đoạn</span>
-            <strong id="tierTitleText">Mầm Cây Trong Chậu Đất</strong>
+            <span id="activePillText">LEVEL 1 • Mầm Cây Trong Chậu Đất</span>
           </div>
           <div class="level-slider-block">
             <div class="level-slider-label-center">
@@ -452,7 +448,7 @@
               <img id="profile-avatar-img" class="profile-avatar" src="" alt="Avatar" style="display:none" />
               <div id="profile-avatar-fallback" class="profile-avatar-fallback"><i class="fa-solid fa-user"></i></div>
             </div>
-            <div id="profile-level-tag" class="tree-level-tag profile-level-under-avatar tier-tree-1">LVL <span id="profile-level-num">1</span></div>
+            <div id="profile-level-tag" class="tree-level-tag profile-level-under-avatar tier-tree-1">LEVEL <span id="profile-level-num">1</span></div>
           </div>
           <div class="profile-field">
             <label>Tên hiển thị</label>
@@ -484,6 +480,14 @@
             <div class="gender-row" style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
               <label class="checkbox-row"><input type="radio" name="profile-nyc-gender" value="female" checked /> Nữ 👩‍🌾</label>
               <label class="checkbox-row"><input type="radio" name="profile-nyc-gender" value="male" /> Nam 👨‍🌾</label>
+            </div>
+          </div>
+          <div class="profile-field">
+            <label>Tên gọi Người giúp việc</label>
+            <input type="text" id="profile-helper-name" maxlength="20" placeholder="VD: Chị Tư" />
+            <div class="gender-row" style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
+              <label class="checkbox-row"><input type="radio" name="profile-helper-gender" value="female" checked /> Nữ 👩‍💼</label>
+              <label class="checkbox-row"><input type="radio" name="profile-helper-gender" value="male" /> Nam 👨‍💼</label>
             </div>
           </div>
           <div class="profile-field">
@@ -525,19 +529,23 @@
             </div>
             <input type="checkbox" id="pref-fairy-visual" checked class="pref-visual-hidden" aria-hidden="true" tabindex="-1" />
             <input type="checkbox" id="pref-nyc-visual" checked class="pref-visual-hidden" aria-hidden="true" tabindex="-1" />
-            <div class="profile-buff-quick profile-buff-quick-vertical">
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="1" data-fb="0" data-nv="" data-nb="">Bật hình Tiên · không buff</button>
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="1" data-fb="1" data-nv="" data-nb="">Bật hình Tiên · có buff</button>
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="0" data-fb="0" data-nv="" data-nb="">Tắt hình Tiên · không buff</button>
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="0" data-fb="1" data-nv="" data-nb="">Tắt hình Tiên · có buff</button>
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="" data-fb="" data-nv="1" data-nb="0">Bật hình NYC · không buff</button>
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="" data-fb="" data-nv="1" data-nb="1">Bật hình NYC · có buff</button>
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="" data-fb="" data-nv="0" data-nb="0">Tắt hình NYC · không buff</button>
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="" data-fb="" data-nv="0" data-nb="1">Tắt hình NYC · có buff</button>
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="0" data-fb="0" data-nv="0" data-nb="0">Tắt cả 2 · không buff</button>
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="0" data-fb="1" data-nv="0" data-nb="1">Tắt cả 2 · có buff</button>
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="1" data-fb="1" data-nv="1" data-nb="1">Bật cả 2 · có buff</button>
-              <button type="button" class="btn btn-secondary btn-sm pref-combo" data-fv="1" data-fb="0" data-nv="1" data-nb="0">Bật cả 2 · không buff</button>
+            <div class="profile-buff-quick profile-buff-dropdown">
+              <label style="display:block;margin:10px 0 6px;font-weight:600">Tuỳ chọn nhanh hình &amp; buff</label>
+              <select id="pref-combo-select" class="ux-select" style="width:100%">
+                <option value="">— Chọn cấu hình —</option>
+                <option value="1|0||">Bật hình Tiên · không buff</option>
+                <option value="1|1||">Bật hình Tiên · có buff</option>
+                <option value="0|0||">Tắt hình Tiên · không buff</option>
+                <option value="0|1||">Tắt hình Tiên · có buff</option>
+                <option value="||1|0">Bật hình NYC · không buff</option>
+                <option value="||1|1">Bật hình NYC · có buff</option>
+                <option value="||0|0">Tắt hình NYC · không buff</option>
+                <option value="||0|1">Tắt hình NYC · có buff</option>
+                <option value="0|0|0|0">Tắt cả 2 · không buff</option>
+                <option value="0|1|0|1">Tắt cả 2 · có buff</option>
+                <option value="1|1|1|1">Bật cả 2 · có buff</option>
+                <option value="1|0|1|0">Bật cả 2 · không buff</option>
+              </select>
             </div>
           </div>
           <button id="btn-save-profile" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu hồ sơ</button>
@@ -670,6 +678,13 @@
         </div>
         <input type="number" id="fairy-fert-count" min="1" max="99" value="12" style="display:none" />
       </div>
+
+      <label style="margin-top:12px;display:block">Nhặt vật phẩm khi mưa</label>
+      <div class="nyc-mode-row">
+        <label class="checkbox-row"><input type="radio" name="fairy-collect-rain" value="1" checked /> Có nhặt (sâu / hạt rơi)</label>
+        <label class="checkbox-row"><input type="radio" name="fairy-collect-rain" value="0" /> Không nhặt</label>
+      </div>
+      <p class="bulk-hint">Khi bật, Tiên tự nhặt thưởng mưa (kể cả offline).</p>
 
       <div class="modal-actions" style="margin-top:14px">
         <button id="btn-save-fairy-config" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu</button>

@@ -467,6 +467,11 @@ function openFairyConfigModal() {
   const fg = base.gender === 'male' ? 'male' : 'female';
   const fgEl = document.querySelector(`input[name="fairy-gender"][value="${fg}"]`);
   if (fgEl) fgEl.checked = true;
+  const collectOn = base.collectRain !== false;
+  const cOn = document.querySelector('input[name="fairy-collect-rain"][value="1"]');
+  const cOff = document.querySelector('input[name="fairy-collect-rain"][value="0"]');
+  if (collectOn) { if (cOn) cOn.checked = true; }
+  else { if (cOff) cOff.checked = true; }
   syncFairyConfigFormVisibility();
   document.getElementById('modal-fairy-config')?.classList.add('show');
 }
@@ -499,7 +504,8 @@ function bindFairyConfigUI() {
       fertMode: document.querySelector('input[name="fairy-fert-mode"]:checked')?.value || 'all',
       fertCount: parseInt(document.getElementById('fairy-fert-count')?.value, 10) || 12,
       customName: (document.getElementById('fairy-custom-name')?.value || '').trim().slice(0, 20),
-      gender: document.querySelector('input[name="fairy-gender"]:checked')?.value || 'female'
+      gender: document.querySelector('input[name="fairy-gender"]:checked')?.value || 'female',
+      collectRain: document.querySelector('input[name="fairy-collect-rain"]:checked')?.value !== '0'
     });
     if (res.ok) {
       await savePlayer();
@@ -1258,14 +1264,19 @@ function renderProfile() {
   if (yEl) yEl.value = bday.year || '';
   const fName = document.getElementById('profile-fairy-name');
   const nName = document.getElementById('profile-nyc-name');
+  const hName = document.getElementById('profile-helper-name');
   if (fName) fName.value = (Game.getFairyConfig && Game.getFairyConfig().customName) || '';
   if (nName) nName.value = (Game.getNycConfig && Game.getNycConfig().customName) || '';
+  if (hName) hName.value = (Game.getHelperConfig && Game.getHelperConfig().customName) || '';
   const fGen = (Game.getFairyGender && Game.getFairyGender()) || 'female';
   const nGen = (Game.getNycGender && Game.getNycGender()) || 'female';
+  const hGen = (Game.getHelperConfig && Game.getHelperConfig().gender) || 'female';
   const pf = document.querySelector(`input[name="profile-fairy-gender"][value="${fGen}"]`);
   const pn = document.querySelector(`input[name="profile-nyc-gender"][value="${nGen}"]`);
+  const ph = document.querySelector(`input[name="profile-helper-gender"][value="${hGen}"]`);
   if (pf) pf.checked = true;
   if (pn) pn.checked = true;
+  if (ph) ph.checked = true;
   loadPlayerMailbox();
   maybeSendBirthdayMailLocal();
   const img = document.getElementById('profile-avatar-img');
@@ -1317,8 +1328,10 @@ document.getElementById('btn-save-profile')?.addEventListener('click', async () 
   }
   const fairyName = (document.getElementById('profile-fairy-name')?.value || '').trim().slice(0, 20);
   const nycName = (document.getElementById('profile-nyc-name')?.value || '').trim().slice(0, 20);
+  const helperName = (document.getElementById('profile-helper-name')?.value || '').trim().slice(0, 20);
   const fairyGender = document.querySelector('input[name="profile-fairy-gender"]:checked')?.value || 'female';
   const nycGender = document.querySelector('input[name="profile-nyc-gender"]:checked')?.value || 'female';
+  const helperGender = document.querySelector('input[name="profile-helper-gender"]:checked')?.value || 'female';
   if (typeof Game.setFairyConfig === 'function') {
     const fc = Game.getFairyConfig();
     Game.setFairyConfig({ ...fc, customName: fairyName, gender: fairyGender });
@@ -1326,6 +1339,10 @@ document.getElementById('btn-save-profile')?.addEventListener('click', async () 
   if (typeof Game.setNycConfig === 'function') {
     const nc = Game.getNycConfig();
     Game.setNycConfig({ ...nc, customName: nycName, gender: nycGender });
+  }
+  if (typeof Game.setHelperConfig === 'function') {
+    const hc = Game.getHelperConfig();
+    Game.setHelperConfig({ ...hc, customName: helperName, gender: helperGender });
   }
   Game.setBuffPrefs({
     fairyEnabled: !!document.getElementById('pref-fairy-enabled')?.checked,
@@ -1438,6 +1455,22 @@ async function applyPrefCombo(btn) {
 
 document.querySelectorAll('.pref-combo').forEach(btn => {
   btn.addEventListener('click', () => applyPrefCombo(btn));
+});
+
+document.getElementById('pref-combo-select')?.addEventListener('change', async (e) => {
+  const val = e.target.value || '';
+  if (!val) return;
+  const parts = val.split('|');
+  const fakeBtn = {
+    dataset: {
+      fv: parts[0] !== undefined ? parts[0] : '',
+      fb: parts[1] !== undefined ? parts[1] : '',
+      nv: parts[2] !== undefined ? parts[2] : '',
+      nb: parts[3] !== undefined ? parts[3] : ''
+    }
+  };
+  await applyPrefCombo(fakeBtn);
+  e.target.value = '';
 });
 
 ['pref-fairy-enabled', 'pref-nyc-enabled'].forEach(id => {
@@ -4014,9 +4047,6 @@ function updateTreeLevelUI(val) {
   const range = document.getElementById('levelInputRange');
   if (range) range.value = level;
 
-  const titleEl = document.getElementById('tierTitleText');
-  if (titleEl) titleEl.textContent = tier.title;
-
   const progress = (level / TREE_MAX_LEVEL) * 100;
   const bar = document.getElementById('levelProgressBar');
   const pct = document.getElementById('xpPercentText');
@@ -4042,7 +4072,7 @@ function updateTreeLevelUI(val) {
   if (icon) icon.className = 'fa-solid ' + tier.icon + ' tree-icon';
   if (lvlNum) lvlNum.textContent = level;
   if (pillIcon) pillIcon.className = 'fa-solid ' + tier.icon;
-  if (pillText) pillText.textContent = 'LVL ' + level + ' • ' + tier.title;
+  if (pillText) pillText.textContent = 'LEVEL ' + level + ' • ' + tier.title;
 }
 
 function bindLevelPageControls() {

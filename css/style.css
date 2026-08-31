@@ -1036,9 +1036,14 @@ button.btn:active {
 }
 
 .stat-card .value {
-  font-size: 1.9rem;
+  font-size: clamp(0.95rem, 2.6vw, 1.9rem);
   font-weight: 700;
   color: var(--primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  line-height: 1.2;
 }
 
 .stat-card .label {
@@ -1905,7 +1910,7 @@ html[data-theme="dark"] .plot-progress {
   flex-direction: column;
   min-height: 380px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--primary) 18%, transparent);
+  border: none;
 }
 .chat-with {
   padding: 14px 16px;
@@ -2679,7 +2684,7 @@ html[data-theme="dark"] .modal-content {
 }
 html[data-theme="dark"] .chat-panel {
   background: var(--card);
-  border-color: color-mix(in srgb, var(--primary) 25%, transparent);
+  border: none;
   box-shadow: none;
 }
 html[data-theme="dark"] .friends-panel {
@@ -3228,23 +3233,34 @@ html[data-theme="dark"] .plot-boost-badge {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  align-items: center;
+  align-items: stretch;
+}
+.market-sell-row select,
+.market-sell-row input,
+.market-sell-row .btn,
+.market-sell-row .pill-dd {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: 40px !important;
+  min-height: 40px !important;
+  box-sizing: border-box !important;
+  font-size: 0.84rem !important;
+  border-radius: 12px !important;
 }
 .market-sell-row select,
 .market-sell-row input {
-  min-width: 0;
+  padding: 0 12px !important;
 }
-.market-sell-row select {
-  flex: 1 1 140px;
-  min-width: 130px;
+.market-sell-row .btn {
+  flex: 0 0 auto;
+  min-width: 90px;
+  padding: 0 16px !important;
 }
-#market-qty {
-  min-width: 150px;
-  flex: 1 1 140px;
-}
+#market-qty,
 #market-price {
-  min-width: 130px;
-  flex: 1 1 120px;
+  min-width: 0;
+  flex: 1 1 0;
 }
 .bank-list { display: flex; flex-direction: column; gap: 10px; }
 .bank-item {
@@ -3720,16 +3736,22 @@ input.ux-number:focus,
 }
 .bank-interest-val { color: #40916c; }
 .bank-item .bank-timer,
-.bank-item .plot-timer {
-  display: inline-block;
-  font-size: 0.9rem !important;
+.bank-item .plot-timer,
+.plot-timer,
+.bank-timer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.84rem !important;
   font-weight: 700;
   padding: 6px 12px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #1b4332, #2d6a4f);
-  color: #fff !important;
+  border-radius: 999px;
+  background: var(--btn-primary-bg, linear-gradient(135deg, var(--primary-hover), var(--primary))) !important;
+  color: var(--btn-primary-color, #fff) !important;
+  box-shadow: var(--btn-primary-shadow, 0 4px 14px rgba(34, 197, 94, 0.35));
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
+  border: none !important;
 }
 html[data-theme="dark"] .bank-term-tag {
   background: rgba(149, 213, 178, 0.15);
@@ -4199,11 +4221,24 @@ select.pill-dd-native {
   z-index: 25;
 }
 .garden-controls-main .weather,
-.garden-controls-main .fertilizer-info {
-  padding: 7px 12px;
-  font-size: 0.82rem;
-  min-height: 34px;
-  border-radius: 10px;
+.garden-controls-main .fertilizer-info,
+.garden-controls-main .garden-cycle-chip,
+.garden-controls-main #btn-global-timer,
+.garden-controls-main #btn-tools-menu,
+.garden-controls-main #btn-support-menu,
+.garden-controls-main .garden-switcher .pill-dd-trigger,
+.garden-controls-main #garden-switcher .pill-dd-trigger {
+  padding: 7px 14px !important;
+  font-size: 0.82rem !important;
+  min-height: 36px !important;
+  height: 36px !important;
+  border-radius: 999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  line-height: 1.25 !important;
+  white-space: nowrap !important;
 }
 .garden-tools-dd {
   position: relative;
@@ -4972,9 +5007,9 @@ html[data-theme="dark"] .mail-item {
 }
 .btn-timer,
 #btn-global-timer {
-  min-width: 132px !important;
-  width: 132px !important;
-  max-width: 132px !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: none !important;
   justify-content: center !important;
   flex-shrink: 0 !important;
   box-sizing: border-box !important;
@@ -5220,6 +5255,8 @@ html[data-theme="dark"] .mail-actions .btn-mail-icon[title]:hover::after {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: 6px;
   color: #0f3d2e !important;
   font-weight: 800 !important;
@@ -7228,7 +7265,7 @@ textarea::placeholder {
 }
 .friends-panel,
 .chat-panel {
-  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+  border: none;
   box-shadow: var(--shadow);
 }
 

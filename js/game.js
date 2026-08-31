@@ -417,7 +417,11 @@ const Game = {
     this.rainUntil = now + durationMs;
     this.rainCollectCount = 0;
     let wateredN = 0;
+    let autoCollectN = 0;
+    let autoCoins = 0;
+    let autoSeeds = 0;
     const fairyOn = this.isFairyActive();
+    const fairyCollect = fairyOn && this.getFairyConfig().collectRain !== false;
     const fairyName = fairyOn
       ? ((this.getFairyDisplayName && this.getFairyDisplayName()) || 'Tiên')
       : '';
@@ -446,17 +450,49 @@ const Game = {
           }
         });
       });
+
       
-      this.addActivity(
-        fairyOn
-          ? `🌧️ Mưa · ${fairyEmoji} ${fairyName} tưới khi mưa: ${wateredN} ô`
-          : `🌧️ Mưa bắt đầu (${Math.round(durationMs / 1000)}s)`,
-        { type: fairyOn ? 'fairy_rain' : 'rain', at: now }
-      );
+      if (fairyCollect) {
+        if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {} };
+        if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
+        const n = 3 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < n; i++) {
+          if (Math.random() < 0.55) {
+            const coins = 5 + Math.floor(Math.random() * 11);
+            currentPlayer.coins = (currentPlayer.coins || 0) + coins;
+            autoCoins += coins;
+          } else {
+            const plants = (this.getPlants() || []).filter(p => p && p.id);
+            if (plants.length) {
+              const plant = plants[Math.floor(Math.random() * plants.length)];
+              currentPlayer.inventory.seeds[plant.id] = (currentPlayer.inventory.seeds[plant.id] || 0) + 1;
+              autoSeeds++;
+            } else {
+              const coins = 8;
+              currentPlayer.coins = (currentPlayer.coins || 0) + coins;
+              autoCoins += coins;
+            }
+          }
+          autoCollectN++;
+        }
+        this.rainCollectCount = Math.min(8, (this.rainCollectCount || 0) + autoCollectN);
+        currentPlayer.rainedCollectOnce = true;
+      }
+      
+      let actMsg = fairyOn
+        ? `🌧️ Mưa · ${fairyEmoji} ${fairyName} tưới khi mưa: ${wateredN} ô`
+        : `🌧️ Mưa bắt đầu (${Math.round(durationMs / 1000)}s)`;
+      if (autoCollectN > 0) {
+        actMsg += ` · nhặt ${autoCollectN} vật phẩm`;
+        if (autoCoins) actMsg += ` (+${autoCoins}🪙)`;
+        if (autoSeeds) actMsg += ` (+${autoSeeds} hạt)`;
+      }
+      this.addActivity(actMsg, { type: fairyOn ? 'fairy_rain' : 'rain', at: now });
       if (fairyOn && wateredN > 0 && typeof Features !== 'undefined' && Features.trackQuest) {
         try { Features.trackQuest('water', wateredN * 3); } catch (_) {}
       }
       if (typeof savePlayer === 'function') savePlayer();
+      if (typeof updateCoins === 'function') updateCoins();
       if (typeof renderGarden === 'function') {
         try { renderGarden(); } catch (_) {}
       }
@@ -465,9 +501,10 @@ const Game = {
       }
     }
     if (typeof showRainEffect === 'function') showRainEffect();
-    const tip = fairyOn
+    let tip = fairyOn
       ? `🌧️ Mưa + ${fairyEmoji} ${fairyName} tưới ${wateredN} ô!`
       : '🌧️ Mưa rồi! Chạm sâu / hạt rơi để nhặt thưởng!';
+    if (autoCollectN > 0) tip += ` Nhặt ${autoCollectN} vật phẩm.`;
     if (typeof showToast === 'function') showToast(tip, 'success');
     setTimeout(() => {
       this.raining = false;
@@ -1296,7 +1333,8 @@ const Game = {
       fertMode: 'all',       
       fertCount: 12,
       gardensEnabled: {},    
-      byGarden: {}           
+      byGarden: {},
+      collectRain: true
     };
   },
 
@@ -1318,6 +1356,7 @@ const Game = {
     if (!c.byGarden || typeof c.byGarden !== 'object') c.byGarden = {};
     if (typeof c.customName !== 'string') c.customName = '';
     if (c.gender !== 'male' && c.gender !== 'female') c.gender = 'female';
+    if (typeof c.collectRain !== 'boolean') c.collectRain = true;
     return c;
   },
 
@@ -1423,7 +1462,8 @@ const Game = {
       gardensEnabled: ge,
       byGarden,
       customName: (cfg && typeof cfg.customName === 'string') ? cfg.customName.trim().slice(0, 20) : (prev.customName || ''),
-      gender: cfg && cfg.gender === 'male' ? 'male' : 'female'
+      gender: cfg && cfg.gender === 'male' ? 'male' : 'female',
+      collectRain: cfg && typeof cfg.collectRain === 'boolean' ? cfg.collectRain : (typeof prev.collectRain === 'boolean' ? prev.collectRain : true)
     };
     currentPlayer.fairyConfig = next;
     const parts = [];
@@ -1748,10 +1788,13 @@ const Game = {
 
 
   applyOfflineRainAt(t) {
-    if (!currentPlayer) return { watered: 0, boosted: 0 };
+    if (!currentPlayer) return { watered: 0, boosted: 0, collected: 0, collectCoins: 0, collectSeeds: 0 };
     this.ensureGardens();
     let watered = 0;
     let boosted = 0;
+    let collected = 0;
+    let collectCoins = 0;
+    let collectSeeds = 0;
     const fairy = this.isFairyActive();
     this.forEachGarden((plots, gi) => {
       const fairyHere = fairy && this.isFairyGardenEnabled(gi);
@@ -1778,7 +1821,34 @@ const Game = {
         }
       });
     });
-    return { watered, boosted };
+    
+    const collectOn = fairy && this.getFairyConfig().collectRain !== false;
+    if (collectOn) {
+      const n = 3 + Math.floor(Math.random() * 4);
+      if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {} };
+      if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
+      for (let i = 0; i < n; i++) {
+        if (Math.random() < 0.55) {
+          const coins = 5 + Math.floor(Math.random() * 11);
+          currentPlayer.coins = (currentPlayer.coins || 0) + coins;
+          collectCoins += coins;
+        } else {
+          const plants = (this.getPlants() || []).filter(p => p && p.id);
+          if (plants.length) {
+            const plant = plants[Math.floor(Math.random() * plants.length)];
+            currentPlayer.inventory.seeds[plant.id] = (currentPlayer.inventory.seeds[plant.id] || 0) + 1;
+            collectSeeds++;
+          } else {
+            const coins = 8;
+            currentPlayer.coins = (currentPlayer.coins || 0) + coins;
+            collectCoins += coins;
+          }
+        }
+        collected++;
+      }
+      currentPlayer.rainedCollectOnce = true;
+    }
+    return { watered, boosted, collected, collectCoins, collectSeeds };
   },
 
   
@@ -1945,6 +2015,9 @@ const Game = {
     let helperBuys = 0;
     let rainHits = 0;
     let rainWatered = 0;
+    let rainCollected = 0;
+    let rainCollectCoins = 0;
+    let rainCollectSeeds = 0;
     
     let totalPlotsAll = 0;
     let nycEnabledGardens = 0;
@@ -2176,7 +2249,12 @@ const Game = {
         const r = this.applyOfflineRainAt(ev.t);
         rainHits++;
         rainWatered += r.watered || 0;
-        if (r.watered || r.boosted) changed = true;
+        if (r.collected) {
+          rainCollected = (rainCollected || 0) + (r.collected || 0);
+          rainCollectCoins = (rainCollectCoins || 0) + (r.collectCoins || 0);
+          rainCollectSeeds = (rainCollectSeeds || 0) + (r.collectSeeds || 0);
+        }
+        if (r.watered || r.boosted || r.collected) changed = true;
       } else if (ev.type === 'fairy' && this.isFairyActiveAt(ev.t)) {
         
         this.forEachGarden((plots, gi) => {
@@ -2200,11 +2278,15 @@ const Game = {
     if (this.resetExpiredBoosts()) changed = true;
 
     if (rainHits) {
-      notes.push(
-        this.isFairyActive()
-          ? `Mưa ${rainHits} trận (Tiên tưới kèm)`
-          : `Mưa ${rainHits} trận (buff lớn)`
-      );
+      let rainNote = this.isFairyActive()
+        ? `Mưa ${rainHits} trận (Tiên tưới kèm)`
+        : `Mưa ${rainHits} trận (buff lớn)`;
+      if (rainCollected > 0) {
+        rainNote += ` · Tiên nhặt ${rainCollected} vật phẩm`;
+        if (rainCollectCoins) rainNote += ` (+${rainCollectCoins}🪙)`;
+        if (rainCollectSeeds) rainNote += ` (+${rainCollectSeeds} hạt)`;
+      }
+      notes.push(rainNote);
     }
     if (fairyCycles) notes.push(`Tiên ${fairyCycles} lần chu kỳ 3h`);
     const uniquePlotsHarvested = harvestedPlotKeys.size;
