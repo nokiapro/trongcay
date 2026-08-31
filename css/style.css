@@ -3897,6 +3897,7 @@ html[data-theme="dark"] .bank-stat-val {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: center;
 }
 .plot-upgrade-row select {
   flex: 1;
@@ -7984,4 +7985,34 @@ html[data-theme="dark"] .chat-messages {
 }
 #page-friends .chat-panel {
   background: var(--card);
+}
+/* Center plant modal title */
+.modal-plant-title {
+  justify-content: center !important;
+  text-align: center;
+  width: 100%;
+}
+
+/* Center plot-upgrade-box content (max state + title) like image */
+.plot-upgrade-box {
+  text-align: center;
+}
+.plot-upgrade-box h4 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+.plot-upgrade-box .bulk-hint {
+  margin-bottom: 0;
+  text-align: center;
+}
+#modal-plant .plot-upgrade-box {
+  text-align: center;
+}
+#modal-plant .plot-upgrade-box h4 {
+  justify-content: center;
+  text-align: center;
 }

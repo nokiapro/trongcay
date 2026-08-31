@@ -2015,7 +2015,7 @@ function openEmptyPlotModal(plotId) {
   const tiers = (typeof Features !== 'undefined' && Features.PLOT_UPGRADE_TIERS)
     ? Features.PLOT_UPGRADE_TIERS : [];
   const higher = tiers.filter(x => x.mult > curMult);
-  let html = '<div class="plot-upgrade-box" style="margin-bottom:12px"><h4><i class="fa-solid fa-bolt"></i> Ô #' + (plotId + 1) + ' · <span class="plot-mult-badge">x' + curMult + '</span></h4>';
+  let html = '<div class="plot-upgrade-box" style="margin-bottom:12px"><h4 class="plot-upgrade-title"><i class="fa-solid fa-bolt"></i> Ô #' + (plotId + 1) + ' · <span class="plot-mult-badge">x' + curMult + '</span></h4>';
   if (!higher.length) {
     html += '<p class="bulk-hint">Đã max x50</p></div>';
   } else {
