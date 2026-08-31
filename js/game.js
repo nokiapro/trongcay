@@ -1068,7 +1068,7 @@ const Game = {
         Features.trackQuest('plant', planted);
         if (fairyWateredN > 0) Features.trackQuest('water', fairyWateredN * 3);
       }
-      this.addActivity(`Trồng ${planted} ô ${plant.name}` + (fairyWateredN ? ` · 🧚 Tiên tưới ${fairyWateredN} ô` : '') + ' (đồng bộ giờ)');
+      this.addActivity(`Trồng ${planted} ô ${plant.name}` + (fairyWateredN ? ` · Tiên tưới ${fairyWateredN} ô` : '') + ' (đồng bộ giờ)');
       const ach = this.checkAchievements();
       await savePlayer();
       this.notifyAchievements(ach);
@@ -2298,16 +2298,19 @@ const Game = {
     const uniquePlotsHarvested = harvestedPlotKeys.size;
     if (totalHarvest || totalPlant) {
       notes.push(
-        `NYC: thu ${uniquePlotsHarvested} ô` +
-        (totalHarvest > uniquePlotsHarvested ? ` (${totalHarvest} lần)` : '') +
-        ` · trồng/trồng lại ${totalPlant} lần · sản lượng ${totalYieldAmount}`
+        `NYC: thu hoạch ${uniquePlotsHarvested} ô - ${totalYieldAmount} sản phẩm - trồng ${totalPlant} vụ` +
+        (totalHarvest > uniquePlotsHarvested ? ` (${totalHarvest} lần thu)` : '')
       );
       
       Object.keys(harvestByGarden).sort((a,b)=>Number(a)-Number(b)).forEach(gi => {
         const g = harvestByGarden[gi];
         const nPlots = (g.plots && g.plots.size) || 0;
+        const nCyc = g.cycles || 0;
+        const nAmt = g.amount || 0;
+        const nPlant = g.planted || 0;
         notes.push(
-          `V${Number(gi)+1}: ${nPlots} ô · ${g.cycles||0} lần · ${g.amount||0} sp`
+          `Vườn ${Number(gi)+1}: thu hoạch ${nPlots} ô - ${nAmt} sản phẩm - trồng ${nPlant} vụ` +
+          (nCyc > nPlots ? ` (${nCyc} lần thu)` : '')
         );
       });
     }
@@ -2367,9 +2370,8 @@ const Game = {
     const _uniqP = harvestedPlotKeys.size;
     lines.push(
       'NYC: ' + (nycActive ? 'ĐANG BẬT' : 'tắt/hết hạn') +
-      ' · thu ' + _uniqP + ' ô' +
-      (totalHarvest > _uniqP ? ' (' + totalHarvest + ' lần thu)' : '') +
-      ' · trồng/trồng lại ' + totalPlant + ' lần · sản lượng ' + totalYieldAmount
+      ' · thu hoạch ' + _uniqP + ' ô - được ' + totalYieldAmount + ' sản phẩm - trồng ' + totalPlant + ' vụ' +
+      (totalHarvest > _uniqP ? ' (' + totalHarvest + ' lần thu)' : '')
     );
     
     
@@ -2404,12 +2406,13 @@ const Game = {
             growLabel = ' · chín ~' + Math.round(est) + 's/vòng (ước lượng)';
           }
         }
+        // Dựa trên thời gian offline + Tiên tưới nước, bón phân (và trạng thái ô đất) đến khi online lại
         lines.push(
-          'Vườn ' + (Number(gi) + 1) + ': ' +
-          nPlots + ' ô · ' + nCyc + ' lần thu · sản lượng ' + nAmt +
-          (nPlant ? ' · trồng lại ' + nPlant : '') +
+          'Vườn ' + (Number(gi) + 1) + ': thu hoạch được ' + nPlots + ' ô - được ' + nAmt + ' sản phẩm - trồng được ' + nPlant + ' vụ' +
+          (nCyc > nPlots ? ' (' + nCyc + ' lần thu)' : '') +
           (plantLabel ? ' · ' + plantLabel : '') +
-          growLabel
+          growLabel +
+          ' (theo thời gian offline + Tiên tưới/bón phân)'
         );
       });
     } else if (totalHarvest || totalPlant) {
@@ -2418,7 +2421,8 @@ const Game = {
     lines.push(
       'Tổng quan: ' + totalPlotsAll + ' ô sở hữu · NYC bật ' + nycEnabledGardens + ' vườn (' + plotsOnNycGardens + ' ô)' +
       ' · có cây đầu offline: ' + plotsWithPlantAtStart +
-      ' · đã thu ' + _uniqP + ' ô / ' + totalHarvest + ' lần · sản lượng ' + totalYieldAmount
+      ' · thu hoạch ' + _uniqP + ' ô - ' + totalYieldAmount + ' sản phẩm - trồng ' + totalPlant + ' vụ' +
+      (totalHarvest > _uniqP ? ' (' + totalHarvest + ' lần thu)' : '')
     );
     if (totalPlotsAll > 0 && _uniqP > 0 && _uniqP < plotsOnNycGardens) {
       lines.push(
