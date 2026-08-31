@@ -11,7 +11,15 @@ const Game = {
 
   getPlayer() { return currentPlayer; },
   getPlants() { return currentPlants; },
-  getPlant(id) { return currentPlants.find(p => p.id === id); },
+  getPlant(id) {
+    if (id == null || id === '') return null;
+    const list = currentPlants || [];
+    let found = list.find(p => p && p.id === id);
+    if (found) return found;
+    const sid = String(id);
+    found = list.find(p => p && String(p.id) === sid);
+    return found || null;
+  },
   getFertilizer(id) { return DEFAULT_FERTILIZERS.find(f => f.id === id); },
   getFertilizers() { return DEFAULT_FERTILIZERS; },
   getProtect(id) { return DEFAULT_PROTECTS.find(p => p.id === id); },
@@ -749,20 +757,21 @@ const Game = {
   },
 
   getEffectiveGrowTime(plot, atMs) {
-    const plant = this.getPlant(plot.plantId);
-    if (!plant) return 9999;
-    let t = plant.growTime || 300;
+    const plant = plot && plot.plantId ? this.getPlant(plot.plantId) : null;
+    // Thiếu định nghĩa cây: dùng mặc định 300s rồi vẫn chia tốc độ ô (tránh offline coi như 9999s → 0 vụ)
+    let t = (plant && plant.growTime) ? Number(plant.growTime) : 300;
+    if (!Number.isFinite(t) || t <= 0) t = 300;
 
-    const waterBonus = Math.min(plot.waterCount || 0, 3) * 0.12;
+    const waterBonus = Math.min((plot && plot.waterCount) || 0, 3) * 0.12;
     t *= (1 - waterBonus);
 
-    if (plot.fertilizerId) {
+    if (plot && plot.fertilizerId) {
       const fert = this.getFertilizer(plot.fertilizerId);
       if (fert) t *= (1 - (fert.timeReduce || 0));
     }
 
     const weather = this.getWeather();
-    t /= weather.mult;
+    if (weather && weather.mult > 0) t /= weather.mult;
 
     const sm = this.getPlotSpeedMult(plot, atMs);
     if (sm > 1) t /= sm;
@@ -2471,10 +2480,16 @@ const Game = {
               if (this.isFairyActive()) {
                 plot.waterCount = 3;
                 plot.watered = true;
+                if (!plot.lastWatered || plot.lastWatered < from) plot.lastWatered = from;
               }
-              const growSec = Math.max(20, this.getEffectiveGrowTime(plot, endMs));
+              // Lấy tốc độ nhanh hơn trong khoảng offline (from vs end) để khớp realtime x50
+              const growFrom = Math.max(20, this.getEffectiveGrowTime(plot, from));
+              const growEnd = Math.max(20, this.getEffectiveGrowTime(plot, endMs));
+              const growSec = Math.max(20, Math.min(growFrom, growEnd));
               const readyAt = plantedAt + growSec * 1000;
-              if (readyAt > endMs) break;
+              // Chín trong cửa sổ offline HOẶC đã chín theo isReadyAt(endMs)
+              const readyNow = readyAt <= endMs || this.isReadyAt(plot, endMs) || this.isReady(plot);
+              if (!readyNow) break;
 
               const harvestT = Math.min(endMs, Math.max(readyAt, from));
               let r;
@@ -2587,61 +2602,13 @@ const Game = {
     if (fairyCycles) notes.push(`Tiên ${fairyCycles} lần chu kỳ 3h`);
     const uniquePlotsHarvested = harvestedPlotKeys.size;
     if (totalHarvest || totalPlant || nycGardenIndexes.length) {
+      // Chỉ tóm tắt tổng — chi tiết từng vườn nằm ở các dòng riêng bên dưới (tránh 1 dòng siêu dài trên mobile)
       notes.push(
         `NYC: thu hoạch ${uniquePlotsHarvested} ô - ${totalYieldAmount} sản phẩm - ${totalHarvest} vụ (trồng lại ${totalPlant})` +
         (totalHarvest > uniquePlotsHarvested && uniquePlotsHarvested > 0
           ? ` · TB ~${(totalHarvest / Math.max(1, uniquePlotsHarvested)).toFixed(1)} vòng/ô`
           : '')
       );
-
-      // Luôn liệt kê MỌI vườn NYC đang bật (kể cả 0 vụ) — tránh thiếu Vườn 1 trong Tóm tắt
-      const noteGardenIndexes = nycGardenIndexes.length
-        ? nycGardenIndexes
-        : Object.keys(harvestByGarden).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
-      noteGardenIndexes.forEach(giNum => {
-        const gi = String(giNum);
-        const g = harvestByGarden[gi] || {
-          plots: new Set(), cycles: 0, amount: 0, planted: 0, plantIds: {}
-        };
-        const nPlots = (g.plots && g.plots.size) || 0;
-        const nCyc = g.cycles || 0;
-        const nAmt = g.amount || 0;
-        const nPlant = g.planted || 0;
-        const totalSlots = plotCountByGarden[gi] || 0;
-        const nO = nPlots > 0 ? nPlots : totalSlots;
-        const vu = nCyc;
-        const avgRing = nO > 0 && vu > 0 ? (vu / nO).toFixed(1) : '0';
-        let seedName = '';
-        if (g.plantIds && Object.keys(g.plantIds).length) {
-          const top = Object.keys(g.plantIds).sort((a, b) => g.plantIds[b] - g.plantIds[a])[0];
-          if (top) {
-            const pl = this.getPlant(top);
-            seedName = (pl && pl.name) ? pl.name : top;
-          }
-        }
-        if (!seedName) {
-          try {
-            const gcfg = this.getNycConfigForGarden(giNum);
-            if (gcfg && gcfg.plantId) {
-              const pl = this.getPlant(gcfg.plantId);
-              seedName = (pl && pl.name) ? pl.name : String(gcfg.plantId);
-            }
-          } catch (_) {}
-        }
-        let zeroHint = '';
-        if (vu === 0) {
-          const d = gardenDiag[gi] || {};
-          if ((d.withPlant || 0) === 0 && (d.seedLeft || 0) <= 0) zeroHint = ' · hết hạt';
-          else if ((d.withPlant || 0) === 0) zeroHint = ' · không có cây';
-          else if (d.sampleGrow != null && offlineGap > 0 && d.sampleGrow * 1000 > offlineGap)
-            zeroHint = ' · chưa chín (~' + Math.round(d.sampleGrow) + 's, ô x' + (d.maxMult || 1) + ')';
-          else zeroHint = ' · 0 vụ';
-        }
-        const oLabel = vu === 0 && totalSlots > 0 ? ('0/' + totalSlots + ' ô') : (nO + ' ô');
-        notes.push(
-          `Vườn ${giNum + 1}: hạt ${seedName || '—'} - ${oLabel} - ${vu} vụ (~${avgRing} vòng/ô) - thu ${nAmt} cái` + zeroHint
-        );
-      });
     }
 
     
@@ -2767,16 +2734,17 @@ const Game = {
           const d = gardenDiag[gi] || {};
           const growEff = d.sampleGrow != null ? Math.round(d.sampleGrow) : null;
           const mult = d.maxMult || 1;
+          const offSec = Math.max(1, Math.round((offlineMs || 0) / 1000));
           if (!d.cfgPlant && seedName === '—') {
             reason = ' · chưa chọn hạt NYC';
           } else if ((d.withPlant || 0) === 0 && (d.seedLeft || 0) <= 0) {
             reason = ' · hết hạt, không trồng được';
           } else if ((d.withPlant || 0) === 0 && nPlant === 0) {
             reason = ' · không có cây / không trồng được lúc off';
-          } else if (growEff != null && offlineMs > 0 && growEff * 1000 > offlineMs && mult <= 1.01) {
-            reason = ' · chưa chín (hiệu lực ~' + growEff + 's, ô x' + mult + ' — cần nâng tốc độ ô hoặc off lâu hơn)';
-          } else if (growEff != null && offlineMs > 0 && growEff * 1000 > offlineMs) {
-            reason = ' · chưa chín trong lúc vắng (hiệu lực ~' + growEff + 's, ô x' + mult + ')';
+          } else if (growEff != null && offlineMs > 0 && growEff > offSec) {
+            reason = ' · chưa chín (hiệu lực ~' + growEff + 's > offline ' + offSec + 's, ô x' + mult + ')';
+          } else if (growEff != null) {
+            reason = ' · có cây nhưng chưa đủ thời gian còn lại để chín (hiệu lực ~' + growEff + 's, offline ' + offSec + 's, ô x' + mult + ')';
           } else if ((d.withPlant || 0) > 0) {
             reason = ' · có cây nhưng chưa tới lúc chín trong thời gian vắng';
           } else {
