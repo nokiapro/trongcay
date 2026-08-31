@@ -1903,26 +1903,10 @@ const Game = {
     let planted = 0;
     let replantName = '';
     if (doReplant && cfg && cfg.plantId) {
-      if (this._nycPlantOneAt(plot, cfg, t)) {
+      if (this._nycPlantOneAt(plot, cfg, t, gi)) {
         planted = 1;
         const rp = this.getPlant(cfg.plantId);
         replantName = (rp && rp.name) ? rp.name : String(cfg.plantId);
-        
-        if (this.isFairyActiveAt(t) && this.isFairyGardenEnabled(gi)) {
-          plot.waterCount = 3;
-          plot.watered = true;
-          plot.lastWatered = t;
-          const fcfg = this.getFairyConfigForGarden
-            ? this.getFairyConfigForGarden(gi)
-            : this.getFairyConfig();
-          if (fcfg && fcfg.useFertilizer) {
-            const fid = this.takeFertFromBagForFairy(fcfg);
-            if (fid) {
-              plot.fertilizerId = fid;
-              plot.fertilizedAt = t;
-            }
-          }
-        }
       }
     }
     
@@ -2029,13 +2013,17 @@ const Game = {
     let nycEnabledGardens = 0;
     let plotsOnNycGardens = 0;
     let plotsWithPlantAtStart = 0;
+    const plotCountByGarden = {};
+    const nycGardenIndexes = [];
     for (let gi0 = 0; gi0 < (currentPlayer.gardens || []).length; gi0++) {
       const pl = currentPlayer.gardens[gi0];
       if (!Array.isArray(pl)) continue;
       totalPlotsAll += pl.length;
+      plotCountByGarden[String(gi0)] = pl.length;
       if (this.isNycGardenEnabled(gi0)) {
         nycEnabledGardens++;
         plotsOnNycGardens += pl.length;
+        nycGardenIndexes.push(gi0);
         pl.forEach(p => { if (p && p.plantId) plotsWithPlantAtStart++; });
       }
     }
@@ -2126,10 +2114,22 @@ const Game = {
           if (!gcfg.plantId) continue;
           currentPlayer.activeGarden = gi;
           currentPlayer.plots = currentPlayer.gardens[gi];
-          const n = this._nycPlantEmptiesAt(currentPlayer.plots, gcfg, plantAt);
+          const n = this._nycPlantEmptiesAt(currentPlayer.plots, gcfg, plantAt, gi);
           if (n > 0) {
             totalPlant += n;
             changed = true;
+            const gKey = String(gi);
+            if (!harvestByGarden[gKey]) {
+              harvestByGarden[gKey] = {
+                plots: new Set(), cycles: 0, amount: 0, planted: 0,
+                plantIds: {}, growSamples: []
+              };
+            }
+            harvestByGarden[gKey].planted += n;
+            if (gcfg.plantId) {
+              harvestByGarden[gKey].plantIds[gcfg.plantId] =
+                (harvestByGarden[gKey].plantIds[gcfg.plantId] || 0) + n;
+            }
           }
           currentPlayer.gardens[gi] = currentPlayer.plots;
         }
@@ -2193,10 +2193,22 @@ const Game = {
           recordHarvestStat(r, gi + ':' + i, growSec);
         }
         if (canReplant && cfg && cfg.plantId) {
-          const extra = this._nycPlantEmptiesAt(plots, cfg, t);
+          const extra = this._nycPlantEmptiesAt(plots, cfg, t, gi);
           if (extra > 0) {
             totalPlant += extra;
             changed = true;
+            const gKey = String(gi);
+            if (!harvestByGarden[gKey]) {
+              harvestByGarden[gKey] = {
+                plots: new Set(), cycles: 0, amount: 0, planted: 0,
+                plantIds: {}, growSamples: []
+              };
+            }
+            harvestByGarden[gKey].planted += extra;
+            if (cfg.plantId) {
+              harvestByGarden[gKey].plantIds[cfg.plantId] =
+                (harvestByGarden[gKey].plantIds[cfg.plantId] || 0) + extra;
+            }
           }
         }
         currentPlayer.gardens[gi] = plots;
@@ -2219,19 +2231,22 @@ const Game = {
       if (nextReady != null && (!nextEv || nextReady <= nextEv.t)) {
         if (nextReady === lastReadyStamp) {
           stuckSame++;
-          if (stuckSame > 3) {
-            
-            nycHarvestReplantAt(Math.min(now, nextReady + 1));
+          if (stuckSame > 2) {
+            // Force harvest at/after ready time to avoid losing cycles on float/edge cases
+            const forceT = Math.min(now, Math.max(nextReady, nextReady + 50));
+            if (nycCovered) nycHarvestReplantAt(forceT);
             stuckSame = 0;
             lastReadyStamp = -1;
             const still = this._nextNycReadyAt(now, scanReadyOpts);
-            if (still === nextReady) {
+            if (still != null && still <= forceT + 1) {
               this.forEachGarden((plots, gi2) => {
                 if (!this.isNycGardenEnabled(gi2)) return;
                 (plots || []).forEach((plot) => {
-                  if (plot && plot.plantId && plot.plantedAt && this.getReadyAtMs(plot) === nextReady) {
-                    
-                    if (plot.plantId) plot.plantedAt = nextReady + 1;
+                  if (!plot || !plot.plantId || !plot.plantedAt) return;
+                  const ra = this.getReadyAtMs(plot);
+                  if (ra != null && ra <= forceT + 1) {
+                    // Nudge plantedAt so next cycle can progress
+                    plot.plantedAt = Math.min(plot.plantedAt, forceT - 1);
                   }
                 });
               });
@@ -2298,8 +2313,8 @@ const Game = {
     const uniquePlotsHarvested = harvestedPlotKeys.size;
     if (totalHarvest || totalPlant) {
       notes.push(
-        `NYC: thu hoạch ${uniquePlotsHarvested} ô - ${totalYieldAmount} sản phẩm - trồng ${totalPlant} vụ` +
-        (totalHarvest > uniquePlotsHarvested ? ` (${totalHarvest} lần thu)` : '')
+        `NYC: thu hoạch ${uniquePlotsHarvested} ô - ${totalYieldAmount} sản phẩm - ${totalHarvest} vụ (trồng lại ${totalPlant})` +
+        (totalHarvest > uniquePlotsHarvested ? ` · TB ~${(totalHarvest / Math.max(1, uniquePlotsHarvested)).toFixed(1)} vòng/ô` : '')
       );
       
       Object.keys(harvestByGarden).sort((a,b)=>Number(a)-Number(b)).forEach(gi => {
@@ -2308,9 +2323,19 @@ const Game = {
         const nCyc = g.cycles || 0;
         const nAmt = g.amount || 0;
         const nPlant = g.planted || 0;
+        const nO = nPlots > 0 ? nPlots : (plotCountByGarden[gi] || nPlant || 0);
+        let seedName = '';
+        if (g.plantIds) {
+          const top = Object.keys(g.plantIds).sort((a, b) => g.plantIds[b] - g.plantIds[a])[0];
+          if (top) {
+            const pl = this.getPlant(top);
+            seedName = (pl && pl.name) ? pl.name : top;
+          }
+        }
+        const vu = nCyc > 0 ? nCyc : nPlant;
+        const avgRing = nO > 0 && vu > 0 ? (vu / nO).toFixed(1) : '0';
         notes.push(
-          `Vườn ${Number(gi)+1}: thu hoạch ${nPlots} ô - ${nAmt} sản phẩm - trồng ${nPlant} vụ` +
-          (nCyc > nPlots ? ` (${nCyc} lần thu)` : '')
+          `Vườn ${Number(gi)+1}: hạt ${seedName || '—'} - ${nO} ô - ${vu} vụ (~${avgRing} vòng/ô) - thu ${nAmt} cái`
         );
       });
     }
@@ -2375,54 +2400,81 @@ const Game = {
     );
     
     
-    const gardenKeys = Object.keys(harvestByGarden).sort((a, b) => Number(a) - Number(b));
-    if (gardenKeys.length) {
-      gardenKeys.forEach(gi => {
-        const g = harvestByGarden[gi];
+    // Mỗi vườn NYC = 1 dòng báo cáo: hạt - số ô - số vụ - số cái thu
+    const reportGardenIndexes = nycGardenIndexes.length
+      ? nycGardenIndexes
+      : Object.keys(harvestByGarden).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
+    if (reportGardenIndexes.length) {
+      reportGardenIndexes.forEach(giNum => {
+        const gi = String(giNum);
+        const g = harvestByGarden[gi] || {
+          plots: new Set(), cycles: 0, amount: 0, planted: 0, plantIds: {}, growSamples: []
+        };
         const nPlots = (g.plots && g.plots.size) || 0;
         const nCyc = g.cycles || 0;
         const nAmt = g.amount || 0;
         const nPlant = g.planted || 0;
+        const totalSlots = plotCountByGarden[gi] || 0;
+        const nO = nPlots > 0 ? nPlots : (totalSlots || nPlant || 0);
+        const nVu = nCyc; // 1 lần thu hoạch = 1 vụ
         
-        let plantLabel = '';
-        if (g.plantIds) {
+        let seedName = '—';
+        let baseGrow = '';
+        let cfgSeed = '';
+        try {
+          const gcfg = this.getNycConfigForGarden ? this.getNycConfigForGarden(giNum) : null;
+          if (gcfg && gcfg.plantId) {
+            const cpl = this.getPlant(gcfg.plantId);
+            cfgSeed = (cpl && cpl.name) ? cpl.name : String(gcfg.plantId);
+          }
+        } catch (_) {}
+        if (g.plantIds && Object.keys(g.plantIds).length) {
           const top = Object.keys(g.plantIds).sort((a, b) => g.plantIds[b] - g.plantIds[a])[0];
           if (top) {
             const pl = this.getPlant(top);
-            plantLabel = (pl && pl.name) ? pl.name : top;
-            if (pl && pl.growTime) plantLabel += ' (gốc ' + Math.round(pl.growTime) + 's)';
+            seedName = (pl && pl.name) ? pl.name : top;
+            if (pl && pl.growTime) baseGrow = ' (gốc ' + Math.round(pl.growTime) + 's)';
           }
+        } else if (cfgSeed) {
+          seedName = cfgSeed;
+          const cpl = this.getPlant((this.getNycConfigForGarden(giNum) || {}).plantId);
+          if (cpl && cpl.growTime) baseGrow = ' (gốc ' + Math.round(cpl.growTime) + 's)';
         }
         
         let growLabel = '';
+        let avgRing = '';
+        if (nO > 0 && nVu > 0) {
+          avgRing = ' (~' + (nVu / nO).toFixed(1) + ' vòng/ô)';
+        }
         if (g.growSamples && g.growSamples.length) {
           const avg = g.growSamples.reduce((s, x) => s + x, 0) / g.growSamples.length;
           growLabel = ' · chín ~' + Math.round(avg) + 's/vòng';
-        } else if (nPlots > 0 && nCyc > 0 && offlineMs > 0) {
-          
-          const perPlot = nCyc / nPlots;
+        } else if (nO > 0 && nVu > 0 && offlineMs > 0) {
+          const perPlot = nVu / nO;
           if (perPlot > 0) {
             const est = (offlineMs / 1000) / perPlot;
             growLabel = ' · chín ~' + Math.round(est) + 's/vòng (ước lượng)';
           }
         }
-        // Dựa trên thời gian offline + Tiên tưới nước, bón phân (và trạng thái ô đất) đến khi online lại
+        // Format: Vườn X: hạt Y - Z ô - N vụ - thu M cái
         lines.push(
-          'Vườn ' + (Number(gi) + 1) + ': thu hoạch được ' + nPlots + ' ô - được ' + nAmt + ' sản phẩm - trồng được ' + nPlant + ' vụ' +
-          (nCyc > nPlots ? ' (' + nCyc + ' lần thu)' : '') +
-          (plantLabel ? ' · ' + plantLabel : '') +
-          growLabel +
-          ' (theo thời gian offline + Tiên tưới/bón phân)'
+          'Vườn ' + (giNum + 1) + ': hạt ' + seedName + baseGrow +
+          ' - ' + nO + ' ô - ' + nVu + ' vụ' + avgRing +
+          ' - thu hoạch ' + nAmt + ' cái' +
+          (nPlant ? ' · trồng lại ' + nPlant : '') +
+          growLabel
         );
       });
     } else if (totalHarvest || totalPlant) {
       lines.push('Chi tiết vườn: không tách được theo vườn');
+    } else if (nycEnabledGardens > 0) {
+      lines.push('Chi tiết vườn: NYC bật nhưng chưa thu được (cây chưa chín / hết hạt / thời gian vắng quá ngắn)');
     }
     lines.push(
       'Tổng quan: ' + totalPlotsAll + ' ô sở hữu · NYC bật ' + nycEnabledGardens + ' vườn (' + plotsOnNycGardens + ' ô)' +
       ' · có cây đầu offline: ' + plotsWithPlantAtStart +
-      ' · thu hoạch ' + _uniqP + ' ô - ' + totalYieldAmount + ' sản phẩm - trồng ' + totalPlant + ' vụ' +
-      (totalHarvest > _uniqP ? ' (' + totalHarvest + ' lần thu)' : '')
+      ' · thu hoạch ' + _uniqP + ' ô - ' + totalYieldAmount + ' sản phẩm - ' + totalHarvest + ' vụ (trồng lại ' + totalPlant + ')' +
+      (totalHarvest > _uniqP && _uniqP > 0 ? ' · TB ~' + (totalHarvest / _uniqP).toFixed(1) + ' vòng/ô' : '')
     );
     if (totalPlotsAll > 0 && _uniqP > 0 && _uniqP < plotsOnNycGardens) {
       lines.push(
@@ -2501,7 +2553,7 @@ const Game = {
   },
 
   
-  _nycPlantOneAt(plot, cfg, plantTime) {
+  _nycPlantOneAt(plot, cfg, plantTime, gi) {
     if (!plot || plot.plantId || !cfg || !cfg.plantId) return false;
     const kind = cfg.seedKind === 'star' ? 'star' : 'normal';
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
@@ -2522,13 +2574,29 @@ const Game = {
     plot.lastWatered = null;
     plot.fertilizerId = null;
     plot.fertilizedAt = null;
+    
+    if (typeof gi === 'number' && this.isFairyActiveAt(plantTime) && this.isFairyGardenEnabled(gi)) {
+      plot.waterCount = 3;
+      plot.watered = true;
+      plot.lastWatered = plantTime;
+      const fcfg = this.getFairyConfigForGarden
+        ? this.getFairyConfigForGarden(gi)
+        : this.getFairyConfig();
+      if (fcfg && fcfg.useFertilizer) {
+        const fid = this.takeFertFromBagForFairy(fcfg);
+        if (fid) {
+          plot.fertilizerId = fid;
+          plot.fertilizedAt = plantTime;
+        }
+      }
+    }
     currentPlayer.stats = currentPlayer.stats || {};
     currentPlayer.stats.planted = (currentPlayer.stats.planted || 0) + 1;
     return true;
   },
 
   
-  _nycPlantEmptiesAt(plots, cfg, t) {
+  _nycPlantEmptiesAt(plots, cfg, t, gi) {
     if (!cfg || !cfg.plantId || !plots) return 0;
     const mode = cfg.mode === 'count' ? 'count' : 'all';
     
@@ -2539,7 +2607,7 @@ const Game = {
     for (let i = 0; i < plots.length && n < limit; i++) {
       const plot = plots[i];
       if (!plot || plot.plantId) continue;
-      if (this._nycPlantOneAt(plot, cfg, t)) n++;
+      if (this._nycPlantOneAt(plot, cfg, t, gi)) n++;
       else break; 
     }
     return n;
@@ -3490,14 +3558,16 @@ const Game = {
     if (!report || !currentPlayer) return;
     let lines = Array.isArray(report.lines) ? report.lines.slice() : [];
     
-    if (lines.length > 12) {
+    // Ưu tiên giữ dòng từng vườn + tóm tắt; cho phép nhiều dòng hơn (nhiều vườn)
+    const MAX_OFFLINE_LINES = 40;
+    if (lines.length > MAX_OFFLINE_LINES) {
       const head = lines[0];
       const rest = lines.slice(1);
       const prefer = rest.filter(l =>
-        /^(Vườn \d+|Tóm tắt:|NYC:|Tiên:|Mưa:|Tổng quan:|Chi tiết thu|V\d+:)/.test(String(l))
+        /^(Vườn \d+|Tóm tắt:|NYC:|Tiên:|Mưa:|Tổng quan:|Chi tiết thu|Giúp việc:)/.test(String(l))
       );
       const other = rest.filter(l => !prefer.includes(l));
-      lines = [head].concat(prefer).concat(other).slice(0, 12);
+      lines = [head].concat(prefer).concat(other).slice(0, MAX_OFFLINE_LINES);
     }
     
     for (let i = lines.length - 1; i >= 0; i--) {
