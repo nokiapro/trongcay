@@ -990,11 +990,19 @@ button.btn:active {
 .inv-item .name {
   font-weight: 700;
   margin: 6px 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+  line-height: 1.25;
 }
 
 .inv-item .qty {
   color: var(--text-muted);
   font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+  line-height: 1.25;
 }
 
 .inv-item .actions {
@@ -1202,9 +1210,48 @@ button.btn:active {
 }
 .seed-option-compact .name {
   font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+  line-height: 1.25;
 }
 .seed-option-compact .qty {
   font-size: 0.78rem !important;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+  line-height: 1.25;
+}
+.seed-option-compact .grow-time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  margin-top: 1px;
+}
+.seed-option .name.text-mid,
+.seed-option-compact .name.text-mid,
+.inv-item .name.text-mid {
+  font-size: 0.78rem !important;
+  letter-spacing: -0.02em;
+}
+.seed-option .name.text-long,
+.seed-option-compact .name.text-long,
+.inv-item .name.text-long {
+  font-size: 0.68rem !important;
+  letter-spacing: -0.03em;
+}
+.seed-option .qty.text-mid,
+.seed-option-compact .qty.text-mid,
+.inv-item .qty.text-mid {
+  font-size: 0.72rem !important;
+  letter-spacing: -0.02em;
+}
+.seed-option .qty.text-long,
+.seed-option-compact .qty.text-long,
+.inv-item .qty.text-long {
+  font-size: 0.62rem !important;
+  letter-spacing: -0.04em;
 }
 .plant-qty-row {
   display: flex;
@@ -1278,11 +1325,26 @@ html[data-theme="dark"] .plot-progress {
 
 .seed-option .name {
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+  line-height: 1.25;
 }
 
 .seed-option .qty {
   font-size: 0.85rem;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+  line-height: 1.25;
+}
+
+.seed-option .grow-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 
@@ -1575,7 +1637,8 @@ html[data-theme="dark"] .plot-progress {
 }
 .inv-item { padding: 12px 8px; }
 .inv-item .icon { font-size: 1.8rem; }
-.inv-item .name { font-size: 0.85rem; }
+.inv-item .name { font-size: 0.85rem; white-space: nowrap; overflow: hidden; max-width: 100%; }
+.inv-item .qty { white-space: nowrap; overflow: hidden; max-width: 100%; }
 
 @media (max-width: 600px) {
   .shop-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }

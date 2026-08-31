@@ -2071,11 +2071,16 @@ function openPlantModal(plotId) {
       const opt = document.createElement('div');
       opt.className = 'seed-option seed-option-compact';
       const maxPlant = Math.min(have, empty);
+      const nameStr = plant.name + (starN ? ' ⭐' : '');
+      const qtyStr = (starN ? '⭐ ' : '') + have.toLocaleString() + (starN ? ' (⭐' + starN + ')' : '');
+      const nameLong = nameStr.length > 14 ? ' text-long' : (nameStr.length > 10 ? ' text-mid' : '');
+      const qtyLong = qtyStr.length > 16 ? ' text-long' : (qtyStr.length > 12 ? ' text-mid' : '');
       opt.innerHTML = `
         <span class="icon">${plant.icon}</span>
         <div class="info" style="flex:1;min-width:0">
-          <div class="name">${plant.name}${starN ? ' ⭐' : ''}</div>
-          <div class="qty">Còn ${have.toLocaleString()}${starN ? ' (⭐' + starN + ')' : ''} · ${Game.formatTime(plant.growTime)}</div>
+          <div class="name${nameLong}">${nameStr}</div>
+          <div class="qty${qtyLong}">${qtyStr}</div>
+          <div class="grow-time">${Game.formatTime(plant.growTime)}</div>
         </div>
         <div class="plant-qty-row">
           <input type="number" class="plant-qty-input" min="1" max="${Math.max(1, maxPlant)}" value="1" ${maxPlant < 1 ? 'disabled' : ''} />
@@ -3453,11 +3458,15 @@ function renderInventory() {
       if (!plant) return '';
       const qty = bag[id] || 0;
       const unit = unitFn(plant);
+      const nameStr = plant.name + (kind === 'star' ? ' ⭐' : '');
+      const nameLong = nameStr.length > 12 ? ' text-long' : (nameStr.length > 8 ? ' text-mid' : '');
+      const qtyStr = 'x' + qty.toLocaleString() + ' · ' + unit + '🪙/hạt';
+      const qtyLong = qtyStr.length > 18 ? ' text-long' : (qtyStr.length > 14 ? ' text-mid' : '');
       return `
         <div class="inv-item">
           <div class="icon">${plant.icon}${kind === 'star' ? ' ⭐' : ''}</div>
-          <div class="name">${plant.name}${kind === 'star' ? ' ⭐' : ''}</div>
-          <div class="qty">x${qty.toLocaleString()} · ${unit}🪙/hạt</div>
+          <div class="name${nameLong}">${nameStr}</div>
+          <div class="qty${qtyLong}">${qtyStr}</div>
           <div class="actions">
             <button class="btn btn-success btn-sell-seed" data-id="${id}" data-kind="${kind}" data-qty="1">Bán 1</button>
             <button class="btn ${kind === 'star' ? 'btn-warning' : 'btn-primary'} btn-sell-seed" data-id="${id}" data-kind="${kind}" data-qty="all">Bán hết</button>
