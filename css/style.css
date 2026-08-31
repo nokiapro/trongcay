@@ -7150,7 +7150,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .btn-purple {
   background: var(--btn-purple-bg) !important;
   color: var(--btn-purple-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   font-weight: 700;
 }
 .btn-purple:hover { filter: brightness(1.08); }
@@ -7158,7 +7158,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .btn-timer {
   background: var(--btn-timer-bg) !important;
   color: var(--btn-timer-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   font-weight: 700;
 }
 .btn-timer.ready {
@@ -7184,7 +7184,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .inventory-tabs .tab-btn {
   background: var(--btn-secondary-bg) !important;
   color: var(--btn-secondary-color) !important;
-  border: 1px solid var(--btn-secondary-border) !important;
+  border: none !important;
 }
 .shop-tab.active,
 .rank-tab.active,
@@ -7890,4 +7890,61 @@ button.btn,
 .btn:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--primary) 45%, transparent);
   outline-offset: 2px;
+}
+
+
+/* force-no-btn-border — bỏ viền nút (trừ focus ring) */
+.btn,
+button.btn,
+.btn-sm,
+.btn-primary,
+.btn-secondary,
+.btn-success,
+.btn-danger,
+.btn-warning,
+.btn-purple,
+.btn-timer,
+.btn-block,
+.btn-icon,
+.pill-dd-trigger,
+.shop-tab,
+.tab-btn,
+.rank-tab,
+.level-preset,
+.qty-stepper button,
+.friend-actions .btn,
+.garden-tools-menu button,
+#btn-tools-menu,
+#btn-support-menu,
+#btn-add-friend,
+#btn-send-chat {
+  border: none !important;
+  outline: none;
+}
+.btn:focus,
+button.btn:focus {
+  outline: none;
+}
+.btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  outline-offset: 2px;
+}
+
+/* khôi phục radius 12px nếu bị override */
+.btn,
+button.btn,
+.btn-sm,
+.btn-primary,
+.btn-secondary,
+.btn-success,
+.btn-danger,
+.btn-warning,
+.btn-purple,
+.btn-timer,
+.btn-block,
+.pill-dd-trigger,
+.shop-tab,
+.tab-btn,
+.rank-tab {
+  border-radius: 12px !important;
 }
