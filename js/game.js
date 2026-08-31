@@ -89,41 +89,70 @@ const Game = {
 
   ensureGardens() {
     if (!currentPlayer) return;
-    
+
+    // Firebase đôi khi lưu gardens dạng object {0:[],1:[]} thay vì array
     if (currentPlayer.gardens && !Array.isArray(currentPlayer.gardens) && typeof currentPlayer.gardens === 'object') {
       const keys = Object.keys(currentPlayer.gardens).sort((a, b) => Number(a) - Number(b));
       currentPlayer.gardens = keys.map(k => currentPlayer.gardens[k]);
     }
+
     if (!Array.isArray(currentPlayer.gardens) || !currentPlayer.gardens.length) {
       let plots = currentPlayer.plots;
       if (!Array.isArray(plots)) plots = Object.values(plots || {});
       if (!plots.length) plots = this.makeEmptyPlots();
-      plots = plots.map((p, i) => ({ ...(p || {}), id: (p && typeof p.id === 'number') ? p.id : i }));
+      // Chỉ normalize id, giữ nguyên object ô (không clone oan)
+      plots.forEach((p, i) => {
+        if (p && typeof p === 'object' && typeof p.id !== 'number') p.id = i;
+      });
       currentPlayer.gardens = [plots];
     } else {
-      currentPlayer.gardens = currentPlayer.gardens.map((g, gi) => {
+      // Chỉ sửa cấu trúc hỏng — KHÔNG clone lại toàn bộ ô mỗi lần gọi
+      // (clone liên tục làm plots lệch reference → chuyển vườn ghi đè nhầm)
+      for (let gi = 0; gi < currentPlayer.gardens.length; gi++) {
+        let g = currentPlayer.gardens[gi];
         let plots;
-        if (Array.isArray(g)) plots = g;
-        else if (g && Array.isArray(g.plots)) plots = g.plots;
-        else if (g && typeof g === 'object') {
-          
+        if (Array.isArray(g)) {
+          plots = g;
+        } else if (g && Array.isArray(g.plots)) {
+          plots = g.plots;
+        } else if (g && typeof g === 'object') {
           const keys = Object.keys(g).filter(k => /^\d+$/.test(k)).sort((a, b) => Number(a) - Number(b));
           plots = keys.length ? keys.map(k => g[k]) : [];
-        } else plots = [];
-        
-        if (!plots.length) plots = this.makeEmptyPlots();
-        return plots.map((p, i) => ({ ...(p || {}), id: i }));
-      });
+        } else {
+          plots = [];
+        }
+        // Không xóa vườn đang có cây chỉ vì parse lỗi tạm thời
+        if (!plots.length && Array.isArray(g) && g.length === 0) {
+          // thật sự trống — giữ [] hoặc starter tùy logic cũ
+          plots = this.makeEmptyPlots();
+        } else if (!plots.length && g && typeof g === 'object' && !Array.isArray(g)) {
+          plots = this.makeEmptyPlots();
+        }
+        if (Array.isArray(plots)) {
+          for (let i = 0; i < plots.length; i++) {
+            if (plots[i] && typeof plots[i] === 'object' && typeof plots[i].id !== 'number') {
+              plots[i].id = i;
+            }
+          }
+          currentPlayer.gardens[gi] = plots;
+        }
+      }
     }
-    if (typeof currentPlayer.activeGarden !== 'number' || currentPlayer.activeGarden < 0) {
+
+    if (typeof currentPlayer.activeGarden !== 'number' || currentPlayer.activeGarden < 0 || isNaN(currentPlayer.activeGarden)) {
       currentPlayer.activeGarden = 0;
     }
     if (currentPlayer.activeGarden >= currentPlayer.gardens.length) {
-      currentPlayer.activeGarden = 0;
+      currentPlayer.activeGarden = Math.max(0, currentPlayer.gardens.length - 1);
     }
+
     this.refreshGardenUnlocks();
-    
-    currentPlayer.plots = currentPlayer.gardens[currentPlayer.activeGarden];
+
+    // Đồng bộ plots với vườn đang active (cùng reference)
+    const ai = currentPlayer.activeGarden;
+    if (Array.isArray(currentPlayer.gardens[ai])) {
+      currentPlayer.plots = currentPlayer.gardens[ai];
+    }
   },
 
   
@@ -141,8 +170,20 @@ const Game = {
 
   syncActiveGarden() {
     if (!currentPlayer || !Array.isArray(currentPlayer.gardens)) return;
-    const i = currentPlayer.activeGarden || 0;
-    if (currentPlayer.gardens[i]) currentPlayer.gardens[i] = currentPlayer.plots;
+    const i = (typeof currentPlayer.activeGarden === 'number' && currentPlayer.activeGarden >= 0)
+      ? currentPlayer.activeGarden
+      : 0;
+    if (!Array.isArray(currentPlayer.plots)) return;
+    // Chỉ ghi plots vào đúng slot active nếu plots đang là (hoặc nên là) vườn đó.
+    // Tránh ghi đè vườn khác khi reference bị lệch sau ensureGardens/clone.
+    if (currentPlayer.plots === currentPlayer.gardens[i]) {
+      // đã cùng reference — không cần làm gì
+      return;
+    }
+    // Nếu plots khác reference nhưng active đúng, cập nhật slot (giữ dữ liệu đang sửa)
+    if (i >= 0 && i < currentPlayer.gardens.length) {
+      currentPlayer.gardens[i] = currentPlayer.plots;
+    }
   },
 
   getGardenCount() {
@@ -158,10 +199,17 @@ const Game = {
   switchGarden(index) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     this.ensureGardens();
-    this.syncActiveGarden();
+    // Lưu vườn hiện tại trước khi đổi (cùng reference plots ↔ gardens[old])
+    const prev = (typeof currentPlayer.activeGarden === 'number') ? currentPlayer.activeGarden : 0;
+    if (Array.isArray(currentPlayer.plots) && prev >= 0 && prev < currentPlayer.gardens.length) {
+      currentPlayer.gardens[prev] = currentPlayer.plots;
+    }
     index = parseInt(index, 10);
     if (isNaN(index) || index < 0 || index >= currentPlayer.gardens.length) {
       return { ok: false, msg: 'Vườn chưa mở khóa! Cần đủ 99 ô ở vườn trước.' };
+    }
+    if (!Array.isArray(currentPlayer.gardens[index])) {
+      return { ok: false, msg: 'Dữ liệu Vườn ' + (index + 1) + ' lỗi. Thử tải lại trang.' };
     }
     currentPlayer.activeGarden = index;
     currentPlayer.plots = currentPlayer.gardens[index];
@@ -364,14 +412,17 @@ const Game = {
     const t = (atMs != null && Number.isFinite(Number(atMs)))
       ? Number(atMs)
       : ((typeof nowMs === 'function' ? nowMs() : Date.now()));
+    // Permanent upgrade (preferred)
     let perm = Number(plot.specialMultPermanent) || 0;
-    if (!perm && plot.specialMult > 1 && !plot.specialMultUntil) {
+    // Legacy: specialMult without an *active* temp window counts as permanent
+    const untilN = Number(plot.specialMultUntil) || 0;
+    const tempActive = untilN > t;
+    if (!perm && Number(plot.specialMult) > 1 && !tempActive) {
       perm = Number(plot.specialMult) || 1;
     }
     if (!perm) perm = 1;
     let temp = 1;
-    // Temporary speed boost only counts while still active at time t
-    if (plot.specialMultUntil && t < plot.specialMultUntil) {
+    if (tempActive) {
       temp = Number(plot.specialMultTemp || plot.specialMult) || 1;
     }
     return Math.max(perm, temp, 1);
@@ -2331,6 +2382,77 @@ const Game = {
     
     if (nycCovered || this.isNycActive()) {
       nycHarvestReplantAt(now);
+    }
+
+    // ── Final parity pass ──────────────────────────────────────────
+    // Bắt mọi ô isReady()/isReadyAt(now) giống NYC realtime, tránh lệch Vườn 1.
+    // Nếu vườn NYC có cây nhưng event-loop không thu được vòng nào trong lúc vắng,
+    // fast-forward theo grow hiệu lực để không mất vụ.
+    if (nycCovered || this.isNycActive()) {
+      const canReplantNow = this.isNycActiveAt(now) || this.isNycActive();
+      for (let gi = 0; gi < (currentPlayer.gardens || []).length; gi++) {
+        if (!this.isNycGardenEnabled(gi)) continue;
+        const cfg = this.getNycConfigForGarden(gi);
+        currentPlayer.activeGarden = gi;
+        currentPlayer.plots = currentPlayer.gardens[gi];
+        const plots = currentPlayer.plots;
+        if (!Array.isArray(plots)) continue;
+        const gKey = String(gi);
+        const beforeCyc = (harvestByGarden[gKey] && harvestByGarden[gKey].cycles) || 0;
+
+        // 1) Thu mọi ô đã chín tại now (cùng điều kiện live NYC)
+        for (let i = 0; i < plots.length; i++) {
+          const plot = plots[i];
+          if (!plot || !plot.plantId || !plot.plantedAt) continue;
+          const ready = this.isReadyAt(plot, now) || this.isReady(plot);
+          if (!ready) continue;
+          const growSec = this.getEffectiveGrowTime(plot, now);
+          const r = this._nycHarvestOneAt(plot, now, gi, cfg, canReplantNow && !!cfg.plantId, true);
+          recordHarvestStat(r, gi + ':' + i, growSec);
+        }
+
+        // 2) Fast-forward nếu vườn này vẫn 0 vụ nhưng có cây từ đầu offline / vừa trồng
+        const afterCyc = (harvestByGarden[gKey] && harvestByGarden[gKey].cycles) || 0;
+        if (afterCyc === beforeCyc) {
+          let guardFF = 0;
+          const maxFF = 200; // mỗi ô tối đa ~200 vòng trong 1 lần bù
+          let progress = true;
+          while (progress && guardFF++ < maxFF * Math.max(1, plots.length)) {
+            progress = false;
+            for (let i = 0; i < plots.length; i++) {
+              const plot = plots[i];
+              if (!plot || !plot.plantId || !plot.plantedAt) continue;
+              const growSec = Math.max(20, this.getEffectiveGrowTime(plot, now));
+              const readyAt = plot.plantedAt + growSec * 1000;
+              if (readyAt > now) continue;
+              // Đủ thời gian chín → thu + trồng lại, lặp đến hết offline
+              const r = this._nycHarvestOneAt(plot, Math.min(now, readyAt), gi, cfg, canReplantNow && !!cfg.plantId, true);
+              if (r && r.harvested) {
+                recordHarvestStat(r, gi + ':' + i, growSec);
+                progress = true;
+              }
+            }
+            if (canReplantNow && cfg && cfg.plantId) {
+              const extra = this._nycPlantEmptiesAt(plots, cfg, now, gi);
+              if (extra > 0) {
+                totalPlant += extra;
+                changed = true;
+                if (!harvestByGarden[gKey]) {
+                  harvestByGarden[gKey] = {
+                    plots: new Set(), cycles: 0, amount: 0, planted: 0,
+                    plantIds: {}, growSamples: []
+                  };
+                }
+                harvestByGarden[gKey].planted += extra;
+                harvestByGarden[gKey].plantIds[cfg.plantId] =
+                  (harvestByGarden[gKey].plantIds[cfg.plantId] || 0) + extra;
+                progress = true;
+              }
+            }
+          }
+        }
+        currentPlayer.gardens[gi] = plots;
+      }
     }
 
     currentPlayer.activeGarden = activeGarden;

@@ -1849,13 +1849,26 @@ function renderGardenSwitcher() {
       e.stopPropagation();
       const idx = parseInt(btn.dataset.garden, 10);
       closeMenu();
+      if (isNaN(idx)) return;
       if (idx === Game.getActiveGardenIndex()) return;
-      const res = Game.switchGarden(idx);
-      showToast(res.msg, res.ok ? 'success' : 'error');
-      if (res.ok) {
-        try { await savePlayer(); } catch (_) {}
-        renderGarden();
-        updateCoins();
+      // Chặn spam click khi đang chuyển
+      if (window._gardenSwitchBusy) return;
+      window._gardenSwitchBusy = true;
+      try {
+        const res = Game.switchGarden(idx);
+        showToast(res.msg, res.ok ? 'success' : 'error');
+        if (res.ok) {
+          renderGarden();
+          updateCoins();
+          if (typeof updateNycBadge === 'function') updateNycBadge();
+          if (typeof updateFairyBadge === 'function') updateFairyBadge();
+          try {
+            if (typeof flushSavePlayer === 'function') await flushSavePlayer();
+            else if (typeof savePlayer === 'function') await savePlayer();
+          } catch (_) {}
+        }
+      } finally {
+        window._gardenSwitchBusy = false;
       }
     });
   });
