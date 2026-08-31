@@ -400,21 +400,20 @@ button.btn:disabled {
 }
 
 .btn-danger {
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1.5px solid #fecaca;
-  box-shadow: none;
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.28);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #fee2e2;
-  filter: none;
+  filter: brightness(1.06);
 }
 
 .btn-secondary {
   background: var(--primary-light, #e8f5ec);
   color: var(--primary-dark);
-  border: 1.5px solid var(--border, #d4e8d9);
+  border: none;
   box-shadow: none;
 }
 
@@ -4349,10 +4348,11 @@ html[data-theme="dark"] .garden-switch-hint {
 #btn-tools-menu,
 .kitchen-tabs .tab-btn,
 .inventory-tabs .tab-btn {
-  padding: 7px 12px !important;
-  font-size: 0.82rem !important;
-  min-height: 34px !important;
-  border-radius: 10px !important;
+  padding: 10px 16px !important;
+  font-size: 0.88rem !important;
+  min-height: 40px !important;
+  border-radius: 12px !important;
+  border: none !important;
   line-height: 1.25 !important;
 }
 .btn-block { width: 100%; justify-content: center; }
@@ -7095,7 +7095,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 #btn-support-menu.btn-primary {
   background: var(--btn-primary-bg) !important;
   color: var(--btn-primary-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   box-shadow: var(--btn-primary-shadow) !important;
   font-weight: 700;
 }
@@ -7103,37 +7103,38 @@ html[data-theme="dark"] .merge-box .merge-sub {
 #btn-tools-menu.btn-primary:hover,
 #btn-support-menu.btn-primary:hover {
   filter: brightness(1.06);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .btn-secondary,
 .pill-dd-trigger {
-  background: var(--btn-secondary-bg) !important;
-  color: var(--btn-secondary-color) !important;
-  border: 1px solid var(--btn-secondary-border) !important;
+  background: var(--primary-light, #e8f5ec) !important;
+  color: var(--primary-dark) !important;
+  border: none !important;
   box-shadow: none !important;
-  font-weight: 600;
+  font-weight: 700;
 }
 .btn-secondary:hover,
 .pill-dd-trigger:hover {
-  background: var(--primary) !important;
-  color: #ffffff !important;
-  border-color: var(--primary) !important;
-  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--primary) 16%, var(--primary-light, #e8f5ec)) !important;
+  color: var(--primary-dark) !important;
+  border: none !important;
+  transform: none;
+  filter: brightness(0.98);
 }
 
 .btn-success {
   background: var(--btn-success-bg) !important;
   color: var(--btn-success-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   font-weight: 700;
 }
-.btn-success:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.btn-success:hover { filter: brightness(1.06); transform: none; }
 
 .btn-danger {
   background: var(--btn-danger-bg) !important;
   color: var(--btn-danger-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   font-weight: 700;
 }
 .btn-danger:hover { filter: brightness(1.08); }
@@ -7141,7 +7142,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .btn-warning {
   background: var(--btn-warning-bg) !important;
   color: var(--btn-warning-color) !important;
-  border: 1px solid transparent !important;
+  border: none !important;
   font-weight: 700;
 }
 .btn-warning:hover { filter: brightness(1.05); transform: translateY(-1px); }
@@ -7322,13 +7323,12 @@ html[data-theme="dark"] .chat-bubble.me {
   color: var(--text-muted) !important;
 }
 .level-preset {
-  background: var(--btn-secondary-bg) !important;
-  color: var(--btn-secondary-color) !important;
-  border: 1px solid var(--btn-secondary-border) !important;
+  background: var(--primary-light, #e8f5ec) !important;
+  color: var(--primary-dark) !important;
+  border: none !important;
 }
 .level-preset:hover {
-  border-color: var(--border-strong) !important;
-  filter: brightness(0.98);
+  filter: brightness(0.97);
 }
 .level-preset-max {
   background: linear-gradient(135deg, #f59e0b, #10b981, #f43f5e) !important;
@@ -7418,9 +7418,9 @@ html[data-theme="dark"] .chat-bubble.me {
 
 
 .qty-stepper button {
-  background: var(--btn-secondary-bg) !important;
-  color: var(--btn-secondary-color) !important;
-  border: 1px solid var(--btn-secondary-border) !important;
+  background: var(--primary-light, #e8f5ec) !important;
+  color: var(--primary-dark) !important;
+  border: none !important;
 }
 
 
@@ -7819,4 +7819,38 @@ html[data-theme="dark"] .chat-messages {
 }
 #page-friends .chat-panel {
   background: var(--card);
+}
+
+
+/* no-btn-borders — bỏ viền nút cho đồng bộ cay-xanh */
+.btn,
+button.btn,
+.btn-sm,
+.btn-primary,
+.btn-secondary,
+.btn-success,
+.btn-danger,
+.btn-warning,
+.btn-purple,
+.btn-timer,
+.btn-block,
+.pill-dd-trigger,
+#btn-tools-menu,
+#btn-support-menu,
+.shop-tab,
+.tab-btn,
+.rank-tab,
+.level-preset,
+.qty-stepper button,
+.friend-actions .btn,
+#btn-add-friend,
+#btn-send-chat {
+  border: none !important;
+  outline: none;
+}
+.btn:focus,
+button.btn:focus,
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 28%, transparent);
 }
