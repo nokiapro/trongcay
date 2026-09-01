@@ -13,12 +13,8 @@ const Game = {
   getPlants() { return currentPlants; },
   getPlant(id) {
     if (id == null || id === '') return null;
-    const list = currentPlants || [];
-    let found = list.find(p => p && p.id === id);
-    if (found) return found;
-    const sid = String(id);
-    found = list.find(p => p && String(p.id) === sid);
-    return found || null;
+    const s = String(id);
+    return currentPlants.find(p => p && (p.id === id || String(p.id) === s)) || null;
   },
   getFertilizer(id) { return DEFAULT_FERTILIZERS.find(f => f.id === id); },
   getFertilizers() { return DEFAULT_FERTILIZERS; },
@@ -757,21 +753,20 @@ const Game = {
   },
 
   getEffectiveGrowTime(plot, atMs) {
-    const plant = plot && plot.plantId ? this.getPlant(plot.plantId) : null;
-    // Thiếu định nghĩa cây: dùng mặc định 300s rồi vẫn chia tốc độ ô (tránh offline coi như 9999s → 0 vụ)
-    let t = (plant && plant.growTime) ? Number(plant.growTime) : 300;
-    if (!Number.isFinite(t) || t <= 0) t = 300;
+    const plant = this.getPlant(plot.plantId);
+    if (!plant) return 9999;
+    let t = plant.growTime || 300;
 
-    const waterBonus = Math.min((plot && plot.waterCount) || 0, 3) * 0.12;
+    const waterBonus = Math.min(plot.waterCount || 0, 3) * 0.12;
     t *= (1 - waterBonus);
 
-    if (plot && plot.fertilizerId) {
+    if (plot.fertilizerId) {
       const fert = this.getFertilizer(plot.fertilizerId);
       if (fert) t *= (1 - (fert.timeReduce || 0));
     }
 
     const weather = this.getWeather();
-    if (weather && weather.mult > 0) t /= weather.mult;
+    t /= weather.mult;
 
     const sm = this.getPlotSpeedMult(plot, atMs);
     if (sm > 1) t /= sm;
@@ -1982,12 +1977,7 @@ const Game = {
 
 
   _nycHarvestOneAt(plot, t, gi, cfg, doReplant, silent, force) {
-    if (!plot || !plot.plantId) return { harvested: 0, planted: 0, amount: 0, plantName: '', plantId: null, seedStar: false };
-    // force (offline): chấp nhận thiếu plantedAt — gán t để không mất vụ
-    if (!plot.plantedAt || Number(plot.plantedAt) <= 0) {
-      if (!force) return { harvested: 0, planted: 0, amount: 0, plantName: '', plantId: null, seedStar: false };
-      plot.plantedAt = (t != null && Number(t) > 0) ? Number(t) : ((typeof nowMs === 'function') ? nowMs() : Date.now());
-    }
+    if (!plot || !plot.plantId || !plot.plantedAt) return { harvested: 0, planted: 0, amount: 0, plantName: '', plantId: null, seedStar: false };
     if (!force && !this.isReadyAt(plot, t)) return { harvested: 0, planted: 0, amount: 0, plantName: '', plantId: null, seedStar: false };
     const plant = this.getPlant(plot.plantId);
     // Cho phép thu cả khi thiếu định nghĩa cây (tránh mất vụ offline)
@@ -2402,17 +2392,30 @@ const Game = {
       }
     }
 
-    // ── Continuous per-plot offline NYC (mọi vườn) ──
-    // Áp Tiên/nước TRƯỚC khi tính chín (trước đây resetExpiredBoosts chạy sau → offline bỏ sót, realtime mới thu)
+    // ── Continuous offline NYC ──
+    // 1) Chăm sóc Tiên (tưới + phân) TRƯỚC khi tính chín — khớp realtime
     if (this.isFairyActive()) {
       this.forEachGarden((plots, gi) => {
         if (!this.isFairyGardenEnabled(gi) && !this.isNycGardenEnabled(gi)) return;
-        (plots || []).forEach(plot => {
-          if (!plot || !plot.plantId) return;
-          plot.waterCount = 3;
-          plot.watered = true;
-          plot.lastWatered = from;
-        });
+        currentPlayer.activeGarden = gi;
+        currentPlayer.plots = plots;
+        try {
+          // runFairyCare chỉ chạy khi fairy garden enabled
+          if (this.isFairyGardenEnabled(gi)) {
+            this.runFairyCare(from);
+          } else if (this.isNycGardenEnabled(gi)) {
+            // NYC vườn không bật Tiên riêng: vẫn tưới giả lập để không lệch tốc độ chín
+            (plots || []).forEach(p => {
+              if (!p || !p.plantId) return;
+              p.waterCount = 3;
+              p.watered = true;
+              p.lastWatered = from;
+            });
+          }
+        } catch (e) {
+          console.warn('offline fairy pre-care', gi, e);
+        }
+        currentPlayer.gardens[gi] = currentPlayer.plots;
       });
     }
 
@@ -2441,25 +2444,25 @@ const Game = {
               const keys = Object.keys(plots).filter(k => /^\d+$/.test(k)).sort((a, b) => Number(a) - Number(b));
               plots = keys.map(k => plots[k]);
               currentPlayer.gardens[gi] = plots;
-            } else {
-              continue;
-            }
+            } else continue;
           }
           if (!plots.length) continue;
           currentPlayer.activeGarden = gi;
           currentPlayer.plots = plots;
           const gKey = String(gi);
 
-          // Nước full cho mọi ô NYC (Tiên global bật)
-          if (this.isFairyActive()) {
-            for (let i = 0; i < plots.length; i++) {
-              const p = plots[i];
-              if (!p || !p.plantId) continue;
-              p.waterCount = 3;
-              p.watered = true;
-              p.lastWatered = from;
-            }
-          }
+          // Diag
+          let withPlant = 0, maxMult = 1, sampleGrow = null;
+          plots.forEach(p => {
+            if (!p || !p.plantId) return;
+            withPlant++;
+            const sm = this.getPlotSpeedMult(p, endMs);
+            if (sm > maxMult) maxMult = sm;
+            if (sampleGrow == null) sampleGrow = this.getEffectiveGrowTime(p, endMs);
+          });
+          gardenDiag[gKey] = Object.assign(gardenDiag[gKey] || {}, {
+            withPlant, maxMult, sampleGrow: sampleGrow != null ? Math.round(sampleGrow) : null
+          });
 
           if (canReplantNow && cfg.plantId) {
             const extra0 = this._nycPlantEmptiesAt(plots, cfg, from, gi);
@@ -2472,118 +2475,61 @@ const Game = {
             }
           }
 
-          // Bù liên tục theo toán: số vòng = thời gian còn lại trong [from, endMs] / growSec
-          // Tránh lệch giữa các vườn (trước đây chỉ vườn cuối chạy đủ vòng)
           for (let i = 0; i < plots.length; i++) {
-            try {
+            let cycles = 0;
+            while (cycles < maxCyclesPerPlot) {
               const plot = plots[i];
-              if (!plot || !plot.plantId) continue;
-
+              if (!plot || !plot.plantId) break;
+              // Chuẩn hóa plantedAt (Firebase timestamp object / string)
               let plantedAt = Number(plot.plantedAt);
               if (!Number.isFinite(plantedAt) || plantedAt <= 0) {
-                plantedAt = from;
-                plot.plantedAt = from;
-              }
-              // plantedAt không được nằm sau endMs (lệch đồng hồ / dữ liệu hỏng)
-              if (plantedAt > endMs) {
-                plantedAt = from;
-                plot.plantedAt = from;
-              }
-
-              if (this.isFairyActive()) {
-                plot.waterCount = 3;
-                plot.watered = true;
-                if (!plot.lastWatered || plot.lastWatered < from) plot.lastWatered = from;
-              }
-
-              const growFrom = Math.max(20, this.getEffectiveGrowTime(plot, from));
-              const growEnd = Math.max(20, this.getEffectiveGrowTime(plot, endMs));
-              const growSec = Math.max(20, Math.min(growFrom, growEnd));
-
-              // Thời điểm chín đầu tiên (không sớm hơn from)
-              let nextReady = plantedAt + growSec * 1000;
-              if (nextReady < from) {
-                // Đã chín trước/đúng lúc bắt đầu offline
-                nextReady = from;
-              }
-
-              let cycles = 0;
-              let cursor = nextReady;
-              while (cycles < maxCyclesPerPlot && cursor <= endMs + 0.5) {
-                // Đảm bảo plot còn cây (lần đầu) hoặc vừa trồng lại
-                if (!plot.plantId) {
-                  if (!(canReplantNow && cfg.plantId && this._nycPlantOneAt(plot, cfg, cursor, gi))) break;
-                }
-                // Ép plantedAt hợp lệ trước khi thu
-                if (!plot.plantedAt || Number(plot.plantedAt) <= 0) plot.plantedAt = Math.min(cursor, endMs);
-
-                let r;
-                try {
-                  r = this._nycHarvestOneAt(
-                    plot,
-                    Math.min(cursor, endMs),
-                    gi,
-                    cfg,
-                    canReplantNow && !!cfg.plantId,
-                    true,
-                    true
-                  );
-                } catch (harErr) {
-                  console.warn('offline harvest plot', gi, i, harErr);
-                  break;
-                }
-                if (!r || !r.harvested) {
-                  // Thu thất bại: thử force clear + trồng lại rồi dừng ô này
-                  if (plot.plantId) {
-                    plot.plantId = null;
-                    plot.plantedAt = null;
-                  }
-                  break;
-                }
-                recordHarvestStat(r, gi + ':' + i, growSec);
-                cycles++;
-                // Chu kỳ tiếp: trồng lại tại thời điểm thu → chín sau growSec
-                if (r.planted) {
-                  cursor = Math.min(cursor, endMs) + growSec * 1000;
-                } else if (canReplantNow && cfg.plantId && this._nycPlantOneAt(plot, cfg, Math.min(cursor, endMs), gi)) {
-                  cursor = Math.min(cursor, endMs) + growSec * 1000;
+                if (plot.plantedAt && typeof plot.plantedAt === 'object' && plot.plantedAt.seconds) {
+                  plantedAt = Number(plot.plantedAt.seconds) * 1000;
                 } else {
-                  break; // hết hạt / không trồng lại được
+                  plantedAt = from;
                 }
+                plot.plantedAt = plantedAt;
               }
-            } catch (plotErr) {
-              console.warn('offline continuous plot', gi, i, plotErr);
-            }
-          }
-
-          // Pass parity cuối: thu mọi ô đã chín tại endMs (bắt sót)
-          for (let i = 0; i < plots.length; i++) {
-            try {
-              const plot = plots[i];
-              if (!plot || !plot.plantId) continue;
-              if (this.isFairyActive()) {
+              if (this.isFairyActive() && (plot.waterCount || 0) < 3) {
                 plot.waterCount = 3;
                 plot.watered = true;
               }
               const growSec = Math.max(20, this.getEffectiveGrowTime(plot, endMs));
-              let plantedAt = Number(plot.plantedAt) || 0;
-              if (!Number.isFinite(plantedAt) || plantedAt <= 0) {
-                plantedAt = from;
-                plot.plantedAt = from;
+              const readyAt = plantedAt + growSec * 1000;
+              if (readyAt > endMs + 50) break;
+              const harvestT = Math.min(endMs, Math.max(readyAt, plantedAt + 1));
+              let r;
+              try {
+                r = this._nycHarvestOneAt(plot, harvestT, gi, cfg, canReplantNow && !!cfg.plantId, true, true);
+              } catch (e) {
+                console.warn('offline harvest', gi, i, e);
+                break;
               }
-              const elapsed = Math.max(0, (endMs - plantedAt) / 1000);
-              const ready = elapsed + 0.05 >= growSec
-                || this.isReadyAt(plot, endMs)
-                || this.isReady(plot);
-              if (!ready) continue;
-              const r = this._nycHarvestOneAt(
-                plot, endMs, gi, cfg,
-                canReplantNow && !!cfg.plantId,
-                true,
-                true
-              );
-              if (r && r.harvested) recordHarvestStat(r, gi + ':' + i, growSec);
-            } catch (_) {}
+              if (!r || !r.harvested) {
+                // Force clear stuck — still count attempt once by manual harvest path
+                // Manual fallback: credit harvest into inventory like _nycHarvestOneAt
+                const hid = plot.plantId;
+                const plant = this.getPlant(hid);
+                let amount = (plant && plant.yield) ? plant.yield : 1;
+                if (!currentPlayer.inventory) currentPlayer.inventory = {};
+                if (!currentPlayer.inventory.harvest) currentPlayer.inventory.harvest = {};
+                currentPlayer.inventory.harvest[hid] = (currentPlayer.inventory.harvest[hid] || 0) + amount;
+                plot.plantId = null;
+                plot.plantedAt = null;
+                plot.waterCount = 0;
+                plot.watered = false;
+                plot.fertilizerId = null;
+                const fake = { harvested: 1, planted: 0, amount, plantName: (plant && plant.name) || String(hid), plantId: hid, seedStar: false };
+                if (canReplantNow && cfg.plantId && this._nycPlantOneAt(plot, cfg, harvestT, gi)) {
+                  fake.planted = 1;
+                }
+                recordHarvestStat(fake, gi + ':' + i, growSec);
+                cycles++;
+                continue;
+              }
+              recordHarvestStat(r, gi + ':' + i, growSec);
+              cycles++;
+            }
           }
 
           if (canReplantNow && cfg.plantId) {
@@ -2597,12 +2543,23 @@ const Game = {
             }
           }
           currentPlayer.gardens[gi] = plots;
+          if (gardenDiag[gKey]) {
+            gardenDiag[gKey].afterCycles = (harvestByGarden[gKey] && harvestByGarden[gKey].cycles) || 0;
+          }
         } catch (gardenErr) {
           console.warn('offline continuous garden ' + gi, gardenErr);
         }
       }
+    }
 
-      // Pass cuối: giống hệt tickNycCare (isReady + Date.now)
+    currentPlayer.activeGarden = activeGarden;
+    currentPlayer.plots = currentPlayer.gardens[activeGarden];
+
+    // Áp boost hết hạn / Tiên chăm lần nữa (giống tickGardenCare trước NYC realtime)
+    if (this.resetExpiredBoosts()) changed = true;
+
+    // Pass parity SAU resetExpiredBoosts — cùng trạng thái với tickNycCare
+    if (nycBuffOn && (nycCovered || this.isNycActive())) {
       try {
         const liveT = (typeof nowMs === 'function' ? nowMs() : Date.now());
         for (let gi = 0; gi < (currentPlayer.gardens || []).length; gi++) {
@@ -2620,25 +2577,23 @@ const Game = {
             const r = this._nycHarvestOneAt(
               plot, liveT, gi, cfg,
               (this.isNycActive() && !!cfg.plantId),
-              true,
-              true
+              true, true
             );
-            if (r && r.harvested) recordHarvestStat(r, gi + ':' + i, growSec);
+            if (r && r.harvested) {
+              recordHarvestStat(r, gi + ':' + i, growSec);
+              changed = true;
+            }
           }
           currentPlayer.gardens[gi] = plots;
         }
       } catch (e) {
-        console.warn('offline live-parity pass', e);
+        console.warn('offline live-parity', e);
       }
+      currentPlayer.activeGarden = activeGarden;
+      currentPlayer.plots = currentPlayer.gardens[activeGarden];
     }
 
-    currentPlayer.activeGarden = activeGarden;
-    currentPlayer.plots = currentPlayer.gardens[activeGarden];
-
-    // reset boosts sau harvest để không làm lệch isReady giữa offline và realtime
-    if (this.resetExpiredBoosts()) changed = true;
-
-    if (rainHits) {
+        if (rainHits) {
       let rainNote = this.isFairyActive()
         ? `Mưa ${rainHits} trận (Tiên tưới kèm)`
         : `Mưa ${rainHits} trận (buff lớn)`;
@@ -2652,13 +2607,61 @@ const Game = {
     if (fairyCycles) notes.push(`Tiên ${fairyCycles} lần chu kỳ 3h`);
     const uniquePlotsHarvested = harvestedPlotKeys.size;
     if (totalHarvest || totalPlant || nycGardenIndexes.length) {
-      // Chỉ tóm tắt tổng — chi tiết từng vườn nằm ở các dòng riêng bên dưới (tránh 1 dòng siêu dài trên mobile)
       notes.push(
         `NYC: thu hoạch ${uniquePlotsHarvested} ô - ${totalYieldAmount} sản phẩm - ${totalHarvest} vụ (trồng lại ${totalPlant})` +
         (totalHarvest > uniquePlotsHarvested && uniquePlotsHarvested > 0
           ? ` · TB ~${(totalHarvest / Math.max(1, uniquePlotsHarvested)).toFixed(1)} vòng/ô`
           : '')
       );
+
+      // Luôn liệt kê MỌI vườn NYC đang bật (kể cả 0 vụ) — tránh thiếu Vườn 1 trong Tóm tắt
+      const noteGardenIndexes = nycGardenIndexes.length
+        ? nycGardenIndexes
+        : Object.keys(harvestByGarden).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
+      noteGardenIndexes.forEach(giNum => {
+        const gi = String(giNum);
+        const g = harvestByGarden[gi] || {
+          plots: new Set(), cycles: 0, amount: 0, planted: 0, plantIds: {}
+        };
+        const nPlots = (g.plots && g.plots.size) || 0;
+        const nCyc = g.cycles || 0;
+        const nAmt = g.amount || 0;
+        const nPlant = g.planted || 0;
+        const totalSlots = plotCountByGarden[gi] || 0;
+        const nO = nPlots > 0 ? nPlots : totalSlots;
+        const vu = nCyc;
+        const avgRing = nO > 0 && vu > 0 ? (vu / nO).toFixed(1) : '0';
+        let seedName = '';
+        if (g.plantIds && Object.keys(g.plantIds).length) {
+          const top = Object.keys(g.plantIds).sort((a, b) => g.plantIds[b] - g.plantIds[a])[0];
+          if (top) {
+            const pl = this.getPlant(top);
+            seedName = (pl && pl.name) ? pl.name : top;
+          }
+        }
+        if (!seedName) {
+          try {
+            const gcfg = this.getNycConfigForGarden(giNum);
+            if (gcfg && gcfg.plantId) {
+              const pl = this.getPlant(gcfg.plantId);
+              seedName = (pl && pl.name) ? pl.name : String(gcfg.plantId);
+            }
+          } catch (_) {}
+        }
+        let zeroHint = '';
+        if (vu === 0) {
+          const d = gardenDiag[gi] || {};
+          if ((d.withPlant || 0) === 0 && (d.seedLeft || 0) <= 0) zeroHint = ' · hết hạt';
+          else if ((d.withPlant || 0) === 0) zeroHint = ' · không có cây';
+          else if (d.sampleGrow != null && offlineGap > 0 && d.sampleGrow * 1000 > offlineGap)
+            zeroHint = ' · chưa chín (~' + Math.round(d.sampleGrow) + 's, ô x' + (d.maxMult || 1) + ')';
+          else zeroHint = ' · 0 vụ';
+        }
+        const oLabel = vu === 0 && totalSlots > 0 ? ('0/' + totalSlots + ' ô') : (nO + ' ô');
+        notes.push(
+          `Vườn ${giNum + 1}: hạt ${seedName || '—'} - ${oLabel} - ${vu} vụ (~${avgRing} vòng/ô) - thu ${nAmt} cái` + zeroHint
+        );
+      });
     }
 
     
@@ -2784,19 +2787,16 @@ const Game = {
           const d = gardenDiag[gi] || {};
           const growEff = d.sampleGrow != null ? Math.round(d.sampleGrow) : null;
           const mult = d.maxMult || 1;
-          const offSec = Math.max(1, Math.round((offlineMs || 0) / 1000));
           if (!d.cfgPlant && seedName === '—') {
             reason = ' · chưa chọn hạt NYC';
           } else if ((d.withPlant || 0) === 0 && (d.seedLeft || 0) <= 0) {
             reason = ' · hết hạt, không trồng được';
           } else if ((d.withPlant || 0) === 0 && nPlant === 0) {
             reason = ' · không có cây / không trồng được lúc off';
-          } else if (growEff != null && offlineMs > 0 && growEff > offSec) {
-            reason = ' · chưa chín (hiệu lực ~' + growEff + 's > offline ' + offSec + 's, ô x' + mult + ')';
-          } else if (growEff != null && offlineMs > 0 && growEff <= offSec) {
-            // Đủ thời gian lý thuyết nhưng 0 vụ → lệch dữ liệu ô / hết hạt trồng lại / plantedAt
-            const seeds = (d.seedLeft != null) ? (', hạt còn ' + d.seedLeft) : '';
-            reason = ' · đủ TG lý thuyết (~' + growEff + 's ≤ offline ' + offSec + 's, ô x' + mult + seeds + ') nhưng không thu được — kiểm tra plantedAt/hạt NYC';
+          } else if (growEff != null && offlineMs > 0 && growEff * 1000 > offlineMs && mult <= 1.01) {
+            reason = ' · chưa chín (hiệu lực ~' + growEff + 's, ô x' + mult + ' — cần nâng tốc độ ô hoặc off lâu hơn)';
+          } else if (growEff != null && offlineMs > 0 && growEff * 1000 > offlineMs) {
+            reason = ' · chưa chín trong lúc vắng (hiệu lực ~' + growEff + 's, ô x' + mult + ')';
           } else if ((d.withPlant || 0) > 0) {
             reason = ' · có cây nhưng chưa tới lúc chín trong thời gian vắng';
           } else {
