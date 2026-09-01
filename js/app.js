@@ -2928,14 +2928,12 @@ function renderShop() {
       const buy = async (qty) => {
         const item = Game.getProtect && Game.getProtect(btn.dataset.id);
         const price = item ? (Number(item.price) || 1) : 1;
-        const buyMax = Game.BUY_MAX_QTY || 100000;
         let n = qty;
         if (n === 'all') {
           const coins = currentPlayer.coins || 0;
           n = price > 0 ? Math.floor(coins / price) : 1;
         }
         n = Math.max(1, Math.floor(Number(n) || 1));
-        if (n > buyMax) n = buyMax;
         const res = await Game.buyProtect(btn.dataset.id, n);
         showToast(res.msg, res.ok ? 'success' : 'error');
         updateCoins();
@@ -2945,9 +2943,9 @@ function renderShop() {
         onClick: () => buy(1),
         onHold: () => openQtyPickModal({
           title: 'Mua bao nhiêu bùa?',
-          hint: 'Tối đa ' + (Game.BUY_MAX_QTY || 100000).toLocaleString() + ' / lần (tránh đơ web). Tất cả = theo số xu.',
+          hint: 'Nhập số lượng (không giới hạn). Tất cả = theo số xu hiện có.',
           confirmLabel: 'Mua',
-          maxQty: Game.BUY_MAX_QTY || 100000,
+          maxQty: 0,
           onConfirm: (n) => buy(n)
         })
       });
@@ -3106,14 +3104,12 @@ function renderShop() {
       const buy = async (qty) => {
         const fert = Game.getFertilizer && Game.getFertilizer(btn.dataset.id);
         const price = fert ? (Number(fert.price) || 1) : 1;
-        const buyMax = Game.BUY_MAX_QTY || 100000;
         let n = qty;
         if (n === 'all') {
           const coins = currentPlayer.coins || 0;
           n = price > 0 ? Math.floor(coins / price) : 1;
         }
         n = Math.max(1, Math.floor(Number(n) || 1));
-        if (n > buyMax) n = buyMax;
         const res = await Game.buyFertilizer(btn.dataset.id, n);
         showToast(res.msg, res.ok ? 'success' : 'error');
         updateCoins();
@@ -3123,9 +3119,9 @@ function renderShop() {
         onClick: () => buy(1),
         onHold: () => openQtyPickModal({
           title: 'Mua bao nhiêu?',
-          hint: 'Tối đa ' + (Game.BUY_MAX_QTY || 100000).toLocaleString() + ' / lần. Tất cả = theo số xu.',
+          hint: 'Nhập số lượng (không giới hạn). Tất cả = theo số xu hiện có.',
           confirmLabel: 'Mua',
-          maxQty: Game.BUY_MAX_QTY || 100000,
+          maxQty: 0,
           onConfirm: (n) => buy(n)
         })
       });
@@ -3425,7 +3421,7 @@ function renderShop() {
       <div class="shop-owned">Bạn có: <strong>${have.toLocaleString()}</strong> hạt</div>
       <div class="shop-price">${plant.seedPrice} 🪙 / hạt</div>
       <div class="buy-qty">
-        <input type="number" class="qty-input" min="1" max="9999" value="1" data-id="${plant.id}" ${!available ? 'disabled' : ''} />
+        <input type="number" class="qty-input" min="1" value="1" data-id="${plant.id}" ${!available ? 'disabled' : ''} placeholder="Số lượng" inputmode="numeric" />
         <button class="btn btn-primary btn-buy" data-id="${plant.id}" ${!available ? 'disabled' : ''}><i class="fa-solid fa-cart-plus"></i> ${available ? 'Mua' : 'Khóa'}</button>
       </div>
     `;
@@ -3433,16 +3429,27 @@ function renderShop() {
   });
 
   document.querySelectorAll('.btn-buy').forEach(btn => {
-    btn.addEventListener('click', async () => {
+    if (btn.disabled) return;
+    const buy = async (qty) => {
       const id = btn.dataset.id;
-      const input = btn.parentElement.querySelector('.qty-input');
-      let qty = Math.max(1, parseInt(input?.value || '1', 10) || 1);
-      const buyMax = (Game.BUY_MAX_QTY || 100000);
-      if (qty > buyMax) qty = buyMax;
       const res = await Game.buySeed(id, qty);
       showToast(res.msg, res.ok ? 'success' : 'error');
       updateCoins();
       renderShop();
+    };
+    bindPressHold(btn, {
+      onClick: () => {
+        const input = btn.parentElement.querySelector('.qty-input');
+        let qty = Math.max(1, parseInt(input?.value || '1', 10) || 1);
+        buy(qty);
+      },
+      onHold: () => openQtyPickModal({
+        title: 'Mua bao nhiêu hạt?',
+        hint: 'Nhập số lượng (không giới hạn). Tất cả = theo số xu hiện có.',
+        confirmLabel: 'Mua',
+        maxQty: 0,
+        onConfirm: (n) => buy(n)
+      })
     });
   });
 
@@ -3548,21 +3555,45 @@ function renderInventory() {
     );
     seedsEl.innerHTML = sHtml;
     seedsEl.querySelectorAll('.btn-sell-seed').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const kind = btn.dataset.kind || 'normal';
-        let qty = btn.dataset.qty;
-        if (qty === 'all') {
-          if (kind === 'star') qty = (currentPlayer.inventory.seedsStar && currentPlayer.inventory.seedsStar[id]) || 0;
-          else qty = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[id]) || 0;
+      const id = btn.dataset.id;
+      const kind = btn.dataset.kind || 'normal';
+      const sell = async (qty) => {
+        let n = qty;
+        if (n === 'all') {
+          if (kind === 'star') n = (currentPlayer.inventory.seedsStar && currentPlayer.inventory.seedsStar[id]) || 0;
+          else n = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[id]) || 0;
         } else {
-          qty = parseInt(qty, 10) || 1;
+          n = Math.max(1, Math.floor(Number(n) || 1));
         }
-        const res = await Game.sellSeed(id, qty, kind);
+        const res = await Game.sellSeed(id, n, kind);
         showToast(res.msg, res.ok ? 'success' : 'error');
         updateCoins();
         renderInventory();
-      });
+      };
+      if (btn.dataset.qty === 'all') {
+        btn.addEventListener('click', () => sell('all'));
+      } else {
+        // Bán 1: click = 1, ấn giữ = nhập số lượng
+        bindPressHold(btn, {
+          onClick: () => sell(1),
+          onHold: () => {
+            const have = kind === 'star'
+              ? ((currentPlayer.inventory.seedsStar && currentPlayer.inventory.seedsStar[id]) || 0)
+              : ((currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[id]) || 0);
+            openQtyPickModal({
+              title: 'Bán bao nhiêu hạt?',
+              hint: 'Bạn có ' + have.toLocaleString() + '. Tất cả = bán hết.',
+              confirmLabel: 'Bán',
+              maxQty: 0,
+              onConfirm: (n) => {
+                if (n === 'all') return sell('all');
+                const v = Math.min(have, Math.max(1, Math.floor(Number(n) || 1)));
+                return sell(v);
+              }
+            });
+          }
+        });
+      }
     });
   }
 
@@ -3589,16 +3620,37 @@ function renderInventory() {
       `;
     }).join('') + '</div>';
     fertEl.querySelectorAll('.btn-sell-fert').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        let qty = btn.dataset.qty;
-        if (qty === 'all') qty = (currentPlayer.inventory.fertilizers && currentPlayer.inventory.fertilizers[id]) || 0;
-        else qty = 1;
-        const res = await Game.sellFertilizer(id, qty);
+      const id = btn.dataset.id;
+      const sell = async (qty) => {
+        let n = qty;
+        if (n === 'all') n = (currentPlayer.inventory.fertilizers && currentPlayer.inventory.fertilizers[id]) || 0;
+        else n = Math.max(1, Math.floor(Number(n) || 1));
+        const res = await Game.sellFertilizer(id, n);
         showToast(res.msg, res.ok ? 'success' : 'error');
         updateCoins();
         renderInventory();
-      });
+      };
+      if (btn.dataset.qty === 'all') {
+        btn.addEventListener('click', () => sell('all'));
+      } else {
+        bindPressHold(btn, {
+          onClick: () => sell(1),
+          onHold: () => {
+            const have = (currentPlayer.inventory.fertilizers && currentPlayer.inventory.fertilizers[id]) || 0;
+            openQtyPickModal({
+              title: 'Bán bao nhiêu phân?',
+              hint: 'Bạn có ' + have.toLocaleString() + '. Tất cả = bán hết.',
+              confirmLabel: 'Bán',
+              maxQty: 0,
+              onConfirm: (n) => {
+                if (n === 'all') return sell('all');
+                const v = Math.min(have, Math.max(1, Math.floor(Number(n) || 1)));
+                return sell(v);
+              }
+            });
+          }
+        });
+      }
     });
   }
 
@@ -3652,17 +3704,39 @@ function renderInventory() {
     renderInventory();
   });
   harvestEl.querySelectorAll('.btn-sell-hv').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.dataset.id;
-      const kind = btn.dataset.kind || 'normal';
-      const bagKey = kind === 'star' ? 'harvestStar' : (kind === 'bought' ? 'harvestBought' : 'harvest');
+    const id = btn.dataset.id;
+    const kind = btn.dataset.kind || 'normal';
+    const bagKey = kind === 'star' ? 'harvestStar' : (kind === 'bought' ? 'harvestBought' : 'harvest');
+    const sell = async (qty) => {
       const have = (currentPlayer.inventory[bagKey] && currentPlayer.inventory[bagKey][id]) || 0;
-      const qty = btn.dataset.qty === 'all' ? have : 1;
-      const res = await Game.sellHarvest(id, qty, kind);
+      let n = qty;
+      if (n === 'all') n = have;
+      else n = Math.min(have, Math.max(1, Math.floor(Number(n) || 1)));
+      const res = await Game.sellHarvest(id, n, kind);
       showToast(res.msg, res.ok ? 'success' : 'error');
       updateCoins();
       renderInventory();
-    });
+    };
+    if (btn.dataset.qty === 'all') {
+      btn.addEventListener('click', () => sell('all'));
+    } else {
+      bindPressHold(btn, {
+        onClick: () => sell(1),
+        onHold: () => {
+          const have = (currentPlayer.inventory[bagKey] && currentPlayer.inventory[bagKey][id]) || 0;
+          openQtyPickModal({
+            title: 'Bán bao nhiêu?',
+            hint: 'Bạn có ' + have.toLocaleString() + '. Tất cả = bán hết.',
+            confirmLabel: 'Bán',
+            maxQty: 0,
+            onConfirm: (n) => {
+              if (n === 'all') return sell('all');
+              return sell(n);
+            }
+          });
+        }
+      });
+    }
   });
 
   

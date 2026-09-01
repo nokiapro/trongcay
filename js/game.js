@@ -1024,7 +1024,8 @@ const Game = {
     }
   },
 
-  BUY_MAX_QTY: 100000,
+  // 0 = không giới hạn số lượng / lần (chỉ giới hạn bởi số xu)
+  BUY_MAX_QTY: 0,
 
   async buySeed(plantId, qty = 1) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
@@ -1033,39 +1034,60 @@ const Game = {
     if (!this.isPlantAvailable(plant)) {
       return { ok: false, msg: 'Hạt Limited — ngoài thời gian sự kiện!' };
     }
-    qty = Math.max(1, Math.floor(Number(qty) || 1));
-    if (!Number.isFinite(qty)) qty = 1;
-    const buyMax = this.BUY_MAX_QTY || 100000;
-    if (qty > buyMax) qty = buyMax;
-    const cost = plant.seedPrice * qty;
+    const price = Math.max(0, Number(plant.seedPrice) || 0);
+    if (qty === 'all' || qty === 'max') {
+      qty = price > 0 ? Math.floor((Number(currentPlayer.coins) || 0) / price) : 1;
+    } else {
+      qty = Math.max(1, Math.floor(Number(qty) || 1));
+    }
+    if (!Number.isFinite(qty) || qty < 1) qty = 1;
+    const buyMax = this.BUY_MAX_QTY || 0;
+    if (buyMax > 0 && qty > buyMax) qty = buyMax;
+    // Không vượt quá số xu hiện có
+    if (price > 0 && !this.isUnlimitedResources()) {
+      const maxAfford = Math.floor((Number(currentPlayer.coins) || 0) / price);
+      if (maxAfford < 1) return { ok: false, msg: 'Không đủ tiền!' };
+      if (qty > maxAfford) qty = maxAfford;
+    }
+    const cost = price * qty;
     if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền!' };
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
     currentPlayer.inventory.seeds[plantId] = (currentPlayer.inventory.seeds[plantId] || 0) + qty;
     this.addActivity(this.isUnlimitedResources()
       ? `Mua ${qty} hạt ${plant.name} (unlimited)`
-      : `Mua ${qty} hạt ${plant.name} (-${cost}🪙)`);
+      : `Mua ${qty} hạt ${plant.name} (-${cost.toLocaleString()}🪙)`);
     if (typeof Features !== 'undefined') Features.trackQuest('buySeed', qty);
     await savePlayer();
-    return { ok: true, msg: `Đã mua ${qty} hạt ${plant.name}!` };
+    return { ok: true, msg: `Đã mua ${qty.toLocaleString()} hạt ${plant.name}!` };
   },
 
   async buyFertilizer(fertId, qty = 1) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const fert = this.getFertilizer(fertId);
     if (!fert) return { ok: false, msg: 'Không tìm thấy phân bón!' };
-    qty = Math.max(1, Math.floor(Number(qty) || 1));
-    if (!Number.isFinite(qty)) qty = 1;
-    const buyMax = this.BUY_MAX_QTY || 100000;
-    if (qty > buyMax) qty = buyMax;
-    const cost = fert.price * qty;
+    const price = Math.max(0, Number(fert.price) || 0);
+    if (qty === 'all' || qty === 'max') {
+      qty = price > 0 ? Math.floor((Number(currentPlayer.coins) || 0) / price) : 1;
+    } else {
+      qty = Math.max(1, Math.floor(Number(qty) || 1));
+    }
+    if (!Number.isFinite(qty) || qty < 1) qty = 1;
+    const buyMax = this.BUY_MAX_QTY || 0;
+    if (buyMax > 0 && qty > buyMax) qty = buyMax;
+    if (price > 0 && !this.isUnlimitedResources()) {
+      const maxAfford = Math.floor((Number(currentPlayer.coins) || 0) / price);
+      if (maxAfford < 1) return { ok: false, msg: 'Không đủ tiền!' };
+      if (qty > maxAfford) qty = maxAfford;
+    }
+    const cost = price * qty;
     if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền!' };
     if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
     currentPlayer.inventory.fertilizers[fertId] = (currentPlayer.inventory.fertilizers[fertId] || 0) + qty;
     this.addActivity(this.isUnlimitedResources()
       ? `Mua ${qty} ${fert.name} (unlimited)`
-      : `Mua ${qty} ${fert.name} (-${cost}🪙)`);
+      : `Mua ${qty} ${fert.name} (-${cost.toLocaleString()}🪙)`);
     await savePlayer();
-    return { ok: true, msg: `Đã mua ${qty} ${fert.name}!` };
+    return { ok: true, msg: `Đã mua ${qty.toLocaleString()} ${fert.name}!` };
   },
 
   async plantSeed(plotId, plantId, preferredKind) {
