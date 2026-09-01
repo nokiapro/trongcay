@@ -13242,6 +13242,95 @@ function createDefaultPlayerData(uid, email, role) {
   };
 }
 
+/**
+ * Xóa toàn bộ dữ liệu game của tài khoản hiện tại và tạo lại sạch.
+ * Giữ nguyên: uid, email, role (admin vẫn là admin), displayName, avatar, birthday.
+ * Tài khoản đầu tiên của game vẫn được gán admin khi tạo mới (logic loadPlayer).
+ */
+async function resetPlayerData(opts) {
+  opts = opts || {};
+  if (!currentUser || !currentUser.uid) {
+    return { ok: false, msg: 'Chưa đăng nhập!' };
+  }
+  const uid = currentUser.uid;
+  const email = (currentUser.email || (currentPlayer && currentPlayer.email) || '');
+  // Giữ role hiện tại — admin không bị mất quyền
+  let role = (currentPlayer && currentPlayer.role) || 'user';
+  if (role !== 'admin') {
+    // Nếu không phải admin, kiểm tra có phải tài khoản duy nhất / đầu tiên không
+    try {
+      const usersSnap = await db.ref('users').once('value');
+      const val = usersSnap.val() || {};
+      const keys = Object.keys(val);
+      // Chỉ còn mình hoặc chưa có ai khác → vẫn cho admin
+      if (keys.length <= 1) role = 'admin';
+    } catch (_) {}
+  }
+
+  const keepName = (currentPlayer && currentPlayer.displayName) || '';
+  const keepAvatar = (currentPlayer && currentPlayer.avatar) || '';
+  const keepBirthday = (currentPlayer && currentPlayer.birthday) || null;
+
+  // 1) Xóa localStorage liên quan
+  try {
+    const prefixes = ['vx_', 'vuon_'];
+    Object.keys(localStorage).forEach(k => {
+      if (prefixes.some(p => k.startsWith(p)) || k.includes(uid) || k === 'vx-theme') {
+        // giữ theme nếu muốn — vẫn xóa hết cho sạch
+        try { localStorage.removeItem(k); } catch (_) {}
+      }
+    });
+    localStorage.removeItem('vuon_away_' + uid);
+    localStorage.removeItem(pendingSyncKey(uid));
+    localStorage.removeItem(playLogLocalKey(uid));
+    localStorage.removeItem(playerBackupKey(uid));
+  } catch (e) {
+    console.warn('reset localStorage', e);
+  }
+
+  // 2) Xóa playLogs trên Firebase (không bắt buộc nhưng sạch hơn)
+  try {
+    await db.ref('playLogs/' + uid).remove();
+  } catch (e) {
+    console.warn('reset playLogs', e);
+  }
+
+  // 3) Tạo data mới, giữ role + identity
+  const data = createDefaultPlayerData(uid, email, role);
+  data.displayName = keepName || data.displayName || 'Player';
+  data.avatar = keepAvatar || '';
+  if (keepBirthday) data.birthday = keepBirthday;
+  data.updatedAt = (typeof nowMs === 'function' ? nowMs() : Date.now());
+  data.sessionId = (typeof CLIENT_SESSION_ID !== 'undefined' ? CLIENT_SESSION_ID : String(Date.now()));
+  data.lastSeenAt = data.updatedAt;
+  data.lastCatchUpAt = data.updatedAt;
+  data.resetAt = data.updatedAt;
+  data.resetCount = ((currentPlayer && currentPlayer.resetCount) || 0) + 1;
+
+  // Ghi đè Firebase
+  await db.ref('users/' + uid).set(data);
+
+  currentPlayer = data;
+  _playerBaseUpdatedAt = data.updatedAt;
+  isAdmin = role === 'admin';
+
+  if (typeof Game !== 'undefined' && Game.ensureGardens) {
+    try { Game.ensureGardens(); } catch (_) {}
+  }
+
+  if (!opts.silent) {
+    try {
+      if (typeof showToast === 'function') showToast('Đã xóa toàn bộ dữ liệu. Đang tải lại...', 'success');
+    } catch (_) {}
+  }
+
+  // Reload để UI + offline state sạch hoàn toàn
+  if (!opts.noReload) {
+    setTimeout(() => { location.reload(); }, 600);
+  }
+  return { ok: true, msg: 'Đã reset dữ liệu', role };
+}
+
 async function initGlobalData() {
   const plantsSnap = await db.ref('plants').once('value');
   if (!plantsSnap.exists()) {

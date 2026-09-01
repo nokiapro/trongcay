@@ -1392,6 +1392,48 @@ document.getElementById('btn-save-profile')?.addEventListener('click', async () 
   } catch (_) {}
 });
 
+// Nút xóa tất cả dữ liệu (profile) — giữ role admin
+document.getElementById('btn-reset-all-data')?.addEventListener('click', async () => {
+  if (!currentUser || !currentPlayer) {
+    showToast('Chưa đăng nhập!', 'error');
+    return;
+  }
+  const isAdm = (currentPlayer.role === 'admin') || (typeof isAdmin !== 'undefined' && isAdmin);
+  const warn = isAdm
+    ? 'Bạn là ADMIN.\n\nXóa TẤT CẢ tiến trình (xu, cây, ô x50, túi đồ, buff…)?\n\n→ Quyền ADMIN vẫn được giữ.\n→ Tên / avatar / ngày sinh giữ lại.\n\nHành động KHÔNG hoàn tác!'
+    : 'Xóa TẤT CẢ tiến trình (xu, cây, ô nâng cấp, túi đồ, buff…)?\n\n→ Tài khoản vẫn đăng nhập được.\n→ Nếu bạn là người đầu tiên của game, vẫn là admin.\n\nHành động KHÔNG hoàn tác!';
+  if (!confirm(warn)) return;
+  if (!confirm('Xác nhận lần 2: thật sự muốn làm lại từ đầu?')) return;
+
+  const btn = document.getElementById('btn-reset-all-data');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xóa...';
+  }
+  try {
+    if (typeof resetPlayerData !== 'function') {
+      showToast('Thiếu hàm resetPlayerData', 'error');
+      return;
+    }
+    const res = await resetPlayerData();
+    if (!res || !res.ok) {
+      showToast((res && res.msg) || 'Reset thất bại', 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Xóa tất cả dữ liệu &amp; làm lại';
+      }
+    }
+    // Thành công → hàm tự reload
+  } catch (e) {
+    console.error('reset all data', e);
+    showToast('Lỗi: ' + (e && e.message ? e.message : e), 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Xóa tất cả dữ liệu &amp; làm lại';
+    }
+  }
+});
+
 function readPrefFromUI() {
   return {
     fairyEnabled: !!document.getElementById('pref-fairy-enabled')?.checked,

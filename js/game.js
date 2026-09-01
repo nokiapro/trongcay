@@ -4,6 +4,34 @@ const Game = {
   
   now() { return (typeof nowMs === "function") ? nowMs() : Date.now(); },
 
+  /** Chuẩn hóa timestamp từ number / string / Firebase Timestamp → ms (number) hoặc null */
+  toMs(val) {
+    if (val == null || val === '') return null;
+    if (typeof val === 'number') return Number.isFinite(val) && val > 0 ? val : null;
+    if (typeof val === 'string') {
+      const n = Number(val);
+      return Number.isFinite(n) && n > 0 ? n : null;
+    }
+    if (typeof val === 'object') {
+      // Firebase Timestamp (admin SDK / client)
+      if (typeof val.toMillis === 'function') {
+        try { const m = val.toMillis(); return Number.isFinite(m) && m > 0 ? m : null; } catch (_) {}
+      }
+      if (val.seconds != null) {
+        const sec = Number(val.seconds);
+        const nano = Number(val.nanoseconds) || 0;
+        if (Number.isFinite(sec)) return sec * 1000 + Math.floor(nano / 1e6);
+      }
+      if (val._seconds != null) {
+        const sec = Number(val._seconds);
+        const nano = Number(val._nanoseconds) || 0;
+        if (Number.isFinite(sec)) return sec * 1000 + Math.floor(nano / 1e6);
+      }
+    }
+    const n = Number(val);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  },
+
   
   raining: false,
   rainUntil: 0,
@@ -152,7 +180,7 @@ const Game = {
 
     this.refreshGardenUnlocks();
 
-    // Chuẩn hóa từng ô: timestamp & hệ số tốc độ về number (Firebase hay trả string)
+    // Chuẩn hóa từng ô: timestamp & hệ số tốc độ về number (Firebase hay trả string / Timestamp object)
     for (let gi = 0; gi < currentPlayer.gardens.length; gi++) {
       const plots = currentPlayer.gardens[gi];
       if (!Array.isArray(plots)) continue;
@@ -160,23 +188,19 @@ const Game = {
         const p = plots[i];
         if (!p || typeof p !== 'object') continue;
         if (p.plantedAt != null) {
-          const n = Number(p.plantedAt);
-          p.plantedAt = Number.isFinite(n) && n > 0 ? n : null;
+          p.plantedAt = this.toMs(p.plantedAt);
         }
         if (p.lastWatered != null) {
-          const n = Number(p.lastWatered);
-          p.lastWatered = Number.isFinite(n) ? n : null;
+          p.lastWatered = this.toMs(p.lastWatered);
         }
         if (p.fertilizedAt != null) {
-          const n = Number(p.fertilizedAt);
-          p.fertilizedAt = Number.isFinite(n) ? n : null;
+          p.fertilizedAt = this.toMs(p.fertilizedAt);
         }
         if (p.specialMult != null) p.specialMult = Number(p.specialMult) || 1;
         if (p.specialMultPermanent != null) p.specialMultPermanent = Number(p.specialMultPermanent) || 1;
         if (p.specialMultTemp != null) p.specialMultTemp = Number(p.specialMultTemp) || 1;
         if (p.specialMultUntil != null) {
-          const n = Number(p.specialMultUntil);
-          p.specialMultUntil = Number.isFinite(n) ? n : null;
+          p.specialMultUntil = this.toMs(p.specialMultUntil);
         }
         // Đồng bộ: nếu có tốc độ >1 mà chưa có permanent → gán permanent (tránh offline mất buff)
         const sm = Number(p.specialMult) || 1;
@@ -187,6 +211,10 @@ const Game = {
           p.specialMultPermanent = sm;
         }
         if ((Number(p.specialMultPermanent) || 0) > 1) {
+          p.specialMult = Math.max(Number(p.specialMult) || 1, Number(p.specialMultPermanent) || 1);
+        }
+        // Ép permanent x50+ luôn giữ floor (tránh mất tốc độ offline)
+        if ((Number(p.specialMultPermanent) || 0) >= 2) {
           p.specialMult = Math.max(Number(p.specialMult) || 1, Number(p.specialMultPermanent) || 1);
         }
         if (typeof p.waterCount !== 'number') p.waterCount = p.watered ? 3 : 0;
@@ -459,7 +487,7 @@ const Game = {
       ? Number(atMs)
       : ((typeof nowMs === 'function' ? nowMs() : Date.now()));
     const perm = Number(plot.specialMultPermanent) || 0;
-    const untilN = Number(plot.specialMultUntil) || 0;
+    const untilN = this.toMs(plot.specialMultUntil) || 0;
     const tempActive = untilN > t;
     let temp = 1;
     if (tempActive) {
@@ -468,6 +496,7 @@ const Game = {
     // specialMult luôn là sàn tốc độ (nâng vĩnh viễn / legacy / sau khi hết temp vẫn giữ)
     // Trước đây hết temp + có specialMultUntil cũ → rơi về x1 → offline mất vụ, realtime vẫn thu được
     const floor = Number(plot.specialMult) > 1 ? Number(plot.specialMult) : 1;
+    // Permanent x50+ luôn được ưu tiên (tránh mất tốc độ offline)
     return Math.max(perm, temp, floor, 1);
   },
 
@@ -794,7 +823,7 @@ const Game = {
 
   getElapsedEffective(plot) {
     if (!plot || !plot.plantId || !plot.plantedAt) return 0;
-    const plantedAt = Number(plot.plantedAt);
+    const plantedAt = this.toMs(plot.plantedAt);
     if (!Number.isFinite(plantedAt) || plantedAt <= 0) return 0;
     return Math.max(0, ((typeof nowMs === 'function' ? nowMs() : Date.now()) - plantedAt) / 1000);
   },
@@ -1857,7 +1886,7 @@ const Game = {
   
   getElapsedAt(plot, atMs) {
     if (!plot || !plot.plantId || !plot.plantedAt) return 0;
-    const plantedAt = Number(plot.plantedAt);
+    const plantedAt = this.toMs(plot.plantedAt);
     if (!Number.isFinite(plantedAt) || plantedAt <= 0) return 0;
     return Math.max(0, (Number(atMs) - plantedAt) / 1000);
   },
@@ -1876,7 +1905,9 @@ const Game = {
       ? Number(atMs)
       : ((typeof nowMs === 'function' ? nowMs() : Date.now()));
     const growSec = this.getEffectiveGrowTime(plot, ref);
-    return plot.plantedAt + growSec * 1000;
+    const plantedAt = this.toMs(plot.plantedAt);
+    if (!Number.isFinite(plantedAt) || plantedAt <= 0) return null;
+    return plantedAt + growSec * 1000;
   },
 
   
@@ -2480,15 +2511,21 @@ const Game = {
             while (cycles < maxCyclesPerPlot) {
               const plot = plots[i];
               if (!plot || !plot.plantId) break;
-              // Chuẩn hóa plantedAt (Firebase timestamp object / string)
-              let plantedAt = Number(plot.plantedAt);
+              // Chuẩn hóa plantedAt (Firebase Timestamp / string / number) — tránh mất vụ khi timestamp bị null
+              let plantedAt = this.toMs(plot.plantedAt);
               if (!Number.isFinite(plantedAt) || plantedAt <= 0) {
-                if (plot.plantedAt && typeof plot.plantedAt === 'object' && plot.plantedAt.seconds) {
-                  plantedAt = Number(plot.plantedAt.seconds) * 1000;
-                } else {
-                  plantedAt = from;
-                }
+                // Timestamp mất → giả định đã trồng đủ lâu để chín 1 lần (tránh mất vụ offline với cây dài + x50)
+                // Dùng endMs - growSec để chắc chắn readyAt <= endMs
+                const probeGrow = Math.max(20, this.getEffectiveGrowTime(plot, endMs));
+                plantedAt = Math.max(from - 1000, endMs - probeGrow * 1000 - 100);
                 plot.plantedAt = plantedAt;
+              } else {
+                plot.plantedAt = plantedAt;
+              }
+              // Đảm bảo permanent x50+ luôn được áp (tránh rơi về x1)
+              const perm = Number(plot.specialMultPermanent) || 0;
+              if (perm >= 2) {
+                plot.specialMult = Math.max(Number(plot.specialMult) || 1, perm);
               }
               if (this.isFairyActive() && (plot.waterCount || 0) < 3) {
                 plot.waterCount = 3;
