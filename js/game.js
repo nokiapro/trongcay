@@ -621,7 +621,7 @@ const Game = {
       }
       
       let actMsg = fairyOn
-        ? `Mưa · ${fairyEmoji} ${fairyName} tưới khi mưa: ${wateredN} ô`
+        ? `Mưa · ${fairyName} tưới khi mưa: ${wateredN} ô`
         : `Mưa bắt đầu (${Math.round(durationMs / 1000)}s)`;
       if (autoCollectN > 0) {
         actMsg += ` · nhặt ${autoCollectN} vật phẩm`;
