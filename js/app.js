@@ -4796,17 +4796,37 @@ async function renderMarket() {
     }).join('');
     host.querySelectorAll('.btn-mkt-buy').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const res = await Features.buyMarketItem(btn.dataset.id);
-        showToast(res.msg, res.ok ? 'success' : 'error');
-        updateCoins();
-        renderMarket();
+        if (btn.disabled) return;
+        btn.disabled = true;
+        const oldText = btn.textContent;
+        btn.textContent = 'Đang mua...';
+        try {
+          const res = await Features.buyMarketItem(btn.dataset.id);
+          showToast(res.msg, res.ok ? 'success' : 'error');
+          updateCoins();
+          renderMarket();
+        } catch (e) {
+          showToast('Lỗi mua: ' + (e.message || e), 'error');
+          btn.disabled = false;
+          btn.textContent = oldText;
+        }
       });
     });
     host.querySelectorAll('.btn-mkt-cancel').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const res = await Features.cancelMarketItem(btn.dataset.id);
-        showToast(res.msg, res.ok ? 'success' : 'error');
-        renderMarket();
+        if (btn.disabled) return;
+        btn.disabled = true;
+        const oldText = btn.textContent;
+        btn.textContent = 'Đang gỡ...';
+        try {
+          const res = await Features.cancelMarketItem(btn.dataset.id);
+          showToast(res.msg, res.ok ? 'success' : 'error');
+          renderMarket();
+        } catch (e) {
+          showToast('Lỗi gỡ tin: ' + (e.message || e), 'error');
+          btn.disabled = false;
+          btn.textContent = oldText;
+        }
       });
     });
   } catch (e) {
