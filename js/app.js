@@ -4779,7 +4779,13 @@ async function renderMarket() {
       return `<div class="market-card">
         <div style="font-size:1.6rem">${L.itemIcon || '🌱'}</div>
         <strong>${L.itemName || L.itemId}</strong>
-        <div class="shop-meta"><span>${L.kind === 'seed' ? 'Hạt' : 'Nông sản'} · x${L.qty}</span></div>
+        <div class="shop-meta"><span>${
+          L.kind === 'seed' ? 'Hạt'
+          : L.kind === 'seedStar' ? 'Hạt ⭐'
+          : L.kind === 'harvestStar' ? 'Nông sản ⭐'
+          : L.kind === 'harvestBought' ? 'Nông sản (chợ)'
+          : 'Nông sản'
+        } · x${L.qty}</span></div>
         <div class="shop-price">${(L.priceEach || 0).toLocaleString()}🪙 / cái</div>
         <div class="bulk-hint">Người bán: ${L.sellerName || '—'}</div>
         <div class="shop-price">Tổng: ${((L.qty || 0) * (L.priceEach || 0)).toLocaleString()}🪙</div>

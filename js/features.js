@@ -451,39 +451,50 @@ const Features = {
   },
 
   
+  _marketBagKey(kind) {
+    if (kind === 'seed') return 'seeds';
+    if (kind === 'seedStar') return 'seedsStar';
+    if (kind === 'harvest') return 'harvest';
+    if (kind === 'harvestStar') return 'harvestStar';
+    if (kind === 'harvestBought') return 'harvestBought';
+    return null;
+  },
+
   async listMarketItem(kind, itemId, qty, priceEach) {
     if (!currentUser || !currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     qty = Math.floor(Number(qty) || 0);
     priceEach = Math.floor(Number(priceEach) || 0);
     if (qty < 1) return { ok: false, msg: 'Số lượng không hợp lệ!' };
     if (priceEach < 1) return { ok: false, msg: 'Giá tối thiểu 1 xu!' };
-    if (kind !== 'seed' && kind !== 'harvest' && kind !== 'harvestStar' && kind !== 'harvestBought') {
-      return { ok: false, msg: 'Loại không hỗ trợ!' };
-    }
-    let bagKey = 'seeds';
-    if (kind === 'harvest') bagKey = 'harvest';
-    else if (kind === 'harvestStar') bagKey = 'harvestStar';
-    else if (kind === 'harvestBought') bagKey = 'harvestBought';
+    const bagKey = this._marketBagKey(kind);
+    if (!bagKey) return { ok: false, msg: 'Loại không hỗ trợ!' };
     if (!currentPlayer.inventory[bagKey]) currentPlayer.inventory[bagKey] = {};
     const bag = currentPlayer.inventory[bagKey];
     if ((bag[itemId] || 0) < qty) return { ok: false, msg: 'Không đủ trong kho!' };
+    // Trừ kho trước, nếu đăng Firebase fail → hoàn lại
     bag[itemId] -= qty;
     if (bag[itemId] <= 0) delete bag[itemId];
     const plant = typeof Game !== 'undefined' ? Game.getPlant(itemId) : null;
     const id = db.ref('market').push().key;
-    await db.ref('market/' + id).set({
-      id,
-      sellerUid: currentUser.uid,
-      sellerName: currentPlayer.displayName || (currentPlayer.email || '').split('@')[0] || 'Player',
-      kind,
-      itemId,
-      itemName: plant ? plant.name : itemId,
-      itemIcon: plant ? plant.icon : '🌱',
-      qty,
-      priceEach,
-      total: qty * priceEach,
-      createdAt: Date.now()
-    });
+    try {
+      await db.ref('market/' + id).set({
+        id,
+        sellerUid: currentUser.uid,
+        sellerName: currentPlayer.displayName || (currentPlayer.email || '').split('@')[0] || 'Player',
+        kind,
+        itemId,
+        itemName: plant ? plant.name : itemId,
+        itemIcon: plant ? plant.icon : '🌱',
+        qty,
+        priceEach,
+        total: qty * priceEach,
+        createdAt: Date.now()
+      });
+    } catch (e) {
+      // Hoàn kho khi đăng tin thất bại
+      bag[itemId] = (bag[itemId] || 0) + qty;
+      return { ok: false, msg: 'Đăng chợ thất bại: ' + (e.message || String(e)) };
+    }
     this.trackQuest('market', 1);
     await savePlayer();
     return { ok: true, msg: 'Đã đăng bán trên chợ!' };
@@ -492,24 +503,54 @@ const Features = {
   async buyMarketItem(listingId) {
     if (!currentUser || !currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const ref = db.ref('market/' + listingId);
+    // Đọc trước để kiểm tra xu / không tự mua
     const snap = await ref.once('value');
     if (!snap.exists()) return { ok: false, msg: 'Tin đã hết!' };
-    const L = snap.val();
-    if (L.sellerUid === currentUser.uid) return { ok: false, msg: 'Không mua tin của chính mình!' };
-    const cost = (L.qty || 0) * (L.priceEach || 0);
-    if ((currentPlayer.coins || 0) < cost) return { ok: false, msg: 'Không đủ xu!' };
-    
-    await ref.remove();
+    const L0 = snap.val();
+    if (!L0) return { ok: false, msg: 'Tin đã hết!' };
+    if (L0.sellerUid === currentUser.uid) return { ok: false, msg: 'Không mua tin của chính mình!' };
+    const cost0 = (Number(L0.qty) || 0) * (Number(L0.priceEach) || 0);
+    if (cost0 < 1) return { ok: false, msg: 'Tin không hợp lệ!' };
+    if ((currentPlayer.coins || 0) < cost0) return { ok: false, msg: 'Không đủ xu!' };
+
+    // Transaction xóa tin — tránh 2 người mua cùng 1 tin
+    let L = null;
+    try {
+      const tx = await ref.transaction(cur => {
+        if (cur == null) return; // abort — đã bán
+        if (cur.sellerUid === currentUser.uid) return; // abort
+        L = cur;
+        return null; // xóa tin
+      });
+      if (!tx.committed || !L) {
+        return { ok: false, msg: 'Tin đã hết hoặc vừa được người khác mua!' };
+      }
+    } catch (e) {
+      console.warn('buyMarketItem tx', e);
+      return { ok: false, msg: 'Lỗi giao dịch chợ!' };
+    }
+
+    const cost = (Number(L.qty) || 0) * (Number(L.priceEach) || 0);
+    if ((currentPlayer.coins || 0) < cost) {
+      // Hiếm: hết xu sau khi tx — cố gắng đăng lại tin để không mất hàng người bán
+      try {
+        await ref.set({ ...L, id: listingId });
+      } catch (_) {}
+      return { ok: false, msg: 'Không đủ xu!' };
+    }
+
     currentPlayer.coins -= cost;
-    if (L.kind === 'seed') {
-      if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
-      currentPlayer.inventory.seeds[L.itemId] = (currentPlayer.inventory.seeds[L.itemId] || 0) + L.qty;
+    // Hạt → kho hạt; nông sản (mọi loại) → harvestBought (đã mua từ chợ)
+    if (L.kind === 'seed' || L.kind === 'seedStar') {
+      const bagKey = L.kind === 'seedStar' ? 'seedsStar' : 'seeds';
+      if (!currentPlayer.inventory[bagKey]) currentPlayer.inventory[bagKey] = {};
+      currentPlayer.inventory[bagKey][L.itemId] = (currentPlayer.inventory[bagKey][L.itemId] || 0) + (Number(L.qty) || 0);
     } else {
       if (!currentPlayer.inventory.harvestBought) currentPlayer.inventory.harvestBought = {};
-      currentPlayer.inventory.harvestBought[L.itemId] = (currentPlayer.inventory.harvestBought[L.itemId] || 0) + L.qty;
+      currentPlayer.inventory.harvestBought[L.itemId] =
+        (currentPlayer.inventory.harvestBought[L.itemId] || 0) + (Number(L.qty) || 0);
     }
-    
-    
+
     const buyerName = currentPlayer.displayName || (currentPlayer.email || '').split('@')[0] || 'Người mua';
     const payNote = `Chợ: bán ${L.qty} ${L.itemName || L.itemId} +${cost}🪙 (từ ${buyerName})`;
     try {
@@ -529,7 +570,6 @@ const Features = {
       });
     } catch (e) {
       console.warn('marketCredits push', e);
-      
       try {
         await db.ref('users/' + L.sellerUid + '/coins').transaction(cur =>
           (typeof cur === 'number' ? cur : 0) + cost
@@ -620,14 +660,26 @@ const Features = {
     if (!snap.exists()) return { ok: false, msg: 'Tin không tồn tại!' };
     const L = snap.val();
     if (L.sellerUid !== currentUser.uid) return { ok: false, msg: 'Không phải tin của bạn!' };
-    await ref.remove();
-    if (L.kind === 'seed') {
-      if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
-      currentPlayer.inventory.seeds[L.itemId] = (currentPlayer.inventory.seeds[L.itemId] || 0) + L.qty;
-    } else {
-      if (!currentPlayer.inventory.harvestBought) currentPlayer.inventory.harvestBought = {};
-      currentPlayer.inventory.harvestBought[L.itemId] = (currentPlayer.inventory.harvestBought[L.itemId] || 0) + L.qty;
+    // Xóa tin bằng transaction — nếu đã bán thì không hoàn kho
+    let removed = null;
+    try {
+      const tx = await ref.transaction(cur => {
+        if (cur == null) return;
+        if (cur.sellerUid !== currentUser.uid) return;
+        removed = cur;
+        return null;
+      });
+      if (!tx.committed || !removed) {
+        return { ok: false, msg: 'Tin đã được mua hoặc không còn!' };
+      }
+    } catch (e) {
+      return { ok: false, msg: 'Lỗi gỡ tin!' };
     }
+    // Hoàn đúng túi gốc (lỗi cũ: mọi nông sản đều nhét vào harvestBought)
+    const bagKey = this._marketBagKey(removed.kind) || (removed.kind === 'seed' ? 'seeds' : 'harvest');
+    if (!currentPlayer.inventory[bagKey]) currentPlayer.inventory[bagKey] = {};
+    currentPlayer.inventory[bagKey][removed.itemId] =
+      (currentPlayer.inventory[bagKey][removed.itemId] || 0) + (Number(removed.qty) || 0);
     await savePlayer();
     return { ok: true, msg: 'Đã gỡ tin, hoàn kho!' };
   },
