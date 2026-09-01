@@ -657,7 +657,9 @@ const Features = {
     if (!currentUser || !currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     if (!listingId) return { ok: false, msg: 'Thiếu mã tin!' };
     const ref = db.ref('market/' + listingId);
-    // Đọc trước để báo lỗi sớm + kiểm tra quyền sở hữu
+    let removed = null;
+
+    // 1. Đọc + kiểm tra quyền sở hữu
     try {
       const snap = await ref.once('value');
       if (!snap.exists()) return { ok: false, msg: 'Tin không tồn tại!' };
@@ -665,37 +667,63 @@ const Features = {
       if (!pre || pre.sellerUid !== currentUser.uid) {
         return { ok: false, msg: 'Không phải tin của bạn!' };
       }
+      removed = { ...pre };
     } catch (e) {
       console.warn('cancelMarketItem pre-read', e);
       return { ok: false, msg: 'Lỗi đọc tin: ' + (e.message || String(e)) };
     }
-    // Xóa tin bằng transaction — chỉ xóa nếu vẫn còn và vẫn là của mình (tránh race với người mua)
-    let removed = null;
+
+    // 2. Thử xóa bằng transaction (an toàn với race mua)
+    let deleted = false;
     try {
       const tx = await ref.transaction(cur => {
-        if (cur == null) return; // đã bị mua / xóa
+        if (cur == null) return;               // đã bị mua / xóa
         if (cur.sellerUid !== currentUser.uid) return; // không phải của mình
-        // Sao chép dữ liệu trước khi xóa (callback có thể chạy nhiều lần)
-        if (!removed) removed = { ...cur };
-        return null; // xóa tin
+        return null;                           // xóa tin
       });
-      if (!tx.committed || !removed) {
-        return { ok: false, msg: 'Tin đã được mua hoặc không còn!' };
-      }
+      deleted = !!(tx && tx.committed);
     } catch (e) {
       console.warn('cancelMarketItem tx', e);
-      return { ok: false, msg: 'Lỗi gỡ tin: ' + (e.message || String(e)) };
+      // Không return ngay — sẽ fallback remove bên dưới
     }
-    // Hoàn đúng túi gốc (lỗi cũ: mọi nông sản đều nhét vào harvestBought)
+
+    // 3. Fallback: nếu transaction không commit, thử remove() trực tiếp
+    //    (một số rule / SDK cũ đôi khi transaction return null bị abort dù quyền vẫn đủ)
+    if (!deleted) {
+      try {
+        const recheck = await ref.once('value');
+        if (!recheck.exists()) {
+          // Đã bị người khác mua trong lúc đó → không hoàn kho
+          return { ok: false, msg: 'Tin đã được mua hoặc không còn!' };
+        }
+        const cur = recheck.val();
+        if (!cur || cur.sellerUid !== currentUser.uid) {
+          return { ok: false, msg: 'Tin đã được mua hoặc không còn!' };
+        }
+        await ref.remove();
+        deleted = true;
+        removed = { ...cur };
+      } catch (e) {
+        console.warn('cancelMarketItem fallback remove', e);
+        return { ok: false, msg: 'Lỗi gỡ tin: ' + (e.message || String(e)) };
+      }
+    }
+
+    if (!deleted || !removed) {
+      return { ok: false, msg: 'Tin đã được mua hoặc không còn!' };
+    }
+
+    // 4. Hoàn kho đúng túi gốc
     const bagKey = this._marketBagKey(removed.kind) || (removed.kind === 'seed' ? 'seeds' : 'harvest');
     if (!currentPlayer.inventory[bagKey]) currentPlayer.inventory[bagKey] = {};
     currentPlayer.inventory[bagKey][removed.itemId] =
       (currentPlayer.inventory[bagKey][removed.itemId] || 0) + (Number(removed.qty) || 0);
+
     try {
       await savePlayer();
     } catch (e) {
       console.warn('cancelMarketItem savePlayer', e);
-      // Nếu lưu kho thất bại, cố gắng đăng lại tin để người chơi không mất hàng
+      // Lưu kho fail → cố gắng đăng lại tin để không mất hàng
       try {
         await ref.set({ ...removed, id: listingId });
       } catch (_) {}
