@@ -3790,7 +3790,7 @@ function renderInventory() {
       mergeEl.innerHTML = `
         <div class="merge-box">
           <p class="merge-lead">Ghép <strong>2 hạt thường</strong> → <strong>1 hạt sao</strong></p>
-          <p class="merge-sub">Thất bại mất 1 hạt (+ bùa nếu có).</p>
+          <p class="merge-sub">Thất bại mất 1 hạt (+ bùa nếu có). · Bấm = ghép 1 lần · Ấn giữ = ghép tất cả</p>
           <label>Chọn hạt</label>
           <select id="merge-plant">${opts}</select>
           <label>Bùa bảo hộ (tuỳ chọn)</label>
@@ -3815,17 +3815,16 @@ function renderInventory() {
         window._mergeSel.plantId = pid || null;
         window._mergeSel.protectId = pr || null;
         if (!pid) { showToast('Chọn hạt!', 'error'); return; }
-        let n = times;
-        if (n === 'all') {
-          showToast('Đang ghép tất cả (nhanh, không đơ)…', 'info');
-          const res = await Game.mergeSeeds(pid, pr || null, 'all');
-          showToast(res.msg, res.ok ? (res.success ? 'success' : 'error') : 'error');
-          updateCoins();
-          renderInventory();
-          return;
+        let n;
+        if (times === 'all' || times === 'max' || times === Infinity) {
+          // Ghép tất cả — tính số lần tối đa từ kho, gọi bình thường (không đường nhanh đặc biệt)
+          const have = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[pid]) || 0;
+          n = Math.floor(have / 2);
+          if (n < 1) { showToast('Cần ít nhất 2 hạt thường cùng loại!', 'error'); return; }
+        } else {
+          n = Math.max(1, Math.floor(Number(times) || 1));
         }
-        n = Math.max(1, Math.floor(Number(n) || 1));
-        showToast('Đang ghép ' + n.toLocaleString() + ' lần…', 'info');
+        showToast(n <= 1 ? 'Đang ghép…' : ('Đang ghép tất cả · ' + n.toLocaleString() + ' lần…'), 'info');
         const res = await Game.mergeSeeds(pid, pr || null, n);
         showToast(res.msg, res.ok ? (res.success ? 'success' : 'error') : 'error');
         updateCoins();
@@ -3834,17 +3833,8 @@ function renderInventory() {
       const mergeBtn = document.getElementById('btn-do-merge');
       bindPressHold(mergeBtn, {
         onClick: () => doMerge(1),
-        onHold: () => {
-          const pid = plantSel?.value;
-          const have = pid ? ((currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[pid]) || 0) : 0;
-          const maxN = Math.floor(have / 2);
-          openQtyPickModal({
-            title: 'Ghép bao nhiêu lần?',
-            hint: `Có thể ghép ~${maxN.toLocaleString()} lần với số hạt hiện có. Bấm «Tất cả» = ghép hết (nhanh, không đơ web).`,
-            confirmLabel: 'Ghép',
-            onConfirm: (n) => doMerge(n)
-          });
-        }
+        // Ấn giữ = ghép tất cả (bình thường)
+        onHold: () => doMerge('all')
       });
       mountAllPillDropdowns(mergeEl);
     }
