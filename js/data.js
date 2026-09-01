@@ -13096,12 +13096,13 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 
-const APP_VERSION = '1.9.93';
+const APP_VERSION = '1.9.94';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
   startCoins: 1000,
-  rainChance: 15,          
+  rainChance: 100,         // legacy (không dùng — mưa cố định mỗi 30 phút)
+  
   rainDurationMinutes: 0.25, 
   plotPrice: 500,
   

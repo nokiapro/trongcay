@@ -512,11 +512,6 @@ async function renderUsers() {
 function renderSettings() {
   document.getElementById('set-plots').value = currentSettings.plotCount || 12;
   document.getElementById('set-coins').value = currentSettings.startCoins || 1000;
-  const rainEl = document.getElementById('set-rain');
-  if (rainEl) {
-    let rc = currentSettings.rainChance ?? 15;
-    rainEl.value = Math.max(1, Math.min(50, Number(rc) || 15));
-  }
   const rainDurEl = document.getElementById('set-rain-duration');
   if (rainDurEl) {
     let d = currentSettings.rainDurationMinutes;
@@ -562,13 +557,6 @@ function renderSettings() {
 document.getElementById('btn-save-settings').addEventListener('click', async () => {
   currentSettings.plotCount = parseInt(document.getElementById('set-plots').value) || 12;
   currentSettings.startCoins = parseInt(document.getElementById('set-coins').value) || 1000;
-  const rainEl = document.getElementById('set-rain');
-  if (rainEl) {
-    let r = parseInt(rainEl.value, 10);
-    if (isNaN(r)) r = 15;
-    
-    currentSettings.rainChance = Math.max(1, Math.min(50, r));
-  }
   const rainDurEl = document.getElementById('set-rain-duration');
   if (rainDurEl) {
     let d = parseFloat(rainDurEl.value);

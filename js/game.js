@@ -35,6 +35,8 @@ const Game = {
   
   raining: false,
   rainUntil: 0,
+  nextRainAt: 0,
+  RAIN_INTERVAL_MS: 30 * 60 * 1000,
   rainBoostPlots: {}, 
 
   getPlayer() { return currentPlayer; },
@@ -526,14 +528,53 @@ const Game = {
 
   
   
+  ensureNextRainAt() {
+    const now = (typeof nowMs === 'function' ? nowMs() : Date.now());
+    const interval = this.RAIN_INTERVAL_MS || (30 * 60 * 1000);
+    let next = Number(this.nextRainAt) || 0;
+    if (currentPlayer && currentPlayer.nextRainAt) {
+      const pNext = Number(currentPlayer.nextRainAt) || 0;
+      if (pNext > 0 && (next <= 0 || Math.abs(pNext - next) > 1000)) {
+        // Ưu tiên lịch đã lưu trên player (đồng bộ phiên)
+        next = pNext;
+      }
+    }
+    // Chưa có lịch → hẹn 30 phút tới
+    if (!next || next <= 0) {
+      next = now + interval;
+    }
+    // Quá hạn quá xa (offline lâu) → mưa ngay (next = now), tryTrigger sẽ startRain
+    // Không đẩy lại +30p kẻo bỏ lỡ trận mưa
+    this.nextRainAt = next;
+    if (currentPlayer) currentPlayer.nextRainAt = next;
+    return next;
+  },
+
+  scheduleNextRain(fromMs) {
+    const interval = this.RAIN_INTERVAL_MS || (30 * 60 * 1000);
+    const base = (typeof fromMs === 'number' && fromMs > 0)
+      ? fromMs
+      : (typeof nowMs === 'function' ? nowMs() : Date.now());
+    const next = base + interval;
+    this.nextRainAt = next;
+    if (currentPlayer) currentPlayer.nextRainAt = next;
+    return next;
+  },
+
+  getRainRemainingSec() {
+    const now = (typeof nowMs === 'function' ? nowMs() : Date.now());
+    if (this.raining && this.rainUntil > now) {
+      return Math.max(0, Math.ceil((this.rainUntil - now) / 1000));
+    }
+    const next = this.ensureNextRainAt();
+    return Math.max(0, Math.ceil((next - now) / 1000));
+  },
+
   tryTriggerRain() {
     if (this.raining && (typeof nowMs==="function"?nowMs():Date.now()) < this.rainUntil) return false;
-    let chance = (currentSettings && currentSettings.rainChance) != null
-      ? Number(currentSettings.rainChance)
-      : 15;
-    if (!Number.isFinite(chance)) chance = 15;
-    chance = Math.max(1, Math.min(50, chance));
-    if (Math.random() * 100 < chance) {
+    const now = (typeof nowMs === 'function' ? nowMs() : Date.now());
+    const next = this.ensureNextRainAt();
+    if (now >= next) {
       this.startRain();
       return true;
     }
@@ -556,6 +597,8 @@ const Game = {
     const durationMs = this.getRainDurationMs();
     const now = (typeof nowMs === 'function' ? nowMs() : Date.now());
     this.rainUntil = now + durationMs;
+    // Chu kỳ 30 phút: trận mưa tiếp theo sau khi hết trận này (hoặc tối thiểu +30p từ lúc bắt đầu)
+    this.scheduleNextRain(Math.max(this.rainUntil, now + (this.RAIN_INTERVAL_MS || 30 * 60 * 1000)));
     this.rainCollectCount = 0;
     let wateredN = 0;
     let autoCollectN = 0;
@@ -621,7 +664,7 @@ const Game = {
       }
       
       let actMsg = fairyOn
-        ? `Mưa · ${fairyName} tưới khi mưa: ${wateredN} ô`
+        ? `Mưa · ${fairyEmoji} ${fairyName} tưới khi mưa: ${wateredN} ô`
         : `Mưa bắt đầu (${Math.round(durationMs / 1000)}s)`;
       if (autoCollectN > 0) {
         actMsg += ` · nhặt ${autoCollectN} vật phẩm`;
@@ -1967,7 +2010,7 @@ const Game = {
 
 
   
-  OFFLINE_RAIN_INTERVAL_MS: 15 * 60 * 1000,
+  OFFLINE_RAIN_INTERVAL_MS: 30 * 60 * 1000,
 
   getRainChancePct() {
     let chance = (typeof currentSettings !== 'undefined' && currentSettings && currentSettings.rainChance) != null
@@ -2262,14 +2305,11 @@ const Game = {
 
     
     const events = [];
-    const rainChance = this.getRainChancePct();
-    const rainStep = this.OFFLINE_RAIN_INTERVAL_MS || (15 * 60 * 1000);
+    const rainStep = this.RAIN_INTERVAL_MS || this.OFFLINE_RAIN_INTERVAL_MS || (30 * 60 * 1000);
     let rainT = from + rainStep;
     let rainGuard = 0;
     while (rainT <= now && rainGuard++ < 2000) {
-      if (Math.random() * 100 < rainChance) {
-        events.push({ t: rainT, type: 'rain' });
-      }
+      events.push({ t: rainT, type: 'rain' });
       rainT += rainStep;
     }
     
@@ -2847,7 +2887,7 @@ const Game = {
     const lines = [];
     lines.push('BÙ OFFLINE — vắng ' + offlineText + ' (từ ' + new Date(from).toLocaleString('vi-VN') + ' → ' + new Date(now).toLocaleString('vi-VN') + ')');
     lines.push('Tóm tắt: ' + (notes.length ? notes.join(' · ') : (changed ? 'đã cập nhật trạng thái' : 'không có thay đổi lớn')));
-    lines.push('Mưa: ' + rainHits + ' trận (tỉ lệ admin ' + rainChance + '% / mỗi 15 phút) · ô được Tiên tưới kèm mưa: ' + rainWatered);
+    lines.push('Mưa: ' + rainHits + ' trận (cố định mỗi 30 phút) · ô được Tiên tưới kèm mưa: ' + rainWatered);
     
     let cycleLeftSec = null;
     if (fairyActive) {

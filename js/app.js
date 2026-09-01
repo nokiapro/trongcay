@@ -4483,44 +4483,24 @@ function updateGlobalTimer() {
     }
   };
 
-  
-  if (Game.isFairyActive && Game.isFairyActive()) {
-    const sec = Game.getFairyCareRemainingSec ? Game.getFairyCareRemainingSec() : null;
-    const remain = sec == null ? 0 : sec;
-    const label = Game.formatTime(remain);
-    setCycle(label, remain <= 0);
+  // Đếm ngược 30 phút đến trận mưa tiếp theo (Tiên tưới khi mưa)
+  if (typeof Game !== 'undefined' && Game.getRainRemainingSec) {
+    const raining = !!(Game.raining && Game.rainUntil && Game.rainUntil > (typeof nowMs === 'function' ? nowMs() : Date.now()));
+    const remain = Game.getRainRemainingSec();
+    const label = Game.formatTime ? Game.formatTime(remain) : String(remain);
+    setCycle(label, !raining && remain <= 0);
     if (btn) {
-      btn.title = remain <= 0
-        ? '🧚 Tiên sắp / đang chăm vườn (tưới + bón nếu có phân)'
-        : `🧚 Tiên chăm lại sau: ${label} (mỗi 3 giờ)`;
-    }
-    if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
-    return;
-  }
-
-  const plots = Array.isArray(currentPlayer.plots) ? currentPlayer.plots : Object.values(currentPlayer.plots || {});
-  let minRemain = null;
-  let activeBoosts = 0;
-
-  plots.forEach((plot) => {
-    if (!plot) return;
-    const sec = Game.getBoostResetRemaining ? Game.getBoostResetRemaining(plot) : null;
-    if (sec == null) return;
-    activeBoosts++;
-    if (minRemain == null || sec < minRemain) minRemain = sec;
-  });
-
-  if (minRemain != null) {
-    const label = Game.formatTime(minRemain);
-    setCycle(label, minRemain <= 0);
-    if (btn) {
-      btn.title = minRemain <= 0
-        ? 'Đã hết hiệu lực tưới/phân — có thể tưới/bón lại'
-        : `Reset tưới & phân gần nhất: ${label} (${activeBoosts} ô đang có hiệu lực)`;
+      if (raining) {
+        btn.title = `🌧️ Đang mưa — Tiên đang tưới · còn ${label}`;
+      } else if (remain <= 0) {
+        btn.title = '🌧️ Sắp mưa / đang kích hoạt mưa — Tiên sẽ tưới';
+      } else {
+        btn.title = `🌧️ Mưa sau: ${label} (mỗi 30 phút · Tiên tưới khi mưa)`;
+      }
     }
   } else {
     setCycle('--:--:--', false);
-    if (btn) btn.title = 'Chưa tưới / bón phân — reset sau 3 giờ kể từ lần tưới/bón';
+    if (btn) btn.title = 'Đếm ngược mưa (30 phút)';
   }
   if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
 }
@@ -4702,12 +4682,12 @@ setInterval(() => {
   if (currentPlayer && !Game.raining) {
     Game.tryTriggerRain();
   }
-}, 45000);
+}, 5000);
 
 
 setTimeout(() => {
   if (currentPlayer) Game.tryTriggerRain();
-}, 8000);
+}, 2000);
 
 
 function renderQuests() {
