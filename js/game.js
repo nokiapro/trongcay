@@ -217,6 +217,13 @@ const Game = {
         if ((Number(p.specialMultPermanent) || 0) >= 2) {
           p.specialMult = Math.max(Number(p.specialMult) || 1, Number(p.specialMultPermanent) || 1);
         }
+        // Backfill baseGrowTime cho cây đang trồng (phục vụ offline khi thiếu định nghĩa cây)
+        if (p.plantId && !(Number(p.baseGrowTime) > 0)) {
+          try {
+            const plDef = this.getPlant(p.plantId);
+            if (plDef && Number(plDef.growTime) > 0) p.baseGrowTime = Number(plDef.growTime);
+          } catch (_) {}
+        }
         if (typeof p.waterCount !== 'number') p.waterCount = p.watered ? 3 : 0;
         if (typeof p.id !== 'number') p.id = i;
       }
@@ -782,9 +789,17 @@ const Game = {
   },
 
   getEffectiveGrowTime(plot, atMs) {
+    if (!plot || !plot.plantId) return 9999;
     const plant = this.getPlant(plot.plantId);
-    if (!plant) return 9999;
-    let t = plant.growTime || 300;
+    // Fallback: dùng baseGrowTime lưu trên ô (tránh offline 0 vụ khi định nghĩa cây custom chưa load / lệch id)
+    let t = (plant && Number(plant.growTime) > 0)
+      ? Number(plant.growTime)
+      : (Number(plot.baseGrowTime) > 0 ? Number(plot.baseGrowTime) : 0);
+    if (!(t > 0)) {
+      // Cây custom mất định nghĩa — không trả 9999 (sẽ làm offline luôn 0 vụ)
+      // Dùng 600s mặc định an toàn thay vì bỏ sót hoàn toàn
+      t = 600;
+    }
 
     const waterBonus = Math.min(plot.waterCount || 0, 3) * 0.12;
     t *= (1 - waterBonus);
@@ -795,7 +810,7 @@ const Game = {
     }
 
     const weather = this.getWeather();
-    t /= weather.mult;
+    if (weather && weather.mult > 0) t /= weather.mult;
 
     const sm = this.getPlotSpeedMult(plot, atMs);
     if (sm > 1) t /= sm;
@@ -1098,6 +1113,10 @@ const Game = {
     plot.fertilizerId = null;
     plot.fertilizedAt = null;
     plot.seedStar = usedStar;
+    {
+      const plDef = this.getPlant(plantId);
+      plot.baseGrowTime = (plDef && Number(plDef.growTime) > 0) ? Number(plDef.growTime) : (Number(plot.baseGrowTime) || 0);
+    }
     
     let fairyWatered = false;
     if (this.isFairyActive() && (plot.waterCount || 0) < 3) {
@@ -1184,6 +1203,10 @@ const Game = {
       plot.fertilizerId = null;
       plot.fertilizedAt = null;
       plot.seedStar = usedStar;
+      {
+        const plDef = this.getPlant(plantId);
+        plot.baseGrowTime = (plDef && Number(plDef.growTime) > 0) ? Number(plDef.growTime) : (Number(plot.baseGrowTime) || 0);
+      }
       if (fairyOn) {
         plot.waterCount = 3;
         plot.watered = true;
@@ -2527,9 +2550,16 @@ const Game = {
               if (perm >= 2) {
                 plot.specialMult = Math.max(Number(plot.specialMult) || 1, perm);
               }
-              if (this.isFairyActive() && (plot.waterCount || 0) < 3) {
+              // Offline NYC: luôn coi như đã tưới đủ 3 lần để khớp kỳ vọng tốc độ (Tiên/mưa offline có thể bỏ sót)
+              if ((plot.waterCount || 0) < 3) {
                 plot.waterCount = 3;
                 plot.watered = true;
+                if (!plot.lastWatered) plot.lastWatered = from;
+              }
+              // Nếu chưa có baseGrowTime (cây trồng trước khi fix) → lấy từ định nghĩa hiện tại
+              if (!(Number(plot.baseGrowTime) > 0)) {
+                const plDef = this.getPlant(plot.plantId);
+                if (plDef && Number(plDef.growTime) > 0) plot.baseGrowTime = Number(plDef.growTime);
               }
               const growSec = Math.max(20, this.getEffectiveGrowTime(plot, endMs));
               const readyAt = plantedAt + growSec * 1000;
@@ -2688,10 +2718,14 @@ const Game = {
         let zeroHint = '';
         if (vu === 0) {
           const d = gardenDiag[gi] || {};
-          if ((d.withPlant || 0) === 0 && (d.seedLeft || 0) <= 0) zeroHint = ' · hết hạt';
-          else if ((d.withPlant || 0) === 0) zeroHint = ' · không có cây';
+          const multStr = 'ô x' + (d.maxMult != null ? d.maxMult : '?');
+          const growStr = d.sampleGrow != null ? ('~' + Math.round(d.sampleGrow) + 's') : '?s';
+          if ((d.withPlant || 0) === 0 && (d.seedLeft || 0) <= 0) zeroHint = ' · hết hạt (' + multStr + ')';
+          else if ((d.withPlant || 0) === 0) zeroHint = ' · không có cây / chưa trồng được (' + multStr + ')';
           else if (d.sampleGrow != null && offlineGap > 0 && d.sampleGrow * 1000 > offlineGap)
-            zeroHint = ' · chưa chín (~' + Math.round(d.sampleGrow) + 's, ô x' + (d.maxMult || 1) + ')';
+            zeroHint = ' · chưa chín (' + growStr + ', ' + multStr + ' — cần off lâu hơn hoặc nâng tốc độ ô)';
+          else if ((d.withPlant || 0) > 0)
+            zeroHint = ' · có cây nhưng 0 vụ (' + growStr + ', ' + multStr + ')';
           else zeroHint = ' · 0 vụ';
         }
         const oLabel = vu === 0 && totalSlots > 0 ? ('0/' + totalSlots + ' ô') : (nO + ' ô');
@@ -2955,6 +2989,11 @@ const Game = {
     plot.plantId = plantId;
     plot.plantedAt = plantTime;
     plot.seedStar = kind === 'star';
+    // Lưu growTime gốc lên ô — offline không phụ thuộc currentPlants có load đủ cây custom
+    const plDef = this.getPlant(plantId);
+    plot.baseGrowTime = (plDef && Number(plDef.growTime) > 0)
+      ? Number(plDef.growTime)
+      : (Number(plot.baseGrowTime) > 0 ? Number(plot.baseGrowTime) : 0);
     plot.waterCount = 0;
     plot.watered = false;
     plot.lastWatered = null;
