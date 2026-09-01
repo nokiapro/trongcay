@@ -4264,6 +4264,26 @@ function updateTreeLevelUI(val) {
   if (pillIcon) pillIcon.className = 'fa-solid ' + (tier.icon || 'fa-seedling');
   if (pillText) pillText.textContent = 'LEVEL ' + level + ' • ' + (tier.title || '');
 
+  // Chữ dài thì co font, không cắt ... và không xuống dòng
+  if (pill) {
+    pill.style.fontSize = '';
+    const parent = pill.parentElement;
+    const parentW = parent ? parent.clientWidth : window.innerWidth;
+    const style = getComputedStyle(pill);
+    const padX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+    const maxW = Math.min(parentW - 8, 340);
+    // tạm bỏ max-width để đo full width nội dung
+    const prevMax = pill.style.maxWidth;
+    pill.style.maxWidth = 'none';
+    let fs = parseFloat(getComputedStyle(pill).fontSize) || 14.4;
+    const minFs = 9;
+    while (fs > minFs && pill.scrollWidth > maxW) {
+      fs -= 0.5;
+      pill.style.fontSize = fs + 'px';
+    }
+    pill.style.maxWidth = prevMax || '';
+  }
+
   // Tránh transform 3D kẹt khi đổi tier
   const container = document.getElementById('activeTreeContainer');
   if (container) container.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';

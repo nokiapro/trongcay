@@ -7084,7 +7084,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
   border: 2px solid rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(8px);
   text-shadow: 0 2px 4px rgba(0,0,0,0.6);
-  transition: all 0.4s ease;
+  transition: box-shadow 0.4s ease, border-color 0.4s ease, background 0.4s ease, color 0.4s ease;
   overflow: hidden !important;
   background-clip: padding-box !important;
   -webkit-background-clip: padding-box !important;
@@ -7093,9 +7093,10 @@ html[data-theme="dark"] .merge-box .merge-sub {
   justify-content: center;
   gap: 8px;
   min-width: 120px;
-  flex-shrink: 0;
-  white-space: nowrap;
   max-width: min(100%, 340px);
+  width: auto;
+  flex-shrink: 1;
+  white-space: nowrap;
   box-sizing: border-box;
   text-align: center;
   line-height: 1.35;
@@ -7106,8 +7107,9 @@ html[data-theme="dark"] .merge-box .merge-sub {
 .eco-pill-badge span {
   min-width: 0;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
+  flex-shrink: 1;
 }
 [data-theme="dark"] .eco-pill-badge,
 .dark .eco-pill-badge {
@@ -7154,7 +7156,7 @@ html[data-theme="dark"] .merge-box .merge-sub {
   .tier-tree-7 .tree-icon, .tier-tree-8 .tree-icon { font-size: 3rem !important; }
   .tier-tree-9 .tree-icon, .tier-tree-10 .tree-icon { font-size: 3.2rem !important; }
   .tier-tree-11 .tree-icon, .tier-tree-12 .tree-icon { font-size: 3.5rem !important; }
-  .eco-pill-badge { font-size: 0.8rem !important; padding: 4px 14px !important; min-width: 100px; max-width: 100%; }
+  .eco-pill-badge { font-size: 0.8rem; padding: 4px 14px !important; min-width: 100px; max-width: 100%; }
   .tree-level-tag { font-size: 0.8rem !important; padding: 4px 14px !important; min-width: 100px; }
 }
 
