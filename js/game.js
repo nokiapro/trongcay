@@ -2541,11 +2541,9 @@ const Game = {
             if (perm >= 2) {
               plot.specialMult = Math.max(Number(plot.specialMult) || 1, perm);
             }
-            if ((plot.waterCount || 0) < 3) {
-              plot.waterCount = 3;
-              plot.watered = true;
-              if (!plot.lastWatered) plot.lastWatered = from;
-            }
+            plot.waterCount = 3;
+            plot.watered = true;
+            if (!plot.lastWatered) plot.lastWatered = from;
             if (!(Number(plot.baseGrowTime) > 0)) {
               const plDef = this.getPlant(plot.plantId);
               if (plDef && Number(plDef.growTime) > 0) plot.baseGrowTime = Number(plDef.growTime);
@@ -2563,49 +2561,56 @@ const Game = {
             }
             plot.plantedAt = plantedAt;
 
-            // Mốc chín tiếp theo: nếu đã chín trước khi offline → thu ngay tại `from`
-            let nextReady = plantedAt + growMs;
-            if (nextReady < from) nextReady = from;
+            // ── Tính SỐ VÒNG bằng toán (không phụ thuộc state sau harvest) ──
+            // firstReady: thời điểm chín lần đầu trong cửa sổ offline
+            let firstReady = plantedAt + growMs;
+            if (firstReady < from) firstReady = from;
+            if (firstReady > endMs + 50) continue; // chưa chín trong lúc offline
 
-            let cycles = 0;
-            while (cycles < maxCyclesPerPlot && nextReady <= endMs + 50) {
-              // Đảm bảo vẫn còn cây (có thể mất nếu harvest lỗi)
+            let nCycles = 1;
+            if (canReplantNow) {
+              // Mỗi vòng sau cách nhau growMs
+              nCycles = 1 + Math.floor((endMs - firstReady + 50) / growMs);
+            }
+            nCycles = Math.max(1, Math.min(maxCyclesPerPlot, nCycles));
+
+            for (let c = 0; c < nCycles; c++) {
+              const harvestT = Math.min(endMs, firstReady + c * growMs);
+              if (harvestT > endMs + 50) break;
+
+              // Đảm bảo ô có cây trước khi thu
               if (!plot.plantId) {
-                // Thử trồng lại để tiếp tục chuỗi vòng
-                if (!(canReplantNow && cfg.plantId && this._nycPlantOneAt(plot, cfg, nextReady, gi))) break;
+                if (!(canReplantNow && cfg.plantId)) break;
+                // Trồng với plantedAt = harvestT - growMs để khớp mốc chín
+                if (!this._nycPlantOneAt(plot, cfg, harvestT - growMs, gi)) break;
               }
 
-              // Giữ buff tưới / permanent trước mỗi lần thu
+              // Buff trước thu
               if (perm >= 2) {
                 plot.specialMult = Math.max(Number(plot.specialMult) || 1, perm);
               }
               plot.waterCount = 3;
               plot.watered = true;
+              plot.plantedAt = harvestT - growMs;
 
-              // Đồng bộ plantedAt với mốc vòng hiện tại (tránh lệch sau replant)
-              // plantedAt hiệu dụng = nextReady - growMs
-              plot.plantedAt = nextReady - growMs;
-
-              const harvestT = Math.min(endMs, nextReady);
+              // Thu + cố trồng lại nếu còn vòng sau hoặc còn hạn NYC
+              const wantReplant = canReplantNow && !!cfg.plantId;
               let r = null;
               try {
-                r = this._nycHarvestOneAt(
-                  plot, harvestT, gi, cfg,
-                  canReplantNow && !!cfg.plantId,
-                  true, true
-                );
+                r = this._nycHarvestOneAt(plot, harvestT, gi, cfg, wantReplant, true, true);
               } catch (e) {
-                console.warn('offline harvest', gi, i, e);
+                console.warn('offline harvest', gi, i, c, e);
                 break;
               }
 
               if (!r || !r.harvested) {
-                // Fallback cưỡng bức 1 vụ
+                // Fallback cưỡng bức
                 const hid = plot.plantId;
                 if (!hid) break;
                 const plant = this.getPlant(hid);
                 let amount = (plant && plant.yield) ? plant.yield : 1;
                 if (plot.seedStar) amount = Math.ceil(amount * 1.5);
+                if ((plot.waterCount || 0) >= 2) amount = Math.ceil(amount * 1.1);
                 if (!currentPlayer.inventory) currentPlayer.inventory = {};
                 if (plot.seedStar) {
                   if (!currentPlayer.inventory.harvestStar) currentPlayer.inventory.harvestStar = {};
@@ -2626,7 +2631,7 @@ const Game = {
                 plot.fertilizedAt = null;
                 plot.seedStar = false;
                 const fake = { harvested: 1, planted: 0, amount, plantName, plantId: hid, seedStar: wasStar };
-                if (canReplantNow && cfg.plantId && this._nycPlantOneAt(plot, cfg, harvestT, gi)) {
+                if (wantReplant && this._nycPlantOneAt(plot, cfg, harvestT, gi)) {
                   fake.planted = 1;
                 }
                 recordHarvestStat(fake, gi + ':' + i, growSec);
@@ -2634,18 +2639,23 @@ const Game = {
               } else {
                 recordHarvestStat(r, gi + ':' + i, growSec);
               }
-              cycles++;
 
-              // Chuẩn bị vòng tiếp: cần replant thành công + còn thời gian
-              if (!canReplantNow || !r.planted || !plot.plantId) break;
-
-              // Ép plantedAt = harvestT và tính mốc chín kế tiếp
-              plot.plantedAt = harvestT;
-              // Giữ tưới cho vòng sau
-              plot.waterCount = 3;
-              plot.watered = true;
-              plot.lastWatered = harvestT;
-              nextReady = harvestT + growMs;
+              // Nếu còn vòng sau mà không còn cây → thử trồng để tiếp tục
+              if (c < nCycles - 1 && !plot.plantId) {
+                if (!(canReplantNow && cfg.plantId && this._nycPlantOneAt(plot, cfg, harvestT, gi))) {
+                  break; // hết hạt → dừng chuỗi
+                }
+              }
+              // Chuẩn bị state cho vòng sau
+              if (plot.plantId) {
+                plot.plantedAt = harvestT;
+                plot.waterCount = 3;
+                plot.watered = true;
+                plot.lastWatered = harvestT;
+                if (perm >= 2) {
+                  plot.specialMult = Math.max(Number(plot.specialMult) || 1, perm);
+                }
+              }
             }
           }
 
