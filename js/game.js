@@ -2305,6 +2305,8 @@ const Game = {
 
     
     const events = [];
+    // Mưa cố định mỗi 30 phút — giữ rainChance=100 cho log/report tương thích
+    const rainChance = 100;
     const rainStep = this.RAIN_INTERVAL_MS || this.OFFLINE_RAIN_INTERVAL_MS || (30 * 60 * 1000);
     let rainT = from + rainStep;
     let rainGuard = 0;
