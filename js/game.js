@@ -1584,15 +1584,6 @@ const Game = {
   },
 
   
-  getFairyCareRemainingSec() {
-    if (!this.isFairyActive() || !currentPlayer) return null;
-    const THREE_H = 3 * 60 * 60 * 1000;
-    const last = currentPlayer.lastFairyCare || 0;
-    const next = last + THREE_H;
-    return Math.max(0, Math.ceil((next - (typeof nowMs==="function"?nowMs():Date.now())) / 1000));
-  },
-
-  
   defaultFairyConfig() {
     return {
       waterMode: 'all',      
@@ -2054,21 +2045,6 @@ const Game = {
 
 
   
-  OFFLINE_RAIN_INTERVAL_MS: 30 * 60 * 1000,
-
-  getRainChancePct() {
-    let chance = (typeof currentSettings !== 'undefined' && currentSettings && currentSettings.rainChance) != null
-      ? Number(currentSettings.rainChance)
-      : 15;
-    if (!Number.isFinite(chance)) chance = 15;
-    return Math.max(1, Math.min(50, chance));
-  },
-
-  
-
-
-
-
   applyOfflineRainAt(t) {
     if (!currentPlayer) return { watered: 0, boosted: 0, collected: 0, collectCoins: 0, collectSeeds: 0 };
     this.ensureGardens();
@@ -2349,9 +2325,9 @@ const Game = {
 
     
     const events = [];
-    // Mưa cố định mỗi 30 phút — giữ rainChance=100 cho log/report tương thích
+    // Mưa cố định mỗi 30 phút
     const rainChance = 100;
-    const rainStep = this.RAIN_INTERVAL_MS || this.OFFLINE_RAIN_INTERVAL_MS || (30 * 60 * 1000);
+    const rainStep = this.RAIN_INTERVAL_MS || (30 * 60 * 1000);
     let rainT = from + rainStep;
     let rainGuard = 0;
     while (rainT <= now && rainGuard++ < 2000) {

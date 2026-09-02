@@ -656,7 +656,7 @@ auth.onAuthStateChanged(async (user) => {
                 const detail = (r.notes && r.notes.length) ? r.notes.join(' · ') : 'xem Nhật ký';
                 showToast('⚡ Bù ' + dur + ': ' + detail, 'success');
               }
-              if (typeof renderActivity === 'function') renderActivity();
+              if (typeof renderActivityPage === 'function') renderActivityPage();
             }
           }
         } catch (e) { console.warn('simulateOfflineCare', e); }
@@ -4312,8 +4312,6 @@ function updateTreeLevelUI(val) {
     pill.style.fontSize = '';
     const parent = pill.parentElement;
     const parentW = parent ? parent.clientWidth : window.innerWidth;
-    const style = getComputedStyle(pill);
-    const padX = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
     const maxW = Math.min(parentW - 8, 340);
     // tạm bỏ max-width để đo full width nội dung
     const prevMax = pill.style.maxWidth;
@@ -4648,7 +4646,7 @@ if (!window.__careVisibilityBound) {
                   : ('Bù offline ' + (r.offlineText || '') + ' — xem Nhật ký');
                 showToast('⚡ ' + (r.offlineText ? r.offlineText + ' · ' : '') + msg, 'success');
               }
-              if (typeof renderActivity === 'function') renderActivity();
+              if (typeof renderActivityPage === 'function') renderActivityPage();
             } else if (!r || r.skipped) {
               const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
               currentPlayer.lastSeenAt = t;
@@ -5492,7 +5490,6 @@ function watchSettingsForUpdate() {
       if (val.updateNotes != null) currentSettings.updateNotes = val.updateNotes;
       if (typeof val.forceUpdate === 'boolean') currentSettings.forceUpdate = val.forceUpdate;
       
-      if (val.rainChance != null) currentSettings.rainChance = val.rainChance;
       if (val.rainDurationMinutes != null) currentSettings.rainDurationMinutes = val.rainDurationMinutes;
       if (typeof val.maintenanceOn === 'boolean') currentSettings.maintenanceOn = val.maintenanceOn;
       if (val.siteIconUrl != null) currentSettings.siteIconUrl = val.siteIconUrl;
