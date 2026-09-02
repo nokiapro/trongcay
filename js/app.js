@@ -608,6 +608,7 @@ auth.onAuthStateChanged(async (user) => {
     try {
       await initGlobalData();
       await loadPlayer(user.uid, user.email);
+      try { if (typeof scheduleActivityMidnightPrune === 'function') scheduleActivityMidnightPrune(); } catch (_) {}
       if (typeof Features !== 'undefined') {
         const gate = await Features.checkAccessGates();
         if (gate.blocked) {
@@ -4191,12 +4192,13 @@ function activityFaIcon(text, type) {
 }
 
 function renderActivityPage() {
-  if (!currentPlayer) return;
   const actList = document.getElementById('activity-list');
-  if (!actList) return;
+  if (!actList || !currentPlayer) return;
+  // Chỉ hiện hoạt động trong ngày (GMT+7)
+  try { if (typeof pruneCurrentPlayerActivity === 'function') pruneCurrentPlayerActivity(); } catch (_) {}
   const acts = currentPlayer.activity || [];
-  if (acts.length === 0) {
-    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i> Chưa có hoạt động nào.</li>';
+  if (!acts.length) {
+    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i> Chưa có hoạt động nào hôm nay.</li>';
   } else {
     actList.innerHTML = acts.slice(0, 80).map(a => {
       const icon = activityFaIcon(a.text, a.type);
@@ -4204,6 +4206,46 @@ function renderActivityPage() {
     }).join('');
   }
 }
+
+
+/** Sau 0h00 GMT+7: xóa activity ngày cũ trên client + Firebase (player hiện tại) */
+let _activityMidnightTimer = null;
+function scheduleActivityMidnightPrune() {
+  if (_activityMidnightTimer) {
+    try { clearTimeout(_activityMidnightTimer); } catch (_) {}
+    _activityMidnightTimer = null;
+  }
+  if (typeof msUntilNextGmt7Midnight !== 'function') return;
+  const wait = msUntilNextGmt7Midnight();
+  _activityMidnightTimer = setTimeout(async () => {
+    try {
+      if (currentPlayer && typeof pruneCurrentPlayerActivity === 'function') {
+        const changed = pruneCurrentPlayerActivity();
+        if (changed && typeof savePlayer === 'function') {
+          await savePlayer({ silent: true, action: 'activity-day-reset' });
+        }
+        if (typeof renderActivityPage === 'function') renderActivityPage();
+      }
+    } catch (e) {
+      console.warn('activity midnight prune', e);
+    }
+    scheduleActivityMidnightPrune();
+  }, wait);
+}
+// Kiểm tra định kỳ (tab ngủ / lệch giờ)
+setInterval(() => {
+  try {
+    if (!currentPlayer || typeof pruneCurrentPlayerActivity !== 'function') return;
+    if (pruneCurrentPlayerActivity() && typeof savePlayer === 'function') {
+      savePlayer({ silent: true, action: 'activity-day-reset' }).catch(() => {});
+      if (typeof renderActivityPage === 'function') {
+        const page = document.getElementById('page-activity');
+        if (page && page.classList.contains('active')) renderActivityPage();
+      }
+    }
+  } catch (_) {}
+}, 60 * 1000);
+
 
 
 const TREE_MAX_LEVEL = 10000;

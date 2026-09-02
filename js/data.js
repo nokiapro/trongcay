@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 
-const APP_VERSION = '1.9.98';
+const APP_VERSION = '1.9.99';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13456,6 +13456,78 @@ function formatGameDateTime(ms, withSeconds) {
   } catch (_) {
     return new Date(ms).toLocaleString('vi-VN');
   }
+}
+
+/** Timestamp 00:00:00 ngày hiện tại theo GMT+7 (Asia/Ho_Chi_Minh) */
+function getGmt7DayStartMs(nowMsVal) {
+  const now = (typeof nowMsVal === 'number' && nowMsVal > 0)
+    ? nowMsVal
+    : ((typeof nowMs === 'function') ? nowMs() : Date.now());
+  try {
+    // en-CA → YYYY-MM-DD theo timezone VN
+    const dayStr = new Date(now).toLocaleDateString('en-CA', { timeZone: GAME_TIMEZONE || 'Asia/Ho_Chi_Minh' });
+    // 00:00 GMT+7 = Date.parse với offset +07:00
+    const start = Date.parse(dayStr + 'T00:00:00+07:00');
+    if (Number.isFinite(start)) return start;
+  } catch (_) {}
+  // fallback UTC+7 thủ công
+  const offset = 7 * 60 * 60 * 1000;
+  const shifted = new Date(now + offset);
+  return Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()) - offset;
+}
+
+/** ms đến mốc 0h00 GMT+7 tiếp theo */
+function msUntilNextGmt7Midnight(nowMsVal) {
+  const now = (typeof nowMsVal === 'number' && nowMsVal > 0)
+    ? nowMsVal
+    : ((typeof nowMs === 'function') ? nowMs() : Date.now());
+  const startToday = getGmt7DayStartMs(now);
+  const next = startToday + 24 * 60 * 60 * 1000;
+  return Math.max(500, next - now + 50);
+}
+
+/**
+ * Chỉ giữ activity trong ngày GMT+7 hiện tại.
+ * @returns {{ list: Array, removed: number, changed: boolean }}
+ */
+function pruneActivityToToday(list, nowMsVal) {
+  const dayStart = getGmt7DayStartMs(nowMsVal);
+  if (!Array.isArray(list) || !list.length) {
+    return { list: Array.isArray(list) ? list : [], removed: 0, changed: false };
+  }
+  const kept = [];
+  for (let i = 0; i < list.length; i++) {
+    const a = list[i];
+    if (!a || typeof a !== 'object') continue;
+    let ts = Number(a.t);
+    if (!Number.isFinite(ts) || ts <= 0) {
+      // cố parse chuỗi time (vi-VN / ISO)
+      if (a.time) {
+        const p = Date.parse(String(a.time));
+        if (Number.isFinite(p)) ts = p;
+      }
+    }
+    // Không có timestamp đáng tin → coi là cũ, bỏ (tránh giữ log ngày qua)
+    if (!Number.isFinite(ts) || ts <= 0) continue;
+    if (ts >= dayStart) kept.push(a);
+  }
+  const removed = list.length - kept.length;
+  return { list: kept, removed, changed: removed > 0 };
+}
+
+/** Áp dụng prune lên currentPlayer.activity; trả về true nếu có xóa */
+function pruneCurrentPlayerActivity(opts) {
+  opts = opts || {};
+  if (!currentPlayer) return false;
+  const r = pruneActivityToToday(currentPlayer.activity || [], opts.now);
+  if (r.changed || !Array.isArray(currentPlayer.activity)) {
+    currentPlayer.activity = r.list;
+    if (r.changed) {
+      try { if (typeof markPlayerDirty === 'function') markPlayerDirty(); } catch (_) {}
+    }
+    return r.changed;
+  }
+  return false;
 }
 
 
@@ -14003,6 +14075,13 @@ async function loadPlayer(uid, email) {
     }
     if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
 
+    // Hoạt động gần đây: chỉ giữ trong ngày (GMT+7), xóa log ngày cũ
+    try {
+      if (pruneCurrentPlayerActivity()) {
+        _playerDirty = true;
+      }
+    } catch (_) {}
+
     
     if (!currentPlayer.seedGiftRemoved) {
       currentPlayer.seedGiftRemoved = true;
@@ -14197,6 +14276,9 @@ async function savePlayer(opts) {
 
   
   let payload;
+  // Chỉ lưu activity trong ngày GMT+7
+  try { pruneCurrentPlayerActivity(); } catch (_) {}
+
   try {
     payload = JSON.parse(JSON.stringify(currentPlayer));
   } catch (e) {

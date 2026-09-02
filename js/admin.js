@@ -63,19 +63,46 @@ async function renderDashboard() {
   await refreshPlants();
   const usersSnap = await db.ref('users').once('value');
   const users = usersSnap.val() || {};
-  const userList = Object.values(users);
+  const userEntries = Object.entries(users);
+  const userList = userEntries.map(([uid, u]) => Object.assign({}, u, { uid: u.uid || uid }));
 
   let totalCoins = 0, totalPlanted = 0, totalHarvested = 0;
   const allActivity = [];
+  const dayStart = (typeof getGmt7DayStartMs === 'function')
+    ? getGmt7DayStartMs()
+    : (Date.now() - 24 * 60 * 60 * 1000);
+  const usersToPrune = [];
   userList.forEach(u => {
     totalCoins += u.coins || 0;
     totalPlanted += (u.stats && u.stats.planted) || 0;
     totalHarvested += (u.stats && u.stats.harvested) || 0;
-    if (u.activity) {
-      u.activity.forEach(a => allActivity.push({ ...a, email: u.email }));
+    let acts = Array.isArray(u.activity) ? u.activity : [];
+    if (typeof pruneActivityToToday === 'function') {
+      const pr = pruneActivityToToday(acts);
+      if (pr.changed && u.uid) {
+        usersToPrune.push({ uid: u.uid, activity: pr.list });
+      }
+      acts = pr.list;
+    } else {
+      acts = acts.filter(a => {
+        const ts = Number(a && a.t);
+        return Number.isFinite(ts) && ts >= dayStart;
+      });
     }
+    acts.forEach(a => allActivity.push({ ...a, email: u.email }));
   });
-  allActivity.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+  // Xóa activity ngày cũ trên Firebase (toàn bộ user) — chạy nền
+  if (usersToPrune.length) {
+    Promise.all(usersToPrune.map(item =>
+      db.ref('users/' + item.uid + '/activity').set(item.activity).catch(() => {})
+    )).catch(() => {});
+  }
+  allActivity.sort((a, b) => {
+    const tb = Number(b.t) || 0;
+    const ta = Number(a.t) || 0;
+    if (tb !== ta) return tb - ta;
+    return String(b.time || '').localeCompare(String(a.time || ''));
+  });
 
   document.getElementById('admin-stats').innerHTML = `
     <div class="admin-stat"><div class="value">${currentPlants.length}</div><div class="label">Loại cây</div></div>

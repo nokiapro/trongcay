@@ -4136,6 +4136,10 @@ const Game = {
       type: (meta && meta.type) ? String(meta.type) : 'note'
     });
     
+    // Chỉ giữ log trong ngày GMT+7 + giới hạn số dòng
+    if (typeof pruneCurrentPlayerActivity === 'function') {
+      try { pruneCurrentPlayerActivity({ now: t }); } catch (_) {}
+    }
     if (currentPlayer.activity.length > 120) currentPlayer.activity = currentPlayer.activity.slice(0, 120);
 
     
