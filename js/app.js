@@ -211,7 +211,7 @@ function openNycConfigModal() {
     const p = Game.getPlant(id);
     if (!p) return;
     const val = id + '|normal';
-    const selc = (cfg.plantId === id && cfg.seedKind !== 'star') ? 'selected' : '';
+    const selc = (cfg.plantId === id && cfg.seedKind === 'normal') ? 'selected' : '';
     opts.push(`<option value="${val}" ${selc}>${p.icon} ${p.name} · thường x${seeds[id]}</option>`);
   });
   Object.keys(stars).filter(id => (stars[id] || 0) > 0).forEach(id => {
@@ -232,11 +232,16 @@ function openNycConfigModal() {
   if (cfg.plantId) {
     const haveN = (seeds[cfg.plantId] || 0) > 0;
     const haveS = (stars[cfg.plantId] || 0) > 0;
+    const haveM = (myths[cfg.plantId] || 0) > 0;
+    if (cfg.seedKind === 'myth' && !haveM) {
+      const p = Game.getPlant(cfg.plantId);
+      if (p) opts.push(`<option value="${cfg.plantId}|myth" selected>${p.icon} ${p.name} ✨ (hết hạt huyền thoại)</option>`);
+    }
     if (cfg.seedKind === 'star' && !haveS) {
       const p = Game.getPlant(cfg.plantId);
       if (p) opts.push(`<option value="${cfg.plantId}|star" selected>${p.icon} ${p.name} ⭐ (hết hạt sao)</option>`);
     }
-    if (cfg.seedKind !== 'star' && !haveN) {
+    if (cfg.seedKind === 'normal' && !haveN) {
       const p = Game.getPlant(cfg.plantId);
       if (p) opts.push(`<option value="${cfg.plantId}|normal" selected>${p.icon} ${p.name} (hết hạt thường)</option>`);
     }

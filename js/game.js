@@ -486,15 +486,16 @@ const Game = {
     let seedKind = 'normal';
     let mode = 'all';
     let count = 1;
+    const normKind = (k) => (k === 'myth' || k === 'star') ? k : 'normal';
     if (ov && typeof ov === 'object') {
       plantId = ov.plantId || null;
-      seedKind = ov.seedKind === 'star' ? 'star' : 'normal';
+      seedKind = normKind(ov.seedKind);
       mode = ov.mode === 'count' ? 'count' : 'all';
       count = typeof ov.count === 'number' ? ov.count : 1;
     } else {
       // Chưa có byGarden riêng → dùng cấu hình gốc (plantId chung)
       plantId = base.plantId || null;
-      seedKind = base.seedKind === 'star' ? 'star' : 'normal';
+      seedKind = normKind(base.seedKind);
       mode = base.mode === 'count' ? 'count' : 'all';
       count = typeof base.count === 'number' ? base.count : 1;
     }
@@ -513,7 +514,7 @@ const Game = {
     const byGarden = Object.assign({}, prev.byGarden || {});
     const slice = {
       plantId: (cfg && cfg.plantId) || null,
-      seedKind: cfg && cfg.seedKind === 'star' ? 'star' : 'normal',
+      seedKind: (cfg && (cfg.seedKind === 'myth' || cfg.seedKind === 'star')) ? cfg.seedKind : 'normal',
       mode: cfg && cfg.mode === 'count' ? 'count' : 'all',
       count: Math.max(1, Math.min(99, parseInt(cfg && cfg.count, 10) || 1))
     };
