@@ -664,7 +664,7 @@ const Game = {
       }
       
       let actMsg = fairyOn
-        ? `Mưa · ${fairyName} tưới khi mưa: ${wateredN} ô`
+        ? `Mưa · ${fairyEmoji} ${fairyName} tưới khi mưa: ${wateredN} ô`
         : `Mưa bắt đầu (${Math.round(durationMs / 1000)}s)`;
       if (autoCollectN > 0) {
         actMsg += ` · nhặt ${autoCollectN} vật phẩm`;
@@ -686,7 +686,7 @@ const Game = {
     }
     if (typeof showRainEffect === 'function') showRainEffect();
     let tip = fairyOn
-      ? `🌧️ Mưa + ${fairyName} tưới ${wateredN} ô!`
+      ? `🌧️ Mưa + ${fairyEmoji} ${fairyName} tưới ${wateredN} ô!`
       : '🌧️ Mưa rồi! Chạm sâu / hạt rơi để nhặt thưởng!';
     if (autoCollectN > 0) tip += ` Nhặt ${autoCollectN} vật phẩm.`;
     if (typeof showToast === 'function') showToast(tip, 'success');

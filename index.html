@@ -2,9 +2,20 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#166534" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Vườn Xanh" />
+  <meta name="application-name" content="Vườn Xanh" />
+  <meta name="description" content="Vườn Xanh — trồng cây, thu hoạch, Tiên chăm vườn." />
   <title>Vườn Xanh - Trồng Cây & Thu Hoạch</title>
-  <link rel="stylesheet" href="css/style.css?v=1.9.88" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.96" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -789,11 +800,44 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.88"></script>
-  <script src="js/data.js?v=1.9.88"></script>
-  <script src="js/fa-icons.js?v=1.9.88"></script>
-  <script src="js/game.js?v=1.9.88"></script>
-  <script src="js/features.js?v=1.9.88"></script>
-  <script src="js/app.js?v=1.9.88"></script>
+  <script src="js/firebase-config.js?v=1.9.96"></script>
+  <script src="js/data.js?v=1.9.96"></script>
+  <script src="js/fa-icons.js?v=1.9.96"></script>
+  <script src="js/game.js?v=1.9.96"></script>
+  <script src="js/features.js?v=1.9.96"></script>
+  <script src="js/app.js?v=1.9.96"></script>
+  <script>
+  (function () {
+    if (!('serviceWorker' in navigator)) return;
+    var SW_URL = 'sw.js';
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register(SW_URL).then(function (reg) {
+        // Có bản SW mới → kích hoạt sớm
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        reg.addEventListener('updatefound', function () {
+          var nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener('statechange', function () {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              // Bản mới đã sẵn sàng — có thể tự skipWaiting
+              if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        });
+      }).catch(function (err) {
+        console.warn('SW register failed', err);
+      });
+      // Reload nhẹ khi controller đổi (sau update)
+      var refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (refreshing) return;
+        refreshing = true;
+        // Không auto reload cứng để tránh mất state đang chơi; user F5 sẽ nhận bản mới
+      });
+    });
+  })();
+  </script>
 </body>
 </html>
