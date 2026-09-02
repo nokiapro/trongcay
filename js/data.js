@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 
-const APP_VERSION = '1.9.96';
+const APP_VERSION = '1.9.97';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13167,7 +13167,8 @@ const TYPE_LABELS = {
   cay: 'Cây cảnh',
   la: 'Lá',
   kytu: 'Ký tự',
-  so: 'Số'
+  so: 'Số',
+  khac: 'Khác'
 };
 
 

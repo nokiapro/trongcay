@@ -2707,6 +2707,7 @@ function getShopPlantsFiltered() {
   else if (currentShopTab === 'la') plants = plants.filter(p => p.type === 'la' || p.type === 'rau');
   else if (currentShopTab === 'cay') plants = plants.filter(p => p.type === 'cay');
   else if (currentShopTab === 'kytu') plants = plants.filter(p => p.type === 'kytu' || p.type === 'so');
+  else if (currentShopTab === 'khac') plants = plants.filter(p => p.type === 'khac');
   else if (currentShopTab === 'limited') {
     plants = plants.filter(p => Game.isPlantLimited(p));
   }
