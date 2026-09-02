@@ -3517,6 +3517,7 @@ function renderInventory() {
   const ferts = (currentPlayer.inventory && currentPlayer.inventory.fertilizers) || {};
   const harvest = (currentPlayer.inventory && currentPlayer.inventory.harvest) || {};
   const harvestStar = (currentPlayer.inventory && currentPlayer.inventory.harvestStar) || {};
+  const harvestMyth = (currentPlayer.inventory && currentPlayer.inventory.harvestMyth) || {};
   const harvestBought = (currentPlayer.inventory && currentPlayer.inventory.harvestBought) || {};
 
   
@@ -3732,6 +3733,7 @@ function renderInventory() {
   hHtml += renderHarvestBag(harvest, 'normal', '🌾 Thu hoạch thường', 'Chưa thu hoạch sản phẩm nào.', p => p.sellPrice);
   hHtml += renderHarvestBag(harvestBought, 'bought', '🛒 Đã mua (chợ)', 'Chưa mua hoa quả từ chợ.', p => p.sellPrice);
   hHtml += renderHarvestBag(harvestStar, 'star', '⭐ Ghép sao (thu từ hạt ⭐)', 'Chưa có sản phẩm từ hạt sao.', p => Math.ceil(p.sellPrice * 1.5));
+  hHtml += renderHarvestBag(harvestMyth, 'myth', '✨ Huyền thoại (thu từ hạt ✨)', 'Chưa có sản phẩm từ hạt huyền thoại.', p => Math.ceil(p.sellPrice * 2));
   harvestEl.innerHTML = hHtml;
 
   document.getElementById('btn-sell-all-harvest')?.addEventListener('click', async () => {
@@ -3743,7 +3745,7 @@ function renderInventory() {
   harvestEl.querySelectorAll('.btn-sell-hv').forEach(btn => {
     const id = btn.dataset.id;
     const kind = btn.dataset.kind || 'normal';
-    const bagKey = kind === 'star' ? 'harvestStar' : (kind === 'bought' ? 'harvestBought' : 'harvest');
+    const bagKey = kind === 'myth' ? 'harvestMyth' : (kind === 'star' ? 'harvestStar' : (kind === 'bought' ? 'harvestBought' : 'harvest'));
     const sell = async (qty) => {
       const have = (currentPlayer.inventory[bagKey] && currentPlayer.inventory[bagKey][id]) || 0;
       let n = qty;
@@ -4908,6 +4910,7 @@ async function renderMarket() {
           L.kind === 'seed' ? 'Hạt'
           : L.kind === 'seedStar' ? 'Hạt ⭐'
           : L.kind === 'harvestStar' ? 'Nông sản ⭐'
+          : L.kind === 'harvestMyth' ? 'Nông sản ✨'
           : L.kind === 'harvestBought' ? 'Nông sản (chợ)'
           : 'Nông sản'
         } · x${L.qty}</span></div>
