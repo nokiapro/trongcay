@@ -173,6 +173,31 @@ const Game = {
       }
     }
 
+    // Tách reference trùng giữa các vườn (Firebase / sync lỗi có thể làm 2 vườn cùng 1 mảng → mất ô)
+    if (Array.isArray(currentPlayer.gardens) && currentPlayer.gardens.length > 1) {
+      const seen = new Map();
+      for (let gi = 0; gi < currentPlayer.gardens.length; gi++) {
+        const arr = currentPlayer.gardens[gi];
+        if (!Array.isArray(arr)) continue;
+        if (seen.has(arr)) {
+          // Clone nông từng ô — giữ dữ liệu hiện có, không còn share mảng
+          currentPlayer.gardens[gi] = arr.map((p, idx) => {
+            if (p && typeof p === 'object') {
+              const c = Object.assign({}, p);
+              c.id = idx;
+              return c;
+            }
+            return {
+              id: idx, plantId: null, plantedAt: null, watered: false,
+              waterCount: 0, lastWatered: null, fertilizerId: null
+            };
+          });
+        } else {
+          seen.set(arr, gi);
+        }
+      }
+    }
+
     if (typeof currentPlayer.activeGarden !== 'number' || currentPlayer.activeGarden < 0 || isNaN(currentPlayer.activeGarden)) {
       currentPlayer.activeGarden = 0;
     }
@@ -257,16 +282,29 @@ const Game = {
       ? currentPlayer.activeGarden
       : 0;
     if (!Array.isArray(currentPlayer.plots)) return;
-    // Chỉ ghi plots vào đúng slot active nếu plots đang là (hoặc nên là) vườn đó.
-    // Tránh ghi đè vườn khác khi reference bị lệch sau ensureGardens/clone.
+    if (i < 0 || i >= currentPlayer.gardens.length) return;
+
+    // plots đang trỏ nhầm sang vườn khác → kéo về đúng slot, không ghi đè
+    for (let j = 0; j < currentPlayer.gardens.length; j++) {
+      if (j !== i && currentPlayer.plots === currentPlayer.gardens[j]) {
+        currentPlayer.plots = currentPlayer.gardens[i];
+        return;
+      }
+    }
+
     if (currentPlayer.plots === currentPlayer.gardens[i]) {
-      // đã cùng reference — không cần làm gì
       return;
     }
-    // Nếu plots khác reference nhưng active đúng, cập nhật slot (giữ dữ liệu đang sửa)
-    if (i >= 0 && i < currentPlayer.gardens.length) {
-      currentPlayer.gardens[i] = currentPlayer.plots;
+
+    const existing = currentPlayer.gardens[i];
+    // Không bao giờ ghi đè vườn đang nhiều ô bằng mảng ngắn hơn (trừ khi cùng nội dung mở rộng hợp lệ)
+    if (Array.isArray(existing) && existing.length > currentPlayer.plots.length) {
+      // Giữ vườn dài, đồng bộ plots theo vườn
+      currentPlayer.plots = existing;
+      return;
     }
+
+    currentPlayer.gardens[i] = currentPlayer.plots;
   },
 
   getGardenCount() {
@@ -282,10 +320,21 @@ const Game = {
   switchGarden(index) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     this.ensureGardens();
-    // Lưu vườn hiện tại trước khi đổi (cùng reference plots ↔ gardens[old])
     const prev = (typeof currentPlayer.activeGarden === 'number') ? currentPlayer.activeGarden : 0;
+    // Chỉ ghi plots vào vườn prev nếu không phải reference của vườn khác và không làm ngắn bất thường
     if (Array.isArray(currentPlayer.plots) && prev >= 0 && prev < currentPlayer.gardens.length) {
-      currentPlayer.gardens[prev] = currentPlayer.plots;
+      let pointsElsewhere = false;
+      for (let j = 0; j < currentPlayer.gardens.length; j++) {
+        if (j !== prev && currentPlayer.plots === currentPlayer.gardens[j]) {
+          pointsElsewhere = true;
+          break;
+        }
+      }
+      const existing = currentPlayer.gardens[prev];
+      const wouldShrink = Array.isArray(existing) && existing.length > currentPlayer.plots.length;
+      if (!pointsElsewhere && !wouldShrink) {
+        currentPlayer.gardens[prev] = currentPlayer.plots;
+      }
     }
     index = parseInt(index, 10);
     if (isNaN(index) || index < 0 || index >= currentPlayer.gardens.length) {
@@ -432,27 +481,22 @@ const Game = {
     const base = this.getNycConfig();
     const key = String(gardenIndex);
     const ov = (base.byGarden && (base.byGarden[key] || base.byGarden[gardenIndex])) || null;
-    let plantId = base.plantId || null;
-    let seedKind = base.seedKind === 'star' ? 'star' : 'normal';
-    let mode = base.mode === 'count' ? 'count' : 'all';
-    let count = typeof base.count === 'number' ? base.count : 1;
+    // Chỉ dùng cấu hình của ĐÚNG vườn này — không lấy hạt từ vườn khác
+    let plantId = null;
+    let seedKind = 'normal';
+    let mode = 'all';
+    let count = 1;
     if (ov && typeof ov === 'object') {
-      
-      if (ov.plantId) plantId = ov.plantId;
-      if (ov.seedKind === 'star' || ov.seedKind === 'normal') seedKind = ov.seedKind;
-      if (ov.mode === 'count' || ov.mode === 'all') mode = ov.mode;
-      if (typeof ov.count === 'number') count = ov.count;
-    }
-    
-    if (!plantId && base.byGarden) {
-      for (const k of Object.keys(base.byGarden)) {
-        const o = base.byGarden[k];
-        if (o && o.plantId) {
-          plantId = o.plantId;
-          if (o.seedKind === 'star' || o.seedKind === 'normal') seedKind = o.seedKind;
-          break;
-        }
-      }
+      plantId = ov.plantId || null;
+      seedKind = ov.seedKind === 'star' ? 'star' : 'normal';
+      mode = ov.mode === 'count' ? 'count' : 'all';
+      count = typeof ov.count === 'number' ? ov.count : 1;
+    } else {
+      // Chưa có byGarden riêng → dùng cấu hình gốc (plantId chung)
+      plantId = base.plantId || null;
+      seedKind = base.seedKind === 'star' ? 'star' : 'normal';
+      mode = base.mode === 'count' ? 'count' : 'all';
+      count = typeof base.count === 'number' ? base.count : 1;
     }
     return { ...base, plantId, seedKind, mode, count, _gardenIndex: gardenIndex };
   },
