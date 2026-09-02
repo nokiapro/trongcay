@@ -3861,7 +3861,7 @@ function renderInventory() {
       html += `
         <div class="merge-box merge-box-myth">
           <p class="merge-lead">🌌 Ghép <strong>2 hạt sao</strong> → <strong>1 hạt huyền thoại ✨</strong></p>
-          <p class="merge-sub">Tỉ lệ gốc ≈ ${mythRateHint}% (thấp hơn ghép sao 5%). Thất bại mất 1 hạt sao. Cây huyền thoại toát aura tím, x2 sản lượng.</p>
+          <p class="merge-sub">Cùng tỉ lệ bùa như ghép sao (bùa 100% = chắc chắn thành công). Thất bại mất 1 hạt sao. Cây huyền thoại toát aura tím, x2 sản lượng.</p>
           <label>Chọn hạt sao</label>
           <select id="merge-myth-plant">${optsM}</select>
           <label>Bùa bảo hộ (tuỳ chọn)</label>

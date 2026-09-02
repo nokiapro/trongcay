@@ -3880,9 +3880,10 @@ const Game = {
       if (!protect) return { ok: false, msg: 'Bùa bảo hộ không hợp lệ!' };
     }
 
-    // Tỉ lệ hơi thấp hơn ghép sao thường (tối thiểu 5%)
+    // Cùng công thức bùa như ghép sao: base + protect, cap 100%
+    // (Bùa 100% → chắc chắn thành công, không trừ thêm)
     let ratePct = this.getMergeSuccessRate(protectId || null);
-    ratePct = Math.max(5, Math.min(100, ratePct - 5));
+    ratePct = Math.max(1, Math.min(100, ratePct));
     const p = ratePct / 100;
     const lastRate = ratePct;
 
