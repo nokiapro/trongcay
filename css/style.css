@@ -666,8 +666,61 @@ button.btn:active {
 .plot-badge-right { align-items: flex-end; }
 .plot-badge-water,
 .plot-badge-fert,
-.plot-badge-star {
+.plot-badge-star,
+.plot-badge-myth {
   line-height: 1.2;
+}
+.plot-badge-myth {
+  filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.95));
+}
+.plot.plot-myth {
+  border-color: rgba(168, 85, 247, 0.75) !important;
+  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.45), 0 0 22px rgba(139, 92, 246, 0.45), inset 0 0 18px rgba(91, 33, 182, 0.25);
+  animation: mythAuraPulse 2.8s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+.plot.plot-myth::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  background: conic-gradient(from 0deg, transparent, rgba(192,132,252,0.2), transparent, rgba(56,189,248,0.15), transparent);
+  animation: mythSpin 8s linear infinite;
+  pointer-events: none;
+  opacity: 0.7;
+}
+.plot.plot-myth .plot-icon {
+  filter: drop-shadow(0 0 10px rgba(216, 180, 254, 0.95)) drop-shadow(0 0 4px rgba(255,255,255,0.5));
+  position: relative;
+  z-index: 1;
+}
+.plot.plot-myth .plot-name {
+  color: #e9d5ff;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.8);
+  position: relative;
+  z-index: 1;
+}
+@keyframes mythAuraPulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.4), 0 0 16px rgba(139, 92, 246, 0.35), inset 0 0 12px rgba(91, 33, 182, 0.2); }
+  50% { box-shadow: 0 0 0 2px rgba(216, 180, 254, 0.7), 0 0 28px rgba(167, 139, 250, 0.65), inset 0 0 20px rgba(124, 58, 237, 0.35); }
+}
+@keyframes mythSpin {
+  to { transform: rotate(360deg); }
+}
+.merge-box-myth {
+  margin-top: 16px;
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  background: linear-gradient(145deg, rgba(76, 29, 149, 0.15), rgba(15, 23, 42, 0.06));
+  border-radius: 14px;
+  padding: 14px;
+}
+.btn-myth {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+  border-color: #a78bfa !important;
+}
+.inv-item-myth {
+  border-color: rgba(168, 85, 247, 0.4);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
 }
 
 

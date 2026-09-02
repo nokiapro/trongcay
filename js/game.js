@@ -1183,10 +1183,21 @@ const Game = {
     if (!plot) return { ok: false, msg: 'Ô đất không tồn tại!' };
     if (plot.plantId) return { ok: false, msg: 'Ô đất đã có cây!' };
     const unlimited = this.isUnlimitedResources();
+    if (!currentPlayer.inventory.seedsMyth) currentPlayer.inventory.seedsMyth = {};
     const normal = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[plantId]) || 0;
     const star = (currentPlayer.inventory.seedsStar && currentPlayer.inventory.seedsStar[plantId]) || 0;
+    const myth = (currentPlayer.inventory.seedsMyth && currentPlayer.inventory.seedsMyth[plantId]) || 0;
     let usedStar = false;
-    if (preferredKind === 'star') {
+    let usedMyth = false;
+    if (preferredKind === 'myth') {
+      if (!unlimited && myth < 1) return { ok: false, msg: 'Không đủ hạt huyền thoại!' };
+      usedMyth = true;
+      usedStar = true;
+      if (!unlimited) {
+        currentPlayer.inventory.seedsMyth[plantId]--;
+        if (currentPlayer.inventory.seedsMyth[plantId] <= 0) delete currentPlayer.inventory.seedsMyth[plantId];
+      }
+    } else if (preferredKind === 'star') {
       if (!unlimited && star < 1) return { ok: false, msg: 'Không đủ hạt sao!' };
       usedStar = true;
       if (!unlimited) {
@@ -1223,7 +1234,8 @@ const Game = {
     plot.lastWatered = null;
     plot.fertilizerId = null;
     plot.fertilizedAt = null;
-    plot.seedStar = usedStar;
+    plot.seedStar = usedStar || usedMyth;
+    plot.seedMyth = usedMyth;
     {
       const plDef = this.getPlant(plantId);
       plot.baseGrowTime = (plDef && Number(plDef.growTime) > 0) ? Number(plDef.growTime) : (Number(plot.baseGrowTime) || 0);
@@ -1239,7 +1251,8 @@ const Game = {
     }
     currentPlayer.stats.planted = (currentPlayer.stats.planted || 0) + 1;
     const plant = this.getPlant(plantId);
-    this.addActivity(`Trồng ${usedStar ? '⭐ ' : ''}${plant.name} vào ô #${plotId + 1}` + (fairyWatered ? ' · Tiên tưới ngay' : ''));
+    const _pTag = usedMyth ? '✨ ' : (usedStar ? '⭐ ' : '');
+    this.addActivity(`Trồng ${_pTag}${plant.name} vào ô #${plotId + 1}` + (fairyWatered ? ' · Tiên tưới ngay' : ''));
     if (typeof Features !== 'undefined') Features.trackQuest('plant', 1);
     if (typeof recordGameEvent === 'function') {
       recordGameEvent('plant', {
@@ -1247,7 +1260,7 @@ const Game = {
         gardenIndex: currentPlayer.activeGarden || 0,
         plantId,
         plantedAt: plot.plantedAt,
-        seedKind: usedStar ? 'star' : 'normal',
+        seedKind: usedMyth ? 'myth' : (usedStar ? 'star' : 'normal'),
         watered: plot.watered,
         waterCount: plot.waterCount || 0
       });
@@ -1255,7 +1268,7 @@ const Game = {
     const ach = this.checkAchievements();
     await savePlayer({ action: 'plant' });
     this.notifyAchievements(ach);
-    return { ok: true, msg: `Đã trồng ${usedStar ? '⭐ ' : ''}${plant.name}!` + (fairyWatered ? ' 🧚 Tiên đã tưới.' : '') };
+    return { ok: true, msg: `Đã trồng ${usedMyth ? '✨ ' : (usedStar ? '⭐ ' : '')}${plant.name}!` + (fairyWatered ? ' 🧚 Tiên đã tưới.' : '') };
   },
 
   
@@ -1266,13 +1279,16 @@ const Game = {
     const empty = [];
     currentPlayer.plots.forEach((p, i) => { if (!p.plantId) empty.push(i); });
     if (empty.length === 0) return { ok: false, msg: 'Không còn ô đất trống!' };
+    if (!currentPlayer.inventory.seedsMyth) currentPlayer.inventory.seedsMyth = {};
     const normal = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[plantId]) || 0;
     const star = (currentPlayer.inventory.seedsStar && currentPlayer.inventory.seedsStar[plantId]) || 0;
-    let seedCount = normal + star;
-    if (preferredKind === 'star') seedCount = star;
+    const myth = (currentPlayer.inventory.seedsMyth && currentPlayer.inventory.seedsMyth[plantId]) || 0;
+    let seedCount = normal + star + myth;
+    if (preferredKind === 'myth') seedCount = myth;
+    else if (preferredKind === 'star') seedCount = star;
     else if (preferredKind === 'normal') seedCount = normal;
     if (seedCount < 1) {
-      return { ok: false, msg: preferredKind === 'star' ? 'Không đủ hạt sao!' : (preferredKind === 'normal' ? 'Không đủ hạt thường!' : 'Không đủ hạt giống!') };
+      return { ok: false, msg: preferredKind === 'myth' ? 'Không đủ hạt huyền thoại!' : (preferredKind === 'star' ? 'Không đủ hạt sao!' : (preferredKind === 'normal' ? 'Không đủ hạt thường!' : 'Không đủ hạt giống!')) };
     }
     const n = Math.min(count, empty.length, seedCount);
     const at = typeof sharedAt === 'number' ? sharedAt : (typeof nowMs==="function"?nowMs():Date.now());
@@ -1284,7 +1300,16 @@ const Game = {
       const plot = currentPlayer.plots[plotId];
       if (!plot || plot.plantId) break;
       let usedStar = false;
-      if (preferredKind === 'star') {
+      let usedMyth = false;
+      if (preferredKind === 'myth') {
+        if (!this.isUnlimitedResources() && (currentPlayer.inventory.seedsMyth[plantId] || 0) < 1) break;
+        if (!this.isUnlimitedResources()) {
+          currentPlayer.inventory.seedsMyth[plantId]--;
+          if (currentPlayer.inventory.seedsMyth[plantId] <= 0) delete currentPlayer.inventory.seedsMyth[plantId];
+        }
+        usedMyth = true;
+        usedStar = true;
+      } else if (preferredKind === 'star') {
         if ((currentPlayer.inventory.seedsStar[plantId] || 0) < 1) break;
         currentPlayer.inventory.seedsStar[plantId]--;
         if (currentPlayer.inventory.seedsStar[plantId] <= 0) delete currentPlayer.inventory.seedsStar[plantId];
@@ -1294,10 +1319,16 @@ const Game = {
         currentPlayer.inventory.seeds[plantId]--;
         if (currentPlayer.inventory.seeds[plantId] <= 0) delete currentPlayer.inventory.seeds[plantId];
       } else {
+        const my = (currentPlayer.inventory.seedsMyth && currentPlayer.inventory.seedsMyth[plantId]) || 0;
         const st = (currentPlayer.inventory.seedsStar && currentPlayer.inventory.seedsStar[plantId]) || 0;
         const nm = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[plantId]) || 0;
-        if (st + nm < 1) break;
-        if (st > 0) {
+        if (my + st + nm < 1) break;
+        if (my > 0) {
+          currentPlayer.inventory.seedsMyth[plantId]--;
+          if (currentPlayer.inventory.seedsMyth[plantId] <= 0) delete currentPlayer.inventory.seedsMyth[plantId];
+          usedMyth = true;
+          usedStar = true;
+        } else if (st > 0) {
           currentPlayer.inventory.seedsStar[plantId]--;
           if (currentPlayer.inventory.seedsStar[plantId] <= 0) delete currentPlayer.inventory.seedsStar[plantId];
           usedStar = true;
@@ -1313,7 +1344,8 @@ const Game = {
       plot.lastWatered = null;
       plot.fertilizerId = null;
       plot.fertilizedAt = null;
-      plot.seedStar = usedStar;
+      plot.seedStar = usedStar || usedMyth;
+      plot.seedMyth = usedMyth;
       {
         const plDef = this.getPlant(plantId);
         plot.baseGrowTime = (plDef && Number(plDef.growTime) > 0) ? Number(plDef.growTime) : (Number(plot.baseGrowTime) || 0);
@@ -2129,22 +2161,16 @@ const Game = {
       if (fert && fert.yieldBonus) amount = Math.ceil(amount * (1 + fert.yieldBonus));
     }
     if ((plot.waterCount || 0) >= 2) amount = Math.ceil(amount * 1.1);
-    if (plot.seedStar) amount = Math.ceil(amount * 1.5);
+    amount = this.applySeedYieldBonus(plot, amount);
     const seedStarFlag = !!plot.seedStar;
     const hid = plot.plantId;
     const plantName = (plant && plant.name) ? plant.name : String(hid || 'cây');
     if (!currentPlayer.inventory) currentPlayer.inventory = {};
-    if (plot.seedStar) {
-      if (!currentPlayer.inventory.harvestStar) currentPlayer.inventory.harvestStar = {};
-      currentPlayer.inventory.harvestStar[hid] = (currentPlayer.inventory.harvestStar[hid] || 0) + amount;
-    } else {
-      if (!currentPlayer.inventory.harvest) currentPlayer.inventory.harvest = {};
-      currentPlayer.inventory.harvest[hid] = (currentPlayer.inventory.harvest[hid] || 0) + amount;
-    }
+    this.stashHarvestProduct(hid, amount, plot);
     currentPlayer.stats = currentPlayer.stats || {};
     currentPlayer.stats.harvested = (currentPlayer.stats.harvested || 0) + amount;
     this.unlockCollection(hid);
-    this.addXp(Math.ceil(((plant && plant.xp) || 5) * (seedStarFlag ? 1.3 : 1)));
+    this.addXp(Math.ceil(((plant && plant.xp) || 5) * this.getSeedXpMult(plot)));
     plot.plantId = null;
     plot.plantedAt = null;
     plot.watered = false;
@@ -2153,6 +2179,7 @@ const Game = {
     plot.fertilizerId = null;
     plot.fertilizedAt = null;
     plot.seedStar = false;
+    plot.seedMyth = false;
     let planted = 0;
     let replantName = '';
     if (doReplant && cfg && cfg.plantId) {
@@ -2164,7 +2191,8 @@ const Game = {
     }
     
     if (!silent) {
-      let logMsg = 'Thu hoạch ' + amount + ' ' + plantName + (seedStarFlag ? ' ⭐' : '');
+      const _tierTag = this.getPlotSeedTier(plot) === 'myth' ? ' ✨' : (seedStarFlag || plot.seedStar ? ' ⭐' : '');
+      let logMsg = 'Thu hoạch ' + amount + ' ' + plantName + _tierTag;
       if (planted && replantName) logMsg += ' · NYC trồng lại ' + replantName;
       this.addActivity(logMsg, { type: 'harvest_offline', at: t, plotGarden: gi });
     }
@@ -2734,16 +2762,10 @@ const Game = {
                   if (!hid) break;
                   const plant = this.getPlant(hid);
                   let amount = (plant && plant.yield) ? plant.yield : 1;
-                  if (plot.seedStar) amount = Math.ceil(amount * 1.5);
+                  amount = this.applySeedYieldBonus(plot, amount);
                   if ((plot.waterCount || 0) >= 2) amount = Math.ceil(amount * 1.1);
                   if (!currentPlayer.inventory) currentPlayer.inventory = {};
-                  if (plot.seedStar) {
-                    if (!currentPlayer.inventory.harvestStar) currentPlayer.inventory.harvestStar = {};
-                    currentPlayer.inventory.harvestStar[hid] = (currentPlayer.inventory.harvestStar[hid] || 0) + amount;
-                  } else {
-                    if (!currentPlayer.inventory.harvest) currentPlayer.inventory.harvest = {};
-                    currentPlayer.inventory.harvest[hid] = (currentPlayer.inventory.harvest[hid] || 0) + amount;
-                  }
+                  this.stashHarvestProduct(hid, amount, plot);
                   currentPlayer.stats = currentPlayer.stats || {};
                   currentPlayer.stats.harvested = (currentPlayer.stats.harvested || 0) + amount;
                   const plantName = (plant && plant.name) || String(hid);
@@ -2754,6 +2776,7 @@ const Game = {
                   plot.watered = false;
                   plot.fertilizerId = null;
                   plot.seedStar = false;
+    plot.seedMyth = false;
                   const fake = { harvested: 1, planted: 0, amount, plantName, plantId: hid, seedStar: wasStar };
                   if (canReplant && cfg.plantId && this._nycPlantOneAt(plot, cfg, harvestT, gi)) {
                     fake.planted = 1;
@@ -3120,10 +3143,13 @@ const Game = {
   
   _nycPlantOneAt(plot, cfg, plantTime, gi) {
     if (!plot || plot.plantId || !cfg || !cfg.plantId) return false;
-    const kind = cfg.seedKind === 'star' ? 'star' : 'normal';
+    const kind = cfg.seedKind === 'myth' ? 'myth' : (cfg.seedKind === 'star' ? 'star' : 'normal');
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
     if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
-    const bag = kind === 'star' ? currentPlayer.inventory.seedsStar : currentPlayer.inventory.seeds;
+    if (!currentPlayer.inventory.seedsMyth) currentPlayer.inventory.seedsMyth = {};
+    const bag = kind === 'myth'
+      ? currentPlayer.inventory.seedsMyth
+      : (kind === 'star' ? currentPlayer.inventory.seedsStar : currentPlayer.inventory.seeds);
     const plantId = cfg.plantId;
     const unlimited = this.isUnlimitedResources();
     if (!unlimited) {
@@ -3133,7 +3159,8 @@ const Game = {
     }
     plot.plantId = plantId;
     plot.plantedAt = plantTime;
-    plot.seedStar = kind === 'star';
+    plot.seedStar = kind === 'star' || kind === 'myth';
+    plot.seedMyth = kind === 'myth';
     // Lưu growTime gốc lên ô — offline không phụ thuộc currentPlants có load đủ cây custom
     const plDef = this.getPlant(plantId);
     plot.baseGrowTime = (plDef && Number(plDef.growTime) > 0)
@@ -3504,19 +3531,13 @@ const Game = {
         if (fert && fert.yieldBonus) amount = Math.ceil(amount * (1 + fert.yieldBonus));
       }
       if ((plot.waterCount || 0) >= 2) amount = Math.ceil(amount * 1.1);
-      if (plot.seedStar) amount = Math.ceil(amount * 1.5);
+      amount = this.applySeedYieldBonus(plot, amount);
       const hid = plot.plantId;
-      if (plot.seedStar) {
-        if (!currentPlayer.inventory.harvestStar) currentPlayer.inventory.harvestStar = {};
-        currentPlayer.inventory.harvestStar[hid] = (currentPlayer.inventory.harvestStar[hid] || 0) + amount;
-      } else {
-        if (!currentPlayer.inventory.harvest) currentPlayer.inventory.harvest = {};
-        currentPlayer.inventory.harvest[hid] = (currentPlayer.inventory.harvest[hid] || 0) + amount;
-      }
+      this.stashHarvestProduct(hid, amount, plot);
       currentPlayer.stats.harvested = (currentPlayer.stats.harvested || 0) + amount;
       this.unlockCollection(plot.plantId);
       totalAmount += amount;
-      totalXp += Math.ceil((plant.xp || 5) * (plot.seedStar ? 1.3 : 1));
+      totalXp += Math.ceil((plant.xp || 5) * this.getSeedXpMult(plot));
       plot.plantId = null;
       plot.plantedAt = null;
       plot.watered = false;
@@ -3525,6 +3546,7 @@ const Game = {
       plot.fertilizerId = null;
       plot.fertilizedAt = null;
       plot.seedStar = false;
+    plot.seedMyth = false;
       harvested++;
     }
     if (harvested > 0) {
@@ -3536,10 +3558,11 @@ const Game = {
     const gIdx = typeof currentPlayer.activeGarden === 'number' ? currentPlayer.activeGarden : 0;
     const cfg = this.getNycConfigForGarden(gIdx);
     if (cfg.plantId) {
-      const kind = cfg.seedKind === 'star' ? 'star' : 'normal';
+      const kind = cfg.seedKind === 'myth' ? 'myth' : (cfg.seedKind === 'star' ? 'star' : 'normal');
       const seeds = (currentPlayer.inventory && currentPlayer.inventory.seeds) || {};
       const stars = (currentPlayer.inventory && currentPlayer.inventory.seedsStar) || {};
-      const have = kind === 'star' ? (stars[cfg.plantId] || 0) : (seeds[cfg.plantId] || 0);
+      const myths = (currentPlayer.inventory && currentPlayer.inventory.seedsMyth) || {};
+      const have = kind === 'myth' ? (myths[cfg.plantId] || 0) : (kind === 'star' ? (stars[cfg.plantId] || 0) : (seeds[cfg.plantId] || 0));
       if (have > 0) {
         const empty = [];
         currentPlayer.plots.forEach((p, i) => { if (!p.plantId) empty.push(i); });
@@ -3581,10 +3604,11 @@ const Game = {
     if (!this.isNycGardenEnabled(gIdx)) return false;
     const cfg = this.getNycConfigForGarden(gIdx);
     if (!cfg.plantId) return false;
-    const kind = cfg.seedKind === 'star' ? 'star' : 'normal';
+    const kind = cfg.seedKind === 'myth' ? 'myth' : (cfg.seedKind === 'star' ? 'star' : 'normal');
     const seeds = (currentPlayer.inventory && currentPlayer.inventory.seeds) || {};
     const stars = (currentPlayer.inventory && currentPlayer.inventory.seedsStar) || {};
-    const have = kind === 'star' ? (stars[cfg.plantId] || 0) : (seeds[cfg.plantId] || 0);
+    const myths = (currentPlayer.inventory && currentPlayer.inventory.seedsMyth) || {};
+    const have = kind === 'myth' ? (myths[cfg.plantId] || 0) : (kind === 'star' ? (stars[cfg.plantId] || 0) : (seeds[cfg.plantId] || 0));
     if (have < 1) return false;
     return currentPlayer.plots.some(p => p && !p.plantId);
   },
@@ -3684,6 +3708,46 @@ const Game = {
     if (k < 0) k = 0;
     if (k > n) k = n;
     return k;
+  },
+
+
+  /** normal | star | myth */
+  getPlotSeedTier(plot) {
+    if (!plot) return 'normal';
+    if (plot.seedMyth || plot.seedTier === 'myth') return 'myth';
+    if (plot.seedStar || plot.seedTier === 'star') return 'star';
+    return 'normal';
+  },
+  getSeedYieldMult(plotOrTier) {
+    const t = (typeof plotOrTier === 'string') ? plotOrTier : this.getPlotSeedTier(plotOrTier);
+    if (t === 'myth') return 2;
+    if (t === 'star') return 1.5;
+    return 1;
+  },
+  getSeedXpMult(plotOrTier) {
+    const t = (typeof plotOrTier === 'string') ? plotOrTier : this.getPlotSeedTier(plotOrTier);
+    if (t === 'myth') return 1.6;
+    if (t === 'star') return 1.3;
+    return 1;
+  },
+  getSeedSellMult(tier) {
+    if (tier === 'myth') return 2;
+    if (tier === 'star') return 1.5;
+    return 1;
+  },
+  applySeedYieldBonus(plot, amount) {
+    const m = this.getSeedYieldMult(plot);
+    return m > 1 ? Math.ceil(amount * m) : amount;
+  },
+  stashHarvestProduct(hid, amount, plot) {
+    if (!currentPlayer.inventory) currentPlayer.inventory = {};
+    const tier = this.getPlotSeedTier(plot);
+    let bagKey = 'harvest';
+    if (tier === 'myth') bagKey = 'harvestMyth';
+    else if (tier === 'star') bagKey = 'harvestStar';
+    if (!currentPlayer.inventory[bagKey]) currentPlayer.inventory[bagKey] = {};
+    currentPlayer.inventory[bagKey][hid] = (currentPlayer.inventory[bagKey][hid] || 0) + amount;
+    return tier;
   },
 
   async mergeSeeds(plantId, protectId, times = 1) {
@@ -3795,6 +3859,109 @@ const Game = {
     };
   },
 
+
+  /** Ghép 2 hạt sao → 1 hạt huyền thoại */
+  async mergeMythSeeds(plantId, protectId, times = 1) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    const plant = this.getPlant(plantId);
+    if (!plant) return { ok: false, msg: 'Hạt không hợp lệ!' };
+    if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
+    if (!currentPlayer.inventory.seedsMyth) currentPlayer.inventory.seedsMyth = {};
+    if (!currentPlayer.inventory.protects) currentPlayer.inventory.protects = {};
+
+    const unlimited = this.isUnlimitedResources();
+    const stars = currentPlayer.inventory.seedsStar;
+    const myths = currentPlayer.inventory.seedsMyth;
+    const protects = currentPlayer.inventory.protects;
+    let protect = null;
+    if (protectId) {
+      protect = this.getProtect(protectId);
+      if (!protect) return { ok: false, msg: 'Bùa bảo hộ không hợp lệ!' };
+    }
+
+    // Tỉ lệ hơi thấp hơn ghép sao thường (tối thiểu 5%)
+    let ratePct = this.getMergeSuccessRate(protectId || null);
+    ratePct = Math.max(5, Math.min(100, ratePct - 5));
+    const p = ratePct / 100;
+    const lastRate = ratePct;
+
+    let wantAll = (times === 'all' || times === 'max' || times === Infinity);
+    let timesLeft = wantAll ? Number.MAX_SAFE_INTEGER : Math.max(1, Math.floor(Number(times) || 1));
+    if (!Number.isFinite(timesLeft) || timesLeft < 1) timesLeft = 1;
+    if (wantAll && unlimited) {
+      timesLeft = 1000000;
+      wantAll = false;
+    }
+
+    let success = 0;
+    let fail = 0;
+    let did = 0;
+    let guard = 0;
+
+    while (timesLeft > 0 && guard++ < 500000) {
+      let have = unlimited ? Number.MAX_SAFE_INTEGER : (stars[plantId] || 0);
+      if (!unlimited && have < 2) break;
+      let ph = 0;
+      if (protect && !unlimited) {
+        ph = protects[protectId] || 0;
+        if (ph < 1) {
+          if (did === 0) return { ok: false, msg: 'Không đủ bùa bảo hộ!' };
+          break;
+        }
+      }
+      let maxBySeed = unlimited ? timesLeft : Math.floor(have / 2);
+      if (protect && !unlimited) maxBySeed = Math.min(maxBySeed, ph);
+      let B = Math.min(timesLeft, maxBySeed);
+      if (B < 1) break;
+      if (B > 200000) B = 200000;
+
+      const k = this._binomialSample(B, p);
+      const f = B - k;
+
+      if (!unlimited) {
+        // Thành công: mất 2 sao/lần; thất bại: mất 1 sao/lần (giống logic ghép thường)
+        const consume = B + k;
+        stars[plantId] = have - consume;
+        if (stars[plantId] <= 0) delete stars[plantId];
+        if (protect) {
+          protects[protectId] = ph - B;
+          if (protects[protectId] <= 0) delete protects[protectId];
+        }
+      }
+      if (k > 0) myths[plantId] = (myths[plantId] || 0) + k;
+
+      success += k;
+      fail += f;
+      did += B;
+      timesLeft -= B;
+      if ((guard % 1) === 0) {
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+
+    if (did === 0) return { ok: false, msg: 'Cần ít nhất 2 hạt sao ⭐ cùng loại để ghép huyền thoại!' };
+
+    if (did === 1) {
+      if (success) {
+        this.addActivity(`Ghép huyền thoại ✨ ${plant.name} (${lastRate}%)`);
+        await savePlayer();
+        return { ok: true, success: true, msg: `🌌 Thành công! Nhận 1 hạt huyền thoại ${plant.name} (tỉ lệ ${lastRate}%)` };
+      }
+      this.addActivity(`Ghép huyền thoại thất bại ${plant.name} (${lastRate}%)`);
+      await savePlayer();
+      return { ok: true, success: false, msg: `💥 Thất bại (tỉ lệ ${lastRate}%). Mất 1 hạt sao` + (protectId ? ' + bùa' : '') + '.' };
+    }
+
+    this.addActivity(`Ghép huyền thoại ×${did}: thành công ${success}, thất bại ${fail} (${plant.name}, ${lastRate}%)`);
+    await savePlayer();
+    return {
+      ok: true,
+      success: success > 0,
+      msg: `Huyền thoại ${did.toLocaleString()} lần · ✨ ${success.toLocaleString()} · 💥 ${fail.toLocaleString()} (tỉ lệ ${lastRate}%)`,
+      did, successCount: success, failCount: fail
+    };
+  },
+
   async harvestPlot(plotId) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const plot = currentPlayer.plots[plotId];
@@ -3807,20 +3974,16 @@ const Game = {
       if (fert && fert.yieldBonus) amount = Math.ceil(amount * (1 + fert.yieldBonus));
     }
     if ((plot.waterCount || 0) >= 2) amount = Math.ceil(amount * 1.1);
-    if (plot.seedStar) amount = Math.ceil(amount * 1.5);
+    amount = this.applySeedYieldBonus(plot, amount);
     const hid = plot.plantId;
-    if (plot.seedStar) {
-      if (!currentPlayer.inventory.harvestStar) currentPlayer.inventory.harvestStar = {};
-      currentPlayer.inventory.harvestStar[hid] = (currentPlayer.inventory.harvestStar[hid] || 0) + amount;
-    } else {
-      if (!currentPlayer.inventory.harvest) currentPlayer.inventory.harvest = {};
-      currentPlayer.inventory.harvest[hid] = (currentPlayer.inventory.harvest[hid] || 0) + amount;
-    }
+    this.stashHarvestProduct(hid, amount, plot);
     currentPlayer.stats.harvested = (currentPlayer.stats.harvested || 0) + amount;
     if (typeof Features !== 'undefined') Features.trackQuest('harvest', 1);
     const newCol = this.unlockCollection(plot.plantId);
-    const xpGain = Math.ceil((plant.xp || 5) * (plot.seedStar ? 1.3 : 1));
+    const xpGain = Math.ceil((plant.xp || 5) * this.getSeedXpMult(plot));
     this.addXp(xpGain);
+    const _ht = this.getPlotSeedTier(plot);
+    const _htag = _ht === 'myth' ? ' ✨' : (_ht === 'star' ? ' ⭐' : '');
     plot.plantId = null;
     plot.plantedAt = null;
     plot.watered = false;
@@ -3829,7 +3992,8 @@ const Game = {
     plot.fertilizerId = null;
     plot.fertilizedAt = null;
     plot.seedStar = false;
-    this.addActivity(`Thu hoạch ${amount} ${plant.name} (+${xpGain} XP)` + (newCol ? ' · Album +1' : ''));
+    plot.seedMyth = false;
+    this.addActivity(`Thu hoạch ${amount} ${plant.name}${_htag} (+${xpGain} XP)` + (newCol ? ' · Album +1' : ''));
     if (typeof recordGameEvent === 'function') {
       recordGameEvent('harvest', {
         plotId,
@@ -3859,19 +4023,13 @@ const Game = {
           if (fert && fert.yieldBonus) amount = Math.ceil(amount * (1 + fert.yieldBonus));
         }
         if ((plot.waterCount || 0) >= 2) amount = Math.ceil(amount * 1.1);
-        if (plot.seedStar) amount = Math.ceil(amount * 1.5);
+        amount = this.applySeedYieldBonus(plot, amount);
         const hid = plot.plantId;
-        if (plot.seedStar) {
-          if (!currentPlayer.inventory.harvestStar) currentPlayer.inventory.harvestStar = {};
-          currentPlayer.inventory.harvestStar[hid] = (currentPlayer.inventory.harvestStar[hid] || 0) + amount;
-        } else {
-          if (!currentPlayer.inventory.harvest) currentPlayer.inventory.harvest = {};
-          currentPlayer.inventory.harvest[hid] = (currentPlayer.inventory.harvest[hid] || 0) + amount;
-        }
+        this.stashHarvestProduct(hid, amount, plot);
         currentPlayer.stats.harvested = (currentPlayer.stats.harvested || 0) + amount;
         this.unlockCollection(plot.plantId);
         total += amount;
-        totalXp += Math.ceil((plant.xp || 5) * (plot.seedStar ? 1.3 : 1));
+        totalXp += Math.ceil((plant.xp || 5) * this.getSeedXpMult(plot));
         plot.plantId = null;
         plot.plantedAt = null;
         plot.watered = false;
@@ -3880,6 +4038,7 @@ const Game = {
         plot.fertilizerId = null;
         plot.fertilizedAt = null;
         plot.seedStar = false;
+    plot.seedMyth = false;
         plotsDone++;
       }
     }
@@ -3906,6 +4065,7 @@ const Game = {
     plot.fertilizerId = null;
     plot.fertilizedAt = null;
     plot.seedStar = false;
+    plot.seedMyth = false;
     this.addActivity(`Nhổ bỏ ${plant ? plant.name : 'cây'}`);
     await savePlayer();
     return { ok: true, msg: `Đã nhổ bỏ ${plant ? plant.name : 'cây'}.` };
@@ -3940,11 +4100,23 @@ const Game = {
     if (!plant) return { ok: false, msg: 'Hạt không hợp lệ!' };
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
     if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
+    if (!currentPlayer.inventory.seedsMyth) currentPlayer.inventory.seedsMyth = {};
     qty = Math.max(1, parseInt(qty, 10) || 1);
-    let soldN = 0, soldS = 0, earn = 0;
+    let soldN = 0, soldS = 0, soldM = 0, earn = 0;
     const unitNormal = Math.max(1, Math.floor((plant.seedPrice || 1) * 0.5));
     const unitStar = Math.max(1, Math.floor((plant.seedPrice || 1) * 0.75));
+    const unitMyth = Math.max(1, Math.floor((plant.seedPrice || 1) * 1.2));
 
+    if (kind === 'myth' || kind === 'all') {
+      const haveM = currentPlayer.inventory.seedsMyth[plantId] || 0;
+      const takeM = kind === 'all' ? haveM : Math.min(qty, haveM);
+      if (takeM > 0) {
+        currentPlayer.inventory.seedsMyth[plantId] -= takeM;
+        if (currentPlayer.inventory.seedsMyth[plantId] <= 0) delete currentPlayer.inventory.seedsMyth[plantId];
+        soldM = takeM;
+        earn += unitMyth * takeM;
+      }
+    }
     if (kind === 'star' || kind === 'all') {
       const haveS = currentPlayer.inventory.seedsStar[plantId] || 0;
       const takeS = kind === 'all' ? haveS : Math.min(qty, haveS);
@@ -3965,13 +4137,14 @@ const Game = {
         earn += unitNormal * takeN;
       }
     }
-    if (soldN + soldS < 1) return { ok: false, msg: 'Không đủ hạt để bán!' };
+    if (soldN + soldS + soldM < 1) return { ok: false, msg: 'Không đủ hạt để bán!' };
     currentPlayer.coins += earn;
     currentPlayer.stats.earned = (currentPlayer.stats.earned || 0) + earn;
     if (typeof Features !== 'undefined') Features.trackQuest('earn', earn);
     const parts = [];
     if (soldN) parts.push(`${soldN} thường`);
     if (soldS) parts.push(`${soldS} ⭐`);
+    if (soldM) parts.push(`${soldM} ✨`);
     this.addActivity(`Bán hạt ${plant.name} (${parts.join(', ')}) (+${earn}🪙)`);
     await savePlayer();
     return { ok: true, msg: `Bán ${parts.join(' + ')} ${plant.name}, nhận ${earn}🪙!` };
@@ -4001,18 +4174,18 @@ const Game = {
     const plant = this.getPlant(plantId);
     if (!plant) return { ok: false, msg: 'Sản phẩm không hợp lệ!' };
     qty = Math.max(1, parseInt(qty, 10) || 1);
-    const bagKey = kind === 'star' ? 'harvestStar' : (kind === 'bought' ? 'harvestBought' : 'harvest');
+    const bagKey = kind === 'myth' ? 'harvestMyth' : (kind === 'star' ? 'harvestStar' : (kind === 'bought' ? 'harvestBought' : 'harvest'));
     if (!currentPlayer.inventory[bagKey]) currentPlayer.inventory[bagKey] = {};
     const have = currentPlayer.inventory[bagKey][plantId] || 0;
     if (have < qty) return { ok: false, msg: 'Không đủ sản phẩm!' };
-    const unit = kind === 'star' ? Math.ceil(plant.sellPrice * 1.5) : plant.sellPrice;
+    const unit = Math.ceil(plant.sellPrice * this.getSeedSellMult(kind === 'myth' ? 'myth' : (kind === 'star' ? 'star' : 'normal')));
     const earn = unit * qty;
     if (typeof Features !== 'undefined') Features.trackQuest('earn', earn);
     currentPlayer.inventory[bagKey][plantId] -= qty;
     if (currentPlayer.inventory[bagKey][plantId] <= 0) delete currentPlayer.inventory[bagKey][plantId];
     currentPlayer.coins += earn;
     currentPlayer.stats.earned = (currentPlayer.stats.earned || 0) + earn;
-    const tag = kind === 'star' ? '⭐' : (kind === 'bought' ? '🛒' : '');
+    const tag = kind === 'myth' ? '✨' : (kind === 'star' ? '⭐' : (kind === 'bought' ? '🛒' : ''));
     this.addActivity(`Bán ${qty} ${plant.name}${tag} (+${earn}🪙)`);
     await savePlayer();
     return { ok: true, msg: `Bán ${qty} ${plant.name}, nhận ${earn}🪙!` };
@@ -4021,8 +4194,7 @@ const Game = {
   async sellAllHarvest(kind = null) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     let total = 0;
-    const bags = kind ? [kind] : ['harvest', 'harvestStar', 'harvestBought'];
-    const bagMap = { harvest: 'normal', harvestStar: 'star', harvestBought: 'bought' };
+    const bags = kind ? [kind] : ['harvest', 'harvestStar', 'harvestMyth', 'harvestBought'];
     bags.forEach(bk => {
       const bag = currentPlayer.inventory[bk] || {};
       Object.keys(bag).forEach(id => {
@@ -4030,7 +4202,8 @@ const Game = {
         if (!plant) return;
         const qty = bag[id] || 0;
         if (qty <= 0) return;
-        const unit = bk === 'harvestStar' ? Math.ceil(plant.sellPrice * 1.5) : plant.sellPrice;
+        const tier = bk === 'harvestMyth' ? 'myth' : (bk === 'harvestStar' ? 'star' : 'normal');
+        const unit = Math.ceil(plant.sellPrice * this.getSeedSellMult(tier));
         total += unit * qty;
       });
       currentPlayer.inventory[bk] = {};

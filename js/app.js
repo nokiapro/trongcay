@@ -221,6 +221,14 @@ function openNycConfigModal() {
     const selc = (cfg.plantId === id && cfg.seedKind === 'star') ? 'selected' : '';
     opts.push(`<option value="${val}" ${selc}>${p.icon} ${p.name} ⭐ · sao x${stars[id]}</option>`);
   });
+  const myths = (currentPlayer.inventory && currentPlayer.inventory.seedsMyth) || {};
+  Object.keys(myths).filter(id => (myths[id] || 0) > 0).forEach(id => {
+    const p = Game.getPlant(id);
+    if (!p) return;
+    const val = id + '|myth';
+    const selc = (cfg.plantId === id && cfg.seedKind === 'myth') ? 'selected' : '';
+    opts.push(`<option value="${val}" ${selc}>${p.icon} ${p.name} ✨ · huyền thoại x${myths[id]}</option>`);
+  });
   if (cfg.plantId) {
     const haveN = (seeds[cfg.plantId] || 0) > 0;
     const haveS = (stars[cfg.plantId] || 0) > 0;
@@ -271,7 +279,7 @@ function bindNycConfigUI() {
     if (raw && raw.includes('|')) {
       const parts = raw.split('|');
       plantId = parts[0] || null;
-      seedKind = parts[1] === 'star' ? 'star' : 'normal';
+      seedKind = parts[1] === 'myth' ? 'myth' : (parts[1] === 'star' ? 'star' : 'normal');
     } else if (raw) {
       plantId = raw;
     }
@@ -1995,13 +2003,18 @@ function renderGarden() {
           const f = Game.getFertilizer(plot.fertilizerId);
           fertBadge = `<span class="plot-badge-fert" title="${f ? f.name : 'Đã bón'}">${f ? f.icon : '🧪'}</span>`;
         }
-        const starBadge = plot.seedStar ? `<span class="plot-badge-star" title="Hạt sao">⭐</span>` : '';
+        const isMyth = !!(plot.seedMyth || (Game.getPlotSeedTier && Game.getPlotSeedTier(plot) === 'myth'));
+        const isStar = !isMyth && !!plot.seedStar;
+        if (isMyth) div.classList.add('plot-myth');
+        const starBadge = isMyth
+          ? `<span class="plot-badge-myth" title="Hạt huyền thoại">✨</span>`
+          : (isStar ? `<span class="plot-badge-star" title="Hạt sao">⭐</span>` : '');
 
         const remain = Game.getRemainingSeconds(plot);
         div.innerHTML = `
           <div class="plot-badges"><span class="plot-badge-left">${waterBadge}${starBadge}</span><span class="plot-badge-right">${fertBadge}</span></div>
           <div class="plot-icon">${stageIcon}</div>
-          <div class="plot-name">${plant.name}${plot.seedStar ? ' ⭐' : ''}</div>
+          <div class="plot-name">${plant.name}${isMyth ? ' ✨' : (isStar ? ' ⭐' : '')}</div>
           <div class="plot-status" data-role="status">${ready ? '✨ Ra hoa/quả!' : stage.label + ' · ' + progress + '%'}</div>
           ${!ready ? `<div class="plot-timer" data-role="timer"><i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}</div>` : ''}
           ${!ready ? `<div class="plot-progress"><div class="plot-progress-bar" data-role="bar" style="width:${progress}%"></div></div>` : ''}
@@ -2102,18 +2115,19 @@ function openPlantModal(plotId) {
   selectedPlotId = plotId;
   const seeds = (currentPlayer.inventory && currentPlayer.inventory.seeds) || {};
   const stars = (currentPlayer.inventory && currentPlayer.inventory.seedsStar) || {};
+  const myths = (currentPlayer.inventory && currentPlayer.inventory.seedsMyth) || {};
   const list = document.getElementById('plant-seed-list');
   list.innerHTML = '';
   const empty = Game.emptyPlotCount();
 
-  const ids = [...new Set([...Object.keys(seeds), ...Object.keys(stars)])]
-    .filter(id => ((seeds[id] || 0) + (stars[id] || 0)) > 0);
+  const ids = [...new Set([...Object.keys(seeds), ...Object.keys(stars), ...Object.keys(myths)])]
+    .filter(id => ((seeds[id] || 0) + (stars[id] || 0) + (myths[id] || 0)) > 0);
   if (ids.length === 0) {
     list.innerHTML = '<p class="empty-state">Bạn chưa có hạt giống nào.<br>Hãy mua ở Cửa hàng!</p>';
   } else {
     const info = document.createElement('p');
     info.style.cssText = 'text-align:center;color:#52796f;font-size:0.9rem;margin-bottom:10px';
-    info.textContent = `Ô trống: ${empty} · Chọn hạt và số lượng trồng (ưu tiên hạt ⭐)`;
+    info.textContent = `Ô trống: ${empty} · Ưu tiên ✨ huyền thoại → ⭐ sao → thường`;
     list.appendChild(info);
 
     ids.sort((a, b) => {
@@ -2123,15 +2137,19 @@ function openPlantModal(plotId) {
     ids.forEach(id => {
       const plant = Game.getPlant(id);
       if (!plant) return;
-      const have = (seeds[id] || 0) + (stars[id] || 0);
+      const mythN = myths[id] || 0;
       const starN = stars[id] || 0;
+      const have = (seeds[id] || 0) + starN + mythN;
       const opt = document.createElement('div');
-      opt.className = 'seed-option seed-option-compact';
+      opt.className = 'seed-option seed-option-compact' + (mythN ? ' seed-option-myth' : '');
       const maxPlant = Math.min(have, empty);
-      const nameStr = plant.name + (starN ? ' ⭐' : '');
-      const qtyStr = (starN ? '⭐ ' : '') + have.toLocaleString() + (starN ? ' (⭐' + starN + ')' : '');
+      const tag = mythN ? ' ✨' : (starN ? ' ⭐' : '');
+      const nameStr = plant.name + tag;
+      const qtyStr = (mythN ? '✨' + mythN + ' ' : '') + (starN ? '⭐' + starN + ' ' : '') + have.toLocaleString();
       const nameLong = nameStr.length > 14 ? ' text-long' : (nameStr.length > 10 ? ' text-mid' : '');
       const qtyLong = qtyStr.length > 16 ? ' text-long' : (qtyStr.length > 12 ? ' text-mid' : '');
+      // Ưu tiên kind khi trồng: myth > star > normal
+      const prefer = mythN > 0 ? 'myth' : (starN > 0 ? 'star' : 'normal');
       opt.innerHTML = `
         <span class="icon">${plant.icon}</span>
         <div class="info" style="flex:1;min-width:0">
@@ -2141,7 +2159,7 @@ function openPlantModal(plotId) {
         </div>
         <div class="plant-qty-row">
           <input type="number" class="plant-qty-input" min="1" max="${Math.max(1, maxPlant)}" value="1" ${maxPlant < 1 ? 'disabled' : ''} />
-          <button class="btn btn-primary btn-sm btn-plant-n" data-id="${id}" ${maxPlant < 1 ? 'disabled' : ''}>
+          <button class="btn btn-primary btn-sm btn-plant-n" data-id="${id}" data-kind="${prefer}" ${maxPlant < 1 ? 'disabled' : ''}>
             <i class="fa-solid fa-seedling"></i> Trồng
           </button>
         </div>
@@ -2157,7 +2175,8 @@ function openPlantModal(plotId) {
         let n = parseInt(input?.value, 10) || 1;
         const max = parseInt(input?.max, 10) || 1;
         n = Math.max(1, Math.min(n, max));
-        const res = await Game.plantMultiple(btn.dataset.id, n);
+        const kind = btn.dataset.kind || null;
+        const res = await Game.plantMultiple(btn.dataset.id, n, kind);
         showToast(res.msg, res.ok ? 'success' : 'error');
         closeModals();
         renderGarden();
@@ -3499,6 +3518,7 @@ function renderInventory() {
   const invQ = (document.getElementById('inv-search')?.value || '').trim().toLowerCase();
   const seedsEl = document.getElementById('inv-seeds');
   const stars = (currentPlayer.inventory && currentPlayer.inventory.seedsStar) || {};
+  const myths = (currentPlayer.inventory && currentPlayer.inventory.seedsMyth) || {};
 
   const filterIds = (bag) => {
     let ids = Object.keys(bag).filter(id => (bag[id] || 0) > 0);
@@ -3523,18 +3543,20 @@ function renderInventory() {
       if (!plant) return '';
       const qty = bag[id] || 0;
       const unit = unitFn(plant);
-      const nameStr = plant.name + (kind === 'star' ? ' ⭐' : '');
+      const tag = kind === 'myth' ? ' ✨' : (kind === 'star' ? ' ⭐' : '');
+      const nameStr = plant.name + tag;
       const nameLong = nameStr.length > 12 ? ' text-long' : (nameStr.length > 8 ? ' text-mid' : '');
       const qtyStr = 'x' + qty.toLocaleString() + ' · ' + unit + '🪙/hạt';
       const qtyLong = qtyStr.length > 18 ? ' text-long' : (qtyStr.length > 14 ? ' text-mid' : '');
+      const btnCls = kind === 'myth' ? 'btn-warning' : (kind === 'star' ? 'btn-warning' : 'btn-primary');
       return `
-        <div class="inv-item">
-          <div class="icon">${plant.icon}${kind === 'star' ? ' ⭐' : ''}</div>
+        <div class="inv-item${kind === 'myth' ? ' inv-item-myth' : ''}">
+          <div class="icon">${plant.icon}${tag}</div>
           <div class="name${nameLong}">${nameStr}</div>
           <div class="qty${qtyLong}">${qtyStr}</div>
           <div class="actions">
             <button class="btn btn-success btn-sell-seed" data-id="${id}" data-kind="${kind}" data-qty="1">Bán 1</button>
-            <button class="btn ${kind === 'star' ? 'btn-warning' : 'btn-primary'} btn-sell-seed" data-id="${id}" data-kind="${kind}" data-qty="all">Bán hết</button>
+            <button class="btn ${btnCls} btn-sell-seed" data-id="${id}" data-kind="${kind}" data-qty="all">Bán hết</button>
           </div>
         </div>`;
     }).join('') + '</div></div>';
@@ -3543,7 +3565,8 @@ function renderInventory() {
 
   const normalIds = filterIds(seeds);
   const starIds = filterIds(stars);
-  if (!normalIds.length && !starIds.length) {
+  const mythIds = filterIds(myths);
+  if (!normalIds.length && !starIds.length && !mythIds.length) {
     seedsEl.innerHTML = '<p class="empty-state">Chưa có hạt giống. Hãy mua ở Cửa hàng!</p>';
   } else {
     let sHtml = '';
@@ -3555,6 +3578,10 @@ function renderInventory() {
       stars, 'star', '⭐ Hạt ghép sao', 'Chưa có hạt sao. Ghép ở tab Ghép hạt.',
       p => Math.max(1, Math.floor((p.seedPrice || 1) * 0.75))
     );
+    sHtml += renderSeedBag(
+      myths, 'myth', '✨ Hạt huyền thoại', 'Chưa có hạt huyền thoại. Ghép 2 hạt sao ở tab Ghép hạt.',
+      p => Math.max(1, Math.floor((p.seedPrice || 1) * 1.2))
+    );
     seedsEl.innerHTML = sHtml;
     seedsEl.querySelectorAll('.btn-sell-seed').forEach(btn => {
       const id = btn.dataset.id;
@@ -3562,7 +3589,8 @@ function renderInventory() {
       const sell = async (qty) => {
         let n = qty;
         if (n === 'all') {
-          if (kind === 'star') n = (currentPlayer.inventory.seedsStar && currentPlayer.inventory.seedsStar[id]) || 0;
+          if (kind === 'myth') n = (currentPlayer.inventory.seedsMyth && currentPlayer.inventory.seedsMyth[id]) || 0;
+          else if (kind === 'star') n = (currentPlayer.inventory.seedsStar && currentPlayer.inventory.seedsStar[id]) || 0;
           else n = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[id]) || 0;
         } else {
           n = Math.max(1, Math.floor(Number(n) || 1));
@@ -3579,9 +3607,11 @@ function renderInventory() {
         bindPressHold(btn, {
           onClick: () => sell(1),
           onHold: () => {
-            const have = kind === 'star'
+            const have = kind === 'myth'
+              ? ((currentPlayer.inventory.seedsMyth && currentPlayer.inventory.seedsMyth[id]) || 0)
+              : (kind === 'star'
               ? ((currentPlayer.inventory.seedsStar && currentPlayer.inventory.seedsStar[id]) || 0)
-              : ((currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[id]) || 0);
+              : ((currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[id]) || 0));
             openQtyPickModal({
               title: 'Bán bao nhiêu hạt?',
               hint: 'Bạn có ' + have.toLocaleString() + '. Tất cả = bán hết.',
@@ -3761,85 +3791,144 @@ function renderInventory() {
   const mergeEl = document.getElementById('inv-merge');
   if (mergeEl) {
     if (typeof window._mergeSel === 'undefined') {
-      window._mergeSel = { plantId: null, protectId: null };
+      window._mergeSel = { plantId: null, protectId: null, mythPlantId: null, mythProtectId: null };
     }
+    const starsBag = (currentPlayer.inventory && currentPlayer.inventory.seedsStar) || {};
     const mergeable = Object.keys(seeds).filter(id => (seeds[id] || 0) >= 2);
+    const mergeableStar = Object.keys(starsBag).filter(id => (starsBag[id] || 0) >= 2);
     const prots = (currentPlayer.inventory && currentPlayer.inventory.protects) || {};
     const pids = Object.keys(prots).filter(id => prots[id] > 0);
-    if (!mergeable.length) {
-      mergeEl.innerHTML = '<p class="empty-state">Cần ≥ 2 hạt <strong>thường</strong> cùng loại để ghép thành hạt ⭐ (+50% sản lượng & giá bán).</p>';
-    } else {
-      
-      let selPlant = window._mergeSel.plantId;
-      if (!selPlant || !mergeable.includes(selPlant)) selPlant = mergeable[0];
-      let selProt = window._mergeSel.protectId || '';
-      if (selProt && !pids.includes(selProt)) selProt = '';
-
-      let opts = mergeable.map(id => {
-        const pl = Game.getPlant(id);
-        if (!pl) return '';
-        const sel = id === selPlant ? ' selected' : '';
-        return `<option value="${id}"${sel}>${pl.icon} ${pl.name} (x${seeds[id]})</option>`;
-      }).join('');
-      const baseRate = (Game.getMergeBaseRate && Game.getMergeBaseRate()) || 25;
-      let popts = `<option value=""${selProt === '' ? ' selected' : ''}>Không dùng bùa (${baseRate}%)</option>` + pids.map(id => {
+    const baseRate = (Game.getMergeBaseRate && Game.getMergeBaseRate()) || 25;
+    const buildProtOpts = (selProt) => {
+      return `<option value=""${selProt === '' ? ' selected' : ''}>Không dùng bùa (${baseRate}%)</option>` + pids.map(id => {
         const item = Game.getProtect(id);
         if (!item) return '';
         const sel = id === selProt ? ' selected' : '';
         const eff = Game.getMergeSuccessRate ? Game.getMergeSuccessRate(id) : Math.min(100, baseRate + (item.rate || 0));
         return `<option value="${id}"${sel}>${item.name} → ${eff}% — x${prots[id]}</option>`;
       }).join('');
-      mergeEl.innerHTML = `
+    };
+
+    let html = '';
+    // --- Ghép sao ---
+    if (!mergeable.length) {
+      html += '<div class="merge-box"><p class="empty-state">Cần ≥ 2 hạt <strong>thường</strong> cùng loại để ghép thành hạt ⭐ (+50% sản lượng & giá bán).</p></div>';
+    } else {
+      let selPlant = window._mergeSel.plantId;
+      if (!selPlant || !mergeable.includes(selPlant)) selPlant = mergeable[0];
+      let selProt = window._mergeSel.protectId || '';
+      if (selProt && !pids.includes(selProt)) selProt = '';
+      const opts = mergeable.map(id => {
+        const pl = Game.getPlant(id);
+        if (!pl) return '';
+        const sel = id === selPlant ? ' selected' : '';
+        return `<option value="${id}"${sel}>${pl.icon} ${pl.name} (x${seeds[id]})</option>`;
+      }).join('');
+      html += `
         <div class="merge-box">
-          <p class="merge-lead">Ghép <strong>2 hạt thường</strong> → <strong>1 hạt sao</strong></p>
-          <p class="merge-sub">Thất bại mất 1 hạt (+ bùa nếu có). · Bấm = ghép 1 lần · Ấn giữ = ghép tất cả</p>
+          <p class="merge-lead">Ghép <strong>2 hạt thường</strong> → <strong>1 hạt sao ⭐</strong></p>
+          <p class="merge-sub">Thất bại mất 1 hạt (+ bùa nếu có). · Bấm = 1 lần · Ấn giữ = tất cả</p>
           <label>Chọn hạt</label>
           <select id="merge-plant">${opts}</select>
           <label>Bùa bảo hộ (tuỳ chọn)</label>
-          <select id="merge-protect">${popts}</select>
-          <button id="btn-do-merge" class="btn btn-primary" style="margin-top:12px"><i class="fa-solid fa-flask-vial"></i> Ghép ngay</button>
+          <select id="merge-protect">${buildProtOpts(selProt)}</select>
+          <button id="btn-do-merge" class="btn btn-primary" style="margin-top:12px"><i class="fa-solid fa-flask-vial"></i> Ghép sao</button>
         </div>`;
-      const plantSel = document.getElementById('merge-plant');
-      const protSel = document.getElementById('merge-protect');
-      plantSel?.addEventListener('change', () => {
-        window._mergeSel.plantId = plantSel.value || null;
-      });
-      protSel?.addEventListener('change', () => {
-        window._mergeSel.protectId = protSel.value || null;
-      });
-      
-      window._mergeSel.plantId = plantSel?.value || selPlant;
-      window._mergeSel.protectId = protSel?.value || selProt || null;
-
-      const doMerge = async (times) => {
-        const pid = plantSel?.value;
-        const pr = protSel?.value || null;
-        window._mergeSel.plantId = pid || null;
-        window._mergeSel.protectId = pr || null;
-        if (!pid) { showToast('Chọn hạt!', 'error'); return; }
-        let n;
-        if (times === 'all' || times === 'max' || times === Infinity) {
-          // Ghép tất cả — tính số lần tối đa từ kho, gọi bình thường (không đường nhanh đặc biệt)
-          const have = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[pid]) || 0;
-          n = Math.floor(have / 2);
-          if (n < 1) { showToast('Cần ít nhất 2 hạt thường cùng loại!', 'error'); return; }
-        } else {
-          n = Math.max(1, Math.floor(Number(times) || 1));
-        }
-        showToast(n <= 1 ? 'Đang ghép…' : ('Đang ghép tất cả · ' + n.toLocaleString() + ' lần…'), 'info');
-        const res = await Game.mergeSeeds(pid, pr || null, n);
-        showToast(res.msg, res.ok ? (res.success ? 'success' : 'error') : 'error');
-        updateCoins();
-        renderInventory();
-      };
-      const mergeBtn = document.getElementById('btn-do-merge');
-      bindPressHold(mergeBtn, {
-        onClick: () => doMerge(1),
-        // Ấn giữ = ghép tất cả (bình thường)
-        onHold: () => doMerge('all')
-      });
-      mountAllPillDropdowns(mergeEl);
     }
+
+    // --- Ghép huyền thoại ---
+    if (!mergeableStar.length) {
+      html += '<div class="merge-box merge-box-myth"><p class="empty-state">Cần ≥ 2 hạt <strong>sao ⭐</strong> cùng loại để ghép <strong>huyền thoại ✨</strong> (x2 sản lượng, aura huyền bí).</p></div>';
+    } else {
+      let selM = window._mergeSel.mythPlantId;
+      if (!selM || !mergeableStar.includes(selM)) selM = mergeableStar[0];
+      let selMP = window._mergeSel.mythProtectId || '';
+      if (selMP && !pids.includes(selMP)) selMP = '';
+      const optsM = mergeableStar.map(id => {
+        const pl = Game.getPlant(id);
+        if (!pl) return '';
+        const sel = id === selM ? ' selected' : '';
+        return `<option value="${id}"${sel}>${pl.icon} ${pl.name} ⭐ (x${starsBag[id]})</option>`;
+      }).join('');
+      const mythRateHint = Math.max(5, Math.min(100, (Game.getMergeSuccessRate ? Game.getMergeSuccessRate(null) : baseRate) - 5));
+      html += `
+        <div class="merge-box merge-box-myth">
+          <p class="merge-lead">🌌 Ghép <strong>2 hạt sao</strong> → <strong>1 hạt huyền thoại ✨</strong></p>
+          <p class="merge-sub">Tỉ lệ gốc ≈ ${mythRateHint}% (thấp hơn ghép sao 5%). Thất bại mất 1 hạt sao. Cây huyền thoại toát aura tím, x2 sản lượng.</p>
+          <label>Chọn hạt sao</label>
+          <select id="merge-myth-plant">${optsM}</select>
+          <label>Bùa bảo hộ (tuỳ chọn)</label>
+          <select id="merge-myth-protect">${buildProtOpts(selMP)}</select>
+          <button id="btn-do-merge-myth" class="btn btn-primary btn-myth" style="margin-top:12px"><i class="fa-solid fa-sparkles"></i> Ghép huyền thoại</button>
+        </div>`;
+    }
+
+    mergeEl.innerHTML = html;
+
+    const plantSel = document.getElementById('merge-plant');
+    const protSel = document.getElementById('merge-protect');
+    plantSel?.addEventListener('change', () => { window._mergeSel.plantId = plantSel.value || null; });
+    protSel?.addEventListener('change', () => { window._mergeSel.protectId = protSel.value || null; });
+    if (plantSel) window._mergeSel.plantId = plantSel.value || null;
+    if (protSel) window._mergeSel.protectId = protSel.value || null;
+
+    const doMerge = async (times) => {
+      const pid = plantSel?.value;
+      const pr = protSel?.value || null;
+      window._mergeSel.plantId = pid || null;
+      window._mergeSel.protectId = pr || null;
+      if (!pid) { showToast('Chọn hạt!', 'error'); return; }
+      let n;
+      if (times === 'all' || times === 'max' || times === Infinity) {
+        const have = (currentPlayer.inventory.seeds && currentPlayer.inventory.seeds[pid]) || 0;
+        n = Math.floor(have / 2);
+        if (n < 1) { showToast('Cần ít nhất 2 hạt thường cùng loại!', 'error'); return; }
+      } else {
+        n = Math.max(1, Math.floor(Number(times) || 1));
+      }
+      showToast(n <= 1 ? 'Đang ghép…' : ('Đang ghép tất cả · ' + n.toLocaleString() + ' lần…'), 'info');
+      const res = await Game.mergeSeeds(pid, pr || null, n);
+      showToast(res.msg, res.ok ? (res.success ? 'success' : 'error') : 'error');
+      updateCoins();
+      renderInventory();
+    };
+    const mergeBtn = document.getElementById('btn-do-merge');
+    if (mergeBtn) {
+      bindPressHold(mergeBtn, { onClick: () => doMerge(1), onHold: () => doMerge('all') });
+    }
+
+    const mythPlantSel = document.getElementById('merge-myth-plant');
+    const mythProtSel = document.getElementById('merge-myth-protect');
+    mythPlantSel?.addEventListener('change', () => { window._mergeSel.mythPlantId = mythPlantSel.value || null; });
+    mythProtSel?.addEventListener('change', () => { window._mergeSel.mythProtectId = mythProtSel.value || null; });
+    if (mythPlantSel) window._mergeSel.mythPlantId = mythPlantSel.value || null;
+    if (mythProtSel) window._mergeSel.mythProtectId = mythProtSel.value || null;
+
+    const doMergeMyth = async (times) => {
+      const pid = mythPlantSel?.value;
+      const pr = mythProtSel?.value || null;
+      window._mergeSel.mythPlantId = pid || null;
+      window._mergeSel.mythProtectId = pr || null;
+      if (!pid) { showToast('Chọn hạt sao!', 'error'); return; }
+      let n;
+      if (times === 'all' || times === 'max' || times === Infinity) {
+        const have = (currentPlayer.inventory.seedsStar && currentPlayer.inventory.seedsStar[pid]) || 0;
+        n = Math.floor(have / 2);
+        if (n < 1) { showToast('Cần ít nhất 2 hạt sao cùng loại!', 'error'); return; }
+      } else {
+        n = Math.max(1, Math.floor(Number(times) || 1));
+      }
+      showToast(n <= 1 ? 'Đang ghép huyền thoại…' : ('Đang ghép huyền thoại · ' + n.toLocaleString() + ' lần…'), 'info');
+      const res = await Game.mergeMythSeeds(pid, pr || null, n);
+      showToast(res.msg, res.ok ? (res.success ? 'success' : 'error') : 'error');
+      updateCoins();
+      renderInventory();
+    };
+    const mythBtn = document.getElementById('btn-do-merge-myth');
+    if (mythBtn) {
+      bindPressHold(mythBtn, { onClick: () => doMergeMyth(1), onHold: () => doMergeMyth('all') });
+    }
+    mountAllPillDropdowns(mergeEl);
   }
 
   
