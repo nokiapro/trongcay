@@ -678,45 +678,45 @@ button.btn:active {
 /* ===== Viền theo loại hạt: thường = trắng, sao = vàng, huyền thoại = tím ===== */
 /* Chỉ animation viền (border/box-shadow), bỏ animation xoay/cây */
 
-/* Hạt bình thường → viền trắng */
+/* Hạt bình thường → viền trắng (glow nhỏ, không tràn mép) */
 .plot.plot-normal.growing,
 .plot.plot-normal.ready {
   border-color: #ffffff !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55), 0 0 10px rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 6px rgba(255, 255, 255, 0.2);
 }
 .plot.plot-normal.ready {
   animation: normalBorderPulse 1.8s ease-in-out infinite;
 }
 @keyframes normalBorderPulse {
-  0%, 100% { border-color: #ffffff; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 8px rgba(255, 255, 255, 0.2); }
-  50% { border-color: #f1f5f9; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.75), 0 0 16px rgba(255, 255, 255, 0.35); }
+  0%, 100% { border-color: #ffffff; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45), 0 0 5px rgba(255, 255, 255, 0.18); }
+  50% { border-color: #f8fafc; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7), 0 0 8px rgba(255, 255, 255, 0.3); }
 }
 
 /* Hạt sao → viền vàng */
 .plot.plot-star.growing,
 .plot.plot-star.ready {
   border-color: #fbbf24 !important;
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.55), 0 0 14px rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.5), 0 0 6px rgba(245, 158, 11, 0.35);
 }
 .plot.plot-star.ready {
   animation: starBorderPulse 1.8s ease-in-out infinite;
 }
 .plot.plot-star .plot-name {
   color: #fef3c7;
-  text-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+  text-shadow: 0 0 5px rgba(251, 191, 36, 0.5);
 }
 .plot.plot-star .plot-icon {
-  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.7));
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.6));
 }
 @keyframes starBorderPulse {
-  0%, 100% { border-color: #fbbf24; box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.5), 0 0 12px rgba(245, 158, 11, 0.35); }
-  50% { border-color: #fcd34d; box-shadow: 0 0 0 2px rgba(252, 211, 77, 0.8), 0 0 22px rgba(251, 191, 36, 0.55); }
+  0%, 100% { border-color: #fbbf24; box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.45), 0 0 5px rgba(245, 158, 11, 0.3); }
+  50% { border-color: #fcd34d; box-shadow: 0 0 0 2px rgba(252, 211, 77, 0.75), 0 0 8px rgba(251, 191, 36, 0.45); }
 }
 
 /* Hạt huyền thoại → viền tím (chỉ animation viền, không spin/cây) */
 .plot.plot-myth {
   border-color: #a78bfa !important;
-  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.5), 0 0 18px rgba(139, 92, 246, 0.45), inset 0 0 14px rgba(91, 33, 182, 0.2);
+  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.45), 0 0 6px rgba(139, 92, 246, 0.35), inset 0 0 10px rgba(91, 33, 182, 0.18);
   position: relative;
   overflow: visible;
 }
@@ -734,20 +734,19 @@ button.btn:active {
   animation: none !important;
 }
 .plot.plot-myth .plot-icon {
-  /* chỉ glow tĩnh, không animation scale/rotate */
-  filter: drop-shadow(0 0 8px rgba(216, 180, 254, 0.85));
+  filter: drop-shadow(0 0 5px rgba(216, 180, 254, 0.75));
   position: relative;
   z-index: 1;
 }
 .plot.plot-myth .plot-name {
   color: #e9d5ff;
-  text-shadow: 0 0 8px rgba(168, 85, 247, 0.75);
+  text-shadow: 0 0 5px rgba(168, 85, 247, 0.6);
   position: relative;
   z-index: 1;
 }
 @keyframes mythAuraPulse {
-  0%, 100% { border-color: #a78bfa; box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.45), 0 0 14px rgba(139, 92, 246, 0.35), inset 0 0 10px rgba(91, 33, 182, 0.18); }
-  50% { border-color: #c4b5fd; box-shadow: 0 0 0 2px rgba(216, 180, 254, 0.75), 0 0 26px rgba(167, 139, 250, 0.6), inset 0 0 18px rgba(124, 58, 237, 0.3); }
+  0%, 100% { border-color: #a78bfa; box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.4), 0 0 5px rgba(139, 92, 246, 0.3), inset 0 0 8px rgba(91, 33, 182, 0.15); }
+  50% { border-color: #c4b5fd; box-shadow: 0 0 0 2px rgba(216, 180, 254, 0.7), 0 0 8px rgba(167, 139, 250, 0.5), inset 0 0 12px rgba(124, 58, 237, 0.25); }
 }
 
 /* Mobile: viền + glow tĩnh, không animation */
@@ -758,7 +757,7 @@ button.btn:active {
     animation: none !important;
   }
   .plot.plot-myth {
-    box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.55), 0 0 12px rgba(139, 92, 246, 0.35);
+    box-shadow: 0 0 0 1.5px rgba(192, 132, 252, 0.55), 0 0 6px rgba(139, 92, 246, 0.3);
     background-image: linear-gradient(145deg, rgba(124, 58, 237, 0.12), rgba(15, 23, 42, 0.04));
   }
   .plot.plot-myth::before {
@@ -766,13 +765,13 @@ button.btn:active {
     display: none !important;
   }
   .plot.plot-myth .plot-icon {
-    filter: drop-shadow(0 0 5px rgba(216, 180, 254, 0.7));
+    filter: drop-shadow(0 0 4px rgba(216, 180, 254, 0.65));
   }
   .plot.plot-myth .plot-name {
-    text-shadow: 0 0 4px rgba(168, 85, 247, 0.5);
+    text-shadow: 0 0 3px rgba(168, 85, 247, 0.45);
   }
   .plot.plot-star {
-    box-shadow: 0 0 0 1.5px rgba(251, 191, 36, 0.6), 0 0 10px rgba(245, 158, 11, 0.3);
+    box-shadow: 0 0 0 1.5px rgba(251, 191, 36, 0.55), 0 0 5px rgba(245, 158, 11, 0.28);
   }
   .plot.plot-normal {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 6px rgba(255, 255, 255, 0.2);
@@ -4145,6 +4144,7 @@ html[data-theme="dark"] .plot-upgrade-box {
 }
 
 
+/* base garden-grid — chi tiết bị override bởi block garden-stage bên dưới */
 .garden-grid {
   --gg-gap: 14px;
   --gg-col: 142px;
@@ -4157,15 +4157,11 @@ html[data-theme="dark"] .plot-upgrade-box {
   justify-content: start !important;
   align-content: start !important;
   gap: var(--gg-gap) !important;
-  
   width: max-content !important;
   max-width: none !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
+  margin: 0 !important;
   overflow: visible !important;
-  padding: 4px 2px 10px !important;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  padding: 0 !important;
 }
 @media (max-width: 768px) {
   .garden-grid {
@@ -4173,7 +4169,6 @@ html[data-theme="dark"] .plot-upgrade-box {
     --gg-col: 108px;
     --gg-cols-visible: 3;
     grid-template-rows: repeat(3, minmax(112px, auto)) !important;
-    max-width: none !important;
   }
 }
 
@@ -5624,15 +5619,12 @@ html[data-theme="dark"] .plot-upgrade-box h4 {
 .garden-stage {
   position: relative;
   width: 100% !important;
-  max-width: calc(var(--gg-cols-visible, 7) * var(--gg-col, 142px) + (var(--gg-cols-visible, 7) - 1) * var(--gg-gap, 14px) + 56px) !important;
   margin-left: auto !important;
   margin-right: auto !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  padding-left: 28px !important;
-  padding-right: 28px !important;
   box-sizing: border-box !important;
 }
 .garden-world {
@@ -5640,8 +5632,6 @@ html[data-theme="dark"] .plot-upgrade-box h4 {
   display: inline-block;
   vertical-align: top;
   min-height: 100%;
-  padding-left: 0;
-  padding-right: 0;
   box-sizing: content-box;
 }
 .garden-grid {
@@ -5789,16 +5779,21 @@ html, body, button, input, select, textarea {
 }
 
 
+/* ========== Garden: PC = 3 hàng × 7 cột (21 ô), đủ viền ========== */
 .garden-stage {
   --gg-gap: 14px;
   --gg-col: 142px;
   --gg-cols-visible: 7;
   --gg-row-min: 148px;
-  /* >= max glow (myth ~26px) + border 2.5px → không còn vệt vàng bị cắt 2 đầu */
-  --gg-edge-pad: 28px;
+  --gg-edge: 10px; /* chừa chỗ viền 2.5px + glow nhẹ */
   position: relative !important;
   width: 100% !important;
-  max-width: calc(var(--gg-cols-visible) * var(--gg-col) + (var(--gg-cols-visible) - 1) * var(--gg-gap) + 2 * var(--gg-edge-pad)) !important;
+  /* đúng 7 cột + gap + mép 2 bên → 21 ô hiện đủ viền trên PC */
+  max-width: calc(
+    var(--gg-cols-visible) * var(--gg-col) +
+    (var(--gg-cols-visible) - 1) * var(--gg-gap) +
+    2 * var(--gg-edge)
+  ) !important;
   margin-left: auto !important;
   margin-right: auto !important;
   overflow-x: auto !important;
@@ -5806,9 +5801,7 @@ html, body, button, input, select, textarea {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   box-sizing: border-box !important;
-  padding-left: var(--gg-edge-pad) !important;
-  padding-right: var(--gg-edge-pad) !important;
-  scroll-padding-inline: var(--gg-edge-pad);
+  padding: 8px var(--gg-edge) 12px !important;
 }
 .garden-world {
   position: relative !important;
@@ -5817,8 +5810,8 @@ html, body, button, input, select, textarea {
   min-width: 100%;
   vertical-align: top;
   box-sizing: content-box !important;
-  padding-left: 0;
-  padding-right: 0;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 .garden-grid {
   --gg-gap: inherit;
@@ -5835,7 +5828,7 @@ html, body, button, input, select, textarea {
   max-width: none !important;
   margin: 0 !important;
   overflow: visible !important;
-  padding: 6px 0 12px !important;
+  padding: 0 !important;
   position: relative !important;
 }
 .garden-agents {
@@ -5848,17 +5841,19 @@ html, body, button, input, select, textarea {
   overflow: visible;
 }
 
+/* Mobile: 3 cột */
 @media (max-width: 768px) {
   .garden-stage {
     --gg-gap: 8px;
     --gg-col: 108px;
     --gg-cols-visible: 3;
     --gg-row-min: 112px;
-    --gg-edge-pad: 20px;
-    max-width: calc(3 * var(--gg-col) + 2 * var(--gg-gap) + 2 * var(--gg-edge-pad)) !important;
+    --gg-edge: 8px;
+    max-width: calc(
+      3 * var(--gg-col) + 2 * var(--gg-gap) + 2 * var(--gg-edge)
+    ) !important;
     width: 100% !important;
-    padding-left: var(--gg-edge-pad) !important;
-    padding-right: var(--gg-edge-pad) !important;
+    padding: 6px var(--gg-edge) 10px !important;
   }
   .garden-grid {
     grid-template-rows: repeat(3, minmax(112px, auto)) !important;
@@ -5871,16 +5866,16 @@ html, body, button, input, select, textarea {
   }
 }
 
+/* PC: khóa 3×7 */
 @media (min-width: 769px) {
   .garden-stage {
     --gg-gap: 14px;
     --gg-col: 142px;
     --gg-cols-visible: 7;
     --gg-row-min: 148px;
-    --gg-edge-pad: 28px;
-    max-width: calc(7 * 142px + 6 * 14px + 2 * var(--gg-edge-pad)) !important;
-    padding-left: var(--gg-edge-pad) !important;
-    padding-right: var(--gg-edge-pad) !important;
+    --gg-edge: 10px;
+    max-width: calc(7 * 142px + 6 * 14px + 2 * 10px) !important;
+    padding: 8px 10px 12px !important;
   }
   .garden-grid {
     grid-template-rows: repeat(3, minmax(148px, auto)) !important;
