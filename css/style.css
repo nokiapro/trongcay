@@ -628,140 +628,20 @@ button.btn:active {
   margin-top: 2px;
 }
 
-/* Thanh tiến độ trồng — kiểu “luống đất + mầm xanh” */
 .plot-progress {
-  --plot-bar-h: 9px;
-  position: relative;
   width: 100%;
-  height: var(--plot-bar-h);
+  height: 7px;
+  background: #e5ebe7;
+  border-radius: 4px;
   margin-top: 10px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #e8d9c0 0%, #d4bc96 50%, #b8956a 100%);
-  box-shadow:
-    inset 0 1px 2px rgba(62, 39, 17, 0.28),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.35),
-    0 1px 0 rgba(255, 255, 255, 0.25);
   overflow: hidden;
-  border: 1px solid rgba(120, 85, 45, 0.28);
 }
 
 .plot-progress-bar {
-  /* width:% cắt gradient FULL-TRACK → đoạn đã qua giữ màu, đoạn mới đổi màu */
-  --stage-1: #86efac;   /* 0–25%  mầm */
-  --stage-2: #4ade80;   /* 25–50% chồi */
-  --stage-3: #22c55e;   /* 50–75% cây */
-  --stage-4: #eab308;   /* 75–90% sắp chín */
-  --stage-4b: #f59e0b;  /* 90–100% chín */
-  position: relative;
   height: 100%;
-  min-width: 0;
-  border-radius: inherit;
-  background: transparent;
-  box-shadow: none;
-  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-  overflow: hidden;
-}
-
-/* Lớp màu = full TRACK; bar overflow:hidden cắt theo % → đoạn cũ giữ màu */
-.plot-progress {
-  container-type: inline-size;
-  container-name: plotbar;
-}
-.plot-progress-bar::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 100cqw; /* đúng bề rộng luống đất (track) */
-  border-radius: inherit;
-  background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, transparent 45%),
-    linear-gradient(
-      90deg,
-      var(--stage-1) 0%,
-      var(--stage-1) 25%,
-      var(--stage-2) 25%,
-      var(--stage-2) 50%,
-      var(--stage-3) 50%,
-      var(--stage-3) 75%,
-      var(--stage-4) 75%,
-      var(--stage-4b) 100%
-    );
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  pointer-events: none;
-}
-
-/* Fallback trình duyệt cũ không hỗ trợ cqw: dùng --plot-pct */
-@supports not (width: 1cqw) {
-  .plot-progress-bar::before {
-    width: calc(100% * 100 / max(0.001, var(--plot-pct, 100)));
-  }
-}
-
-/* Ánh sáng chạy nhẹ (PC); mobile tắt để mượt */
-.plot-progress-bar::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -40%;
-  width: 40%;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.5) 50%,
-    transparent 100%
-  );
-  animation: plotBarSheen 2.8s ease-in-out infinite;
-  pointer-events: none;
-}
-
-@keyframes plotBarSheen {
-  0% { transform: translateX(0); opacity: 0; }
-  12% { opacity: 1; }
-  55% { transform: translateX(280%); opacity: 0.9; }
-  100% { transform: translateX(340%); opacity: 0; }
-}
-
-.plot.ready .plot-progress {
-  border-color: rgba(42, 157, 143, 0.5);
-  background: linear-gradient(180deg, #d8f3dc 0%, #b7e4c7 100%);
-}
-
-/* Modal chi tiết */
-.plot-progress.plot-progress-lg {
-  --plot-bar-h: 14px;
-  height: var(--plot-bar-h) !important;
-  margin-top: 0 !important;
-}
-
-.plot-progress-lg .plot-progress-bar {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 0 12px rgba(34, 197, 94, 0.42);
-}
-
-@media (max-width: 900px), (hover: none) and (pointer: coarse) {
-  .plot-progress-bar::after {
-    content: none !important;
-    animation: none !important;
-  }
-  .plot-progress {
-    --plot-bar-h: 8px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .plot-progress-bar::after {
-    content: none !important;
-    animation: none !important;
-  }
-  .plot-progress-bar {
-    transition: none;
-  }
+  background: linear-gradient(90deg, var(--primary-light), var(--success));
+  border-radius: 4px;
+  transition: width 0.6s ease;
 }
 
 .plot-badges {
@@ -1420,7 +1300,10 @@ button.btn:active {
   font-size: 0.9rem;
   margin-bottom: 6px;
 }
-/* plot-progress-lg defined with garden progress bar */
+.plot-progress-lg {
+  height: 10px !important;
+  margin-top: 0 !important;
+}
 .seed-option-compact {
   padding: 8px 10px !important;
   gap: 10px !important;
@@ -1511,39 +1394,7 @@ html[data-theme="dark"] .plot.empty {
   border-color: #2d6a4f;
 }
 html[data-theme="dark"] .plot-progress {
-  background: linear-gradient(180deg, #3d2e1c 0%, #2a1f14 55%, #1a140e 100%);
-  border-color: rgba(180, 140, 90, 0.35);
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.45),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.06);
-}
-html[data-theme="dark"] .plot-progress-bar {
-  --stage-1: #4ade80;
-  --stage-2: #22c55e;
-  --stage-3: #16a34a;
-  --stage-4: #eab308;
-  --stage-4b: #f59e0b;
-  background: transparent;
-  box-shadow: none;
-}
-html[data-theme="dark"] .plot-progress-bar::before {
-  background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, transparent 45%),
-    linear-gradient(
-      90deg,
-      var(--stage-1) 0%,
-      var(--stage-1) 25%,
-      var(--stage-2) 25%,
-      var(--stage-2) 50%,
-      var(--stage-3) 50%,
-      var(--stage-3) 75%,
-      var(--stage-4) 75%,
-      var(--stage-4b) 100%
-    );
-}
-html[data-theme="dark"] .plot.ready .plot-progress {
-  background: linear-gradient(180deg, #1a3a2a 0%, #0f2418 100%);
-  border-color: rgba(74, 222, 128, 0.35);
+  background: #0f1a14;
 }
 
 .seed-list {

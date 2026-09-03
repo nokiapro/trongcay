@@ -7,33 +7,29 @@ const Game = {
   /** Chuẩn hóa timestamp từ number / string / Firebase Timestamp → ms (number) hoặc null */
   toMs(val) {
     if (val == null || val === '') return null;
-    const norm = (n) => {
-      if (!Number.isFinite(n) || n <= 0) return null;
-      // Epoch giây (~1e9) → ms; epoch ms (~1e12+) giữ nguyên
-      if (n > 0 && n < 1e11) return Math.round(n * 1000);
-      return n;
-    };
-    if (typeof val === 'number') return norm(val);
+    if (typeof val === 'number') return Number.isFinite(val) && val > 0 ? val : null;
     if (typeof val === 'string') {
-      const n = Number(val.trim());
-      return norm(n);
+      const n = Number(val);
+      return Number.isFinite(n) && n > 0 ? n : null;
     }
     if (typeof val === 'object') {
+      // Firebase Timestamp (admin SDK / client)
       if (typeof val.toMillis === 'function') {
-        try { const m = val.toMillis(); return norm(m); } catch (_) {}
+        try { const m = val.toMillis(); return Number.isFinite(m) && m > 0 ? m : null; } catch (_) {}
       }
       if (val.seconds != null) {
         const sec = Number(val.seconds);
         const nano = Number(val.nanoseconds) || 0;
-        if (Number.isFinite(sec)) return norm(sec * 1000 + Math.floor(nano / 1e6));
+        if (Number.isFinite(sec)) return sec * 1000 + Math.floor(nano / 1e6);
       }
       if (val._seconds != null) {
         const sec = Number(val._seconds);
         const nano = Number(val._nanoseconds) || 0;
-        if (Number.isFinite(sec)) return norm(sec * 1000 + Math.floor(nano / 1e6));
+        if (Number.isFinite(sec)) return sec * 1000 + Math.floor(nano / 1e6);
       }
     }
-    return norm(Number(val));
+    const n = Number(val);
+    return Number.isFinite(n) && n > 0 ? n : null;
   },
 
   
@@ -903,15 +899,8 @@ const Game = {
       if (fert) t *= (1 - (fert.timeReduce || 0));
     }
 
-    // Chỉ buff mưa THẬT (Game.raining). Không dùng weather giả theo giờ
-    // (trước đây mult đổi mỗi giờ → đồng hồ cây nhảy / trông như về 0 khi F5).
-    if (this.raining) {
-      const until = Number(this.rainUntil) || 0;
-      const nowT = (atMs != null && Number.isFinite(Number(atMs)))
-        ? Number(atMs)
-        : ((typeof nowMs === 'function') ? nowMs() : Date.now());
-      if (until > nowT) t /= 1.25;
-    }
+    const weather = this.getWeather();
+    if (weather && weather.mult > 0) t /= weather.mult;
 
     const sm = this.getPlotSpeedMult(plot, atMs);
     if (sm > 1) t /= sm;
@@ -996,7 +985,7 @@ const Game = {
 
   isReady(plot) {
     if (!plot || !plot.plantId || !plot.plantedAt) return false;
-    const plantedAt = this.toMs(plot.plantedAt);
+    const plantedAt = Number(plot.plantedAt);
     if (!Number.isFinite(plantedAt) || plantedAt <= 0) return false;
     const elapsed = Math.max(0, ((typeof nowMs === 'function' ? nowMs() : Date.now()) - plantedAt) / 1000);
     return elapsed + 0.05 >= this.getEffectiveGrowTime(plot);
@@ -2655,11 +2644,8 @@ const Game = {
               } catch (_) {}
             }
             const pa = this.toMs(p.plantedAt);
-            if (pa) {
-              p.plantedAt = pa;
-            }
-            // Không gán plantedAt = from khi thiếu — sẽ reset đồng hồ về đầu offline
-            // Giữ null; offline harvest sẽ bỏ qua ô không có plantedAt hợp lệ
+            if (pa) p.plantedAt = pa;
+            else p.plantedAt = from;
             const g = this.getEffectiveGrowTime(p, endMs);
             if (sampleGrow == null && g > 0) sampleGrow = g;
           }

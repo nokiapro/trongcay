@@ -952,7 +952,7 @@ async function openVisitGarden(friendUid, friendName) {
           <div class="plot-icon">${stage.icon || (plant && plant.icon) || '🌱'}</div>
           <div class="plot-name">${plant ? plant.name : plot.plantId}</div>
           <div class="plot-status">${ready ? '✨ Sẵn sàng' : stage.label + ' · ' + progress + '%'}</div>
-          ${!ready ? `<div class="plot-progress"><div class="plot-progress-bar" style="width:${progress}%;--plot-pct:${Math.max(0.001, progress)}"></div></div>` : ''}
+          ${!ready ? `<div class="plot-progress"><div class="plot-progress-bar" style="width:${progress}%"></div></div>` : ''}
         `;
       }
       grid.appendChild(div);
@@ -2022,7 +2022,7 @@ function renderGarden() {
           <div class="plot-name">${plant.name}${isMyth ? ' ✨' : (isStar ? ' ⭐' : '')}</div>
           <div class="plot-status" data-role="status">${ready ? '✨ Ra hoa/quả!' : stage.label + ' · ' + progress + '%'}</div>
           ${!ready ? `<div class="plot-timer" data-role="timer"><i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}</div>` : ''}
-          ${!ready ? `<div class="plot-progress"><div class="plot-progress-bar" data-role="bar" style="width:${progress}%;--plot-pct:${Math.max(0.001, progress)}"></div></div>` : ''}
+          ${!ready ? `<div class="plot-progress"><div class="plot-progress-bar" data-role="bar" style="width:${progress}%"></div></div>` : ''}
         `;
         div.addEventListener('click', () => openPlotModal(i));
       }
@@ -2218,7 +2218,7 @@ function openPlotModal(plotId) {
       <p><strong>Thời gian còn:</strong> <span data-role="plot-remain">${ready ? '0s' : Game.formatTime(remain)}</span></p>
       <div class="plot-detail-progress">
         <div class="plot-detail-progress-label">Tiến độ ra hoa/quả: <strong data-role="plot-pct">${Math.min(100, progress)}%</strong></div>
-        <div class="plot-progress plot-progress-lg"><div class="plot-progress-bar" data-role="plot-bar" style="width:${Math.min(100, progress)}%;--plot-pct:${Math.max(0.001, Math.min(100, progress))}"></div></div>
+        <div class="plot-progress plot-progress-lg"><div class="plot-progress-bar" data-role="plot-bar" style="width:${Math.min(100, progress)}%"></div></div>
       </div>
       <p><strong>Tưới nước:</strong> <span data-role="plot-water" class="${waterDisp.active ? '' : 'plot-boost-off'}">${waterDisp.text}</span></p>
       <p><strong>Phân bón:</strong> <span data-role="plot-fert" class="${fertDisp.active ? '' : 'plot-boost-off'}">${fertText}</span></p>
@@ -2289,11 +2289,7 @@ function softUpdatePlotModal() {
   if (pctEl) pctEl.textContent = Math.min(100, progress) + '%';
 
   const barEl = detail.querySelector('[data-role="plot-bar"]');
-  if (barEl) {
-    const p = Math.min(100, progress);
-    barEl.style.width = p + '%';
-    barEl.style.setProperty('--plot-pct', String(Math.max(0.001, p)));
-  }
+  if (barEl) barEl.style.width = Math.min(100, progress) + '%';
 
   const waterDisp = (typeof Game.getWaterDisplayState === 'function')
     ? Game.getWaterDisplayState(plot)
@@ -4594,10 +4590,7 @@ function softUpdateGardenUI() {
       tm.remove();
     }
     const bar = el.querySelector('[data-role="bar"]');
-    if (bar && !ready) {
-      bar.style.width = progress + '%';
-      bar.style.setProperty('--plot-pct', String(Math.max(0.001, progress)));
-    }
+    if (bar && !ready) bar.style.width = progress + '%';
     const icon = el.querySelector('.plot-icon');
     if (icon && stage.icon && icon.textContent !== stage.icon) icon.textContent = stage.icon;
     
