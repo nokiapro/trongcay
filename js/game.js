@@ -2331,11 +2331,18 @@ const Game = {
           if (p && p.plantId) {
             withPlant++;
             plotsWithPlantAtStart++;
+            // Ép giữ tốc độ đang có lúc bắt đầu offline (tránh temp hết hạn → 0 vụ)
             const sm = this.getPlotSpeedMult(p, from);
+            if (sm >= 2) {
+              const curPerm = Number(p.specialMultPermanent) || 0;
+              if (curPerm < sm) p.specialMultPermanent = sm;
+              p.specialMult = Math.max(Number(p.specialMult) || 1, sm);
+            }
             if (sm > maxMult) maxMult = sm;
             const readyAt = this.getReadyAtMs(p, from);
             if (readyAt != null && (minReadyMs == null || readyAt < minReadyMs)) minReadyMs = readyAt;
-            if (sampleGrow == null) sampleGrow = this.getEffectiveGrowTime(p, from);
+            const g = this.getEffectiveGrowTime(p, from);
+            if (g > 0 && (sampleGrow == null || g < sampleGrow)) sampleGrow = g;
           }
         });
         let seedLeft = 0;
@@ -2633,15 +2640,30 @@ const Game = {
 
       // Pre-buff mọi ô NYC — giữ nguyên plantedAt hợp lệ
       // Lấy sampleGrow = MIN (nhanh nhất) để nCycles debug không bị "ô chậm đầu tiên" chặn toàn bộ
+      // QUAN TRỌNG: nếu ô đang có tốc độ cao tại mốc from → ép permanent để không bị mất buff khi specialMultUntil hết hạn giữa offline
       let sampleGrow = null;
       let sampleMult = 1;
       this.forEachGarden((plots, gi) => {
         if (!this.isNycGardenEnabled(gi)) return;
         (plots || []).forEach(p => {
           if (!p) return;
+          // Ép giữ tốc độ đang có lúc bắt đầu offline (tránh temp hết hạn → offline 0 vụ)
+          const multAtFrom = this.getPlotSpeedMult(p, from);
+          if (multAtFrom >= 2) {
+            const curPerm = Number(p.specialMultPermanent) || 0;
+            if (curPerm < multAtFrom) {
+              p.specialMultPermanent = multAtFrom;
+            }
+            p.specialMult = Math.max(Number(p.specialMult) || 1, multAtFrom);
+            // Xóa until cũ để không bị logic temp làm rơi về x1 giữa cửa sổ offline
+            if (p.specialMultUntil && this.toMs(p.specialMultUntil) > 0 && this.toMs(p.specialMultUntil) < endMs) {
+              p.specialMultUntil = 0;
+            }
+          }
           const perm = Number(p.specialMultPermanent) || 0;
           if (perm >= 2) p.specialMult = Math.max(Number(p.specialMult) || 1, perm);
           if (perm > sampleMult) sampleMult = perm;
+          if (multAtFrom > sampleMult) sampleMult = multAtFrom;
           if (p.plantId) {
             p.waterCount = 3;
             p.watered = true;
@@ -2660,6 +2682,7 @@ const Game = {
               // Thiếu plantedAt → coi như trồng từ đầu cửa sổ offline (không reset cây đang có)
               p.plantedAt = from;
             }
+            // Tính grow với endMs SAU KHI đã ép permanent
             const g = this.getEffectiveGrowTime(p, endMs);
             if (g > 0 && (sampleGrow == null || g < sampleGrow)) sampleGrow = g;
           }
@@ -2725,7 +2748,13 @@ const Game = {
               const plot = plots[i];
               if (!plot) continue;
 
-              // Lấy growSec riêng từng ô (có x50)
+              // Lấy growSec riêng từng ô (có x50) — ép permanent lần nữa trước khi tính
+              const multAtFrom = this.getPlotSpeedMult(plot, from);
+              if (multAtFrom >= 2) {
+                const curPerm = Number(plot.specialMultPermanent) || 0;
+                if (curPerm < multAtFrom) plot.specialMultPermanent = multAtFrom;
+                plot.specialMult = Math.max(Number(plot.specialMult) || 1, multAtFrom);
+              }
               const perm = Number(plot.specialMultPermanent) || 0;
               if (perm >= 2) plot.specialMult = Math.max(Number(plot.specialMult) || 1, perm);
 
@@ -2737,7 +2766,10 @@ const Game = {
               plot.waterCount = 3;
               plot.watered = true;
               let growSec = this.getEffectiveGrowTime(plot, endMs);
-              if (!Number.isFinite(growSec) || growSec < 20) growSec = sampleGrow;
+              // Nếu vì lý do gì đó vẫn ra grow quá dài trong khi lúc from đã x50 → dùng sampleGrow nhanh
+              if ((!Number.isFinite(growSec) || growSec < 20 || (multAtFrom >= 2 && growSec > sampleGrow * 1.5)) && sampleGrow > 0) {
+                growSec = sampleGrow;
+              }
               growSec = Math.max(20, growSec);
               const growMs = growSec * 1000;
 
