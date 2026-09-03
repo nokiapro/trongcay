@@ -537,7 +537,7 @@ button.btn:active {
   position: relative;
   justify-content: start;
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding: 8px 6px 12px; /* thêm padding để viền góc + glow không bị cắt */
 }
 
 .plot {
@@ -555,8 +555,9 @@ button.btn:active {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow: visible; /* full corner borders, không bị cắt */
   will-change: auto;
+  box-sizing: border-box;
 }
 
 .plot::before {
@@ -673,60 +674,108 @@ button.btn:active {
 .plot-badge-myth {
   filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.95));
 }
-/* PC / màn rộng: full aura huyền bí */
-.plot.plot-myth {
-  border-color: rgba(168, 85, 247, 0.75) !important;
-  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.45), 0 0 22px rgba(139, 92, 246, 0.45), inset 0 0 18px rgba(91, 33, 182, 0.25);
-  animation: mythAuraPulse 2.8s ease-in-out infinite;
-  position: relative;
-  overflow: hidden;
+
+/* ===== Viền theo loại hạt: thường = trắng, sao = vàng, huyền thoại = tím ===== */
+/* Chỉ animation viền (border/box-shadow), bỏ animation xoay/cây */
+
+/* Hạt bình thường → viền trắng */
+.plot.plot-normal.growing,
+.plot.plot-normal.ready {
+  border-color: #ffffff !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55), 0 0 10px rgba(255, 255, 255, 0.25);
 }
+.plot.plot-normal.ready {
+  animation: normalBorderPulse 1.8s ease-in-out infinite;
+}
+@keyframes normalBorderPulse {
+  0%, 100% { border-color: #ffffff; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 8px rgba(255, 255, 255, 0.2); }
+  50% { border-color: #f1f5f9; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.75), 0 0 16px rgba(255, 255, 255, 0.35); }
+}
+
+/* Hạt sao → viền vàng */
+.plot.plot-star.growing,
+.plot.plot-star.ready {
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.55), 0 0 14px rgba(245, 158, 11, 0.4);
+}
+.plot.plot-star.ready {
+  animation: starBorderPulse 1.8s ease-in-out infinite;
+}
+.plot.plot-star .plot-name {
+  color: #fef3c7;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+}
+.plot.plot-star .plot-icon {
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.7));
+}
+@keyframes starBorderPulse {
+  0%, 100% { border-color: #fbbf24; box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.5), 0 0 12px rgba(245, 158, 11, 0.35); }
+  50% { border-color: #fcd34d; box-shadow: 0 0 0 2px rgba(252, 211, 77, 0.8), 0 0 22px rgba(251, 191, 36, 0.55); }
+}
+
+/* Hạt huyền thoại → viền tím (chỉ animation viền, không spin/cây) */
+.plot.plot-myth {
+  border-color: #a78bfa !important;
+  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.5), 0 0 18px rgba(139, 92, 246, 0.45), inset 0 0 14px rgba(91, 33, 182, 0.2);
+  position: relative;
+  overflow: visible;
+}
+.plot.plot-myth.growing,
+.plot.plot-myth.ready {
+  border-color: #a78bfa !important;
+}
+.plot.plot-myth.ready {
+  animation: mythAuraPulse 2.8s ease-in-out infinite;
+}
+/* Bỏ lớp xoay conic + animation cây */
 .plot.plot-myth::before {
-  content: '';
-  position: absolute;
-  inset: -40%;
-  background: conic-gradient(from 0deg, transparent, rgba(192,132,252,0.2), transparent, rgba(56,189,248,0.15), transparent);
-  animation: mythSpin 8s linear infinite;
-  pointer-events: none;
-  opacity: 0.7;
-  will-change: transform;
+  content: none !important;
+  display: none !important;
+  animation: none !important;
 }
 .plot.plot-myth .plot-icon {
-  filter: drop-shadow(0 0 10px rgba(216, 180, 254, 0.95)) drop-shadow(0 0 4px rgba(255,255,255,0.5));
+  /* chỉ glow tĩnh, không animation scale/rotate */
+  filter: drop-shadow(0 0 8px rgba(216, 180, 254, 0.85));
   position: relative;
   z-index: 1;
 }
 .plot.plot-myth .plot-name {
   color: #e9d5ff;
-  text-shadow: 0 0 8px rgba(168, 85, 247, 0.8);
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.75);
   position: relative;
   z-index: 1;
 }
 @keyframes mythAuraPulse {
-  0%, 100% { box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.4), 0 0 16px rgba(139, 92, 246, 0.35), inset 0 0 12px rgba(91, 33, 182, 0.2); }
-  50% { box-shadow: 0 0 0 2px rgba(216, 180, 254, 0.7), 0 0 28px rgba(167, 139, 250, 0.65), inset 0 0 20px rgba(124, 58, 237, 0.35); }
-}
-@keyframes mythSpin {
-  to { transform: rotate(360deg); }
+  0%, 100% { border-color: #a78bfa; box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.45), 0 0 14px rgba(139, 92, 246, 0.35), inset 0 0 10px rgba(91, 33, 182, 0.18); }
+  50% { border-color: #c4b5fd; box-shadow: 0 0 0 2px rgba(216, 180, 254, 0.75), 0 0 26px rgba(167, 139, 250, 0.6), inset 0 0 18px rgba(124, 58, 237, 0.3); }
 }
 
-/* Mobile / màn hẹp: chỉ viền + glow tĩnh, không animation / không lớp xoay */
+/* Mobile: viền + glow tĩnh, không animation */
 @media (max-width: 900px), (hover: none) and (pointer: coarse) {
-  .plot.plot-myth {
+  .plot.plot-normal.ready,
+  .plot.plot-star.ready,
+  .plot.plot-myth.ready {
     animation: none !important;
+  }
+  .plot.plot-myth {
     box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.55), 0 0 12px rgba(139, 92, 246, 0.35);
-    background-image: linear-gradient(145deg, rgba(124, 58, 237, 0.18), rgba(15, 23, 42, 0.06));
+    background-image: linear-gradient(145deg, rgba(124, 58, 237, 0.12), rgba(15, 23, 42, 0.04));
   }
   .plot.plot-myth::before {
     content: none !important;
     display: none !important;
-    animation: none !important;
   }
   .plot.plot-myth .plot-icon {
-    filter: drop-shadow(0 0 6px rgba(216, 180, 254, 0.75));
+    filter: drop-shadow(0 0 5px rgba(216, 180, 254, 0.7));
   }
   .plot.plot-myth .plot-name {
-    text-shadow: 0 0 4px rgba(168, 85, 247, 0.55);
+    text-shadow: 0 0 4px rgba(168, 85, 247, 0.5);
+  }
+  .plot.plot-star {
+    box-shadow: 0 0 0 1.5px rgba(251, 191, 36, 0.6), 0 0 10px rgba(245, 158, 11, 0.3);
+  }
+  .plot.plot-normal {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 6px rgba(255, 255, 255, 0.2);
   }
   .plot-badge-myth {
     filter: none;
@@ -735,6 +784,9 @@ button.btn:active {
 
 /* Người dùng bật giảm chuyển động hệ thống */
 @media (prefers-reduced-motion: reduce) {
+  .plot.plot-normal.ready,
+  .plot.plot-star.ready,
+  .plot.plot-myth.ready,
   .plot.plot-myth {
     animation: none !important;
   }

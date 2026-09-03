@@ -2011,6 +2011,8 @@ function renderGarden() {
         const isMyth = !!(plot.seedMyth || (Game.getPlotSeedTier && Game.getPlotSeedTier(plot) === 'myth'));
         const isStar = !isMyth && !!plot.seedStar;
         if (isMyth) div.classList.add('plot-myth');
+        else if (isStar) div.classList.add('plot-star');
+        else div.classList.add('plot-normal');
         const starBadge = isMyth
           ? `<span class="plot-badge-myth" title="Hạt huyền thoại">✨</span>`
           : (isStar ? `<span class="plot-badge-star" title="Hạt sao">⭐</span>` : '');
