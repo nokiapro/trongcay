@@ -536,8 +536,8 @@ button.btn:active {
   gap: 16px;
   position: relative;
   justify-content: start;
-  overflow-x: auto;
-  padding: 8px 6px 12px; /* thêm padding để viền góc + glow không bị cắt */
+  overflow: visible;
+  padding: 6px 4px 12px;
 }
 
 .plot {
@@ -4158,13 +4158,12 @@ html[data-theme="dark"] .plot-upgrade-box {
   align-content: start !important;
   gap: var(--gg-gap) !important;
   
-  width: 100% !important;
-  max-width: calc(var(--gg-cols-visible) * var(--gg-col) + (var(--gg-cols-visible) - 1) * var(--gg-gap)) !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  padding-bottom: 10px !important;
+  width: max-content !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  overflow: visible !important;
+  padding: 4px 2px 10px !important;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
 }
@@ -4174,8 +4173,7 @@ html[data-theme="dark"] .plot-upgrade-box {
     --gg-col: 108px;
     --gg-cols-visible: 3;
     grid-template-rows: repeat(3, minmax(112px, auto)) !important;
-    
-    max-width: calc(var(--gg-cols-visible) * var(--gg-col) + (var(--gg-cols-visible) - 1) * var(--gg-gap)) !important;
+    max-width: none !important;
   }
 }
 
@@ -5626,19 +5624,27 @@ html[data-theme="dark"] .plot-upgrade-box h4 {
 .garden-stage {
   position: relative;
   width: 100% !important;
-  max-width: calc(var(--gg-cols-visible, 7) * var(--gg-col, 142px) + (var(--gg-cols-visible, 7) - 1) * var(--gg-gap, 14px)) !important;
+  max-width: calc(var(--gg-cols-visible, 7) * var(--gg-col, 142px) + (var(--gg-cols-visible, 7) - 1) * var(--gg-gap, 14px) + 40px) !important;
   margin-left: auto !important;
   margin-right: auto !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  /* padding ngang để viền/glow 2 đầu không bị cắt khi scroll */
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+  box-sizing: border-box !important;
 }
 .garden-world {
   position: relative;
   display: inline-block;
   vertical-align: top;
   min-height: 100%;
+  /* thêm khoảng đệm 2 bên để ô đầu/cuối hiện đủ viền */
+  padding-left: 4px;
+  padding-right: 4px;
+  box-sizing: content-box;
 }
 .garden-grid {
   overflow: visible !important;
@@ -5790,9 +5796,10 @@ html, body, button, input, select, textarea {
   --gg-col: 142px;
   --gg-cols-visible: 7;
   --gg-row-min: 148px;
+  --gg-edge-pad: 20px; /* khoảng đệm 2 bên cho viền/glow */
   position: relative !important;
   width: 100% !important;
-  max-width: calc(var(--gg-cols-visible) * var(--gg-col) + (var(--gg-cols-visible) - 1) * var(--gg-gap)) !important;
+  max-width: calc(var(--gg-cols-visible) * var(--gg-col) + (var(--gg-cols-visible) - 1) * var(--gg-gap) + 2 * var(--gg-edge-pad)) !important;
   margin-left: auto !important;
   margin-right: auto !important;
   overflow-x: auto !important;
@@ -5800,6 +5807,10 @@ html, body, button, input, select, textarea {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   box-sizing: border-box !important;
+  /* padding ngang: khi scroll đầu → ô phải hiện đủ viền; scroll cuối → ô trái hiện đủ viền */
+  padding-left: var(--gg-edge-pad) !important;
+  padding-right: var(--gg-edge-pad) !important;
+  scroll-padding-inline: var(--gg-edge-pad);
 }
 .garden-world {
   position: relative !important;
@@ -5807,6 +5818,7 @@ html, body, button, input, select, textarea {
   width: max-content !important;
   min-width: 100%;
   vertical-align: top;
+  box-sizing: content-box !important;
 }
 .garden-grid {
   --gg-gap: inherit;
@@ -5823,7 +5835,7 @@ html, body, button, input, select, textarea {
   max-width: none !important;
   margin: 0 !important;
   overflow: visible !important;
-  padding-bottom: 8px !important;
+  padding: 4px 2px 10px !important; /* chút padding để glow không bị clip sát mép grid */
   position: relative !important;
 }
 .garden-agents {
@@ -5842,9 +5854,11 @@ html, body, button, input, select, textarea {
     --gg-col: 108px;
     --gg-cols-visible: 3;
     --gg-row-min: 112px;
-    
-    max-width: calc(3 * var(--gg-col) + 2 * var(--gg-gap)) !important;
+    --gg-edge-pad: 14px;
+    max-width: calc(3 * var(--gg-col) + 2 * var(--gg-gap) + 2 * var(--gg-edge-pad)) !important;
     width: 100% !important;
+    padding-left: var(--gg-edge-pad) !important;
+    padding-right: var(--gg-edge-pad) !important;
   }
   .garden-grid {
     grid-template-rows: repeat(3, minmax(112px, auto)) !important;
@@ -5863,8 +5877,10 @@ html, body, button, input, select, textarea {
     --gg-col: 142px;
     --gg-cols-visible: 7;
     --gg-row-min: 148px;
-    
-    max-width: calc(7 * 142px + 6 * 14px) !important;
+    --gg-edge-pad: 20px;
+    max-width: calc(7 * 142px + 6 * 14px + 2 * var(--gg-edge-pad)) !important;
+    padding-left: var(--gg-edge-pad) !important;
+    padding-right: var(--gg-edge-pad) !important;
   }
   .garden-grid {
     grid-template-rows: repeat(3, minmax(148px, auto)) !important;
