@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 
-const APP_VERSION = '1.9.112';
+const APP_VERSION = '1.9.113';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13963,16 +13963,24 @@ function restorePlayerLocalIfNewer(remotePlayer) {
     const rAt = remotePlayer ? (Number(remotePlayer.updatedAt) || 0) : 0;
     const bScore = playerProgressScore(payload.player);
     const rScore = playerProgressScore(remotePlayer);
-    
-    if (bAt > rAt + 1000 && (rScore < 1000 || bScore >= rScore * 0.8)) {
+    const bCatch = Number(payload.player.lastCatchUpAt) || 0;
+    const rCatch = remotePlayer ? (Number(remotePlayer.lastCatchUpAt) || 0) : 0;
+    const bSeen = Number(payload.player.lastSeenAt) || 0;
+    const rSeen = remotePlayer ? (Number(remotePlayer.lastSeenAt) || 0) : 0;
+
+    // Ưu tiên local nếu mới hơn rõ, hoặc gần bằng nhưng progress tốt hơn (tránh mất tiến độ khi thoát web / vào admin)
+    const localClearlyNewer = bAt > rAt + 800;
+    const localCloseAndBetter = (bAt >= rAt - 2000) && (bScore >= rScore * 0.95) && (bScore > rScore || bCatch > rCatch || bSeen > rSeen);
+    const localHasPlantsRemoteEmpty = (bScore > 0 && rScore < 500 && bAt >= rAt - 5000);
+
+    if ((localClearlyNewer || localCloseAndBetter || localHasPlantsRemoteEmpty) && (rScore < 1000 || bScore >= rScore * 0.75)) {
       currentPlayer = payload.player;
-      _playerBaseUpdatedAt = bAt;
+      _playerBaseUpdatedAt = Math.max(bAt, rAt);
       _playerDirty = true;
-      
       try { mergeRemoteAdminGifts(remotePlayer); } catch (_) {}
       return true;
     }
-    
+
     if (rScore > bScore * 1.2 && rAt >= bAt) {
       try { localStorage.removeItem(playerBackupKey(currentUser.uid)); } catch (_) {}
     }
@@ -14011,15 +14019,29 @@ async function pullRemotePlayerIfNewer() {
     
     if (rAt > lAt + 1500) {
       if (remote.sessionId && remote.sessionId !== CLIENT_SESSION_ID) {
-        currentPlayer = remote;
-        _playerBaseUpdatedAt = rAt;
-        _playerDirty = false;
-        if (typeof Game !== 'undefined' && Game.ensureGardens) {
-          try { Game.ensureGardens(); Game.syncActiveGarden(); } catch (_) {}
+        // Chỉ ghi đè full khi remote tiến bộ hơn rõ — tránh mất plantedAt / tiến độ vườn
+        // khi vừa thoát web hoặc chuyển admin rồi quay lại (sessionId luôn khác mỗi lần load)
+        const lScore = playerProgressScore(currentPlayer);
+        const rScore = playerProgressScore(remote);
+        const shouldOverwrite = (rScore >= lScore * 0.9) || (lScore < 500);
+        if (shouldOverwrite && !_playerDirty) {
+          currentPlayer = remote;
+          _playerBaseUpdatedAt = rAt;
+          _playerDirty = false;
+          if (typeof Game !== 'undefined' && Game.ensureGardens) {
+            try { Game.ensureGardens(); Game.syncActiveGarden(); } catch (_) {}
+          }
+          return true;
         }
-        return true;
+        // Local đang tốt hơn hoặc đang dirty → chỉ merge gift/admin, giữ gardens local
+        if (mergeRemoteAdminGifts(remote)) {
+          _playerBaseUpdatedAt = Math.max(_playerBaseUpdatedAt, rAt);
+          return true;
+        }
+        if (rAt > _playerBaseUpdatedAt) _playerBaseUpdatedAt = rAt;
+        return false;
       }
-      
+
       if (mergeRemoteAdminGifts(remote)) {
         _playerBaseUpdatedAt = Math.max(_playerBaseUpdatedAt, rAt);
         return true;

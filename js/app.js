@@ -4688,14 +4688,21 @@ if (!window.__careVisibilityBound) {
   function markLastSeen() {
     if (!currentPlayer) return;
     const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
-    currentPlayer.lastSeenAt = t;
-    
+    // Chỉ ghi nhận thời điểm rời — KHÔNG đụng lastCatchUpAt (để offline sim tính đúng cửa sổ)
+    if (!currentPlayer.lastSeenAt || t >= currentPlayer.lastSeenAt) {
+      currentPlayer.lastSeenAt = t;
+    }
     try {
       if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
-        localStorage.setItem('vuon_away_' + currentUser.uid, String(t));
+        const key = 'vuon_away_' + currentUser.uid;
+        const prev = Number(localStorage.getItem(key)) || 0;
+        // Giữ mốc away sớm nhất trong phiên rời (tránh heartbeat/ghi đè làm mất cửa sổ offline)
+        if (!prev || t < prev || (t - prev) > 120000) {
+          localStorage.setItem(key, String(t));
+        }
       }
     } catch (_) {}
-    
+    try { if (typeof backupPlayerLocal === 'function') backupPlayerLocal(); } catch (_) {}
     if (typeof flushSavePlayer === 'function') flushSavePlayer();
     else if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(200);
   }

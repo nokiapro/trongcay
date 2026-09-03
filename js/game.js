@@ -2254,14 +2254,21 @@ const Game = {
         awayMark = Number(localStorage.getItem('vuon_away_' + currentUser.uid)) || 0;
       }
     } catch (_) {}
-    
-    let leaveAt = lastSeen || awayMark || lastCatch || Number(currentPlayer.timersSyncedAt) || Number(currentPlayer.updatedAt) || now;
-    if (awayMark > 0 && awayMark < leaveAt) leaveAt = awayMark;
-    if (lastSeen > 0 && lastSeen < leaveAt) leaveAt = lastSeen;
-    
+
+    // Lấy mốc rời SỚM NHẤT có thể (tránh lastSeen bị heartbeat/ghi đè gần đây làm mất cửa sổ offline)
+    let leaveAt = 0;
+    const candidates = [lastSeen, awayMark, lastCatch, Number(currentPlayer.timersSyncedAt) || 0, Number(currentPlayer.updatedAt) || 0]
+      .filter(v => Number(v) > 0);
+    if (candidates.length) leaveAt = Math.min.apply(null, candidates);
+    if (!leaveAt) leaveAt = now;
+
     let from = Math.max(lastCatch, leaveAt);
+    // Nếu awayMark cũ hơn lastCatch rõ rệt (user thoát web lâu) → ưu tiên awayMark để bù đủ
+    if (awayMark > 0 && awayMark < lastCatch && (lastCatch - awayMark) > 60000) {
+      from = awayMark;
+    }
     if (fromLog && fromLog < from) {
-      from = Math.max(lastCatch, fromLog - 1000);
+      from = Math.max(0, fromLog - 1000);
     }
     from = Math.min(now, Math.max(0, from));
 
@@ -2611,7 +2618,8 @@ const Game = {
     }
 
     // ── Offline NYC: multi-cycle theo thời gian offline (math) ──
-    // Công thức: nCycles = floor(offlineSec / growSec) — không phụ thuộc plantedAt lệch
+    // Tôn trọng plantedAt thật của từng ô — không ép harvest/replant khi chưa chín
+    // (trước đây bỏ qua plantedAt + force ≥1 vòng khi offline ≥30s → reset tiến độ cây)
     {
       const endMs = now;
       const offlineSec = Math.max(0, (endMs - from) / 1000);
@@ -2623,7 +2631,7 @@ const Game = {
         nycUntilMs > endMs || nycUntilMs > from || this.isNycActive() || this.isNycActiveAt(endMs) || this.isNycActiveAt(from)
       );
 
-      // Pre-buff mọi ô NYC
+      // Pre-buff mọi ô NYC — giữ nguyên plantedAt hợp lệ
       let sampleGrow = null;
       let sampleMult = 1;
       this.forEachGarden((plots, gi) => {
@@ -2644,8 +2652,13 @@ const Game = {
               } catch (_) {}
             }
             const pa = this.toMs(p.plantedAt);
-            if (pa) p.plantedAt = pa;
-            else p.plantedAt = from;
+            if (pa && pa > 0) {
+              // Giữ plantedAt gốc; chỉ clamp nếu lệch tương lai quá xa (clock skew)
+              p.plantedAt = (pa > endMs + 60000) ? endMs : pa;
+            } else {
+              // Thiếu plantedAt → coi như trồng từ đầu cửa sổ offline (không reset cây đang có)
+              p.plantedAt = from;
+            }
             const g = this.getEffectiveGrowTime(p, endMs);
             if (sampleGrow == null && g > 0) sampleGrow = g;
           }
@@ -2655,10 +2668,10 @@ const Game = {
       if (!(sampleGrow > 0)) sampleGrow = 300;
       sampleGrow = Math.max(20, sampleGrow);
 
-      // Số vòng kỳ vọng trên toàn cửa sổ offline
+      // Ước lượng vòng (chỉ để debug / ghi chú) — KHÔNG dùng để ép harvest
       let nCycles = Math.floor(offlineSec / sampleGrow);
       if (nCycles < 1 && offlineSec >= sampleGrow * 0.85) nCycles = 1;
-      if (nCycles < 1 && offlineSec >= 30) nCycles = 1; // có cây + offline ngắn vẫn cố thu 1
+      // Đã bỏ: if (nCycles < 1 && offlineSec >= 30) nCycles = 1;
       if (!canReplant) nCycles = Math.min(nCycles, 1);
       nCycles = Math.max(0, Math.min(600, nCycles));
 
@@ -2669,7 +2682,7 @@ const Game = {
         from,
         offlineSec: Math.round(offlineSec),
         nycBuffOn: !!nycBuffOn,
-        mode: 'math-cycles',
+        mode: 'math-cycles-respect-plantedAt',
         sampleGrow: Math.round(sampleGrow),
         nCycles,
         sampleMult
@@ -2726,16 +2739,28 @@ const Game = {
               growSec = Math.max(20, growSec);
               const growMs = growSec * 1000;
 
-              // Số vòng cho ô này
-              let plotCycles = Math.floor(offlineSec / growSec);
-              if (plotCycles < 1 && offlineSec >= growSec * 0.85) plotCycles = 1;
-              if (plotCycles < 1) plotCycles = 1;
-              if (!canReplant) plotCycles = 1;
-              plotCycles = Math.min(600, plotCycles);
+              // Tính vòng dựa trên plantedAt THẬT của ô — không ép harvest sớm
+              let plantStart = this.toMs(plot.plantedAt) || Number(plot.plantedAt) || from;
+              if (!(plantStart > 0) || plantStart > endMs) plantStart = from;
+              // Thời điểm chín đầu tiên (không sớm hơn from nếu cây đã chín trước khi offline)
+              let firstReadyAt = plantStart + growMs;
+              if (firstReadyAt < from) {
+                // Đã chín trước/trong lúc rời → cho thu ngay tại from
+                firstReadyAt = from;
+              }
+              // Số vòng hoàn chỉnh trong [firstReadyAt .. endMs]
+              let plotCycles = 0;
+              if (firstReadyAt <= endMs + 50) {
+                plotCycles = 1 + Math.floor(Math.max(0, endMs - firstReadyAt) / growMs);
+              }
+              if (!canReplant) plotCycles = Math.min(plotCycles, 1);
+              plotCycles = Math.max(0, Math.min(600, plotCycles));
 
-              // Bắt đầu từ `from` (bỏ qua plantedAt lệch)
+              // Không có vòng chín thật sự → giữ nguyên plantedAt, bỏ qua ô này
+              if (plotCycles < 1) continue;
+
               for (let c = 0; c < plotCycles; c++) {
-                const harvestT = Math.min(endMs, from + (c + 1) * growMs);
+                const harvestT = Math.min(endMs, firstReadyAt + c * growMs);
                 if (harvestT > endMs + 50) break;
 
                 // Có cây?
@@ -2743,7 +2768,7 @@ const Game = {
                   if (!(canReplant && cfg.plantId && this._nycPlantOneAt(plot, cfg, harvestT - growMs, gi))) break;
                 }
 
-                // Ép state chín
+                // Chỉ chỉnh plantedAt về đúng mốc chín của vòng này (không reset tùy tiện)
                 plot.plantedAt = harvestT - growMs;
                 plot.waterCount = 3;
                 plot.watered = true;
