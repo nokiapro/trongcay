@@ -2706,7 +2706,7 @@ const Game = {
         from,
         offlineSec: Math.round(offlineSec),
         nycBuffOn: !!nycBuffOn,
-        mode: 'math-cycles-respect-plantedAt-minSample',
+        mode: 'math-cycles-remaining-v2',
         sampleGrow: Math.round(sampleGrow),
         nCycles,
         sampleMult
@@ -2765,27 +2765,45 @@ const Game = {
 
               plot.waterCount = 3;
               plot.watered = true;
-              let growSec = this.getEffectiveGrowTime(plot, endMs);
-              // Nếu vì lý do gì đó vẫn ra grow quá dài trong khi lúc from đã x50 → dùng sampleGrow nhanh
+              // Ưu tiên grow tại from (đã ép permanent), fallback endMs / sampleGrow
+              let growSec = this.getEffectiveGrowTime(plot, from);
+              if (!Number.isFinite(growSec) || growSec < 20) {
+                growSec = this.getEffectiveGrowTime(plot, endMs);
+              }
               if ((!Number.isFinite(growSec) || growSec < 20 || (multAtFrom >= 2 && growSec > sampleGrow * 1.5)) && sampleGrow > 0) {
                 growSec = sampleGrow;
               }
               growSec = Math.max(20, growSec);
               const growMs = growSec * 1000;
 
-              // Tính vòng dựa trên plantedAt THẬT của ô — không ép harvest sớm
+              // Tính vòng dựa trên plantedAt THẬT + remaining thực tế
               let plantStart = this.toMs(plot.plantedAt) || Number(plot.plantedAt) || from;
               if (!(plantStart > 0) || plantStart > endMs) plantStart = from;
-              // Thời điểm chín đầu tiên (không sớm hơn from nếu cây đã chín trước khi offline)
-              let firstReadyAt = plantStart + growMs;
-              if (firstReadyAt < from) {
-                // Đã chín trước/trong lúc rời → cho thu ngay tại from
+
+              // Elapsed tại from → remaining chính xác hơn công thức plantedAt + full grow
+              const elapsedAtFrom = Math.max(0, (from - plantStart) / 1000);
+              let remainSec = Math.max(0, growSec - elapsedAtFrom);
+              // Thời điểm chín đầu tiên
+              let firstReadyAt = from + remainSec * 1000;
+              // Nếu đã chín trước/trong lúc rời (hoặc rất sát) → thu ngay tại from
+              if (remainSec <= 0.05 || firstReadyAt <= from + 50) {
                 firstReadyAt = from;
+                remainSec = 0;
               }
+              // Grace nhỏ cho sai số float / clock (0.5s)
+              if (firstReadyAt > endMs && firstReadyAt <= endMs + 500) {
+                firstReadyAt = endMs;
+              }
+
               // Số vòng hoàn chỉnh trong [firstReadyAt .. endMs]
               let plotCycles = 0;
               if (firstReadyAt <= endMs + 50) {
                 plotCycles = 1 + Math.floor(Math.max(0, endMs - firstReadyAt) / growMs);
+              }
+              // Nếu isReadyAt tại endMs mà math ra 0 → vẫn cho 1 vòng (tránh lệch do mult/weather)
+              if (plotCycles < 1 && this.isReadyAt(plot, endMs)) {
+                plotCycles = 1;
+                firstReadyAt = endMs;
               }
               if (!canReplant) plotCycles = Math.min(plotCycles, 1);
               plotCycles = Math.max(0, Math.min(600, plotCycles));
