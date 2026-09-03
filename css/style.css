@@ -5624,16 +5624,15 @@ html[data-theme="dark"] .plot-upgrade-box h4 {
 .garden-stage {
   position: relative;
   width: 100% !important;
-  max-width: calc(var(--gg-cols-visible, 7) * var(--gg-col, 142px) + (var(--gg-cols-visible, 7) - 1) * var(--gg-gap, 14px) + 40px) !important;
+  max-width: calc(var(--gg-cols-visible, 7) * var(--gg-col, 142px) + (var(--gg-cols-visible, 7) - 1) * var(--gg-gap, 14px) + 56px) !important;
   margin-left: auto !important;
   margin-right: auto !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  /* padding ngang để viền/glow 2 đầu không bị cắt khi scroll */
-  padding-left: 20px !important;
-  padding-right: 20px !important;
+  padding-left: 28px !important;
+  padding-right: 28px !important;
   box-sizing: border-box !important;
 }
 .garden-world {
@@ -5641,9 +5640,8 @@ html[data-theme="dark"] .plot-upgrade-box h4 {
   display: inline-block;
   vertical-align: top;
   min-height: 100%;
-  /* thêm khoảng đệm 2 bên để ô đầu/cuối hiện đủ viền */
-  padding-left: 4px;
-  padding-right: 4px;
+  padding-left: 0;
+  padding-right: 0;
   box-sizing: content-box;
 }
 .garden-grid {
@@ -5796,7 +5794,8 @@ html, body, button, input, select, textarea {
   --gg-col: 142px;
   --gg-cols-visible: 7;
   --gg-row-min: 148px;
-  --gg-edge-pad: 20px; /* khoảng đệm 2 bên cho viền/glow */
+  /* >= max glow (myth ~26px) + border 2.5px → không còn vệt vàng bị cắt 2 đầu */
+  --gg-edge-pad: 28px;
   position: relative !important;
   width: 100% !important;
   max-width: calc(var(--gg-cols-visible) * var(--gg-col) + (var(--gg-cols-visible) - 1) * var(--gg-gap) + 2 * var(--gg-edge-pad)) !important;
@@ -5807,7 +5806,6 @@ html, body, button, input, select, textarea {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   box-sizing: border-box !important;
-  /* padding ngang: khi scroll đầu → ô phải hiện đủ viền; scroll cuối → ô trái hiện đủ viền */
   padding-left: var(--gg-edge-pad) !important;
   padding-right: var(--gg-edge-pad) !important;
   scroll-padding-inline: var(--gg-edge-pad);
@@ -5819,6 +5817,8 @@ html, body, button, input, select, textarea {
   min-width: 100%;
   vertical-align: top;
   box-sizing: content-box !important;
+  padding-left: 0;
+  padding-right: 0;
 }
 .garden-grid {
   --gg-gap: inherit;
@@ -5835,7 +5835,7 @@ html, body, button, input, select, textarea {
   max-width: none !important;
   margin: 0 !important;
   overflow: visible !important;
-  padding: 4px 2px 10px !important; /* chút padding để glow không bị clip sát mép grid */
+  padding: 6px 0 12px !important;
   position: relative !important;
 }
 .garden-agents {
@@ -5854,7 +5854,7 @@ html, body, button, input, select, textarea {
     --gg-col: 108px;
     --gg-cols-visible: 3;
     --gg-row-min: 112px;
-    --gg-edge-pad: 14px;
+    --gg-edge-pad: 20px;
     max-width: calc(3 * var(--gg-col) + 2 * var(--gg-gap) + 2 * var(--gg-edge-pad)) !important;
     width: 100% !important;
     padding-left: var(--gg-edge-pad) !important;
@@ -5877,7 +5877,7 @@ html, body, button, input, select, textarea {
     --gg-col: 142px;
     --gg-cols-visible: 7;
     --gg-row-min: 148px;
-    --gg-edge-pad: 20px;
+    --gg-edge-pad: 28px;
     max-width: calc(7 * 142px + 6 * 14px + 2 * var(--gg-edge-pad)) !important;
     padding-left: var(--gg-edge-pad) !important;
     padding-right: var(--gg-edge-pad) !important;
