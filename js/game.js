@@ -2632,6 +2632,7 @@ const Game = {
       );
 
       // Pre-buff mọi ô NYC — giữ nguyên plantedAt hợp lệ
+      // Lấy sampleGrow = MIN (nhanh nhất) để nCycles debug không bị "ô chậm đầu tiên" chặn toàn bộ
       let sampleGrow = null;
       let sampleMult = 1;
       this.forEachGarden((plots, gi) => {
@@ -2660,7 +2661,7 @@ const Game = {
               p.plantedAt = from;
             }
             const g = this.getEffectiveGrowTime(p, endMs);
-            if (sampleGrow == null && g > 0) sampleGrow = g;
+            if (g > 0 && (sampleGrow == null || g < sampleGrow)) sampleGrow = g;
           }
         });
       });
@@ -2668,7 +2669,7 @@ const Game = {
       if (!(sampleGrow > 0)) sampleGrow = 300;
       sampleGrow = Math.max(20, sampleGrow);
 
-      // Ước lượng vòng (chỉ để debug / ghi chú) — KHÔNG dùng để ép harvest
+      // Ước lượng vòng (chỉ để debug / ghi chú) — KHÔNG dùng để ép harvest / chặn vòng lặp
       let nCycles = Math.floor(offlineSec / sampleGrow);
       if (nCycles < 1 && offlineSec >= sampleGrow * 0.85) nCycles = 1;
       // Đã bỏ: if (nCycles < 1 && offlineSec >= 30) nCycles = 1;
@@ -2682,13 +2683,14 @@ const Game = {
         from,
         offlineSec: Math.round(offlineSec),
         nycBuffOn: !!nycBuffOn,
-        mode: 'math-cycles-respect-plantedAt',
+        mode: 'math-cycles-respect-plantedAt-minSample',
         sampleGrow: Math.round(sampleGrow),
         nCycles,
         sampleMult
       };
 
-      if (nycBuffOn && nCycles > 0) {
+      // Luôn chạy per-plot khi NYC bật — không phụ thuộc nCycles global (tránh ô chậm đầu tiên chặn ô nhanh)
+      if (nycBuffOn) {
         for (let gi = 0; gi < (currentPlayer.gardens || []).length; gi++) {
           try {
             if (!this.isNycGardenEnabled(gi)) continue;
@@ -3050,7 +3052,11 @@ const Game = {
           } else if (growEff != null && offlineMs > 0 && growEff * 1000 > offlineMs) {
             reason = ' · chưa chín trong lúc vắng (hiệu lực ~' + growEff + 's, ô x' + mult + ')';
           } else if ((d.withPlant || 0) > 0) {
-            reason = ' · có cây nhưng chưa tới lúc chín trong thời gian vắng';
+            // Fallback rõ ràng hơn: vẫn có cây nhưng không đủ thời gian chín (plantedAt mới / mult thấp / offline ngắn)
+            const extra = (growEff != null)
+              ? (' (hiệu lực ~' + growEff + 's, ô x' + mult + ')')
+              : (mult > 1.01 ? (' (ô x' + mult + ')') : '');
+            reason = ' · có cây nhưng chưa tới lúc chín trong thời gian vắng' + extra;
           } else {
             reason = ' · 0 vụ trong lúc vắng';
           }
