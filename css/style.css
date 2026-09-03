@@ -681,21 +681,22 @@ button.btn:active {
 .plot.plot-normal.growing,
 .plot.plot-normal.ready {
   border-color: #ffffff !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 6px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
 }
 .plot.plot-normal.ready {
   animation: normalBorderPulse 1.8s ease-in-out infinite;
 }
 @keyframes normalBorderPulse {
-  0%, 100% { border-color: #ffffff; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45), 0 0 5px rgba(255, 255, 255, 0.18); }
-  50% { border-color: #f8fafc; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7), 0 0 8px rgba(255, 255, 255, 0.3); }
+  0%, 100% { border-color: #ffffff; box-shadow: 0 0 4px rgba(255, 255, 255, 0.18); }
+  50% { border-color: #f8fafc; box-shadow: 0 0 7px rgba(255, 255, 255, 0.28); }
 }
 
 /* Hạt sao → viền vàng */
 .plot.plot-star.growing,
 .plot.plot-star.ready {
   border-color: #fbbf24 !important;
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.5), 0 0 6px rgba(245, 158, 11, 0.35);
+  /* bỏ vòng 0 0 0 1px — tránh vệt vàng mép phải */
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
 }
 .plot.plot-star.ready {
   animation: starBorderPulse 1.8s ease-in-out infinite;
@@ -708,14 +709,14 @@ button.btn:active {
   filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.6));
 }
 @keyframes starBorderPulse {
-  0%, 100% { border-color: #fbbf24; box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.45), 0 0 5px rgba(245, 158, 11, 0.3); }
-  50% { border-color: #fcd34d; box-shadow: 0 0 0 2px rgba(252, 211, 77, 0.75), 0 0 8px rgba(251, 191, 36, 0.45); }
+  0%, 100% { border-color: #fbbf24; box-shadow: 0 0 5px rgba(245, 158, 11, 0.28); }
+  50% { border-color: #fcd34d; box-shadow: 0 0 8px rgba(251, 191, 36, 0.4); }
 }
 
 /* Hạt huyền thoại → viền tím (chỉ animation viền, không spin/cây) */
 .plot.plot-myth {
   border-color: #a78bfa !important;
-  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.45), 0 0 6px rgba(139, 92, 246, 0.35), inset 0 0 10px rgba(91, 33, 182, 0.18);
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.35), inset 0 0 10px rgba(91, 33, 182, 0.18);
   position: relative;
   overflow: visible;
 }
@@ -744,8 +745,8 @@ button.btn:active {
   z-index: 1;
 }
 @keyframes mythAuraPulse {
-  0%, 100% { border-color: #a78bfa; box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.4), 0 0 5px rgba(139, 92, 246, 0.3), inset 0 0 8px rgba(91, 33, 182, 0.15); }
-  50% { border-color: #c4b5fd; box-shadow: 0 0 0 2px rgba(216, 180, 254, 0.7), 0 0 8px rgba(167, 139, 250, 0.5), inset 0 0 12px rgba(124, 58, 237, 0.25); }
+  0%, 100% { border-color: #a78bfa; box-shadow: 0 0 5px rgba(139, 92, 246, 0.3), inset 0 0 8px rgba(91, 33, 182, 0.15); }
+  50% { border-color: #c4b5fd; box-shadow: 0 0 8px rgba(167, 139, 250, 0.45), inset 0 0 12px rgba(124, 58, 237, 0.25); }
 }
 
 /* Mobile: viền + glow tĩnh, không animation */
@@ -756,7 +757,7 @@ button.btn:active {
     animation: none !important;
   }
   .plot.plot-myth {
-    box-shadow: 0 0 0 1.5px rgba(192, 132, 252, 0.55), 0 0 6px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.3);
     background-image: linear-gradient(145deg, rgba(124, 58, 237, 0.12), rgba(15, 23, 42, 0.04));
   }
   .plot.plot-myth::before {
@@ -770,10 +771,10 @@ button.btn:active {
     text-shadow: 0 0 3px rgba(168, 85, 247, 0.45);
   }
   .plot.plot-star {
-    box-shadow: 0 0 0 1.5px rgba(251, 191, 36, 0.55), 0 0 5px rgba(245, 158, 11, 0.28);
+    box-shadow: 0 0 5px rgba(245, 158, 11, 0.28);
   }
   .plot.plot-normal {
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 6px rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
   }
   .plot-badge-myth {
     filter: none;
@@ -5829,15 +5830,15 @@ html, body, button, input, select, textarea {
   overflow: visible;
 }
 
-/* Mobile: 3 ngang × 3 dọc = 9 ô, đủ viền */
+/* Mobile: 3 ngang × 3 dọc = 9 ô, sát viền cột 3 */
 @media (max-width: 768px) {
   .garden-stage {
     --gg-gap: 8px;
     --gg-col: 100px;
     --gg-cols-visible: 3;
     --gg-row-min: 110px;
-    --gg-edge: 8px;
-    /* 3×100 + 2×8 + 2×8 = 332px — vừa hầu hết máy */
+    --gg-edge: 4px; /* sát viền cột thứ 3, không để vệt thừa bên phải */
+    /* 3×100 + 2×8 + 2×4 = 324px */
     max-width: calc(
       3 * var(--gg-col) + 2 * var(--gg-gap) + 2 * var(--gg-edge)
     ) !important;
@@ -5859,15 +5860,15 @@ html, body, button, input, select, textarea {
   }
 }
 
-/* Máy rất hẹp (< 360px): thu cột để vẫn đủ 3 ô + viền */
+/* Máy rất hẹp (< 360px) */
 @media (max-width: 359px) {
   .garden-stage {
     --gg-col: 92px;
     --gg-gap: 6px;
-    --gg-edge: 6px;
+    --gg-edge: 3px;
     --gg-row-min: 100px;
-    max-width: calc(3 * 92px + 2 * 6px + 2 * 6px) !important;
-    padding: 4px 6px 8px !important;
+    max-width: calc(3 * 92px + 2 * 6px + 2 * 3px) !important;
+    padding: 4px 3px 8px !important;
   }
   .garden-grid {
     grid-auto-columns: 92px !important;
