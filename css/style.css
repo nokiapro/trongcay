@@ -529,15 +529,14 @@ button.btn:active {
 
 .garden-grid {
   display: grid;
-  
   grid-auto-flow: column;
-  grid-template-rows: repeat(4, minmax(150px, auto));
+  grid-template-rows: repeat(3, minmax(150px, auto));
   grid-auto-columns: minmax(140px, 160px);
   gap: 16px;
   position: relative;
   justify-content: start;
   overflow: visible;
-  padding: 6px 4px 12px;
+  padding: 0;
 }
 
 .plot {
@@ -4130,18 +4129,7 @@ html[data-theme="dark"] .plot-upgrade-box {
   border-color: #3d5a4c;
 }
 
-@media (max-width: 768px) {
-  .garden-grid {
-    grid-template-rows: repeat(3, minmax(120px, auto));
-    grid-auto-columns: minmax(110px, 130px);
-    gap: 10px;
-  }
-}
-@media (min-width: 1200px) {
-  .garden-grid {
-    grid-template-rows: repeat(4, minmax(150px, auto));
-  }
-}
+/* rows/cols do mobile & PC được khóa ở block .garden-stage bên dưới */
 
 
 /* base garden-grid — chi tiết bị override bởi block garden-stage bên dưới */
@@ -5841,28 +5829,54 @@ html, body, button, input, select, textarea {
   overflow: visible;
 }
 
-/* Mobile: 3 cột */
+/* Mobile: 3 ngang × 3 dọc = 9 ô, đủ viền */
 @media (max-width: 768px) {
   .garden-stage {
     --gg-gap: 8px;
-    --gg-col: 108px;
+    --gg-col: 100px;
     --gg-cols-visible: 3;
-    --gg-row-min: 112px;
+    --gg-row-min: 110px;
     --gg-edge: 8px;
+    /* 3×100 + 2×8 + 2×8 = 332px — vừa hầu hết máy */
     max-width: calc(
       3 * var(--gg-col) + 2 * var(--gg-gap) + 2 * var(--gg-edge)
     ) !important;
     width: 100% !important;
     padding: 6px var(--gg-edge) 10px !important;
+    box-sizing: border-box !important;
   }
   .garden-grid {
-    grid-template-rows: repeat(3, minmax(112px, auto)) !important;
-    grid-auto-columns: 108px !important;
-    gap: 8px !important;
+    grid-template-rows: repeat(3, minmax(var(--gg-row-min, 110px), auto)) !important;
+    grid-auto-columns: var(--gg-col) !important;
+    gap: var(--gg-gap) !important;
+    overflow: visible !important;
+    padding: 0 !important;
   }
   .garden-grid .plot {
-    min-height: 112px;
+    min-height: 110px;
     padding: 10px 6px;
+    overflow: visible !important;
+  }
+}
+
+/* Máy rất hẹp (< 360px): thu cột để vẫn đủ 3 ô + viền */
+@media (max-width: 359px) {
+  .garden-stage {
+    --gg-col: 92px;
+    --gg-gap: 6px;
+    --gg-edge: 6px;
+    --gg-row-min: 100px;
+    max-width: calc(3 * 92px + 2 * 6px + 2 * 6px) !important;
+    padding: 4px 6px 8px !important;
+  }
+  .garden-grid {
+    grid-auto-columns: 92px !important;
+    gap: 6px !important;
+    grid-template-rows: repeat(3, minmax(100px, auto)) !important;
+  }
+  .garden-grid .plot {
+    min-height: 100px;
+    padding: 8px 4px;
   }
 }
 
