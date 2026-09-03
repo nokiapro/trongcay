@@ -359,29 +359,64 @@ const Features = {
     return { ok: true, msg: `Đã nạp thêm ${amount}🪙. Gốc hiện tại: ${d.amount.toLocaleString()}🪙` };
   },
 
-  async bankWithdraw(depId) {
+  /** Tính lãi hiện tại của sổ (pro-rate nếu chưa đáo hạn) */
+  bankAccruedInterest(d, now = Date.now()) {
+    const amount = d.amount || 0;
+    const rate = d.rate || 0;
+    const fullInterest = amount * rate;
+    const start = d.startedAt || (d.matureAt - (d.days || 1) * 86400000);
+    const end = d.matureAt || start;
+    if (now >= end) return fullInterest;
+    if (now <= start) return 0;
+    const pct = (now - start) / Math.max(1, end - start);
+    return fullInterest * Math.min(1, Math.max(0, pct));
+  },
+
+  /**
+   * Rút sổ tiết kiệm
+   * @param {string} depId
+   * @param {'all'|'interest'} mode
+   *   - all: rút cả gốc + lãi, đóng sổ
+   *   - interest: chỉ rút lãi, gốc tiếp tục gửi (reset kỳ hạn)
+   */
+  async bankWithdraw(depId, mode = 'all') {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     this.ensureBank();
     const idx = currentPlayer.bank.deposits.findIndex(d => d.id === depId);
     if (idx < 0) return { ok: false, msg: 'Không tìm thấy sổ!' };
     const d = currentPlayer.bank.deposits[idx];
     const now = Date.now();
-    let payout = d.amount;
-    if (now >= d.matureAt) {
-      payout = Math.floor(d.amount * (1 + (d.rate || 0)));
-    } else {
-      
-      payout = d.amount;
+    const interest = this.bankAccruedInterest(d, now);
+    const interestPay = Math.floor(interest);
+    const principal = d.amount || 0;
+
+    if (mode === 'interest') {
+      if (interestPay < 1) return { ok: false, msg: 'Lãi hiện tại chưa đủ 1 xu để rút!' };
+      currentPlayer.coins = (currentPlayer.coins || 0) + interestPay;
+      // Gốc tiếp tục gửi: reset mốc lãi, giữ nguyên kỳ hạn
+      const termDays = d.days || 1;
+      d.startedAt = now;
+      d.matureAt = now + termDays * 24 * 60 * 60 * 1000;
+      d.lastInterestWithdrawAt = now;
+      d.interestWithdrawnTotal = (d.interestWithdrawnTotal || 0) + interestPay;
+      if (typeof Game !== 'undefined' && Game.addActivity) {
+        Game.addActivity(`Rút lãi ngân hàng +${interestPay}🪙 (gốc ${principal.toLocaleString()}🪙 tiếp tục gửi)`);
+      }
+      await savePlayer();
+      if (typeof updateCoins === 'function') updateCoins();
+      return { ok: true, msg: `Đã rút lãi +${interestPay.toLocaleString()}🪙. Gốc ${principal.toLocaleString()}🪙 tiếp tục sinh lãi!` };
     }
+
+    // mode === 'all': rút cả gốc + lãi, đóng sổ
+    const payout = principal + interestPay;
     currentPlayer.bank.deposits.splice(idx, 1);
     currentPlayer.coins = (currentPlayer.coins || 0) + payout;
     if (typeof Game !== 'undefined' && Game.addActivity) {
-      Game.addActivity(`Rút ngân hàng +${payout}🪙`);
+      Game.addActivity(`Rút ngân hàng +${payout.toLocaleString()}🪙 (gốc ${principal.toLocaleString()} + lãi ${interestPay.toLocaleString()})`);
     }
     await savePlayer();
     if (typeof updateCoins === 'function') updateCoins();
-    const matured = now >= d.matureAt;
-    return { ok: true, msg: matured ? `Đáo hạn +${payout}🪙 (gồm lãi)!` : `Rút sớm +${payout}🪙 (không lãi).` };
+    return { ok: true, msg: `Đã rút +${payout.toLocaleString()}🪙 (gốc ${principal.toLocaleString()} + lãi ${interestPay.toLocaleString()})!` };
   },
 
   

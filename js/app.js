@@ -5051,15 +5051,26 @@ function renderBank() {
       </div>
       <div class="bank-item-actions">
         ${!matured ? `<button class="btn btn-primary btn-sm btn-bank-topup" data-id="${d.id}"><i class="fa-solid fa-plus"></i> Gửi thêm</button>` : ''}
-        <button class="btn ${matured ? 'btn-success' : 'btn-secondary'} btn-sm btn-bank-wd" data-id="${d.id}">
-          ${matured ? 'Rút lãi' : 'Rút sớm'}
+        <button class="btn btn-success btn-sm btn-bank-wd-interest" data-id="${d.id}" title="Chỉ rút lãi, gốc tiếp tục gửi">
+          <i class="fa-solid fa-coins"></i> Rút lãi
+        </button>
+        <button class="btn btn-secondary btn-sm btn-bank-wd-all" data-id="${d.id}" title="Rút cả gốc và lãi, đóng sổ">
+          <i class="fa-solid fa-wallet"></i> Rút gốc + lãi
         </button>
       </div>
     </div>`;
   }).join('');
-  host.querySelectorAll('.btn-bank-wd').forEach(btn => {
+  host.querySelectorAll('.btn-bank-wd-interest').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const res = await Features.bankWithdraw(btn.dataset.id);
+      const res = await Features.bankWithdraw(btn.dataset.id, 'interest');
+      showToast(res.msg, res.ok ? 'success' : 'error');
+      updateCoins();
+      renderBank();
+    });
+  });
+  host.querySelectorAll('.btn-bank-wd-all').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const res = await Features.bankWithdraw(btn.dataset.id, 'all');
       showToast(res.msg, res.ok ? 'success' : 'error');
       updateCoins();
       renderBank();
@@ -5101,11 +5112,6 @@ function softUpdateBank() {
       if (intEl) intEl.textContent = '+' + formatBankInterest(d.amount * (d.rate || 0));
       if (totEl) totEl.textContent = fullPayout.toLocaleString();
       if (remEl) remEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Đáo hạn — nhận ' + fullPayout.toLocaleString() + '🪙';
-      const btn = el.querySelector('.btn-bank-wd');
-      if (btn && !btn.classList.contains('btn-success')) {
-        btn.className = 'btn btn-success btn-sm btn-bank-wd';
-        btn.textContent = 'Rút lãi';
-      }
     } else {
       if (intEl) intEl.textContent = '+' + formatBankInterest(interest);
       if (psEl) psEl.textContent = '+' + formatBankInterest(perSec);
