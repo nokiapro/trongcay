@@ -4660,32 +4660,54 @@ function updateGlobalTimer() {
   if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
 }
 
-/** Nút đếm ngược cạnh Hỗ trợ khi cây còn ≤ 10 giây đến thu hoạch.
- *  Thời gian 10s không còn nhảy trên từng ô vườn (softUpdateGardenUI ẩn timer khi ≤ 10s). */
+/** Nút đếm ngược cạnh Hỗ trợ khi có vườn còn ≤ 10 giây đến thu hoạch.
+ *  Hiển thị rõ số vườn: "Vườn 1: 10s", nhiều vườn thì "Vườn 1: 8s · Vườn 3: 5s".
+ *  Chỉ hiện khi thật sự có vườn trong cửa sổ 10s; timer trên ô vẫn ẩn khi ≤ 10s. */
 function updateHarvestCountdownButton() {
   const el = document.getElementById('btn-boost-countdown');
   const textEl = document.getElementById('boost-countdown-text');
   if (!el || !textEl || !currentPlayer) return;
 
   const PREVIEW_SEC = 10;
-  const plots = Array.isArray(currentPlayer.plots) ? currentPlayer.plots : Object.values(currentPlayer.plots || {});
-  let minHarvest = null;
+  // Quét mọi vườn (không chỉ vườn đang mở)
+  let gardens = [];
+  if (Array.isArray(currentPlayer.gardens) && currentPlayer.gardens.length) {
+    gardens = currentPlayer.gardens;
+  } else if (currentPlayer.gardens && typeof currentPlayer.gardens === 'object') {
+    const keys = Object.keys(currentPlayer.gardens).sort((a, b) => Number(a) - Number(b));
+    gardens = keys.map(k => currentPlayer.gardens[k]);
+  } else {
+    gardens = [Array.isArray(currentPlayer.plots) ? currentPlayer.plots : Object.values(currentPlayer.plots || {})];
+  }
 
-  plots.forEach((plot) => {
-    if (!plot || !plot.plantId) return;
-    const remain = Game.getRemainingSeconds ? Game.getRemainingSeconds(plot) : 0;
-    if (remain <= 0) return;
-    if (remain > PREVIEW_SEC) return;
-    if (minHarvest == null || remain < minHarvest) minHarvest = remain;
+  // Mỗi vườn: lấy thời gian còn nhỏ nhất trong khoảng 1..10s (nếu có)
+  const entries = [];
+  gardens.forEach((plots, gi) => {
+    if (!plots) return;
+    const list = Array.isArray(plots) ? plots : Object.values(plots || {});
+    let minRemain = null;
+    list.forEach((plot) => {
+      if (!plot || !plot.plantId) return;
+      const remain = Game.getRemainingSeconds ? Game.getRemainingSeconds(plot) : 0;
+      if (remain <= 0 || remain > PREVIEW_SEC) return;
+      if (minRemain == null || remain < minRemain) minRemain = remain;
+    });
+    if (minRemain != null && minRemain > 0) {
+      entries.push({ index: gi + 1, sec: minRemain });
+    }
   });
 
-  if (minHarvest != null && minHarvest > 0) {
-    el.hidden = false;
-    textEl.textContent = minHarvest + 's';
-    el.title = `Cây sắp chín — còn ${minHarvest} giây đến thu hoạch`;
-  } else {
+  if (!entries.length) {
     el.hidden = true;
+    return;
   }
+
+  // Sắp theo số vườn tăng dần
+  entries.sort((a, b) => a.index - b.index);
+  const label = entries.map(e => `Vườn ${e.index}: ${e.sec}s`).join(' · ');
+  el.hidden = false;
+  textEl.textContent = label;
+  el.title = 'Sắp thu hoạch — ' + label;
 }
 
 
