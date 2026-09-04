@@ -2018,12 +2018,16 @@ function renderGarden() {
           : (isStar ? `<span class="plot-badge-star" title="Hạt sao">⭐</span>` : '');
 
         const remain = Game.getRemainingSeconds(plot);
+        // Khi còn ≤ 10s: ẩn timer trên ô (đếm ngược hiện ở nút cạnh Hỗ trợ, tránh nhảy layout)
+        const timerHtml = !ready
+          ? `<div class="plot-timer" data-role="timer"${remain > 0 && remain <= 10 ? ' hidden' : ''}><i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}</div>`
+          : '';
         div.innerHTML = `
           <div class="plot-badges"><span class="plot-badge-left">${waterBadge}${starBadge}</span><span class="plot-badge-right">${fertBadge}</span></div>
           <div class="plot-icon">${stageIcon}</div>
           <div class="plot-name">${plant.name}${isMyth ? ' ✨' : (isStar ? ' ⭐' : '')}</div>
           <div class="plot-status" data-role="status">${ready ? '✨ Ra hoa/quả!' : stage.label + ' · ' + progress + '%'}</div>
-          ${!ready ? `<div class="plot-timer" data-role="timer"><i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}</div>` : ''}
+          ${timerHtml}
           ${!ready ? `<div class="plot-progress"><div class="plot-progress-bar" data-role="bar" style="width:${progress}%"></div></div>` : ''}
         `;
         div.addEventListener('click', () => openPlotModal(i));
@@ -4587,7 +4591,16 @@ function softUpdateGardenUI() {
         if (statusEl && statusEl.nextSibling) el.insertBefore(tm, statusEl.nextSibling);
         else el.appendChild(tm);
       }
-      tm.innerHTML = `<i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}`;
+      // Khi còn ≤ 10s: không cập nhật số giây trên ô (tránh nhảy layout) — đếm ngược hiện ở nút cạnh Hỗ trợ
+      if (remain > 10) {
+        tm.innerHTML = `<i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}`;
+        tm.hidden = false;
+      } else if (remain > 0) {
+        tm.hidden = true;
+      } else {
+        tm.innerHTML = `<i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}`;
+        tm.hidden = false;
+      }
     } else if (tm) {
       tm.remove();
     }
@@ -4622,6 +4635,9 @@ function updateGlobalTimer() {
     }
   };
 
+  // Nút đếm ngược thu hoạch cạnh Hỗ trợ (cây còn ≤ 10s)
+  updateHarvestCountdownButton();
+
   // Đếm ngược 30 phút đến trận mưa tiếp theo (Tiên tưới khi mưa)
   if (typeof Game !== 'undefined' && Game.getRainRemainingSec) {
     const raining = !!(Game.raining && Game.rainUntil && Game.rainUntil > (typeof nowMs === 'function' ? nowMs() : Date.now()));
@@ -4642,6 +4658,34 @@ function updateGlobalTimer() {
     if (btn) btn.title = 'Đếm ngược mưa (30 phút)';
   }
   if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
+}
+
+/** Nút đếm ngược cạnh Hỗ trợ khi cây còn ≤ 10 giây đến thu hoạch.
+ *  Thời gian 10s không còn nhảy trên từng ô vườn (softUpdateGardenUI ẩn timer khi ≤ 10s). */
+function updateHarvestCountdownButton() {
+  const el = document.getElementById('btn-boost-countdown');
+  const textEl = document.getElementById('boost-countdown-text');
+  if (!el || !textEl || !currentPlayer) return;
+
+  const PREVIEW_SEC = 10;
+  const plots = Array.isArray(currentPlayer.plots) ? currentPlayer.plots : Object.values(currentPlayer.plots || {});
+  let minHarvest = null;
+
+  plots.forEach((plot) => {
+    if (!plot || !plot.plantId) return;
+    const remain = Game.getRemainingSeconds ? Game.getRemainingSeconds(plot) : 0;
+    if (remain <= 0) return;
+    if (remain > PREVIEW_SEC) return;
+    if (minHarvest == null || remain < minHarvest) minHarvest = remain;
+  });
+
+  if (minHarvest != null && minHarvest > 0) {
+    el.hidden = false;
+    textEl.textContent = minHarvest + 's';
+    el.title = `Cây sắp chín — còn ${minHarvest} giây đến thu hoạch`;
+  } else {
+    el.hidden = true;
+  }
 }
 
 
