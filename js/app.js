@@ -4660,16 +4660,13 @@ function updateGlobalTimer() {
   if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
 }
 
-/** Nút đếm ngược cạnh Hỗ trợ khi có vườn còn ≤ 10 giây đến thu hoạch.
- *  Hiển thị rõ số vườn: "Vườn 1: 10s", nhiều vườn thì "Vườn 1: 8s · Vườn 3: 5s".
- *  Chỉ hiện khi thật sự có vườn trong cửa sổ 10s; timer trên ô vẫn ẩn khi ≤ 10s. */
+/** Mỗi vườn sắp chín (1–10s, chưa isReady) → 1 nút riêng cạnh Hỗ trợ.
+ *  Cây đã chín (isReady) bị bỏ qua — tránh kẹt mãi ở "1s" do Math.ceil. */
 function updateHarvestCountdownButton() {
-  const el = document.getElementById('btn-boost-countdown');
-  const textEl = document.getElementById('boost-countdown-text');
-  if (!el || !textEl || !currentPlayer) return;
+  const host = document.getElementById('harvest-countdown-host');
+  if (!host || !currentPlayer || typeof Game === 'undefined') return;
 
   const PREVIEW_SEC = 10;
-  // Quét mọi vườn (không chỉ vườn đang mở)
   let gardens = [];
   if (Array.isArray(currentPlayer.gardens) && currentPlayer.gardens.length) {
     gardens = currentPlayer.gardens;
@@ -4680,7 +4677,6 @@ function updateHarvestCountdownButton() {
     gardens = [Array.isArray(currentPlayer.plots) ? currentPlayer.plots : Object.values(currentPlayer.plots || {})];
   }
 
-  // Mỗi vườn: lấy thời gian còn nhỏ nhất trong khoảng 1..10s (nếu có)
   const entries = [];
   gardens.forEach((plots, gi) => {
     if (!plots) return;
@@ -4688,7 +4684,11 @@ function updateHarvestCountdownButton() {
     let minRemain = null;
     list.forEach((plot) => {
       if (!plot || !plot.plantId) return;
-      const remain = Game.getRemainingSeconds ? Game.getRemainingSeconds(plot) : 0;
+      // Đã chín → không đếm (tránh kẹt 1s)
+      if (typeof Game.isReady === 'function' && Game.isReady(plot)) return;
+      if (typeof Game.getProgress === 'function' && Game.getProgress(plot) >= 100) return;
+      let remain = Game.getRemainingSeconds ? Game.getRemainingSeconds(plot) : 0;
+      remain = Math.max(0, Math.floor(Number(remain) || 0));
       if (remain <= 0 || remain > PREVIEW_SEC) return;
       if (minRemain == null || remain < minRemain) minRemain = remain;
     });
@@ -4697,17 +4697,37 @@ function updateHarvestCountdownButton() {
     }
   });
 
+  // Không có vườn trong cửa sổ 10s → xóa hết nút
   if (!entries.length) {
-    el.hidden = true;
+    host.innerHTML = '';
+    host.hidden = true;
     return;
   }
 
-  // Sắp theo số vườn tăng dần
   entries.sort((a, b) => a.index - b.index);
-  const label = entries.map(e => `Vườn ${e.index}: ${e.sec}s`).join(' · ');
-  el.hidden = false;
-  textEl.textContent = label;
-  el.title = 'Sắp thu hoạch — ' + label;
+  host.hidden = false;
+
+  // Đồng bộ DOM: mỗi vườn 1 nút, cập nhật text hoặc tạo mới, xóa nút thừa
+  const want = new Set(entries.map(e => String(e.index)));
+  host.querySelectorAll('[data-garden-cd]').forEach(btn => {
+    if (!want.has(btn.dataset.gardenCd)) btn.remove();
+  });
+
+  entries.forEach((e) => {
+    let btn = host.querySelector(`[data-garden-cd="${e.index}"]`);
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-boost-countdown';
+      btn.dataset.gardenCd = String(e.index);
+      btn.innerHTML = `<i class="fa-solid fa-hourglass-half"></i><span class="cd-text"></span>`;
+      host.appendChild(btn);
+    }
+    const textEl = btn.querySelector('.cd-text');
+    const label = `Vườn ${e.index}: ${e.sec}s`;
+    if (textEl) textEl.textContent = label;
+    btn.title = `Sắp thu hoạch — ${label}`;
+  });
 }
 
 
