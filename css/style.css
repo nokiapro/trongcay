@@ -4226,7 +4226,7 @@ html[data-theme="dark"] .plot-upgrade-box {
   background: rgba(45,106,79,0.08);
 }
 .kitchen-ing.no { background: rgba(230,57,70,0.12); color: #c1121f; }
-.kitchen-ing.ok { color: #1b4332; }
+.kitchen-ing.ok { color: #ffffff; }
 .kitchen-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; }
 .kitchen-actions {
   display: flex;
