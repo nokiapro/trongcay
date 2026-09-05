@@ -1284,7 +1284,7 @@ const Game = {
     const ach = this.checkAchievements();
     await savePlayer({ action: 'plant' });
     this.notifyAchievements(ach);
-    return { ok: true, msg: `Đã trồng ${usedMyth ? '✨ ' : (usedStar ? '⭐ ' : '')}${plant.name}!` + (fairyWatered ? ' 🧚 Tiên đã tưới.' : '') };
+    return { ok: true, msg: `Đã trồng ${usedMyth ? '✨ ' : (usedStar ? '⭐ ' : '')}${plant.name}!` + (fairyWatered ? ' Tiên đã tưới.' : '') };
   },
 
   
