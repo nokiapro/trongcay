@@ -4226,7 +4226,7 @@ html[data-theme="dark"] .plot-upgrade-box {
   background: rgba(45,106,79,0.08);
 }
 .kitchen-ing.no { background: rgba(230,57,70,0.12); color: #c1121f; }
-.kitchen-ing.ok { color: #ffffff; }
+.kitchen-ing.ok { color: #1b4332; }
 .kitchen-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; }
 .kitchen-actions {
   display: flex;
@@ -4559,29 +4559,45 @@ select.pill-dd-native {
   white-space: nowrap !important;
 }
 
-/* Host chứa nhiều nút đếm ngược (mỗi vườn 1 nút) cạnh Hỗ trợ */
+/* Dòng riêng dưới toolbar: mọi vườn trên 1 hàng (không wrap) */
 .harvest-countdown-host {
-  display: inline-flex;
-  flex-wrap: wrap;
+  display: flex;
+  flex-wrap: nowrap;
   gap: 6px;
   align-items: center;
   justify-content: center;
-  max-width: min(96vw, 560px);
+  width: 100%;
+  max-width: 100%;
+  margin: 8px 0 0;
+  padding: 0 4px;
+  box-sizing: border-box;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
+.harvest-countdown-host:empty,
 .harvest-countdown-host[hidden] {
   display: none !important;
+  margin: 0;
+  padding: 0;
 }
 
-/* Nút đếm ngược 10s khi cây sắp chín — mỗi vườn 1 nút */
+/* Nút đếm ngược 10s khi cây sắp chín — mỗi vườn 1 nút, cùng 1 dòng */
 .btn-boost-countdown {
   background: linear-gradient(135deg, #b45309, #f59e0b) !important;
   color: #fff !important;
   border: none !important;
   font-weight: 700 !important;
-  gap: 6px !important;
+  gap: 4px !important;
   animation: boost-countdown-pulse 1s ease-in-out infinite;
   box-shadow: 0 2px 10px rgba(245, 158, 11, 0.45);
   white-space: nowrap !important;
+  flex: 0 0 auto;
+  padding: 5px 10px !important;
+  font-size: 0.78rem !important;
+  min-height: 30px !important;
+  height: 30px !important;
 }
 .btn-boost-countdown[hidden] {
   display: none !important;
