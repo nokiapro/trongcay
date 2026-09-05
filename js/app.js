@@ -5326,12 +5326,23 @@ document.getElementById('kitchen-search')?.addEventListener('input', () => {
 
 function renderKitchen() {
   if (!currentPlayer) return;
+  if (typeof Game.normalizeHarvestBags === 'function') Game.normalizeHarvestBags();
   const q = (document.getElementById('kitchen-search')?.value || '').trim().toLowerCase();
   const cookEl = document.getElementById('kitchen-cook');
   const dishesEl = document.getElementById('kitchen-dishes');
   const recipes = Game.getRecipes();
-  const harvest = (currentPlayer.inventory && currentPlayer.inventory.harvest) || {};
-  const ownedDishes = (currentPlayer.inventory && currentPlayer.inventory.dishes) || {};
+  const inv = currentPlayer.inventory || {};
+  const harvest = inv.harvest || {};
+  const harvestStar = inv.harvestStar || {};
+  const harvestMyth = inv.harvestMyth || {};
+
+  const haveIng = (plantId, tier) => {
+    if (tier === 'myth') return harvestMyth[plantId] || 0;
+    if (tier === 'star') return harvestStar[plantId] || 0;
+    return harvest[plantId] || 0;
+  };
+  const canCookTier = (r, tier) => (r.ingredients || []).every(ing => haveIng(ing.plantId, tier) >= (ing.qty || 1));
+  const canCookAny = (r) => canCookTier(r, 'normal') || canCookTier(r, 'star') || canCookTier(r, 'myth');
 
   if (cookEl && (cookEl.style.display !== 'none')) {
     let list = recipes;
@@ -5345,10 +5356,10 @@ function renderKitchen() {
         return name.includes(q) || ings.includes(q);
       });
     }
-    
+
     list = list.slice().sort((a, b) => {
-      const canA = (a.ingredients || []).every(ing => (harvest[ing.plantId] || 0) >= (ing.qty || 1));
-      const canB = (b.ingredients || []).every(ing => (harvest[ing.plantId] || 0) >= (ing.qty || 1));
+      const canA = canCookAny(a);
+      const canB = canCookAny(b);
       if (canA !== canB) return canA ? -1 : 1;
       return (a.name || '').localeCompare(b.name || '', 'vi');
     });
@@ -5356,43 +5367,61 @@ function renderKitchen() {
     if (typeof window.kitchenPage !== 'number' || window.kitchenPage < 1) window.kitchenPage = 1;
     const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
     if (window.kitchenPage > totalPages) window.kitchenPage = totalPages;
-    const start = (window.kitchenPage - 1) * pageSize;
-    const show = list.slice(start, start + pageSize);
+    const startIdx = (window.kitchenPage - 1) * pageSize;
+    const show = list.slice(startIdx, startIdx + pageSize);
+
+    const priceN = (r) => Game.getDishSellPrice ? Game.getDishSellPrice(r, 'normal') : (r.sellPrice || 0);
+    const priceS = (r) => Game.getDishSellPrice ? Game.getDishSellPrice(r, 'star') : Math.ceil((r.sellPrice || 0) * 1.5);
+    const priceM = (r) => Game.getDishSellPrice ? Game.getDishSellPrice(r, 'myth') : Math.ceil((r.sellPrice || 0) * 2);
+
     cookEl.innerHTML = `
-      <p class="bulk-hint">Trang ${window.kitchenPage}/${totalPages} · ${show.length}/${list.length} món (tổng ${recipes.length} thực đơn). Có thể nấu xếp trước.</p>
+      <p class="bulk-hint">Trang ${window.kitchenPage}/${totalPages} · ${show.length}/${list.length} món. Nấu bằng nông sản <strong>thường</strong> / <strong>⭐ sao</strong> / <strong>✨ huyền thoại</strong> — giá bán món khác nhau.</p>
       <div class="kitchen-grid">` + show.map(r => {
       const ings = (r.ingredients || []).map(ing => {
         const p = Game.getPlant(ing.plantId);
-        const have = harvest[ing.plantId] || 0;
         const need = ing.qty || 1;
-        const ok = have >= need;
-        return `<span class="kitchen-ing ${ok ? 'ok' : 'no'}">${p ? p.icon : '❓'}${p ? p.name : ing.plantId} ×${need} <small>(${have})</small></span>`;
+        const n = haveIng(ing.plantId, 'normal');
+        const s = haveIng(ing.plantId, 'star');
+        const m = haveIng(ing.plantId, 'myth');
+        const okAny = n >= need || s >= need || m >= need;
+        return `<span class="kitchen-ing ${okAny ? 'ok' : 'no'}">${p ? p.icon : '❓'}${p ? p.name : ing.plantId} ×${need}
+          <small>(${n}/⭐${s}/✨${m})</small></span>`;
       }).join('');
-      const can = (r.ingredients || []).every(ing => (harvest[ing.plantId] || 0) >= (ing.qty || 1));
+      const canN = canCookTier(r, 'normal');
+      const canS = canCookTier(r, 'star');
+      const canM = canCookTier(r, 'myth');
+      const can = canN || canS || canM;
       return `<div class="kitchen-card ${can ? 'can-cook' : ''}">
         <div class="kitchen-icon">${r.icon || '🍽️'}</div>
         <div class="kitchen-name">${r.name}</div>
         <div class="kitchen-ings">${ings}</div>
-        <div class="kitchen-meta">Bán <strong>${(r.sellPrice || 0).toLocaleString()}🪙</strong> · +${r.xp || 1} XP</div>
-        <div class="kitchen-actions">
+        <div class="kitchen-meta kitchen-prices">
+          Thường <strong>${priceN(r).toLocaleString()}🪙</strong>
+          · ⭐ <strong>${priceS(r).toLocaleString()}🪙</strong>
+          · ✨ <strong>${priceM(r).toLocaleString()}🪙</strong>
+          · +${r.xp || 1} XP
+        </div>
+        <div class="kitchen-actions kitchen-actions-tier">
           <input type="number" class="qty-input kitchen-qty" min="1" max="99" value="1" data-rid="${r.id}" ${can ? '' : 'disabled'} />
-          <button class="btn btn-primary btn-sm btn-cook" data-id="${r.id}" ${can ? '' : 'disabled'}>
-            <i class="fa-solid fa-fire"></i> Nấu
-          </button>
+          <button class="btn btn-primary btn-sm btn-cook" data-id="${r.id}" data-tier="normal" ${canN ? '' : 'disabled'} title="Nấu bằng nông sản thường">Nấu</button>
+          <button class="btn btn-warning btn-sm btn-cook" data-id="${r.id}" data-tier="star" ${canS ? '' : 'disabled'} title="Nấu bằng nông sản ⭐">⭐</button>
+          <button class="btn btn-secondary btn-sm btn-cook" data-id="${r.id}" data-tier="myth" ${canM ? '' : 'disabled'} title="Nấu bằng nông sản ✨">✨</button>
         </div>
       </div>`;
     }).join('') + '</div>';
+
     cookEl.querySelectorAll('.btn-cook').forEach(btn => {
       btn.addEventListener('click', async () => {
         const card = btn.closest('.kitchen-card');
         const qty = parseInt(card?.querySelector('.kitchen-qty')?.value || '1', 10) || 1;
-        const res = await Game.cookRecipe(btn.dataset.id, qty);
+        const tier = btn.dataset.tier || 'normal';
+        const res = await Game.cookRecipe(btn.dataset.id, qty, tier);
         showToast(res.msg, res.ok ? 'success' : 'error');
         updateCoins();
         renderKitchen();
       });
     });
-    
+
     renderUxPager(document.getElementById('kitchen-pager'), {
       page: window.kitchenPage,
       totalPages,
@@ -5408,21 +5437,32 @@ function renderKitchen() {
   }
 
   if (dishesEl && dishesEl.style.display !== 'none') {
-    const ids = Object.keys(ownedDishes).filter(id => ownedDishes[id] > 0);
-    if (!ids.length) {
+    const bags = [
+      { key: 'dishes', tier: 'normal', label: '' },
+      { key: 'dishesStar', tier: 'star', label: '⭐' },
+      { key: 'dishesMyth', tier: 'myth', label: '✨' }
+    ];
+    const rows = [];
+    bags.forEach(b => {
+      const owned = inv[b.key] || {};
+      Object.keys(owned).filter(id => owned[id] > 0).forEach(id => {
+        rows.push({ id, qty: owned[id], tier: b.tier, label: b.label });
+      });
+    });
+    if (!rows.length) {
       dishesEl.innerHTML = '<p class="empty-state">Chưa có món nào. Vào tab Nấu ăn nhé!</p>';
     } else {
-      dishesEl.innerHTML = '<div class="kitchen-grid">' + ids.map(id => {
-        const r = Game.getRecipe(id);
+      dishesEl.innerHTML = '<div class="kitchen-grid">' + rows.map(row => {
+        const r = Game.getRecipe(row.id);
         if (!r) return '';
-        const qty = ownedDishes[id];
+        const unit = Game.getDishSellPrice ? Game.getDishSellPrice(r, row.tier) : (r.sellPrice || 0);
         return `<div class="kitchen-card">
-          <div class="kitchen-icon">${r.icon || '🍽️'}</div>
-          <div class="kitchen-name">${r.name}</div>
-          <div class="qty">x${qty} · ${(r.sellPrice || 0).toLocaleString()}🪙/món</div>
+          <div class="kitchen-icon">${r.icon || '🍽️'}${row.label}</div>
+          <div class="kitchen-name">${r.name} ${row.label}</div>
+          <div class="qty">x${row.qty} · ${unit.toLocaleString()}🪙/món</div>
           <div class="kitchen-actions">
-            <button class="btn btn-success btn-sm btn-sell-dish" data-id="${id}" data-qty="1">Bán 1</button>
-            <button class="btn btn-primary btn-sm btn-sell-dish" data-id="${id}" data-qty="all">Bán hết</button>
+            <button class="btn btn-success btn-sm btn-sell-dish" data-id="${row.id}" data-tier="${row.tier}" data-qty="1">Bán 1</button>
+            <button class="btn btn-primary btn-sm btn-sell-dish" data-id="${row.id}" data-tier="${row.tier}" data-qty="all">Bán hết</button>
           </div>
         </div>`;
       }).join('') + '</div>';
@@ -5431,7 +5471,7 @@ function renderKitchen() {
           let qty = btn.dataset.qty;
           if (qty === 'all') qty = -1;
           else qty = parseInt(qty, 10) || 1;
-          const res = await Game.sellDish(btn.dataset.id, qty);
+          const res = await Game.sellDish(btn.dataset.id, qty, btn.dataset.tier || 'normal');
           showToast(res.msg, res.ok ? 'success' : 'error');
           updateCoins();
           renderKitchen();

@@ -4289,7 +4289,11 @@ const Game = {
     const inv = currentPlayer.inventory;
     if (!inv.harvest) inv.harvest = {};
     if (!inv.harvestStar) inv.harvestStar = {};
+    if (!inv.harvestMyth) inv.harvestMyth = {};
     if (!inv.harvestBought) inv.harvestBought = {};
+    if (!inv.dishes) inv.dishes = {};
+    if (!inv.dishesStar) inv.dishesStar = {};
+    if (!inv.dishesMyth) inv.dishesMyth = {};
     if (inv._harvestSplitDone) return;
     Object.keys(inv.harvestStar).forEach(id => {
       const star = inv.harvestStar[id] || 0;
@@ -4299,6 +4303,21 @@ const Game = {
       }
     });
     inv._harvestSplitDone = true;
+  },
+
+  harvestBagKey(tier) {
+    if (tier === 'myth') return 'harvestMyth';
+    if (tier === 'star') return 'harvestStar';
+    return 'harvest';
+  },
+  dishBagKey(tier) {
+    if (tier === 'myth') return 'dishesMyth';
+    if (tier === 'star') return 'dishesStar';
+    return 'dishes';
+  },
+  getDishSellPrice(recipe, tier) {
+    const base = Math.max(0, Number(recipe && recipe.sellPrice) || 0);
+    return Math.ceil(base * this.getSeedSellMult(tier === 'myth' ? 'myth' : (tier === 'star' ? 'star' : 'normal')));
   },
 
   async sellHarvest(plantId, qty = 1, kind = 'normal') {
@@ -4652,20 +4671,25 @@ const Game = {
   },
 
   
-  async cookRecipe(recipeId, times = 1) {
+  async cookRecipe(recipeId, times = 1, tier = 'normal') {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const recipe = this.getRecipe(recipeId);
     if (!recipe) return { ok: false, msg: 'Không có công thức!' };
     times = Math.max(1, Math.min(99, Math.floor(Number(times) || 1)));
+    tier = (tier === 'myth' || tier === 'star') ? tier : 'normal';
     this.normalizeHarvestBags();
     const inv = currentPlayer.inventory || (currentPlayer.inventory = {});
-    const harvest = inv.harvest || (inv.harvest = {});
+    const bagKey = this.harvestBagKey(tier);
+    const dishKey = this.dishBagKey(tier);
+    const harvest = inv[bagKey] || (inv[bagKey] = {});
+    const tag = tier === 'myth' ? '✨' : (tier === 'star' ? '⭐' : '');
+
     for (const ing of recipe.ingredients) {
       const have = harvest[ing.plantId] || 0;
       const need = (ing.qty || 1) * times;
       if (have < need) {
         const pl = this.getPlant(ing.plantId);
-        return { ok: false, msg: `Thiếu ${pl ? pl.name : ing.plantId} (cần ${need}, có ${have})` };
+        return { ok: false, msg: `Thiếu ${pl ? pl.name : ing.plantId}${tag} (cần ${need}, có ${have})` };
       }
     }
     for (const ing of recipe.ingredients) {
@@ -4673,34 +4697,46 @@ const Game = {
       harvest[ing.plantId] = (harvest[ing.plantId] || 0) - need;
       if (harvest[ing.plantId] <= 0) delete harvest[ing.plantId];
     }
-    if (!inv.dishes) inv.dishes = {};
-    inv.dishes[recipe.id] = (inv.dishes[recipe.id] || 0) + times;
-    const xpGain = (recipe.xp || 1) * times;
+    if (!inv[dishKey]) inv[dishKey] = {};
+    inv[dishKey][recipe.id] = (inv[dishKey][recipe.id] || 0) + times;
+    const xpBase = (recipe.xp || 1) * times;
+    const xpGain = Math.ceil(xpBase * this.getSeedXpMult(tier));
     currentPlayer.xp = (currentPlayer.xp || 0) + xpGain;
-    this.addActivity(`Nấu ${times}× ${recipe.name}`);
+    const sellHint = this.getDishSellPrice(recipe, tier);
+    this.addActivity(`Nấu ${times}× ${recipe.name}${tag}`);
     await savePlayer();
-    return { ok: true, msg: `Đã nấu ${times}× ${recipe.icon} ${recipe.name}! +${xpGain} XP` };
+    return {
+      ok: true,
+      msg: `Đã nấu ${times}× ${recipe.icon || ''} ${recipe.name}${tag}! +${xpGain} XP · bán ${sellHint.toLocaleString()}🪙/món`,
+      tier
+    };
   },
 
-  async sellDish(recipeId, qty = 1) {
+  async sellDish(recipeId, qty = 1, tier = 'normal') {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const recipe = this.getRecipe(recipeId);
     if (!recipe) return { ok: false, msg: 'Không có món!' };
+    tier = (tier === 'myth' || tier === 'star') ? tier : 'normal';
+    this.normalizeHarvestBags();
+    const dishKey = this.dishBagKey(tier);
+    const bag = (currentPlayer.inventory && currentPlayer.inventory[dishKey]) || {};
     if (qty === 'all' || qty === -1) {
-      qty = (currentPlayer.inventory && currentPlayer.inventory.dishes && currentPlayer.inventory.dishes[recipeId]) || 0;
+      qty = bag[recipeId] || 0;
     } else {
       qty = Math.max(0, Math.floor(Number(qty) || 0));
     }
-    const have = (currentPlayer.inventory && currentPlayer.inventory.dishes && currentPlayer.inventory.dishes[recipeId]) || 0;
+    const have = bag[recipeId] || 0;
     if (qty < 1 || have < qty) return { ok: false, msg: 'Không đủ món để bán!' };
-    const gain = (recipe.sellPrice || 1) * qty;
-    currentPlayer.inventory.dishes[recipeId] = have - qty;
-    if (currentPlayer.inventory.dishes[recipeId] <= 0) delete currentPlayer.inventory.dishes[recipeId];
+    const unit = this.getDishSellPrice(recipe, tier);
+    const gain = unit * qty;
+    currentPlayer.inventory[dishKey][recipeId] = have - qty;
+    if (currentPlayer.inventory[dishKey][recipeId] <= 0) delete currentPlayer.inventory[dishKey][recipeId];
     currentPlayer.coins = (currentPlayer.coins || 0) + gain;
     currentPlayer.stats.earned = (currentPlayer.stats.earned || 0) + gain;
-    this.addActivity(`Bán ${qty}× ${recipe.name} (+${gain}🪙)`);
+    const tag = tier === 'myth' ? '✨' : (tier === 'star' ? '⭐' : '');
+    this.addActivity(`Bán ${qty}× ${recipe.name}${tag} (+${gain}🪙)`);
     await savePlayer();
-    return { ok: true, msg: `Đã bán ${qty}× ${recipe.name} (+${gain}🪙)` };
+    return { ok: true, msg: `Đã bán ${qty}× ${recipe.name}${tag} (+${gain.toLocaleString()}🪙)` };
   },
 
   async updateLeaderboard() {

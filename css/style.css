@@ -4236,6 +4236,8 @@ html[data-theme="dark"] .plot-upgrade-box {
   flex-wrap: wrap;
 }
 .kitchen-actions .qty-input { width: 52px; padding: 6px; }
+.kitchen-prices { line-height: 1.45; }
+.kitchen-actions-tier .btn-cook { min-width: 2.4rem; padding-left: 8px; padding-right: 8px; }
 
 
 .garden-stage { position: relative; }
