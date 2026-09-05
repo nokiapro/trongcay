@@ -1933,6 +1933,8 @@ function renderGardenSwitcher() {
 
 function renderGarden() {
   if (!currentPlayer) return;
+  // Đang chạy NYC care — không render (tránh nhảy vườn khi plantMultiple tạm đổi activeGarden)
+  if (typeof Game !== 'undefined' && Game._nycBusy) return;
   if (typeof Game.ensureGardens === 'function') Game.ensureGardens();
   renderGardenSwitcher();
   
@@ -2355,11 +2357,23 @@ document.getElementById('btn-remove').addEventListener('click', async () => {
 
 function bindPressHold(el, { onClick, onHold, ms = 450 } = {}) {
   if (!el) return;
+  // Tránh bind 2 lần trên cùng 1 nút (renderShop gọi lại)
+  if (el.dataset.pressHoldBound === '1') return;
+  el.dataset.pressHoldBound = '1';
+
   let timer = null;
   let held = false;
+  let startedByTouch = false;
+  let lastTouchEndAt = 0;
   const clear = () => { if (timer) { clearTimeout(timer); timer = null; } };
+
   const start = (e) => {
     if (e.type === 'mousedown' && e.button !== 0) return;
+    // Ghost mouse sau touch: bỏ qua mousedown trong ~700ms
+    if (e.type === 'mousedown' && (startedByTouch || (Date.now() - lastTouchEndAt < 700))) {
+      return;
+    }
+    if (e.type === 'touchstart') startedByTouch = true;
     held = false;
     clear();
     timer = setTimeout(() => {
@@ -2368,20 +2382,41 @@ function bindPressHold(el, { onClick, onHold, ms = 450 } = {}) {
       if (typeof onHold === 'function') onHold(e);
     }, ms);
   };
+
   const end = (e) => {
-    if (!timer && !held) return;
+    if (e.type === 'touchend' || e.type === 'touchcancel') {
+      lastTouchEndAt = Date.now();
+    }
+    // Ghost mouseup sau touch
+    if (e.type === 'mouseup' && (startedByTouch || (Date.now() - lastTouchEndAt < 700))) {
+      startedByTouch = false;
+      clear();
+      held = false;
+      return;
+    }
+    if (!timer && !held) {
+      startedByTouch = false;
+      return;
+    }
     const wasHold = held;
     clear();
     if (!wasHold && typeof onClick === 'function') onClick(e);
     held = false;
+    startedByTouch = false;
   };
-  const cancel = () => { clear(); held = false; };
+
+  const cancel = (e) => {
+    if (e && e.type === 'mouseleave' && startedByTouch) return;
+    clear();
+    held = false;
+  };
+
   el.addEventListener('mousedown', start);
   el.addEventListener('touchstart', start, { passive: true });
   el.addEventListener('mouseup', end);
   el.addEventListener('touchend', end);
   el.addEventListener('mouseleave', cancel);
-  el.addEventListener('touchcancel', cancel);
+  el.addEventListener('touchcancel', end);
 }
 
 
@@ -4562,6 +4597,11 @@ function softUpdateGarden() {
 }
 function softUpdateGardenUI() {
   if (!currentPlayer) return;
+  // Đang chạy NYC care — chỉ cập nhật nút đếm ngược, không đụng grid vườn đang xem
+  if (typeof Game !== 'undefined' && Game._nycBusy) {
+    if (typeof updateHarvestCountdownButton === 'function') updateHarvestCountdownButton();
+    return;
+  }
   const gardenPage = document.getElementById('page-garden');
   if (gardenPage && !gardenPage.classList.contains('active')) return;
   const plots = Array.isArray(currentPlayer.plots) ? currentPlayer.plots : Object.values(currentPlayer.plots || {});

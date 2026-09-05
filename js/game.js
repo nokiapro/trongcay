@@ -1115,8 +1115,12 @@ const Game = {
   // 0 = không giới hạn số lượng / lần (chỉ giới hạn bởi số xu)
   BUY_MAX_QTY: 0,
 
+  // Chặn double-tap / ghost click làm mua 2 lần
+  _buyLock: false,
+
   async buySeed(plantId, qty = 1) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    if (this._buyLock) return { ok: false, msg: 'Đang xử lý mua hàng…' };
     const plant = this.getPlant(plantId);
     if (!plant) return { ok: false, msg: 'Không tìm thấy cây!' };
     if (!this.isPlantAvailable(plant)) {
@@ -1138,19 +1142,25 @@ const Game = {
       if (qty > maxAfford) qty = maxAfford;
     }
     const cost = price * qty;
-    if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền!' };
-    if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
-    currentPlayer.inventory.seeds[plantId] = (currentPlayer.inventory.seeds[plantId] || 0) + qty;
-    this.addActivity(this.isUnlimitedResources()
-      ? `Mua ${qty} hạt ${plant.name} (unlimited)`
-      : `Mua ${qty} hạt ${plant.name} (-${cost.toLocaleString()}🪙)`);
-    if (typeof Features !== 'undefined') Features.trackQuest('buySeed', qty);
-    await savePlayer();
-    return { ok: true, msg: `Đã mua ${qty.toLocaleString()} hạt ${plant.name}!` };
+    this._buyLock = true;
+    try {
+      if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền!' };
+      if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
+      currentPlayer.inventory.seeds[plantId] = (currentPlayer.inventory.seeds[plantId] || 0) + qty;
+      this.addActivity(this.isUnlimitedResources()
+        ? `Mua ${qty} hạt ${plant.name} (unlimited)`
+        : `Mua ${qty} hạt ${plant.name} (-${cost.toLocaleString()}🪙)`);
+      if (typeof Features !== 'undefined') Features.trackQuest('buySeed', qty);
+      await savePlayer();
+      return { ok: true, msg: `Đã mua ${qty.toLocaleString()} hạt ${plant.name}!` };
+    } finally {
+      this._buyLock = false;
+    }
   },
 
   async buyFertilizer(fertId, qty = 1) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    if (this._buyLock) return { ok: false, msg: 'Đang xử lý mua hàng…' };
     const fert = this.getFertilizer(fertId);
     if (!fert) return { ok: false, msg: 'Không tìm thấy phân bón!' };
     const price = Math.max(0, Number(fert.price) || 0);
@@ -1168,14 +1178,19 @@ const Game = {
       if (qty > maxAfford) qty = maxAfford;
     }
     const cost = price * qty;
-    if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền!' };
-    if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
-    currentPlayer.inventory.fertilizers[fertId] = (currentPlayer.inventory.fertilizers[fertId] || 0) + qty;
-    this.addActivity(this.isUnlimitedResources()
-      ? `Mua ${qty} ${fert.name} (unlimited)`
-      : `Mua ${qty} ${fert.name} (-${cost.toLocaleString()}🪙)`);
-    await savePlayer();
-    return { ok: true, msg: `Đã mua ${qty.toLocaleString()} ${fert.name}!` };
+    this._buyLock = true;
+    try {
+      if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền!' };
+      if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
+      currentPlayer.inventory.fertilizers[fertId] = (currentPlayer.inventory.fertilizers[fertId] || 0) + qty;
+      this.addActivity(this.isUnlimitedResources()
+        ? `Mua ${qty} ${fert.name} (unlimited)`
+        : `Mua ${qty} ${fert.name} (-${cost.toLocaleString()}🪙)`);
+      await savePlayer();
+      return { ok: true, msg: `Đã mua ${qty.toLocaleString()} ${fert.name}!` };
+    } finally {
+      this._buyLock = false;
+    }
   },
 
   async plantSeed(plotId, plantId, preferredKind) {
@@ -3585,14 +3600,33 @@ const Game = {
 
 
 
-  async runNycCare(now, gardenIndex) {
-    if (!currentPlayer || !currentPlayer.plots) return false;
-    
-    now = now || (typeof nowMs==="function"?nowMs():Date.now());
-    const gLabel = (typeof gardenIndex === 'number') ? (gardenIndex + 1) : ((currentPlayer.activeGarden || 0) + 1);
+  async runNycCare(now, gardenIndex, plotsOverride) {
+    if (!currentPlayer) return false;
+    now = now || (typeof nowMs === 'function' ? nowMs() : Date.now());
+    const gIdx = (typeof gardenIndex === 'number')
+      ? gardenIndex
+      : (typeof currentPlayer.activeGarden === 'number' ? currentPlayer.activeGarden : 0);
+    const gLabel = gIdx + 1;
 
-    
-    if (this.nycShouldWaitForNearReady(currentPlayer.plots)) {
+    // Dùng plots của vườn đích — KHÔNG đổi activeGarden (tránh UI nhảy vườn)
+    let plots = plotsOverride;
+    if (!plots) {
+      if (Array.isArray(currentPlayer.gardens) && currentPlayer.gardens[gIdx]) {
+        plots = currentPlayer.gardens[gIdx];
+      } else {
+        plots = currentPlayer.plots;
+      }
+    }
+    if (!Array.isArray(plots)) {
+      if (plots && typeof plots === 'object') {
+        const keys = Object.keys(plots).filter(k => /^\d+$/.test(k)).sort((a, b) => Number(a) - Number(b));
+        plots = keys.map(k => plots[k]);
+      } else {
+        return false;
+      }
+    }
+
+    if (this.nycShouldWaitForNearReady(plots)) {
       return false;
     }
 
@@ -3601,9 +3635,8 @@ const Game = {
     let totalAmount = 0;
     let totalXp = 0;
 
-    
-    for (let i = 0; i < currentPlayer.plots.length; i++) {
-      const plot = currentPlayer.plots[i];
+    for (let i = 0; i < plots.length; i++) {
+      const plot = plots[i];
       if (!(plot && plot.plantId && this.isReady(plot))) continue;
       const plant = this.getPlant(plot.plantId);
       if (!plant) continue;
@@ -3628,7 +3661,7 @@ const Game = {
       plot.fertilizerId = null;
       plot.fertilizedAt = null;
       plot.seedStar = false;
-    plot.seedMyth = false;
+      plot.seedMyth = false;
       harvested++;
     }
     if (harvested > 0) {
@@ -3636,8 +3669,6 @@ const Game = {
       if (typeof Features !== 'undefined' && Features.trackQuest) Features.trackQuest('harvest', harvested);
     }
 
-    
-    const gIdx = typeof currentPlayer.activeGarden === 'number' ? currentPlayer.activeGarden : 0;
     const cfg = this.getNycConfigForGarden(gIdx);
     if (cfg.plantId) {
       const kind = cfg.seedKind === 'myth' ? 'myth' : (cfg.seedKind === 'star' ? 'star' : 'normal');
@@ -3647,18 +3678,38 @@ const Game = {
       const have = kind === 'myth' ? (myths[cfg.plantId] || 0) : (kind === 'star' ? (stars[cfg.plantId] || 0) : (seeds[cfg.plantId] || 0));
       if (have > 0) {
         const empty = [];
-        currentPlayer.plots.forEach((p, i) => { if (!p.plantId) empty.push(i); });
+        plots.forEach((p, i) => { if (!p.plantId) empty.push(i); });
         let want = cfg.mode === 'count' ? Math.min(cfg.count || 1, empty.length, have) : Math.min(empty.length, have);
         if (want > 0) {
-          const res = await this.plantMultiple(cfg.plantId, want, kind, now);
-          if (res.ok) {
-            const m = (res.msg || '').match(/(\d+)/);
-            planted = m ? parseInt(m[1], 10) : want;
+          // plantMultiple dùng currentPlayer.plots — tạm gắn rồi trả lại vườn đang xem
+          const prevActive = currentPlayer.activeGarden;
+          const prevPlots = currentPlayer.plots;
+          currentPlayer.activeGarden = gIdx;
+          currentPlayer.plots = plots;
+          try {
+            const res = await this.plantMultiple(cfg.plantId, want, kind, now);
+            if (res.ok) {
+              const m = (res.msg || '').match(/(\d+)/);
+              planted = m ? parseInt(m[1], 10) : want;
+            }
+          } finally {
+            currentPlayer.gardens[gIdx] = currentPlayer.plots;
+            currentPlayer.activeGarden = prevActive;
+            currentPlayer.plots = (Array.isArray(currentPlayer.gardens[prevActive])
+              ? currentPlayer.gardens[prevActive]
+              : prevPlots);
           }
         }
       }
     } else if (harvested > 0) {
       await savePlayer();
+    }
+
+    if (Array.isArray(currentPlayer.gardens)) {
+      currentPlayer.gardens[gIdx] = plots;
+      if ((currentPlayer.activeGarden || 0) === gIdx) {
+        currentPlayer.plots = plots;
+      }
     }
 
     if (harvested > 0 || planted > 0) {
@@ -3672,17 +3723,17 @@ const Game = {
     return harvested > 0 || planted > 0;
   },
 
-  
-  nycHasWork() {
-    if (!this.isNycActive() || !currentPlayer || !currentPlayer.plots) return false;
+  /** Kiểm tra 1 vườn có việc NYC — không đụng activeGarden */
+  nycHasWorkOn(plots, gIdx) {
+    if (!this.isNycActive() || !plots) return false;
+    const list = Array.isArray(plots) ? plots : Object.values(plots || {});
     const win = this.nycSyncWindowSec || 10;
-    for (const plot of currentPlayer.plots) {
+    for (const plot of list) {
       if (!plot || !plot.plantId || !plot.plantedAt) continue;
       if (this.isReady(plot)) return true;
       const remain = this.getRemainingSeconds(plot);
       if (remain > 0 && remain <= win) return true;
     }
-    const gIdx = typeof currentPlayer.activeGarden === 'number' ? currentPlayer.activeGarden : 0;
     if (!this.isNycGardenEnabled(gIdx)) return false;
     const cfg = this.getNycConfigForGarden(gIdx);
     if (!cfg.plantId) return false;
@@ -3692,14 +3743,14 @@ const Game = {
     const myths = (currentPlayer.inventory && currentPlayer.inventory.seedsMyth) || {};
     const have = kind === 'myth' ? (myths[cfg.plantId] || 0) : (kind === 'star' ? (stars[cfg.plantId] || 0) : (seeds[cfg.plantId] || 0));
     if (have < 1) return false;
-    return currentPlayer.plots.some(p => p && !p.plantId);
+    return list.some(p => p && !p.plantId);
   },
 
-  
-
-
-
-
+  nycHasWork() {
+    if (!this.isNycActive() || !currentPlayer || !currentPlayer.plots) return false;
+    const gIdx = typeof currentPlayer.activeGarden === 'number' ? currentPlayer.activeGarden : 0;
+    return this.nycHasWorkOn(currentPlayer.plots, gIdx);
+  },
 
   _nycBusy: false,
   async tickNycCare() {
@@ -3708,23 +3759,21 @@ const Game = {
     this._nycBusy = true;
     let any = false;
     try {
-      const active = currentPlayer.activeGarden || 0;
+      // Giữ nguyên vườn đang xem — không gán activeGarden trong vòng lặp (tránh UI nhảy)
+      const active = (typeof currentPlayer.activeGarden === 'number') ? currentPlayer.activeGarden : 0;
       this.syncActiveGarden();
       for (let i = 0; i < currentPlayer.gardens.length; i++) {
         if (!this.isNycGardenEnabled(i)) continue;
-        currentPlayer.activeGarden = i;
-        currentPlayer.plots = currentPlayer.gardens[i];
-        
-        if (this.nycHasWork()) {
-          
-          const gardenNow = (typeof nowMs==="function"?nowMs():Date.now());
-          const did = await this.runNycCare(gardenNow, i);
-          if (did) any = true;
-        }
-        currentPlayer.gardens[i] = currentPlayer.plots;
+        const plots = currentPlayer.gardens[i];
+        if (!this.nycHasWorkOn(plots, i)) continue;
+        const gardenNow = (typeof nowMs === 'function' ? nowMs() : Date.now());
+        const did = await this.runNycCare(gardenNow, i, plots);
+        if (did) any = true;
       }
       currentPlayer.activeGarden = active;
-      currentPlayer.plots = currentPlayer.gardens[active];
+      if (Array.isArray(currentPlayer.gardens[active])) {
+        currentPlayer.plots = currentPlayer.gardens[active];
+      }
       return any;
     } finally {
       this._nycBusy = false;
