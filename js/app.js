@@ -797,15 +797,12 @@ auth.onAuthStateChanged(async (user) => {
         try {
           if (typeof Game !== 'undefined' && Game.isRobotActive && Game.isRobotActive() && Game.robotMergeAllBag) {
             const mr = await Game.robotMergeAllBag({ silent: false });
-            if (mr && mr.ok && (mr.starOk || mr.mythOk || mr.protectBought || mr.seedsBought)) {
+            if (mr && mr.ok && (mr.starOk || mr.mythOk || mr.protectBought)) {
               if (typeof updateCoins === 'function') updateCoins();
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
               else if (typeof savePlayer === 'function') await savePlayer();
-              if (typeof showToast === 'function') {
-                let tip = ((Game.getRobotEmoji && Game.getRobotEmoji()) || '🤖') + ' rà kho';
-                if (mr.seedsBought) tip += ' · mua +' + mr.seedsBought.toLocaleString() + ' hạt';
-                if (mr.starOk || mr.mythOk) tip += ' · ghép bùa 100%';
-                showToast(tip, 'success');
+              if (typeof showToast === 'function' && (mr.starOk || mr.mythOk)) {
+                showToast(((Game.getRobotEmoji && Game.getRobotEmoji()) || '🤖') + ' rà kho · ghép bùa 100%', 'success');
               }
             }
           }
@@ -5034,12 +5031,9 @@ setInterval(() => {
         && Game.robotMergeAllBag) {
       _lastRobotScanAt = now;
       Game.robotMergeAllBag({ silent: true }).then((mr) => {
-        if (mr && mr.ok && (mr.seedsBought || mr.starOk || mr.mythOk)) {
+        if (mr && mr.ok && (mr.starOk || mr.mythOk)) {
           if (typeof updateCoins === 'function') updateCoins();
           if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(800);
-          if (typeof showToast === 'function' && mr.seedsBought) {
-            showToast(((Game.getRobotEmoji && Game.getRobotEmoji()) || '🤖') + ' mua +' + mr.seedsBought.toLocaleString() + ' hạt · ghép', 'success');
-          }
         }
       }).catch(() => {});
     }
