@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/style.css?v=1.9.116" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.124" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -173,6 +173,12 @@
                     <span class="support-row-icon"><i class="fa-solid fa-user-tie"></i></span>
                     <span class="support-row-name" id="support-name-helper">Giúp việc</span>
                     <span class="support-row-time" id="support-status-helper">—</span>
+                    <span class="support-row-gear" title="Cấu hình"><i class="fa-solid fa-gear"></i></span>
+                  </button>
+                  <button type="button" id="btn-support-robot" class="support-row support-row-robot" role="menuitem">
+                    <span class="support-row-icon"><i class="fa-solid fa-robot"></i></span>
+                    <span class="support-row-name" id="support-name-robot">Người máy</span>
+                    <span class="support-row-time" id="support-status-robot">—</span>
                     <span class="support-row-gear" title="Cấu hình"><i class="fa-solid fa-gear"></i></span>
                   </button>
                 </div>
@@ -498,6 +504,14 @@
               <label class="checkbox-row"><input type="radio" name="profile-helper-gender" value="male" /> Nam 👨‍💼</label>
             </div>
           </div>
+          <div class="profile-field" id="profile-robot-field" style="display:none">
+            <label>Tên gọi Người máy <span style="opacity:0.7;font-weight:400">(admin cấp)</span></label>
+            <input type="text" id="profile-robot-name" maxlength="20" placeholder="VD: Robo" />
+            <div class="gender-row" style="margin-top:8px;display:flex;gap:12px;flex-wrap:wrap">
+              <label class="checkbox-row"><input type="radio" name="profile-robot-gender" value="female" checked /> Nữ 🤖</label>
+              <label class="checkbox-row"><input type="radio" name="profile-robot-gender" value="male" /> Nam 🤖</label>
+            </div>
+          </div>
           <div class="profile-field">
             <label>UID (dùng để kết bạn)</label>
             <div class="uid-row">
@@ -542,30 +556,43 @@
                 </span>
                 <input type="checkbox" id="pref-helper-enabled" checked class="buff-switch" />
               </label>
+              <label class="buff-card robot-card" id="buff-card-robot" style="display:none">
+                <span class="buff-card-icon">🤖</span>
+                <span class="buff-card-body">
+                  <strong>Buff Người máy</strong>
+                  <small>Mưa mua hạt + ghép sao/HT</small>
+                </span>
+                <input type="checkbox" id="pref-robot-enabled" checked class="buff-switch" />
+              </label>
             </div>
             <input type="checkbox" id="pref-fairy-visual" checked class="pref-visual-hidden" aria-hidden="true" tabindex="-1" />
             <input type="checkbox" id="pref-nyc-visual" checked class="pref-visual-hidden" aria-hidden="true" tabindex="-1" />
             <input type="checkbox" id="pref-helper-visual" checked class="pref-visual-hidden" aria-hidden="true" tabindex="-1" />
+            <input type="checkbox" id="pref-robot-visual" checked class="pref-visual-hidden" aria-hidden="true" tabindex="-1" />
             <div class="profile-buff-quick profile-buff-dropdown">
               <label>Tuỳ chọn nhanh hình &amp; buff</label>
               <select id="pref-combo-select" class="ux-select">
                 <option value="">— Chọn cấu hình —</option>
-                <option value="1|0|||||">Bật hình Tiên · không buff</option>
-                <option value="1|1|||||">Bật hình Tiên · có buff</option>
-                <option value="0|0|||||">Tắt hình Tiên · không buff</option>
-                <option value="0|1|||||">Tắt hình Tiên · có buff</option>
-                <option value="||1|0|||">Bật hình NYC · không buff</option>
-                <option value="||1|1|||">Bật hình NYC · có buff</option>
-                <option value="||0|0|||">Tắt hình NYC · không buff</option>
-                <option value="||0|1|||">Tắt hình NYC · có buff</option>
-                <option value="||||1|0">Bật hình Giúp việc · không buff</option>
-                <option value="||||1|1">Bật hình Giúp việc · có buff</option>
-                <option value="||||0|0">Tắt hình Giúp việc · không buff</option>
-                <option value="||||0|1">Tắt hình Giúp việc · có buff</option>
-                <option value="0|0|0|0|0|0">Tắt cả 3 · không buff</option>
-                <option value="0|1|0|1|0|1">Tắt cả 3 · có buff</option>
-                <option value="1|1|1|1|1|1">Bật cả 3 · có buff</option>
-                <option value="1|0|1|0|1|0">Bật cả 3 · không buff</option>
+                <option value="1|0|||||||">Bật hình Tiên · không buff</option>
+                <option value="1|1|||||||">Bật hình Tiên · có buff</option>
+                <option value="0|0|||||||">Tắt hình Tiên · không buff</option>
+                <option value="0|1|||||||">Tắt hình Tiên · có buff</option>
+                <option value="||1|0|||||">Bật hình NYC · không buff</option>
+                <option value="||1|1|||||">Bật hình NYC · có buff</option>
+                <option value="||0|0|||||">Tắt hình NYC · không buff</option>
+                <option value="||0|1|||||">Tắt hình NYC · có buff</option>
+                <option value="||||1|0|||">Bật hình Giúp việc · không buff</option>
+                <option value="||||1|1|||">Bật hình Giúp việc · có buff</option>
+                <option value="||||0|0|||">Tắt hình Giúp việc · không buff</option>
+                <option value="||||0|1|||">Tắt hình Giúp việc · có buff</option>
+                <option value="||||||1|0">Bật hình Người máy · không buff</option>
+                <option value="||||||1|1">Bật hình Người máy · có buff</option>
+                <option value="||||||0|0">Tắt hình Người máy · không buff</option>
+                <option value="||||||0|1">Tắt hình Người máy · có buff</option>
+                <option value="0|0|0|0|0|0|0|0">Tắt cả · không buff</option>
+                <option value="0|1|0|1|0|1|0|1">Tắt cả · có buff</option>
+                <option value="1|1|1|1|1|1|1|1">Bật cả · có buff</option>
+                <option value="1|0|1|0|1|0|1|0">Bật cả · không buff</option>
               </select>
             </div>
           </div>
@@ -739,9 +766,13 @@
       <div id="nyc-garden-toggles" class="garden-toggle-list"></div>
       <p class="bulk-hint">Bật/tắt từng vườn NYC được phép thu & trồng.</p>
 
-      <label>Hạt giống trong kho (thường / sao tách riêng)</label>
-      <select id="nyc-plant-select"></select>
-      <p class="bulk-hint" id="nyc-seed-hint">NYC chỉ trồng đúng loại hạt bạn chọn. Hết hạt loại đó thì bỏ qua.</p>
+      <label>Hạt giống trong kho (thường / sao / huyền thoại)</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="nyc-plant-select" style="flex:1;min-width:160px"></select>
+        <button type="button" id="btn-nyc-add-seed" class="btn btn-secondary btn-sm"><i class="fa-solid fa-plus"></i> Thêm</button>
+      </div>
+      <div id="nyc-plant-list" class="nyc-plant-list" style="margin:8px 0;display:flex;flex-direction:column;gap:6px"></div>
+      <p class="bulk-hint" id="nyc-seed-hint">Có thể thêm nhiều hạt theo thứ tự ưu tiên. Hết hạt loại trên → trồng loại tiếp theo. Hết tất cả → dừng không trồng.</p>
       <label>Số lượng trồng mỗi lần</label>
       <div class="nyc-mode-row">
         <label class="checkbox-row"><input type="radio" name="nyc-mode" value="all" checked /> Trồng hết ô trống</label>
@@ -802,12 +833,12 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.116"></script>
-  <script src="js/data.js?v=1.9.116"></script>
-  <script src="js/fa-icons.js?v=1.9.116"></script>
-  <script src="js/game.js?v=1.9.116"></script>
-  <script src="js/features.js?v=1.9.116"></script>
-  <script src="js/app.js?v=1.9.116"></script>
+  <script src="js/firebase-config.js?v=1.9.124"></script>
+  <script src="js/data.js?v=1.9.124"></script>
+  <script src="js/fa-icons.js?v=1.9.124"></script>
+  <script src="js/game.js?v=1.9.124"></script>
+  <script src="js/features.js?v=1.9.124"></script>
+  <script src="js/app.js?v=1.9.124"></script>
   <script>
   (function () {
     if (!('serviceWorker' in navigator)) return;

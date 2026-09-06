@@ -385,6 +385,9 @@ const Game = {
   showHelperDecor() {
     return this.hasHelper() && !!this.getBuffPrefs().helperVisual;
   },
+  showRobotDecor() {
+    return this.hasRobot() && !!this.getBuffPrefs().robotVisual;
+  },
 
   fairyRemainingSec() {
     if (!this.hasFairy()) return 0;
@@ -423,7 +426,7 @@ const Game = {
   },
 
   getBuffPrefs() {
-    const def = { fairyEnabled: true, nycEnabled: true, helperEnabled: true, fairyVisual: true, nycVisual: true, helperVisual: true };
+    const def = { fairyEnabled: true, nycEnabled: true, helperEnabled: true, robotEnabled: true, fairyVisual: true, nycVisual: true, helperVisual: true, robotVisual: true };
     if (!currentPlayer) return { ...def };
     if (!currentPlayer.buffPrefs || typeof currentPlayer.buffPrefs !== 'object') {
       currentPlayer.buffPrefs = { ...def };
@@ -432,9 +435,11 @@ const Game = {
     if (typeof p.fairyEnabled !== 'boolean') p.fairyEnabled = true;
     if (typeof p.nycEnabled !== 'boolean') p.nycEnabled = true;
     if (typeof p.helperEnabled !== 'boolean') p.helperEnabled = true;
+    if (typeof p.robotEnabled !== 'boolean') p.robotEnabled = true;
     if (typeof p.fairyVisual !== 'boolean') p.fairyVisual = true;
     if (typeof p.nycVisual !== 'boolean') p.nycVisual = true;
     if (typeof p.helperVisual !== 'boolean') p.helperVisual = true;
+    if (typeof p.robotVisual !== 'boolean') p.robotVisual = true;
     return p;
   },
 
@@ -445,19 +450,22 @@ const Game = {
       fairyEnabled: prefs && typeof prefs.fairyEnabled === 'boolean' ? prefs.fairyEnabled : cur.fairyEnabled,
       nycEnabled: prefs && typeof prefs.nycEnabled === 'boolean' ? prefs.nycEnabled : cur.nycEnabled,
       helperEnabled: prefs && typeof prefs.helperEnabled === 'boolean' ? prefs.helperEnabled : cur.helperEnabled,
+      robotEnabled: prefs && typeof prefs.robotEnabled === 'boolean' ? prefs.robotEnabled : cur.robotEnabled,
       fairyVisual: prefs && typeof prefs.fairyVisual === 'boolean' ? prefs.fairyVisual : cur.fairyVisual,
       nycVisual: prefs && typeof prefs.nycVisual === 'boolean' ? prefs.nycVisual : cur.nycVisual,
-      helperVisual: prefs && typeof prefs.helperVisual === 'boolean' ? prefs.helperVisual : cur.helperVisual
+      helperVisual: prefs && typeof prefs.helperVisual === 'boolean' ? prefs.helperVisual : cur.helperVisual,
+      robotVisual: prefs && typeof prefs.robotVisual === 'boolean' ? prefs.robotVisual : cur.robotVisual
     };
     const a = [];
     a.push('Tiên hình:' + (currentPlayer.buffPrefs.fairyVisual ? 'bật' : 'tắt') + '/buff:' + (currentPlayer.buffPrefs.fairyEnabled ? 'bật' : 'tắt'));
     a.push('NYC hình:' + (currentPlayer.buffPrefs.nycVisual ? 'bật' : 'tắt') + '/buff:' + (currentPlayer.buffPrefs.nycEnabled ? 'bật' : 'tắt'));
     a.push('Giúp việc hình:' + (currentPlayer.buffPrefs.helperVisual ? 'bật' : 'tắt') + '/buff:' + (currentPlayer.buffPrefs.helperEnabled ? 'bật' : 'tắt'));
+    a.push('Người máy hình:' + (currentPlayer.buffPrefs.robotVisual ? 'bật' : 'tắt') + '/buff:' + (currentPlayer.buffPrefs.robotEnabled ? 'bật' : 'tắt'));
     return { ok: true, msg: 'Đã lưu: ' + a.join(' · ') };
   },
 
   getNycConfig() {
-    const def = { plantId: null, seedKind: 'normal', mode: 'all', count: 1, gardensEnabled: {}, byGarden: {}, customName: '', gender: 'female' };
+    const def = { plantId: null, seedKind: 'normal', plantList: [], mode: 'all', count: 1, gardensEnabled: {}, byGarden: {}, customName: '', gender: 'female' };
     if (!currentPlayer) return { ...def };
     if (!currentPlayer.nycConfig || typeof currentPlayer.nycConfig !== 'object') {
       currentPlayer.nycConfig = { ...def };
@@ -473,7 +481,40 @@ const Game = {
     if (currentPlayer.nycConfig.gender !== 'male' && currentPlayer.nycConfig.gender !== 'female') {
       currentPlayer.nycConfig.gender = 'female';
     }
+    // Chuẩn hoá plantList (danh sách hạt dự phòng theo thứ tự ưu tiên)
+    currentPlayer.nycConfig.plantList = this._normalizeNycPlantList(
+      currentPlayer.nycConfig.plantList,
+      currentPlayer.nycConfig.plantId,
+      currentPlayer.nycConfig.seedKind
+    );
+    if (currentPlayer.nycConfig.plantList.length) {
+      currentPlayer.nycConfig.plantId = currentPlayer.nycConfig.plantList[0].plantId;
+      currentPlayer.nycConfig.seedKind = currentPlayer.nycConfig.plantList[0].seedKind;
+    }
     return currentPlayer.nycConfig;
+  },
+
+  _normalizeNycPlantList(list, fallbackId, fallbackKind) {
+    const normKind = (k) => (k === 'myth' || k === 'star') ? k : 'normal';
+    const out = [];
+    const seen = new Set();
+    const push = (id, kind) => {
+      if (!id) return;
+      const k = normKind(kind);
+      const key = id + '|' + k;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ plantId: id, seedKind: k });
+    };
+    if (Array.isArray(list)) {
+      list.forEach(it => {
+        if (!it) return;
+        if (typeof it === 'string') push(it, 'normal');
+        else if (typeof it === 'object') push(it.plantId || it.id, it.seedKind || it.kind);
+      });
+    }
+    if (!out.length && fallbackId) push(fallbackId, fallbackKind);
+    return out.slice(0, 8);
   },
 
   
@@ -484,22 +525,25 @@ const Game = {
     // Chỉ dùng cấu hình của ĐÚNG vườn này — không lấy hạt từ vườn khác
     let plantId = null;
     let seedKind = 'normal';
+    let plantList = [];
     let mode = 'all';
     let count = 1;
     const normKind = (k) => (k === 'myth' || k === 'star') ? k : 'normal';
     if (ov && typeof ov === 'object') {
-      plantId = ov.plantId || null;
-      seedKind = normKind(ov.seedKind);
+      plantList = this._normalizeNycPlantList(ov.plantList, ov.plantId, ov.seedKind);
+      plantId = plantList.length ? plantList[0].plantId : (ov.plantId || null);
+      seedKind = plantList.length ? plantList[0].seedKind : normKind(ov.seedKind);
       mode = ov.mode === 'count' ? 'count' : 'all';
       count = typeof ov.count === 'number' ? ov.count : 1;
     } else {
-      // Chưa có byGarden riêng → dùng cấu hình gốc (plantId chung)
-      plantId = base.plantId || null;
-      seedKind = normKind(base.seedKind);
+      // Chưa có byGarden riêng → dùng cấu hình gốc
+      plantList = this._normalizeNycPlantList(base.plantList, base.plantId, base.seedKind);
+      plantId = plantList.length ? plantList[0].plantId : (base.plantId || null);
+      seedKind = plantList.length ? plantList[0].seedKind : normKind(base.seedKind);
       mode = base.mode === 'count' ? 'count' : 'all';
       count = typeof base.count === 'number' ? base.count : 1;
     }
-    return { ...base, plantId, seedKind, mode, count, _gardenIndex: gardenIndex };
+    return { ...base, plantId, seedKind, plantList, mode, count, _gardenIndex: gardenIndex };
   },
 
   setNycConfig(cfg) {
@@ -512,9 +556,18 @@ const Game = {
       Object.assign(ge, prev.gardensEnabled || {});
     }
     const byGarden = Object.assign({}, prev.byGarden || {});
+    let plantList = this._normalizeNycPlantList(
+      cfg && cfg.plantList,
+      cfg && cfg.plantId,
+      cfg && cfg.seedKind
+    );
+    if (!plantList.length && cfg && cfg.plantId) {
+      plantList = this._normalizeNycPlantList(null, cfg.plantId, cfg.seedKind);
+    }
     const slice = {
-      plantId: (cfg && cfg.plantId) || null,
-      seedKind: (cfg && (cfg.seedKind === 'myth' || cfg.seedKind === 'star')) ? cfg.seedKind : 'normal',
+      plantId: plantList.length ? plantList[0].plantId : ((cfg && cfg.plantId) || null),
+      seedKind: plantList.length ? plantList[0].seedKind : ((cfg && (cfg.seedKind === 'myth' || cfg.seedKind === 'star')) ? cfg.seedKind : 'normal'),
+      plantList,
       mode: cfg && cfg.mode === 'count' ? 'count' : 'all',
       count: Math.max(1, Math.min(99, parseInt(cfg && cfg.count, 10) || 1))
     };
@@ -533,7 +586,10 @@ const Game = {
     };
     currentPlayer.nycConfig = next;
     const label = gIdx !== null ? ('Vườn ' + (Number(gIdx) + 1) + ' · ') : '';
-    return { ok: true, msg: 'Đã lưu NYC · ' + label + (slice.plantId || 'chưa chọn hạt') };
+    const listLabel = plantList.length
+      ? (plantList.map(x => x.plantId + (x.seedKind !== 'normal' ? ('/' + x.seedKind) : '')).join(' → '))
+      : (slice.plantId || 'chưa chọn hạt');
+    return { ok: true, msg: 'Đã lưu NYC · ' + label + listLabel };
   },
 
   
@@ -681,6 +737,7 @@ const Game = {
       });
 
       
+      const robotSeedMap = {};
       if (fairyCollect) {
         if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {} };
         if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
@@ -696,6 +753,7 @@ const Game = {
               const plant = plants[Math.floor(Math.random() * plants.length)];
               currentPlayer.inventory.seeds[plant.id] = (currentPlayer.inventory.seeds[plant.id] || 0) + 1;
               autoSeeds++;
+              robotSeedMap[plant.id] = (robotSeedMap[plant.id] || 0) + 1;
             } else {
               const coins = 8;
               currentPlayer.coins = (currentPlayer.coins || 0) + coins;
@@ -706,6 +764,22 @@ const Game = {
         }
         this.rainCollectCount = Math.min(8, (this.rainCollectCount || 0) + autoCollectN);
         currentPlayer.rainedCollectOnce = true;
+      }
+      // Người máy: khi Tiên nhặt hạt → mua đủ 10000/loại + ghép sao/huyền thoại
+      if (Object.keys(robotSeedMap).length && this.isRobotActive && this.isRobotActive()) {
+        try {
+          // fire-and-forget async; savePlayer sẽ gọi sau
+          const p = this.robotAfterRainCollect(robotSeedMap);
+          if (p && typeof p.then === 'function') {
+            p.then((rr) => {
+              if (rr && rr.bought > 0 && typeof showToast === 'function') {
+                showToast((this.getRobotEmoji() || '🤖') + ' ' + (this.getRobotDisplayName() || 'Người máy') + ' mua +' + rr.bought.toLocaleString() + ' hạt', 'success');
+              }
+              if (typeof updateCoins === 'function') updateCoins();
+              if (typeof savePlayer === 'function') savePlayer();
+            }).catch(() => {});
+          }
+        } catch (_) {}
       }
       
       let actMsg = fairyOn
@@ -3239,21 +3313,35 @@ const Game = {
 
   
   _nycPlantOneAt(plot, cfg, plantTime, gi) {
-    if (!plot || plot.plantId || !cfg || !cfg.plantId) return false;
-    const kind = cfg.seedKind === 'myth' ? 'myth' : (cfg.seedKind === 'star' ? 'star' : 'normal');
+    if (!plot || plot.plantId || !cfg) return false;
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
     if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
     if (!currentPlayer.inventory.seedsMyth) currentPlayer.inventory.seedsMyth = {};
-    const bag = kind === 'myth'
-      ? currentPlayer.inventory.seedsMyth
-      : (kind === 'star' ? currentPlayer.inventory.seedsStar : currentPlayer.inventory.seeds);
-    const plantId = cfg.plantId;
     const unlimited = this.isUnlimitedResources();
-    if (!unlimited) {
-      if ((bag[plantId] || 0) < 1) return false;
-      bag[plantId]--;
-      if (bag[plantId] <= 0) delete bag[plantId];
+    const candidates = (cfg.plantList && cfg.plantList.length)
+      ? cfg.plantList
+      : (cfg.plantId ? [{ plantId: cfg.plantId, seedKind: cfg.seedKind || 'normal' }] : []);
+    if (!candidates.length) return false;
+
+    let used = null;
+    for (let ci = 0; ci < candidates.length; ci++) {
+      const c = candidates[ci];
+      if (!c || !c.plantId) continue;
+      const kind = c.seedKind === 'myth' ? 'myth' : (c.seedKind === 'star' ? 'star' : 'normal');
+      const bag = kind === 'myth'
+        ? currentPlayer.inventory.seedsMyth
+        : (kind === 'star' ? currentPlayer.inventory.seedsStar : currentPlayer.inventory.seeds);
+      if (!unlimited) {
+        if ((bag[c.plantId] || 0) < 1) continue; // hết loại này → thử hạt dự phòng tiếp theo
+        bag[c.plantId]--;
+        if (bag[c.plantId] <= 0) delete bag[c.plantId];
+      }
+      used = { plantId: c.plantId, kind };
+      break;
     }
+    if (!used) return false; // hết tất cả hạt đã cấu hình → dừng không trồng
+    const plantId = used.plantId;
+    const kind = used.kind;
     plot.plantId = plantId;
     plot.plantedAt = plantTime;
     plot.seedStar = kind === 'star' || kind === 'myth';
@@ -3291,7 +3379,9 @@ const Game = {
 
   
   _nycPlantEmptiesAt(plots, cfg, t, gi) {
-    if (!cfg || !cfg.plantId || !plots) return 0;
+    if (!cfg || !plots) return 0;
+    const hasAny = (cfg.plantList && cfg.plantList.length) || cfg.plantId;
+    if (!hasAny) return 0;
     const mode = cfg.mode === 'count' ? 'count' : 'all';
     
     const limit = mode === 'count'
@@ -3569,6 +3659,132 @@ const Game = {
     await savePlayer();
     return { ok: true, msg: `Đã kích hoạt ${pack.name}! Còn ${this.formatTime(this.helperRemainingSec())}` };
   },
+
+  /* ========== Người máy (Robot) — chỉ admin cấp, không bán ========== */
+  hasRobot() {
+    return !!(currentPlayer && currentPlayer.robotEnabled);
+  },
+  isRobotActive() {
+    return this.hasRobot() && this.getBuffPrefs().robotEnabled !== false;
+  },
+  getRobotEmoji() {
+    const g = (this.getRobotConfig().gender === 'male') ? 'male' : 'female';
+    return g === 'male' ? '🤖' : '🤖';
+  },
+  getRobotDisplayName() {
+    const n = (this.getRobotConfig().customName || '').trim();
+    return n || 'Người máy';
+  },
+  defaultRobotConfig() {
+    return { customName: '', gender: 'female' };
+  },
+  getRobotConfig() {
+    const def = this.defaultRobotConfig();
+    if (!currentPlayer) return { ...def };
+    if (!currentPlayer.robotConfig || typeof currentPlayer.robotConfig !== 'object') {
+      currentPlayer.robotConfig = { ...def };
+    }
+    const c = currentPlayer.robotConfig;
+    if (typeof c.customName !== 'string') c.customName = '';
+    if (c.gender !== 'male' && c.gender !== 'female') c.gender = 'female';
+    return c;
+  },
+  setRobotConfig(cfg) {
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    const prev = this.getRobotConfig();
+    currentPlayer.robotConfig = {
+      customName: (cfg && typeof cfg.customName === 'string') ? cfg.customName.trim().slice(0, 20) : (prev.customName || ''),
+      gender: cfg && cfg.gender === 'male' ? 'male' : 'female'
+    };
+    return { ok: true, msg: 'Đã lưu Người máy' };
+  },
+
+  /**
+   * Khi mưa + Tiên nhặt hạt: Người máy mua đủ mốc 10000 theo số loại hạt nhặt được.
+   * 1 loại → đủ 10000; 2 loại → mỗi loại đủ 10000 (tổng ~20000); ...
+   * Sau đó tự ghép hạt sao rồi ghép huyền thoại.
+   * @param {Object} collectedMap map plantId -> số hạt vừa nhặt
+   */
+  async robotAfterRainCollect(collectedMap) {
+    if (!this.isRobotActive() || !currentPlayer) return { ok: false, bought: 0, merges: 0 };
+    if (!collectedMap || typeof collectedMap !== 'object') return { ok: false, bought: 0, merges: 0 };
+    const ids = Object.keys(collectedMap).filter(id => (collectedMap[id] || 0) > 0);
+    if (!ids.length) return { ok: false, bought: 0, merges: 0 };
+
+    if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {} };
+    if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
+
+    const name = this.getRobotDisplayName();
+    const emoji = this.getRobotEmoji();
+    let totalBought = 0;
+    let totalCost = 0;
+    const details = [];
+
+    for (const plantId of ids) {
+      const plant = this.getPlant(plantId);
+      if (!plant) continue;
+      if (!this.isPlantAvailable(plant)) continue;
+      const price = Math.max(0, Number(plant.seedPrice) || 0);
+      const have = currentPlayer.inventory.seeds[plantId] || 0;
+      const target = 10000;
+      if (have >= target) continue;
+      let need = target - have;
+      if (!this.isUnlimitedResources()) {
+        if (price > 0) {
+          const maxAfford = Math.floor((Number(currentPlayer.coins) || 0) / price);
+          if (maxAfford < 1) {
+            details.push(plant.name + ': thiếu tiền');
+            continue;
+          }
+          if (need > maxAfford) need = maxAfford;
+        }
+      }
+      if (need < 1) continue;
+      const cost = price * need;
+      if (!this.chargeCoins(cost)) {
+        details.push(plant.name + ': thiếu tiền');
+        continue;
+      }
+      currentPlayer.stats = currentPlayer.stats || {};
+      currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
+      currentPlayer.inventory.seeds[plantId] = have + need;
+      totalBought += need;
+      totalCost += cost;
+      details.push((plant.icon || '') + ' ' + plant.name + ' +' + need.toLocaleString());
+    }
+
+    // Tự ghép sao rồi huyền thoại cho các loại vừa mua / vừa nhặt
+    let starOk = 0, mythOk = 0;
+    const mergeIds = new Set(ids);
+    // thêm mọi plantId đang có >=2 hạt thường hoặc sao
+    Object.keys(currentPlayer.inventory.seeds || {}).forEach(id => {
+      if ((currentPlayer.inventory.seeds[id] || 0) >= 2) mergeIds.add(id);
+    });
+    Object.keys(currentPlayer.inventory.seedsStar || {}).forEach(id => {
+      if ((currentPlayer.inventory.seedsStar[id] || 0) >= 2) mergeIds.add(id);
+    });
+
+    for (const plantId of mergeIds) {
+      try {
+        const r1 = await this.mergeSeeds(plantId, null, 'all');
+        if (r1 && r1.ok && (r1.success || r1.did || r1.msg)) starOk++;
+      } catch (_) {}
+      try {
+        const r2 = await this.mergeMythSeeds(plantId, null, 'all');
+        if (r2 && r2.ok) mythOk++;
+      } catch (_) {}
+    }
+
+    if (totalBought > 0 || starOk || mythOk) {
+      let act = emoji + ' ' + name + ' mua ' + totalBought.toLocaleString() + ' hạt';
+      if (totalCost) act += ' (-' + totalCost.toLocaleString() + '🪙)';
+      if (starOk) act += ' · ghép sao';
+      if (mythOk) act += ' · ghép huyền thoại';
+      this.addActivity(act, { type: 'robot_rain' });
+    }
+    return { ok: true, bought: totalBought, cost: totalCost, details, starOk, mythOk };
+  },
+
 
 
   

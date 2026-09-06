@@ -355,9 +355,10 @@ async function renderUsers() {
     const u = users[uid];
     const banned = !!u.banned;
     const unlim = !!u.unlimitedResources;
+    const hasRobot = !!u.robotEnabled;
     return `
       <tr style="${banned ? 'opacity:0.65' : ''}${unlim ? ';background:rgba(34,197,94,0.08)' : ''}">
-        <td>${u.email || uid}${banned ? ' <span style="color:#e63946">[BAN]</span>' : ''}${unlim ? ' <span style="color:#16a34a;font-weight:700">[∞]</span>' : ''}</td>
+        <td>${u.email || uid}${banned ? ' <span style="color:#e63946">[BAN]</span>' : ''}${unlim ? ' <span style="color:#16a34a;font-weight:700">[∞]</span>' : ''}${hasRobot ? ' <span style="color:#38bdf8;font-weight:700">[🤖]</span>' : ''}</td>
         <td><strong style="color:${u.role === 'admin' ? '#e63946' : '#2d6a4f'}">${u.role || 'user'}</strong></td>
         <td>${(u.coins || 0).toLocaleString()}🪙</td>
         <td>${(u.stats && u.stats.planted) || 0}</td>
@@ -366,6 +367,7 @@ async function renderUsers() {
           <button class="btn btn-primary btn-add-coins" data-uid="${uid}">+ Tiền</button>
           <button class="btn btn-secondary btn-add-plots" data-uid="${uid}">+ Ô thường</button>
           <button class="btn ${unlim ? 'btn-secondary' : 'btn-success'} btn-toggle-unlimited" data-uid="${uid}" title="Unlimited tài nguyên">${unlim ? '∞ Tắt' : '∞ Unlimited'}</button>
+          <button class="btn ${hasRobot ? 'btn-secondary' : 'btn-success'} btn-toggle-robot" data-uid="${uid}" title="Cấp Người máy">${hasRobot ? '🤖 Tắt' : '🤖 Cấp'}</button>
           ${u.role !== 'admin' ? `<button class="btn btn-success btn-make-admin" data-uid="${uid}">Set Admin</button>` : ''}
           ${u.role === 'admin' && uid !== currentUser.uid ? `<button class="btn btn-secondary btn-remove-admin" data-uid="${uid}">Bỏ Admin</button>` : ''}
           ${uid !== currentUser.uid ? (banned
@@ -530,6 +532,21 @@ async function renderUsers() {
       if (!confirm(msg)) return;
       await db.ref('users/' + uid).update({ unlimitedResources: next, updatedAt: Date.now() });
       showToast(next ? 'Đã bật ∞ Unlimited!' : 'Đã tắt Unlimited.', 'success');
+      renderUsers();
+    });
+  });
+
+  document.querySelectorAll('.btn-toggle-robot').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const uid = btn.dataset.uid;
+      const snap = await db.ref('users/' + uid + '/robotEnabled').once('value');
+      const next = !snap.val();
+      const msg = next
+        ? 'Cấp quyền Người máy cho user này? (mưa + Tiên nhặt hạt → mua đủ 10000 + ghép sao/HT)'
+        : 'Thu hồi quyền Người máy của user này?';
+      if (!confirm(msg)) return;
+      await db.ref('users/' + uid).update({ robotEnabled: next, updatedAt: Date.now() });
+      showToast(next ? 'Đã cấp 🤖 Người máy!' : 'Đã thu hồi Người máy.', 'success');
       renderUsers();
     });
   });

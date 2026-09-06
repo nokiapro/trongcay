@@ -196,6 +196,87 @@ function updateHelperBadge() {
 }
 
 
+
+window._nycDraftPlantList = [];
+
+function renderNycPlantListUI() {
+  const host = document.getElementById('nyc-plant-list');
+  if (!host) return;
+  const list = Array.isArray(window._nycDraftPlantList) ? window._nycDraftPlantList : [];
+  if (!list.length) {
+    host.innerHTML = '<p class="bulk-hint" style="margin:0">Chưa có hạt trong danh sách — chọn ở trên rồi bấm Thêm.</p>';
+    return;
+  }
+  host.innerHTML = list.map((it, idx) => {
+    const p = Game.getPlant(it.plantId);
+    const kindLabel = it.seedKind === 'myth' ? '✨ HT' : (it.seedKind === 'star' ? '⭐ Sao' : 'Thường');
+    const name = p ? ((p.icon || '') + ' ' + p.name) : it.plantId;
+    return `<div class="nyc-plant-chip" style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:rgba(0,0,0,0.2);border-radius:8px">
+      <span style="opacity:0.7;min-width:18px">${idx + 1}.</span>
+      <span style="flex:1">${name} · ${kindLabel}</span>
+      <button type="button" class="btn btn-secondary btn-sm btn-nyc-seed-up" data-i="${idx}" title="Lên" ${idx === 0 ? 'disabled' : ''}>↑</button>
+      <button type="button" class="btn btn-secondary btn-sm btn-nyc-seed-down" data-i="${idx}" title="Xuống" ${idx >= list.length - 1 ? 'disabled' : ''}>↓</button>
+      <button type="button" class="btn btn-danger btn-sm btn-nyc-seed-rm" data-i="${idx}" title="Xóa">×</button>
+    </div>`;
+  }).join('');
+  host.querySelectorAll('.btn-nyc-seed-rm').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.i, 10);
+      window._nycDraftPlantList.splice(i, 1);
+      renderNycPlantListUI();
+    });
+  });
+  host.querySelectorAll('.btn-nyc-seed-up').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.i, 10);
+      if (i <= 0) return;
+      const t = window._nycDraftPlantList[i - 1];
+      window._nycDraftPlantList[i - 1] = window._nycDraftPlantList[i];
+      window._nycDraftPlantList[i] = t;
+      renderNycPlantListUI();
+    });
+  });
+  host.querySelectorAll('.btn-nyc-seed-down').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.i, 10);
+      if (i >= window._nycDraftPlantList.length - 1) return;
+      const t = window._nycDraftPlantList[i + 1];
+      window._nycDraftPlantList[i + 1] = window._nycDraftPlantList[i];
+      window._nycDraftPlantList[i] = t;
+      renderNycPlantListUI();
+    });
+  });
+}
+
+function addNycPlantFromSelect() {
+  const raw = document.getElementById('nyc-plant-select')?.value || '';
+  if (!raw) {
+    if (typeof showToast === 'function') showToast('Chọn hạt trước khi thêm', 'error');
+    return;
+  }
+  let plantId = null, seedKind = 'normal';
+  if (raw.includes('|')) {
+    const parts = raw.split('|');
+    plantId = parts[0] || null;
+    seedKind = parts[1] === 'myth' ? 'myth' : (parts[1] === 'star' ? 'star' : 'normal');
+  } else {
+    plantId = raw;
+  }
+  if (!plantId) return;
+  if (!Array.isArray(window._nycDraftPlantList)) window._nycDraftPlantList = [];
+  if (window._nycDraftPlantList.length >= 8) {
+    if (typeof showToast === 'function') showToast('Tối đa 8 loại hạt dự phòng', 'error');
+    return;
+  }
+  const key = plantId + '|' + seedKind;
+  if (window._nycDraftPlantList.some(x => (x.plantId + '|' + x.seedKind) === key)) {
+    if (typeof showToast === 'function') showToast('Đã có trong danh sách', 'error');
+    return;
+  }
+  window._nycDraftPlantList.push({ plantId, seedKind });
+  renderNycPlantListUI();
+}
+
 function openNycConfigModal() {
   if (!currentPlayer) return;
   const base = Game.getNycConfig();
@@ -247,6 +328,12 @@ function openNycConfigModal() {
     }
   }
   sel.innerHTML = opts.join('');
+  // Danh sách hạt dự phòng (ưu tiên)
+  window._nycDraftPlantList = (cfg.plantList && cfg.plantList.length)
+    ? cfg.plantList.map(x => ({ plantId: x.plantId, seedKind: x.seedKind || 'normal' }))
+    : (cfg.plantId ? [{ plantId: cfg.plantId, seedKind: cfg.seedKind || 'normal' }] : []);
+  renderNycPlantListUI();
+
   const modeAll = document.querySelector('input[name="nyc-mode"][value="all"]');
   const modeCount = document.querySelector('input[name="nyc-mode"][value="count"]');
   const countInp = document.getElementById('nyc-count-input');
@@ -278,16 +365,23 @@ function bindNycConfigUI() {
       countInp.style.display = (document.querySelector('input[name="nyc-mode"]:checked')?.value === 'count') ? 'block' : 'none';
     });
   });
+  document.getElementById('btn-nyc-add-seed')?.addEventListener('click', () => addNycPlantFromSelect());
   document.getElementById('btn-save-nyc-config')?.addEventListener('click', async () => {
-    const raw = document.getElementById('nyc-plant-select')?.value || '';
-    let plantId = null, seedKind = 'normal';
-    if (raw && raw.includes('|')) {
-      const parts = raw.split('|');
-      plantId = parts[0] || null;
-      seedKind = parts[1] === 'myth' ? 'myth' : (parts[1] === 'star' ? 'star' : 'normal');
-    } else if (raw) {
-      plantId = raw;
+    let plantList = Array.isArray(window._nycDraftPlantList) ? window._nycDraftPlantList.slice() : [];
+    if (!plantList.length) {
+      const raw = document.getElementById('nyc-plant-select')?.value || '';
+      let plantId = null, seedKind = 'normal';
+      if (raw && raw.includes('|')) {
+        const parts = raw.split('|');
+        plantId = parts[0] || null;
+        seedKind = parts[1] === 'myth' ? 'myth' : (parts[1] === 'star' ? 'star' : 'normal');
+      } else if (raw) {
+        plantId = raw;
+      }
+      if (plantId) plantList = [{ plantId, seedKind }];
     }
+    const plantId = plantList.length ? plantList[0].plantId : null;
+    const seedKind = plantList.length ? plantList[0].seedKind : 'normal';
     const mode = document.querySelector('input[name="nyc-mode"]:checked')?.value || 'all';
     const count = parseInt(document.getElementById('nyc-count-input')?.value, 10) || 1;
     const gi = getSelectedAgentGarden('nyc');
@@ -306,6 +400,7 @@ function bindNycConfigUI() {
       gardensEnabled: baseGe,
       plantId: plantId || null,
       seedKind,
+      plantList,
       mode,
       count,
       customName: (document.getElementById('nyc-custom-name')?.value || '').trim().slice(0, 20),
@@ -313,7 +408,7 @@ function bindNycConfigUI() {
     };
     let res = Game.setNycConfig(payload);
     
-    if (res.ok && applyAll && plantId) {
+    if (res.ok && applyAll && plantList.length) {
       for (let i = 0; i < nGardens; i++) {
         if (baseGe[String(i)] === false || baseGe[i] === false) continue;
         Game.setNycConfig({
@@ -322,6 +417,7 @@ function bindNycConfigUI() {
           gardensEnabled: baseGe,
           plantId,
           seedKind,
+          plantList,
           mode,
           count,
           customName: payload.customName,
@@ -1283,15 +1379,28 @@ function renderProfile() {
   if (fName) fName.value = (Game.getFairyConfig && Game.getFairyConfig().customName) || '';
   if (nName) nName.value = (Game.getNycConfig && Game.getNycConfig().customName) || '';
   if (hName) hName.value = (Game.getHelperConfig && Game.getHelperConfig().customName) || '';
+  const rName = document.getElementById('profile-robot-name');
+  if (rName) rName.value = (Game.getRobotConfig && Game.getRobotConfig().customName) || '';
   const fGen = (Game.getFairyGender && Game.getFairyGender()) || 'female';
   const nGen = (Game.getNycGender && Game.getNycGender()) || 'female';
   const hGen = (Game.getHelperConfig && Game.getHelperConfig().gender) || 'female';
+  const rGen = (Game.getRobotConfig && Game.getRobotConfig().gender) || 'female';
   const pf = document.querySelector(`input[name="profile-fairy-gender"][value="${fGen}"]`);
   const pn = document.querySelector(`input[name="profile-nyc-gender"][value="${nGen}"]`);
   const ph = document.querySelector(`input[name="profile-helper-gender"][value="${hGen}"]`);
+  const pr = document.querySelector(`input[name="profile-robot-gender"][value="${rGen}"]`);
   if (pf) pf.checked = true;
   if (pn) pn.checked = true;
   if (ph) ph.checked = true;
+  if (pr) pr.checked = true;
+  // Hiện field + buff Người máy nếu admin đã cấp
+  const hasRob = !!(Game.hasRobot && Game.hasRobot());
+  const robField = document.getElementById('profile-robot-field');
+  const robCard = document.getElementById('buff-card-robot');
+  if (robField) robField.style.display = hasRob ? '' : 'none';
+  if (robCard) robCard.style.display = hasRob ? '' : 'none';
+  const robMenu = document.getElementById('btn-support-robot');
+  if (robMenu) robMenu.style.display = hasRob ? '' : 'none';
   loadPlayerMailbox();
   maybeSendBirthdayMailLocal();
   const img = document.getElementById('profile-avatar-img');
@@ -1320,6 +1429,10 @@ function renderProfile() {
   if (fvEl) fvEl.checked = !!prefs.fairyVisual;
   if (nvEl) nvEl.checked = !!prefs.nycVisual;
   if (hvEl) hvEl.checked = !!prefs.helperVisual;
+  const rEl = document.getElementById('pref-robot-enabled');
+  const rvEl = document.getElementById('pref-robot-visual');
+  if (rEl) rEl.checked = prefs.robotEnabled !== false;
+  if (rvEl) rvEl.checked = prefs.robotVisual !== false;
   highlightPrefComboButtons();
 }
 
@@ -1348,9 +1461,11 @@ document.getElementById('btn-save-profile')?.addEventListener('click', async () 
   const fairyName = (document.getElementById('profile-fairy-name')?.value || '').trim().slice(0, 20);
   const nycName = (document.getElementById('profile-nyc-name')?.value || '').trim().slice(0, 20);
   const helperName = (document.getElementById('profile-helper-name')?.value || '').trim().slice(0, 20);
+  const robotName = (document.getElementById('profile-robot-name')?.value || '').trim().slice(0, 20);
   const fairyGender = document.querySelector('input[name="profile-fairy-gender"]:checked')?.value || 'female';
   const nycGender = document.querySelector('input[name="profile-nyc-gender"]:checked')?.value || 'female';
   const helperGender = document.querySelector('input[name="profile-helper-gender"]:checked')?.value || 'female';
+  const robotGender = document.querySelector('input[name="profile-robot-gender"]:checked')?.value || 'female';
   if (typeof Game.setFairyConfig === 'function') {
     const fc = Game.getFairyConfig();
     Game.setFairyConfig({ ...fc, customName: fairyName, gender: fairyGender });
@@ -1363,13 +1478,18 @@ document.getElementById('btn-save-profile')?.addEventListener('click', async () 
     const hc = Game.getHelperConfig();
     Game.setHelperConfig({ ...hc, customName: helperName, gender: helperGender });
   }
+  if (typeof Game.setRobotConfig === 'function' && Game.hasRobot && Game.hasRobot()) {
+    Game.setRobotConfig({ customName: robotName, gender: robotGender });
+  }
   Game.setBuffPrefs({
     fairyEnabled: !!document.getElementById('pref-fairy-enabled')?.checked,
     nycEnabled: !!document.getElementById('pref-nyc-enabled')?.checked,
     helperEnabled: !!document.getElementById('pref-helper-enabled')?.checked,
+    robotEnabled: !!document.getElementById('pref-robot-enabled')?.checked,
     fairyVisual: !!document.getElementById('pref-fairy-visual')?.checked,
     nycVisual: !!document.getElementById('pref-nyc-visual')?.checked,
-    helperVisual: !!document.getElementById('pref-helper-visual')?.checked
+    helperVisual: !!document.getElementById('pref-helper-visual')?.checked,
+    robotVisual: !!document.getElementById('pref-robot-visual')?.checked
   });
   await savePlayer();
   
@@ -1402,6 +1522,9 @@ document.getElementById('btn-save-profile')?.addEventListener('click', async () 
     });
     document.querySelectorAll('.garden-decor-helper').forEach(el => {
       el.style.display = Game.showHelperDecor && Game.showHelperDecor() ? '' : 'none';
+    });
+    document.querySelectorAll('.garden-decor-robot').forEach(el => {
+      el.style.display = Game.showRobotDecor && Game.showRobotDecor() ? '' : 'none';
     });
   } catch (_) {}
 });
@@ -1453,9 +1576,11 @@ function readPrefFromUI() {
     fairyEnabled: !!document.getElementById('pref-fairy-enabled')?.checked,
     nycEnabled: !!document.getElementById('pref-nyc-enabled')?.checked,
     helperEnabled: !!document.getElementById('pref-helper-enabled')?.checked,
+    robotEnabled: !!document.getElementById('pref-robot-enabled')?.checked,
     fairyVisual: !!document.getElementById('pref-fairy-visual')?.checked,
     nycVisual: !!document.getElementById('pref-nyc-visual')?.checked,
-    helperVisual: !!document.getElementById('pref-helper-visual')?.checked
+    helperVisual: !!document.getElementById('pref-helper-visual')?.checked,
+    robotVisual: !!document.getElementById('pref-robot-visual')?.checked
   };
 }
 
@@ -1464,9 +1589,11 @@ function writePrefToUI(prefs) {
     ['pref-fairy-enabled', 'fairyEnabled'],
     ['pref-nyc-enabled', 'nycEnabled'],
     ['pref-helper-enabled', 'helperEnabled'],
+    ['pref-robot-enabled', 'robotEnabled'],
     ['pref-fairy-visual', 'fairyVisual'],
     ['pref-nyc-visual', 'nycVisual'],
-    ['pref-helper-visual', 'helperVisual']
+    ['pref-helper-visual', 'helperVisual'],
+    ['pref-robot-visual', 'robotVisual']
   ];
   map.forEach(([id, key]) => {
     const el = document.getElementById(id);
@@ -1501,6 +1628,8 @@ async function applyPrefCombo(btn) {
   if (btn.dataset.nb !== '') next.nycEnabled = btn.dataset.nb === '1';
   if (btn.dataset.hv !== '') next.helperVisual = btn.dataset.hv === '1';
   if (btn.dataset.hb !== '') next.helperEnabled = btn.dataset.hb === '1';
+  if (btn.dataset.rv !== '') next.robotVisual = btn.dataset.rv === '1';
+  if (btn.dataset.rb !== '') next.robotEnabled = btn.dataset.rb === '1';
   writePrefToUI(next);
   if (!currentPlayer) return;
   
@@ -1522,6 +1651,9 @@ async function applyPrefCombo(btn) {
       document.querySelectorAll('.garden-decor-helper').forEach(el => {
         el.style.display = Game.showHelperDecor && Game.showHelperDecor() ? '' : 'none';
       });
+      document.querySelectorAll('.garden-decor-robot').forEach(el => {
+        el.style.display = Game.showRobotDecor && Game.showRobotDecor() ? '' : 'none';
+      });
       if (typeof renderGarden === 'function') renderGarden();
     }
   } catch (_) {}
@@ -1542,14 +1674,16 @@ document.getElementById('pref-combo-select')?.addEventListener('change', async (
       nv: parts[2] !== undefined ? parts[2] : '',
       nb: parts[3] !== undefined ? parts[3] : '',
       hv: parts[4] !== undefined ? parts[4] : '',
-      hb: parts[5] !== undefined ? parts[5] : ''
+      hb: parts[5] !== undefined ? parts[5] : '',
+      rv: parts[6] !== undefined ? parts[6] : '',
+      rb: parts[7] !== undefined ? parts[7] : ''
     }
   };
   await applyPrefCombo(fakeBtn);
   e.target.value = '';
 });
 
-['pref-fairy-enabled', 'pref-nyc-enabled', 'pref-helper-enabled'].forEach(id => {
+['pref-fairy-enabled', 'pref-nyc-enabled', 'pref-helper-enabled', 'pref-robot-enabled'].forEach(id => {
   document.getElementById(id)?.addEventListener('change', highlightPrefComboButtons);
 });
 
@@ -2080,6 +2214,19 @@ function renderGarden() {
       h.style.left = (14 + k * 28) + '%';
       h.style.top = (35 + k * 18) + '%';
       agentHost.appendChild(h);
+    }
+  }
+  if (Game.showRobotDecor && Game.showRobotDecor()) {
+    const emoji = (Game.getRobotEmoji && Game.getRobotEmoji()) || '🤖';
+    for (let k = 0; k < 3; k++) {
+      const r = document.createElement('div');
+      r.className = 'garden-decor garden-decor-robot garden-roamer';
+      r.textContent = emoji;
+      r.dataset.path = String(k + 1);
+      r.style.setProperty('--delay', (k * 1.7 + 1.0) + 's');
+      r.style.left = (24 + k * 22) + '%';
+      r.style.top = (18 + k * 22) + '%';
+      agentHost.appendChild(r);
     }
   }
   updateGlobalTimer();
@@ -2633,6 +2780,22 @@ document.getElementById('btn-harvest-all')?.addEventListener('click', () => {
     close();
     if (typeof openHelperConfigModal === 'function') openHelperConfigModal();
   });
+  document.getElementById('btn-support-robot')?.addEventListener('click', () => {
+    close();
+    if (!(Game.hasRobot && Game.hasRobot())) {
+      if (typeof showToast === 'function') showToast('Người máy chỉ do admin cấp quyền!', 'error');
+      return;
+    }
+    // Đổi tên trong hồ sơ Tôi
+    const pageBtn = document.querySelector('.nav-btn[data-page="profile"]');
+    if (pageBtn) pageBtn.click();
+    else if (typeof showPage === 'function') showPage('profile');
+    setTimeout(() => {
+      const el = document.getElementById('profile-robot-name');
+      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+    }, 200);
+    if (typeof showToast === 'function') showToast('Đặt tên Người máy trong hồ sơ Tôi', 'info');
+  });
 })();
 
 function refreshSupportMenuStatus() {
@@ -2674,6 +2837,19 @@ function refreshSupportMenuStatus() {
     () => Game.getHelperDisplayName && Game.getHelperDisplayName(),
     'Giúp việc'
   );
+  // Người máy: không có hạn gói — hiện "Admin" hoặc "Tắt"
+  const robBtn = document.getElementById('btn-support-robot');
+  const robName = document.getElementById('support-name-robot');
+  const robTime = document.getElementById('support-status-robot');
+  const hasRob = Game.hasRobot && Game.hasRobot();
+  if (robBtn) {
+    robBtn.style.display = hasRob ? '' : 'none';
+    robBtn.classList.toggle('is-off', !(Game.isRobotActive && Game.isRobotActive()));
+  }
+  if (robName) robName.textContent = (Game.getRobotDisplayName && Game.getRobotDisplayName()) || 'Người máy';
+  if (robTime) robTime.textContent = hasRob
+    ? ((Game.isRobotActive && Game.isRobotActive()) ? 'Đang bật' : 'Buff tắt')
+    : '—';
 }
 
 
