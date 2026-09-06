@@ -5013,6 +5013,7 @@ function forceBackgroundCare(reason) {
 }
 
 
+let _lastRobotScanAt = 0;
 setInterval(() => {
   if (!currentPlayer) return;
   
@@ -5023,6 +5024,26 @@ setInterval(() => {
     softUpdateGardenUI();
   }
   if (typeof softUpdateBank === 'function') softUpdateBank();
+
+  // Người máy: mỗi ~45s rà kho — hạt thường x1 cũng mua đủ 10000 rồi ghép
+  try {
+    const now = Date.now();
+    if (now - _lastRobotScanAt >= 45000
+        && typeof Game !== 'undefined'
+        && Game.isRobotActive && Game.isRobotActive()
+        && Game.robotMergeAllBag) {
+      _lastRobotScanAt = now;
+      Game.robotMergeAllBag({ silent: true }).then((mr) => {
+        if (mr && mr.ok && (mr.seedsBought || mr.starOk || mr.mythOk)) {
+          if (typeof updateCoins === 'function') updateCoins();
+          if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(800);
+          if (typeof showToast === 'function' && mr.seedsBought) {
+            showToast(((Game.getRobotEmoji && Game.getRobotEmoji()) || '🤖') + ' mua +' + mr.seedsBought.toLocaleString() + ' hạt · ghép', 'success');
+          }
+        }
+      }).catch(() => {});
+    }
+  } catch (_) {}
 }, 1000);
 
 

@@ -3839,18 +3839,24 @@ const Game = {
     const pid = this.ROBOT_PROTECT_ID || 'bao-100';
     const targetQty = 10000;
 
-    // Có hạt thường trong kho → mua thêm cho đủ 10000/loại rồi ghép
+    // Có hạt thường trong kho (kể cả x1) → mua thêm cho đủ 10000/loại rồi ghép
+    // Không yêu cầu ≥2 hạt; x1 cũng mua 9999. Đã có trong kho → không chặn limited.
     let seedsBought = 0;
     let seedsCost = 0;
-    const seedIds = Object.keys(currentPlayer.inventory.seeds || {}).filter(id => (currentPlayer.inventory.seeds[id] || 0) > 0);
+    const seedBag = currentPlayer.inventory.seeds || {};
+    const seedIds = Object.keys(seedBag).filter(id => {
+      const n = Number(seedBag[id]) || 0;
+      return n >= 1; // x1 cũng đủ điều kiện mua thêm
+    });
     for (const plantId of seedIds) {
       const plant = this.getPlant(plantId);
       if (!plant) continue;
-      if (this.isPlantAvailable && !this.isPlantAvailable(plant)) continue;
+      // Không check isPlantAvailable — đã có hạt trong kho thì vẫn cho mua thêm để ghép
       const price = Math.max(0, Number(plant.seedPrice) || 0);
-      const have = currentPlayer.inventory.seeds[plantId] || 0;
+      const have = Number(currentPlayer.inventory.seeds[plantId]) || 0;
+      if (have < 1) continue;
       if (have >= targetQty) continue;
-      let needBuy = targetQty - have;
+      let needBuy = targetQty - have; // x1 → mua 9999
       if (!this.isUnlimitedResources()) {
         if (price > 0) {
           const maxAfford = Math.floor((Number(currentPlayer.coins) || 0) / price);
