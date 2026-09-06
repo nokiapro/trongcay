@@ -820,7 +820,7 @@ const Game = {
     }
     if (typeof showRainEffect === 'function') showRainEffect();
     let tip = fairyOn
-      ? `🌧️ Mưa + ${fairyEmoji} ${fairyName} tưới ${wateredN} ô!`
+      ? `Mưa + ${fairyEmoji} ${fairyName} tưới ${wateredN} ô!`
       : '🌧️ Mưa rồi! Chạm sâu / hạt rơi để nhặt thưởng!';
     if (autoCollectN > 0) tip += ` Nhặt ${autoCollectN} vật phẩm.`;
     if (typeof showToast === 'function') showToast(tip, 'success');
@@ -3707,7 +3707,7 @@ const Game = {
       currentPlayer.lastHelperBuy = now;
       const emoji = this.getHelperEmoji();
       const name = this.getHelperDisplayName();
-      this.addActivity(`${emoji} ${name} mua: ${lines.slice(0, 5).join(', ')} (−${totalCost}🪙)`);
+      this.addActivity(`${name} mua: ${lines.slice(0, 5).join(', ')} (−${totalCost}🪙)`);
       if (typeof Features !== 'undefined' && Features.trackQuest) {
         
       }
