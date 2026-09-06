@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 
-const APP_VERSION = '1.9.124';
+const APP_VERSION = '1.9.125';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13931,6 +13931,23 @@ function mergeRemoteAdminGifts(remote) {
     currentPlayer.banReason = remote.banReason || null;
     changed = true;
   }
+
+  // Flag do admin cấp — luôn lấy từ remote để F5 / savePlayer không làm mất
+  if (!!remote.robotEnabled !== !!currentPlayer.robotEnabled) {
+    currentPlayer.robotEnabled = !!remote.robotEnabled;
+    changed = true;
+  }
+  if (!!remote.unlimitedResources !== !!currentPlayer.unlimitedResources) {
+    currentPlayer.unlimitedResources = !!remote.unlimitedResources;
+    changed = true;
+  }
+  // Đồng bộ robotConfig nếu remote có và local chưa có tên
+  if (remote.robotConfig && typeof remote.robotConfig === 'object') {
+    if (!currentPlayer.robotConfig || typeof currentPlayer.robotConfig !== 'object') {
+      currentPlayer.robotConfig = Object.assign({}, remote.robotConfig);
+      changed = true;
+    }
+  }
   
   if (Array.isArray(remote.activity) && remote.activity.length) {
     if (!Array.isArray(currentPlayer.activity)) currentPlayer.activity = [];
@@ -14112,6 +14129,12 @@ async function loadPlayer(uid, email) {
       currentPlayer.inventory.fertilizers = { 'phan-thuong': 5, 'phan-xanh': 2 };
     }
 
+    if (typeof currentPlayer.robotEnabled !== 'boolean') {
+      currentPlayer.robotEnabled = !!currentPlayer.robotEnabled;
+    }
+    if (typeof currentPlayer.unlimitedResources !== 'boolean') {
+      currentPlayer.unlimitedResources = !!currentPlayer.unlimitedResources;
+    }
     if (!currentPlayer.stats) currentPlayer.stats = { planted: 0, harvested: 0, earned: 0, spent: 0 };
     if (!currentPlayer.activity) currentPlayer.activity = [];
     if (!currentPlayer.level) currentPlayer.level = 1;
