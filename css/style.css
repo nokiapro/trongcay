@@ -795,7 +795,7 @@ button.btn:active {
   }
 }
 .merge-box-myth {
-  margin-top: 16px;
+  margin-top: 0; /* gap do flex column của #inv-merge */
   border: 1px solid rgba(168, 85, 247, 0.45);
   background: linear-gradient(145deg, rgba(76, 29, 149, 0.15), rgba(15, 23, 42, 0.06));
   border-radius: 14px;
@@ -3269,7 +3269,35 @@ html[data-theme="dark"] .plot-boost-badge {
 }
 #inv-merge.inv-panel.active {
   display: flex;
-  justify-content: center;
+  flex-direction: column; /* ghép sao trên, huyền thoại dưới — không xếp ngang */
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+#inv-merge .merge-box,
+#inv-merge .merge-box-myth {
+  width: 100%;
+  max-width: min(480px, 100%);
+  margin-left: auto;
+  margin-right: auto;
+  flex: none;
+  box-sizing: border-box;
+}
+@media (max-width: 700px) {
+  #inv-merge.inv-panel.active {
+    flex-direction: column !important;
+    gap: 14px;
+    padding: 0 4px;
+  }
+  #inv-merge .merge-box,
+  #inv-merge .merge-box-myth {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
 }
 
 
