@@ -769,6 +769,20 @@ auth.onAuthStateChanged(async (user) => {
             }
           }
         } catch (e) { console.warn('simulateOfflineCare', e); }
+        // Người máy: rà kho ghép hết hạt chưa ghép (bùa 100%) khi vào game
+        try {
+          if (typeof Game !== 'undefined' && Game.isRobotActive && Game.isRobotActive() && Game.robotMergeAllBag) {
+            const mr = await Game.robotMergeAllBag({ silent: false });
+            if (mr && mr.ok && (mr.starOk || mr.mythOk || mr.protectBought)) {
+              if (typeof updateCoins === 'function') updateCoins();
+              if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
+              else if (typeof savePlayer === 'function') await savePlayer();
+              if (typeof showToast === 'function' && (mr.starOk || mr.mythOk)) {
+                showToast((Game.getRobotEmoji && Game.getRobotEmoji()) || '🤖' + ' rà kho · ghép bùa 100%', 'success');
+              }
+            }
+          }
+        } catch (e) { console.warn('robotMergeAllBag', e); }
         if (typeof forceBackgroundCare === 'function') forceBackgroundCare('login');
       }, 500);
       showApp();

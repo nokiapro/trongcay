@@ -765,15 +765,17 @@ const Game = {
         this.rainCollectCount = Math.min(8, (this.rainCollectCount || 0) + autoCollectN);
         currentPlayer.rainedCollectOnce = true;
       }
-      // Người máy: khi Tiên nhặt hạt → mua đủ 10000/loại + ghép sao/huyền thoại
-      if (Object.keys(robotSeedMap).length && this.isRobotActive && this.isRobotActive()) {
+      // Người máy: mua đủ 10000/loại (nếu Tiên nhặt) + luôn rà kho ghép hết bằng bùa 100%
+      if (this.isRobotActive && this.isRobotActive()) {
         try {
-          // fire-and-forget async; savePlayer sẽ gọi sau
           const p = this.robotAfterRainCollect(robotSeedMap);
           if (p && typeof p.then === 'function') {
             p.then((rr) => {
-              if (rr && rr.bought > 0 && typeof showToast === 'function') {
-                showToast((this.getRobotEmoji() || '🤖') + ' ' + (this.getRobotDisplayName() || 'Người máy') + ' mua +' + rr.bought.toLocaleString() + ' hạt', 'success');
+              if (rr && (rr.bought > 0 || rr.starOk || rr.mythOk) && typeof showToast === 'function') {
+                let tip = (this.getRobotEmoji() || '🤖') + ' ' + (this.getRobotDisplayName() || 'Người máy');
+                if (rr.bought > 0) tip += ' mua +' + rr.bought.toLocaleString() + ' hạt';
+                if (rr.starOk || rr.mythOk) tip += ' · ghép bùa 100%';
+                showToast(tip, 'success');
               }
               if (typeof updateCoins === 'function') updateCoins();
               if (typeof savePlayer === 'function') savePlayer();
@@ -3076,6 +3078,22 @@ const Game = {
       }
     }
 
+    // Người máy: rà kho ghép hết hạt chưa ghép (bùa 100%)
+    if (this.isRobotActive && this.isRobotActive()) {
+      try {
+        // offline catch-up: gọi sync (không await async trong loop nặng — fire)
+        const rp = this.robotMergeAllBag({ silent: true });
+        if (rp && typeof rp.then === 'function') {
+          // đánh dấu sẽ ghi activity khi xong; offline notes thêm dòng tạm
+          notes.push('Người máy rà kho ghép (bùa 100%)');
+          changed = true;
+        } else if (rp && rp.ok && (rp.starOk || rp.mythOk)) {
+          notes.push('Người máy ghép sao x' + (rp.starOk || 0) + ' · HT x' + (rp.mythOk || 0));
+          changed = true;
+        }
+      } catch (_) {}
+    }
+
     currentPlayer.lastSeenAt = now;
     currentPlayer.lastCatchUpAt = now;
     delete currentPlayer._needOfflineFromLog;
@@ -3699,17 +3717,143 @@ const Game = {
     return { ok: true, msg: 'Đã lưu Người máy' };
   },
 
+  /** ID bùa 100% dùng cho Người máy */
+  ROBOT_PROTECT_ID: 'bao-100',
+
+  /**
+   * Mua thêm bùa bao-100 cho đủ needQty (trừ xu). Unlimited thì không trừ.
+   */
+  robotEnsureProtect100(needQty) {
+    if (!currentPlayer) return { ok: false, bought: 0, cost: 0 };
+    needQty = Math.max(0, Math.floor(Number(needQty) || 0));
+    if (needQty < 1) return { ok: true, bought: 0, cost: 0 };
+    if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {}, protects: {} };
+    if (!currentPlayer.inventory.protects) currentPlayer.inventory.protects = {};
+    const pid = this.ROBOT_PROTECT_ID || 'bao-100';
+    const unlimited = this.isUnlimitedResources();
+    const have = unlimited ? Number.MAX_SAFE_INTEGER : (currentPlayer.inventory.protects[pid] || 0);
+    if (have >= needQty) return { ok: true, bought: 0, cost: 0 };
+    let buy = needQty - (unlimited ? needQty : have);
+    if (unlimited) {
+      // Không cần mua
+      return { ok: true, bought: 0, cost: 0 };
+    }
+    const item = this.getProtect(pid);
+    if (!item) return { ok: false, bought: 0, cost: 0, msg: 'Không có bùa 100%' };
+    const price = Math.max(1, Number(item.price) || 1);
+    const maxAfford = Math.floor((Number(currentPlayer.coins) || 0) / price);
+    if (maxAfford < 1) return { ok: false, bought: 0, cost: 0, msg: 'Thiếu tiền mua bùa 100%' };
+    if (buy > maxAfford) buy = maxAfford;
+    const cost = price * buy;
+    if (!this.chargeCoins(cost)) return { ok: false, bought: 0, cost: 0, msg: 'Thiếu tiền mua bùa 100%' };
+    currentPlayer.stats = currentPlayer.stats || {};
+    currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
+    currentPlayer.inventory.protects[pid] = (currentPlayer.inventory.protects[pid] || 0) + buy;
+    return { ok: true, bought: buy, cost };
+  },
+
+  /**
+   * Ước lượng số lần ghép cần (hạt thường→sao + sao→huyền thoại) để mua đủ bùa.
+   */
+  robotEstimateMergeAttempts() {
+    if (!currentPlayer || !currentPlayer.inventory) return 0;
+    const seeds = currentPlayer.inventory.seeds || {};
+    const stars = currentPlayer.inventory.seedsStar || {};
+    let n = 0;
+    Object.keys(seeds).forEach(id => {
+      const h = seeds[id] || 0;
+      if (h >= 2) n += Math.floor(h / 2); // worst-case: mỗi lần mất 2 khi success rate 100%
+    });
+    Object.keys(stars).forEach(id => {
+      const h = stars[id] || 0;
+      if (h >= 2) n += Math.floor(h / 2);
+    });
+    return n;
+  },
+
+  /**
+   * Rà soát kho: ghép hết hạt thường → sao, sao → huyền thoại bằng bùa 100%.
+   * Tự mua bùa bao-100 nếu thiếu (trừ xu).
+   */
+  async robotMergeAllBag(opts) {
+    if (!this.isRobotActive() || !currentPlayer) return { ok: false, starDid: 0, mythDid: 0 };
+    if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {}, protects: {} };
+    if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
+    if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
+    if (!currentPlayer.inventory.seedsMyth) currentPlayer.inventory.seedsMyth = {};
+    if (!currentPlayer.inventory.protects) currentPlayer.inventory.protects = {};
+
+    const silent = opts && opts.silent;
+    const pid = this.ROBOT_PROTECT_ID || 'bao-100';
+    const need = this.robotEstimateMergeAttempts();
+    let protectBought = 0;
+    let protectCost = 0;
+    if (need > 0 && !this.isUnlimitedResources()) {
+      const er = this.robotEnsureProtect100(need);
+      protectBought = er.bought || 0;
+      protectCost = er.cost || 0;
+    }
+
+    const mergeIds = new Set();
+    Object.keys(currentPlayer.inventory.seeds || {}).forEach(id => {
+      if ((currentPlayer.inventory.seeds[id] || 0) >= 2) mergeIds.add(id);
+    });
+    Object.keys(currentPlayer.inventory.seedsStar || {}).forEach(id => {
+      if ((currentPlayer.inventory.seedsStar[id] || 0) >= 2) mergeIds.add(id);
+    });
+
+    let starDid = 0, mythDid = 0, starOk = 0, mythOk = 0;
+    for (const plantId of mergeIds) {
+      // Đảm bảo còn bùa trước mỗi loại (có thể đã mua thiếu)
+      const haveP = this.isUnlimitedResources()
+        ? 999999
+        : (currentPlayer.inventory.protects[pid] || 0);
+      const seedN = currentPlayer.inventory.seeds[plantId] || 0;
+      const starN = currentPlayer.inventory.seedsStar[plantId] || 0;
+      const needHere = Math.floor(seedN / 2) + Math.floor(starN / 2);
+      if (needHere > 0 && haveP < needHere && !this.isUnlimitedResources()) {
+        const er2 = this.robotEnsureProtect100(needHere - haveP);
+        protectBought += er2.bought || 0;
+        protectCost += er2.cost || 0;
+      }
+      try {
+        const r1 = await this.mergeSeeds(plantId, pid, 'all');
+        if (r1 && r1.ok) {
+          starOk++;
+          starDid += (r1.did || r1.success || 0) || 1;
+        }
+      } catch (_) {}
+      try {
+        const r2 = await this.mergeMythSeeds(plantId, pid, 'all');
+        if (r2 && r2.ok) {
+          mythOk++;
+          mythDid += (r2.did || r2.success || 0) || 1;
+        }
+      } catch (_) {}
+    }
+
+    if (!silent && (starOk || mythOk || protectBought)) {
+      const name = this.getRobotDisplayName();
+      const emoji = this.getRobotEmoji();
+      let act = emoji + ' ' + name + ' rà kho ghép';
+      if (starOk) act += ' · sao x' + starOk + ' loại';
+      if (mythOk) act += ' · HT x' + mythOk + ' loại';
+      if (protectBought) act += ' · mua bùa 100% x' + protectBought.toLocaleString();
+      if (protectCost) act += ' (-' + protectCost.toLocaleString() + '🪙)';
+      this.addActivity(act, { type: 'robot_merge' });
+    }
+    return { ok: true, starOk, mythOk, starDid, mythDid, protectBought, protectCost };
+  },
+
   /**
    * Khi mưa + Tiên nhặt hạt: Người máy mua đủ mốc 10000 theo số loại hạt nhặt được.
-   * 1 loại → đủ 10000; 2 loại → mỗi loại đủ 10000 (tổng ~20000); ...
-   * Sau đó tự ghép hạt sao rồi ghép huyền thoại.
+   * Sau đó rà kho ghép hết (thường→sao→HT) bằng bùa 100%.
    * @param {Object} collectedMap map plantId -> số hạt vừa nhặt
    */
   async robotAfterRainCollect(collectedMap) {
     if (!this.isRobotActive() || !currentPlayer) return { ok: false, bought: 0, merges: 0 };
-    if (!collectedMap || typeof collectedMap !== 'object') return { ok: false, bought: 0, merges: 0 };
+    if (!collectedMap || typeof collectedMap !== 'object') collectedMap = {};
     const ids = Object.keys(collectedMap).filter(id => (collectedMap[id] || 0) > 0);
-    if (!ids.length) return { ok: false, bought: 0, merges: 0 };
 
     if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {} };
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
@@ -3753,36 +3897,37 @@ const Game = {
       details.push((plant.icon || '') + ' ' + plant.name + ' +' + need.toLocaleString());
     }
 
-    // Tự ghép sao rồi huyền thoại cho các loại vừa mua / vừa nhặt
-    let starOk = 0, mythOk = 0;
-    const mergeIds = new Set(ids);
-    // thêm mọi plantId đang có >=2 hạt thường hoặc sao
-    Object.keys(currentPlayer.inventory.seeds || {}).forEach(id => {
-      if ((currentPlayer.inventory.seeds[id] || 0) >= 2) mergeIds.add(id);
-    });
-    Object.keys(currentPlayer.inventory.seedsStar || {}).forEach(id => {
-      if ((currentPlayer.inventory.seedsStar[id] || 0) >= 2) mergeIds.add(id);
-    });
+    // Ghép hết kho bằng bùa 100%
+    const mergeRes = await this.robotMergeAllBag({ silent: true });
+    const starOk = (mergeRes && mergeRes.starOk) || 0;
+    const mythOk = (mergeRes && mergeRes.mythOk) || 0;
+    const protectBought = (mergeRes && mergeRes.protectBought) || 0;
+    const protectCost = (mergeRes && mergeRes.protectCost) || 0;
 
-    for (const plantId of mergeIds) {
-      try {
-        const r1 = await this.mergeSeeds(plantId, null, 'all');
-        if (r1 && r1.ok && (r1.success || r1.did || r1.msg)) starOk++;
-      } catch (_) {}
-      try {
-        const r2 = await this.mergeMythSeeds(plantId, null, 'all');
-        if (r2 && r2.ok) mythOk++;
-      } catch (_) {}
-    }
-
-    if (totalBought > 0 || starOk || mythOk) {
-      let act = emoji + ' ' + name + ' mua ' + totalBought.toLocaleString() + ' hạt';
-      if (totalCost) act += ' (-' + totalCost.toLocaleString() + '🪙)';
-      if (starOk) act += ' · ghép sao';
-      if (mythOk) act += ' · ghép huyền thoại';
+    if (totalBought > 0 || starOk || mythOk || protectBought) {
+      let act = emoji + ' ' + name;
+      if (totalBought > 0) {
+        act += ' mua ' + totalBought.toLocaleString() + ' hạt';
+        if (totalCost) act += ' (-' + totalCost.toLocaleString() + '🪙)';
+      } else {
+        act += ' rà kho';
+      }
+      if (starOk) act += ' · ghép sao x' + starOk;
+      if (mythOk) act += ' · ghép HT x' + mythOk;
+      if (protectBought) act += ' · bùa100 x' + protectBought;
+      if (protectCost) act += ' (-' + protectCost.toLocaleString() + '🪙 bùa)';
       this.addActivity(act, { type: 'robot_rain' });
     }
-    return { ok: true, bought: totalBought, cost: totalCost, details, starOk, mythOk };
+    return {
+      ok: true,
+      bought: totalBought,
+      cost: totalCost,
+      details,
+      starOk,
+      mythOk,
+      protectBought,
+      protectCost
+    };
   },
 
 
