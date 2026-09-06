@@ -3640,12 +3640,12 @@ html[data-theme="dark"] .plot-boost-badge {
   grid-column: 1 / -1 !important;
 }
 .buff-toggle-cards {
-  grid-template-columns: repeat(3, 1fr) !important;
+  grid-template-columns: repeat(2, 1fr) !important;
 }
 @media (max-width: 560px) {
   .buff-toggle-cards {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 6px !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
   }
 }
 .buff-card.helper-card {
@@ -6607,6 +6607,7 @@ html[data-theme="dark"] .gsb-time { color: #a7c4b5; }
 .support-row-fairy .support-row-icon { background: linear-gradient(135deg, #a78bfa, #ec4899); }
 .support-row-nyc .support-row-icon { background: linear-gradient(135deg, #fb7185, #f472b6); }
 .support-row-helper .support-row-icon { background: linear-gradient(135deg, #38bdf8, #818cf8); }
+.support-row-robot .support-row-icon { background: linear-gradient(135deg, #38bdf8, #0ea5e9); }
 .support-row-name {
   flex: 0 1 auto;
   max-width: 7rem;
@@ -8398,6 +8399,53 @@ html[data-theme="dark"] .chat-messages {
 .garden-decor-robot[data-path="2"] { animation-duration: 17s; }
 .garden-decor-robot[data-path="3"] { animation-duration: 12s; }
 .buff-card.robot-card {
-  border-color: rgba(56, 189, 248, 0.45);
+  background: linear-gradient(135deg, rgba(14,165,233,0.10), rgba(56,189,248,0.16));
+  border-color: transparent;
 }
-.support-row-robot .support-row-icon { color: #38bdf8; }
+.buff-card.robot-card:has(input:checked) {
+  border-color: #0ea5e9;
+  box-shadow: 0 4px 14px rgba(14,165,233,0.18);
+}
+.buff-card.robot-card .buff-switch {
+  accent-color: #0ea5e9;
+}
+.support-row-robot .support-row-icon {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
+  color: #fff !important;
+}
+
+/* NYC config: không scrollbar ngang */
+#modal-nyc-config .modal-content {
+  overflow-x: hidden !important;
+  max-width: min(96vw, 480px) !important;
+  box-sizing: border-box;
+}
+#modal-nyc-config .modal-content > * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+#modal-nyc-config select,
+#modal-nyc-config input[type="text"],
+#modal-nyc-config input[type="number"] {
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+#modal-nyc-config .nyc-plant-list {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+#modal-nyc-config .nyc-plant-chip {
+  flex-wrap: wrap;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+#modal-nyc-config .garden-toggle-list {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+#modal-nyc-config .pill-dd,
+#modal-nyc-config .pill-dd-btn {
+  max-width: 100% !important;
+  box-sizing: border-box;
+}

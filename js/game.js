@@ -640,17 +640,25 @@ const Game = {
         next = pNext;
       }
     }
-    // Chưa có lịch → hẹn 30 phút tới
+    // Chưa có lịch → hẹn đúng 30 phút tới
     if (!next || next <= 0) {
       next = now + interval;
     }
-    // Quá hạn quá xa (offline lâu) → mưa ngay (next = now), tryTrigger sẽ startRain
+    // Lịch cũ bị cộng nhầm 60p (bug) hoặc xa hơn 1 chu kỳ → kẹp còn tối đa 30 phút
+    if (next > now + interval) {
+      next = now + interval;
+    }
+    // Quá hạn → next = now (tryTriggerRain sẽ startRain ngay)
     // Không đẩy lại +30p kẻo bỏ lỡ trận mưa
     this.nextRainAt = next;
     if (currentPlayer) currentPlayer.nextRainAt = next;
     return next;
   },
 
+  /**
+   * Đặt mốc mưa tiếp theo = fromMs + 30 phút.
+   * fromMs = thời điểm bắt đầu tính chu kỳ (thường = lúc bắt đầu trận mưa hiện tại).
+   */
   scheduleNextRain(fromMs) {
     const interval = this.RAIN_INTERVAL_MS || (30 * 60 * 1000);
     const base = (typeof fromMs === 'number' && fromMs > 0)
@@ -698,8 +706,14 @@ const Game = {
     const durationMs = this.getRainDurationMs();
     const now = (typeof nowMs === 'function' ? nowMs() : Date.now());
     this.rainUntil = now + durationMs;
-    // Chu kỳ 30 phút: trận mưa tiếp theo sau khi hết trận này (hoặc tối thiểu +30p từ lúc bắt đầu)
-    this.scheduleNextRain(Math.max(this.rainUntil, now + (this.RAIN_INTERVAL_MS || 30 * 60 * 1000)));
+    // Chu kỳ đúng 30 phút kể từ lúc bắt đầu trận mưa (không cộng thêm 1 lần nữa)
+    // nextRainAt = now + 30p; nếu trận mưa kéo dài hơn 30p thì next = rainUntil
+    {
+      const interval = this.RAIN_INTERVAL_MS || (30 * 60 * 1000);
+      const next = Math.max(this.rainUntil, now + interval);
+      this.nextRainAt = next;
+      if (currentPlayer) currentPlayer.nextRainAt = next;
+    }
     this.rainCollectCount = 0;
     let wateredN = 0;
     let autoCollectN = 0;
@@ -741,24 +755,23 @@ const Game = {
       if (fairyCollect) {
         if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {} };
         if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
-        const n = 3 + Math.floor(Math.random() * 4);
+        const plantsPool = (this.getPlants() || []).filter(p => p && p.id && this.isPlantAvailable && this.isPlantAvailable(p));
+        const pool = plantsPool.length ? plantsPool : (this.getPlants() || []).filter(p => p && p.id);
+        // 4–7 lần nhặt; ưu tiên hạt (~70%), còn lại xu — đảm bảo ≥1 hạt nếu có danh sách cây
+        const n = 4 + Math.floor(Math.random() * 4);
+        let seedHits = 0;
         for (let i = 0; i < n; i++) {
-          if (Math.random() < 0.55) {
+          const wantSeed = pool.length && (Math.random() < 0.7 || (i === n - 1 && seedHits === 0));
+          if (!wantSeed) {
             const coins = 5 + Math.floor(Math.random() * 11);
             currentPlayer.coins = (currentPlayer.coins || 0) + coins;
             autoCoins += coins;
           } else {
-            const plants = (this.getPlants() || []).filter(p => p && p.id);
-            if (plants.length) {
-              const plant = plants[Math.floor(Math.random() * plants.length)];
-              currentPlayer.inventory.seeds[plant.id] = (currentPlayer.inventory.seeds[plant.id] || 0) + 1;
-              autoSeeds++;
-              robotSeedMap[plant.id] = (robotSeedMap[plant.id] || 0) + 1;
-            } else {
-              const coins = 8;
-              currentPlayer.coins = (currentPlayer.coins || 0) + coins;
-              autoCoins += coins;
-            }
+            const plant = pool[Math.floor(Math.random() * pool.length)];
+            currentPlayer.inventory.seeds[plant.id] = (currentPlayer.inventory.seeds[plant.id] || 0) + 1;
+            autoSeeds++;
+            seedHits++;
+            robotSeedMap[plant.id] = (robotSeedMap[plant.id] || 0) + 1;
           }
           autoCollectN++;
         }
@@ -2206,25 +2219,23 @@ const Game = {
     
     const collectOn = fairy && this.getFairyConfig().collectRain !== false;
     if (collectOn) {
-      const n = 3 + Math.floor(Math.random() * 4);
+      const n = 4 + Math.floor(Math.random() * 4);
       if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {} };
       if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
+      const plantsPool = (this.getPlants() || []).filter(p => p && p.id && (!this.isPlantAvailable || this.isPlantAvailable(p)));
+      const pool = plantsPool.length ? plantsPool : (this.getPlants() || []).filter(p => p && p.id);
+      let seedHits = 0;
       for (let i = 0; i < n; i++) {
-        if (Math.random() < 0.55) {
+        const wantSeed = pool.length && (Math.random() < 0.7 || (i === n - 1 && seedHits === 0));
+        if (!wantSeed) {
           const coins = 5 + Math.floor(Math.random() * 11);
           currentPlayer.coins = (currentPlayer.coins || 0) + coins;
           collectCoins += coins;
         } else {
-          const plants = (this.getPlants() || []).filter(p => p && p.id);
-          if (plants.length) {
-            const plant = plants[Math.floor(Math.random() * plants.length)];
-            currentPlayer.inventory.seeds[plant.id] = (currentPlayer.inventory.seeds[plant.id] || 0) + 1;
-            collectSeeds++;
-          } else {
-            const coins = 8;
-            currentPlayer.coins = (currentPlayer.coins || 0) + coins;
-            collectCoins += coins;
-          }
+          const plant = pool[Math.floor(Math.random() * pool.length)];
+          currentPlayer.inventory.seeds[plant.id] = (currentPlayer.inventory.seeds[plant.id] || 0) + 1;
+          collectSeeds++;
+          seedHits++;
         }
         collected++;
       }
@@ -2462,7 +2473,19 @@ const Game = {
     // Mưa cố định mỗi 30 phút
     const rainChance = 100;
     const rainStep = this.RAIN_INTERVAL_MS || (30 * 60 * 1000);
-    let rainT = from + rainStep;
+    // Bắt đầu từ nextRainAt đã lưu (nếu nằm trong khoảng offline), hoặc from nếu đã quá hạn
+    let rainT;
+    {
+      const savedNext = Number(currentPlayer.nextRainAt) || Number(this.nextRainAt) || 0;
+      if (savedNext > 0 && savedNext <= from) {
+        // Đã đến giờ mưa trước khi offline → mưa ngay tại mốc from
+        rainT = from;
+      } else if (savedNext > from && savedNext <= now) {
+        rainT = savedNext;
+      } else {
+        rainT = from + rainStep;
+      }
+    }
     let rainGuard = 0;
     while (rainT <= now && rainGuard++ < 2000) {
       events.push({ t: rainT, type: 'rain' });
@@ -2711,6 +2734,35 @@ const Game = {
           currentPlayer.lastFairyCare = ev.t;
           fairyCycles++;
           changed = true;
+        }
+      }
+    }
+
+    // Cập nhật lịch mưa tiếp theo sau khi bù offline
+    {
+      const interval = this.RAIN_INTERVAL_MS || (30 * 60 * 1000);
+      if (rainHits > 0) {
+        // Trận mưa offline cuối cùng + 30p
+        let lastRainT = from;
+        for (let i = events.length - 1; i >= 0; i--) {
+          if (events[i] && events[i].type === 'rain' && events[i].t <= now) {
+            lastRainT = events[i].t;
+            break;
+          }
+        }
+        const next = Math.max(now + 1000, lastRainT + interval);
+        this.nextRainAt = next;
+        currentPlayer.nextRainAt = next;
+      } else {
+        // Không có trận offline → kẹp nextRainAt còn tối đa 30p
+        const cur = Number(currentPlayer.nextRainAt) || Number(this.nextRainAt) || 0;
+        if (!cur || cur > now + interval) {
+          this.nextRainAt = now + interval;
+          currentPlayer.nextRainAt = this.nextRainAt;
+        } else if (cur <= now) {
+          // Quá hạn nhưng offline gap quá ngắn không kịp bù → kích hoạt mưa ngay phía client
+          this.nextRainAt = now;
+          currentPlayer.nextRainAt = now;
         }
       }
     }
@@ -3785,6 +3837,37 @@ const Game = {
 
     const silent = opts && opts.silent;
     const pid = this.ROBOT_PROTECT_ID || 'bao-100';
+    const targetQty = 10000;
+
+    // Có hạt thường trong kho → mua thêm cho đủ 10000/loại rồi ghép
+    let seedsBought = 0;
+    let seedsCost = 0;
+    const seedIds = Object.keys(currentPlayer.inventory.seeds || {}).filter(id => (currentPlayer.inventory.seeds[id] || 0) > 0);
+    for (const plantId of seedIds) {
+      const plant = this.getPlant(plantId);
+      if (!plant) continue;
+      if (this.isPlantAvailable && !this.isPlantAvailable(plant)) continue;
+      const price = Math.max(0, Number(plant.seedPrice) || 0);
+      const have = currentPlayer.inventory.seeds[plantId] || 0;
+      if (have >= targetQty) continue;
+      let needBuy = targetQty - have;
+      if (!this.isUnlimitedResources()) {
+        if (price > 0) {
+          const maxAfford = Math.floor((Number(currentPlayer.coins) || 0) / price);
+          if (maxAfford < 1) continue;
+          if (needBuy > maxAfford) needBuy = maxAfford;
+        }
+      }
+      if (needBuy < 1) continue;
+      const cost = price * needBuy;
+      if (!this.chargeCoins(cost)) continue;
+      currentPlayer.stats = currentPlayer.stats || {};
+      currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
+      currentPlayer.inventory.seeds[plantId] = have + needBuy;
+      seedsBought += needBuy;
+      seedsCost += cost;
+    }
+
     const need = this.robotEstimateMergeAttempts();
     let protectBought = 0;
     let protectCost = 0;
@@ -3832,17 +3915,19 @@ const Game = {
       } catch (_) {}
     }
 
-    if (!silent && (starOk || mythOk || protectBought)) {
+    if (!silent && (starOk || mythOk || protectBought || seedsBought)) {
       const name = this.getRobotDisplayName();
       const emoji = this.getRobotEmoji();
-      let act = emoji + ' ' + name + ' rà kho ghép';
-      if (starOk) act += ' · sao x' + starOk + ' loại';
-      if (mythOk) act += ' · HT x' + mythOk + ' loại';
-      if (protectBought) act += ' · mua bùa 100% x' + protectBought.toLocaleString();
-      if (protectCost) act += ' (-' + protectCost.toLocaleString() + '🪙)';
+      let act = emoji + ' ' + name + ' rà kho';
+      if (seedsBought) act += ' · mua hạt +' + seedsBought.toLocaleString();
+      if (starOk) act += ' · ghép sao x' + starOk;
+      if (mythOk) act += ' · HT x' + mythOk;
+      if (protectBought) act += ' · bùa100 x' + protectBought.toLocaleString();
+      const spent = (protectCost || 0) + (seedsCost || 0);
+      if (spent) act += ' (-' + spent.toLocaleString() + '🪙)';
       this.addActivity(act, { type: 'robot_merge' });
     }
-    return { ok: true, starOk, mythOk, starDid, mythDid, protectBought, protectCost };
+    return { ok: true, starOk, mythOk, starDid, mythDid, protectBought, protectCost, seedsBought, seedsCost };
   },
 
   /**

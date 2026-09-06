@@ -328,10 +328,34 @@ function openNycConfigModal() {
     }
   }
   sel.innerHTML = opts.join('');
-  // Danh sách hạt dự phòng (ưu tiên)
-  window._nycDraftPlantList = (cfg.plantList && cfg.plantList.length)
+  // Danh sách hạt dự phòng — chỉ giữ loại còn trong kho
+  const rawList = (cfg.plantList && cfg.plantList.length)
     ? cfg.plantList.map(x => ({ plantId: x.plantId, seedKind: x.seedKind || 'normal' }))
     : (cfg.plantId ? [{ plantId: cfg.plantId, seedKind: cfg.seedKind || 'normal' }] : []);
+  window._nycDraftPlantList = rawList.filter(it => {
+    if (!it || !it.plantId) return false;
+    const k = it.seedKind || 'normal';
+    if (k === 'myth') return (myths[it.plantId] || 0) > 0;
+    if (k === 'star') return (stars[it.plantId] || 0) > 0;
+    return (seeds[it.plantId] || 0) > 0;
+  });
+  // Nếu list bị lọc bớt so với cấu hình đã lưu → tự lưu lại
+  if (window._nycDraftPlantList.length !== rawList.length && typeof Game.setNycConfig === 'function') {
+    try {
+      const gi0 = getSelectedAgentGarden('nyc');
+      Game.setNycConfig({
+        gardenIndex: gi0,
+        plantList: window._nycDraftPlantList.slice(),
+        plantId: window._nycDraftPlantList[0] ? window._nycDraftPlantList[0].plantId : null,
+        seedKind: window._nycDraftPlantList[0] ? window._nycDraftPlantList[0].seedKind : 'normal',
+        mode: cfg.mode,
+        count: cfg.count,
+        customName: base.customName,
+        gender: base.gender,
+        gardensEnabled: base.gardensEnabled
+      });
+    } catch (_) {}
+  }
   renderNycPlantListUI();
 
   const modeAll = document.querySelector('input[name="nyc-mode"][value="all"]');
@@ -773,12 +797,15 @@ auth.onAuthStateChanged(async (user) => {
         try {
           if (typeof Game !== 'undefined' && Game.isRobotActive && Game.isRobotActive() && Game.robotMergeAllBag) {
             const mr = await Game.robotMergeAllBag({ silent: false });
-            if (mr && mr.ok && (mr.starOk || mr.mythOk || mr.protectBought)) {
+            if (mr && mr.ok && (mr.starOk || mr.mythOk || mr.protectBought || mr.seedsBought)) {
               if (typeof updateCoins === 'function') updateCoins();
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
               else if (typeof savePlayer === 'function') await savePlayer();
-              if (typeof showToast === 'function' && (mr.starOk || mr.mythOk)) {
-                showToast((Game.getRobotEmoji && Game.getRobotEmoji()) || '🤖' + ' rà kho · ghép bùa 100%', 'success');
+              if (typeof showToast === 'function') {
+                let tip = ((Game.getRobotEmoji && Game.getRobotEmoji()) || '🤖') + ' rà kho';
+                if (mr.seedsBought) tip += ' · mua +' + mr.seedsBought.toLocaleString() + ' hạt';
+                if (mr.starOk || mr.mythOk) tip += ' · ghép bùa 100%';
+                showToast(tip, 'success');
               }
             }
           }
