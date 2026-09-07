@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/style.css?v=1.9.143" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.144" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -91,28 +91,41 @@
     </header>
 
     
-    <button id="menu-toggle" class="menu-toggle" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+    <button id="menu-toggle" class="menu-toggle" aria-label="Menu" style="display:none"><i class="fa-solid fa-bars"></i></button>
 
-    
-    <nav id="bottom-nav" class="bottom-nav">
-<button class="nav-btn active" data-page="garden"><i class="fa-solid fa-house-tree"></i><span>Vườn</span></button>
-      <button class="nav-btn" data-page="shop"><i class="fa-solid fa-shop"></i><span>Cửa hàng</span></button>
-      <button class="nav-btn" data-page="inventory"><i class="fa-solid fa-boxes-stacked"></i><span>Kho</span></button>
-      <button class="nav-btn" data-page="kitchen"><i class="fa-solid fa-utensils"></i><span>Bếp</span></button>
-      <button class="nav-btn" data-page="quests"><i class="fa-solid fa-list-check"></i><span>Nhiệm vụ</span></button>
-      <button class="nav-btn" data-page="market"><i class="fa-solid fa-store"></i><span>Chợ</span></button>
-      <button class="nav-btn" data-page="bank"><i class="fa-solid fa-building-columns"></i><span>Ngân hàng</span></button>
-      <button class="nav-btn" data-page="stats"><i class="fa-solid fa-chart-simple"></i><span>Thống kê</span></button>
-      <button class="nav-btn" data-page="level"><i class="fa-solid fa-tree"></i><span>Level</span></button>
-      <button class="nav-btn" data-page="activity"><i class="fa-solid fa-clock-rotate-left"></i><span>Hoạt động</span></button>
-      <button class="nav-btn" data-page="rank"><i class="fa-solid fa-trophy"></i><span>Xếp hạng</span></button>
-      <button class="nav-btn" data-page="friends"><i class="fa-solid fa-user-group"></i><span>Bạn bè</span></button>
-      <button class="nav-btn" data-page="mail" id="nav-btn-mail"><i class="fa-solid fa-envelope"></i><span>Thư</span><span class="nav-mail-badge" id="nav-mail-badge"></span></button>
-      <button class="nav-btn" data-page="profile"><i class="fa-solid fa-user"></i><span>Tôi</span></button>
-      <button class="nav-btn nav-btn-admin" id="btn-admin" style="display:none" title="Admin"><i class="fa-solid fa-gear"></i><span>Admin</span></button>
-      <button class="nav-btn nav-btn-logout" id="btn-logout" title="Đăng xuất"><i class="fa-solid fa-right-from-bracket"></i><span>Đăng xuất</span></button>
+    <nav id="bottom-nav" class="bottom-nav" aria-label="Điều hướng chính">
+      <div class="nav-dock">
+        <button class="nav-btn active" data-page="garden" data-nav-primary="1"><i class="fa-solid fa-house"></i><span>Vườn</span></button>
+        <button class="nav-btn" data-page="shop" data-nav-primary="1"><i class="fa-solid fa-bag-shopping"></i><span>Cửa hàng</span></button>
+        <button class="nav-btn" data-page="inventory" data-nav-primary="1"><i class="fa-solid fa-box-archive"></i><span>Kho</span></button>
+        <button class="nav-btn" data-page="quests" data-nav-primary="1"><i class="fa-solid fa-list-check"></i><span>Nhiệm vụ</span></button>
+        <button type="button" class="nav-btn nav-btn-more" id="btn-nav-more" aria-haspopup="true" aria-expanded="false" aria-controls="nav-more-sheet">
+          <i class="fa-solid fa-ellipsis"></i><span>Thêm</span>
+        </button>
+      </div>
     </nav>
+
     <div id="nav-backdrop" class="nav-backdrop"></div>
+    <div id="nav-more-sheet" class="nav-more-sheet" role="dialog" aria-label="Menu thêm" hidden>
+      <div class="nav-more-sheet-inner">
+        <div class="nav-more-handle" aria-hidden="true"></div>
+        <div class="nav-more-title">Menu</div>
+        <div class="nav-more-grid">
+          <button class="nav-btn nav-more-item" data-page="kitchen"><i class="fa-solid fa-utensils"></i><span>Bếp</span></button>
+          <button class="nav-btn nav-more-item" data-page="market"><i class="fa-solid fa-store"></i><span>Chợ</span></button>
+          <button class="nav-btn nav-more-item" data-page="bank"><i class="fa-solid fa-building-columns"></i><span>Ngân hàng</span></button>
+          <button class="nav-btn nav-more-item" data-page="stats"><i class="fa-solid fa-chart-simple"></i><span>Thống kê</span></button>
+          <button class="nav-btn nav-more-item" data-page="level"><i class="fa-solid fa-tree"></i><span>Level</span></button>
+          <button class="nav-btn nav-more-item" data-page="activity"><i class="fa-solid fa-clock-rotate-left"></i><span>Hoạt động</span></button>
+          <button class="nav-btn nav-more-item" data-page="rank"><i class="fa-solid fa-trophy"></i><span>Xếp hạng</span></button>
+          <button class="nav-btn nav-more-item" data-page="friends"><i class="fa-solid fa-user-group"></i><span>Bạn bè</span></button>
+          <button class="nav-btn nav-more-item" data-page="mail" id="nav-btn-mail"><i class="fa-solid fa-envelope"></i><span>Thư</span><span class="nav-mail-badge" id="nav-mail-badge"></span></button>
+          <button class="nav-btn nav-more-item" data-page="profile"><i class="fa-solid fa-user"></i><span>Tôi</span></button>
+          <button class="nav-btn nav-more-item nav-btn-admin" id="btn-admin" style="display:none" title="Admin"><i class="fa-solid fa-gear"></i><span>Admin</span></button>
+          <button class="nav-btn nav-more-item nav-btn-logout" id="btn-logout" title="Đăng xuất"><i class="fa-solid fa-right-from-bracket"></i><span>Đăng xuất</span></button>
+        </div>
+      </div>
+    </div>
 
     <main class="main">
       
@@ -873,12 +886,12 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.143"></script>
-  <script src="js/data.js?v=1.9.143"></script>
-  <script src="js/fa-icons.js?v=1.9.143"></script>
-  <script src="js/game.js?v=1.9.143"></script>
-  <script src="js/features.js?v=1.9.143"></script>
-  <script src="js/app.js?v=1.9.143"></script>
+  <script src="js/firebase-config.js?v=1.9.144"></script>
+  <script src="js/data.js?v=1.9.144"></script>
+  <script src="js/fa-icons.js?v=1.9.144"></script>
+  <script src="js/game.js?v=1.9.144"></script>
+  <script src="js/features.js?v=1.9.144"></script>
+  <script src="js/app.js?v=1.9.144"></script>
   <script>
   (function () {
     if (!('serviceWorker' in navigator)) return;

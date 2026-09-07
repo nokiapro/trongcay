@@ -938,29 +938,73 @@ document.getElementById('btn-gate-logout')?.addEventListener('click', () => {
 });
 
 
+function closeNavMore() {
+  const sheet = document.getElementById('nav-more-sheet');
+  const moreBtn = document.getElementById('btn-nav-more');
+  const backdrop = document.getElementById('nav-backdrop');
+  if (sheet) {
+    sheet.hidden = true;
+    sheet.setAttribute('hidden', '');
+  }
+  if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
+  backdrop?.classList.remove('show');
+}
+
+function openNavMore() {
+  const sheet = document.getElementById('nav-more-sheet');
+  const moreBtn = document.getElementById('btn-nav-more');
+  const backdrop = document.getElementById('nav-backdrop');
+  if (sheet) {
+    sheet.hidden = false;
+    sheet.removeAttribute('hidden');
+  }
+  if (moreBtn) moreBtn.setAttribute('aria-expanded', 'true');
+  backdrop?.classList.add('show');
+}
+
+function toggleNavMore() {
+  const sheet = document.getElementById('nav-more-sheet');
+  if (!sheet || sheet.hidden || sheet.hasAttribute('hidden')) openNavMore();
+  else closeNavMore();
+}
+
 function closeMobileNav() {
+  closeNavMore();
   document.getElementById('bottom-nav')?.classList.remove('open');
-  document.getElementById('nav-backdrop')?.classList.remove('show');
   document.getElementById('menu-toggle')?.classList.remove('hidden');
 }
 
 function openMobileNav() {
-  document.getElementById('bottom-nav')?.classList.add('open');
-  document.getElementById('nav-backdrop')?.classList.add('show');
-  document.getElementById('menu-toggle')?.classList.add('hidden');
+  openNavMore();
 }
 
 document.getElementById('menu-toggle')?.addEventListener('click', openMobileNav);
-document.getElementById('nav-backdrop')?.addEventListener('click', closeMobileNav);
+document.getElementById('nav-backdrop')?.addEventListener('click', closeNavMore);
+document.getElementById('btn-nav-more')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  toggleNavMore();
+});
 
-function goToPage(page) {
-  document.querySelectorAll('.nav-btn').forEach(b => {
+const NAV_PRIMARY_PAGES = { garden: 1, shop: 1, inventory: 1, quests: 1 };
+
+function syncNavActive(page) {
+  document.querySelectorAll('.nav-btn[data-page]').forEach(b => {
     b.classList.toggle('active', b.dataset.page === page);
   });
+  const moreBtn = document.getElementById('btn-nav-more');
+  if (moreBtn) {
+    const inMore = page && !NAV_PRIMARY_PAGES[page];
+    moreBtn.classList.toggle('active', !!inMore);
+  }
+}
+
+function goToPage(page) {
+  syncNavActive(page);
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page)?.classList.add('active');
   try { sessionStorage.setItem('vx_page', page); } catch (_) {}
-  closeMobileNav();
+  closeNavMore();
   if (page === 'garden') renderGarden();
   if (page === 'shop') renderShop();
   if (page === 'inventory') renderInventory();
@@ -979,7 +1023,7 @@ function goToPage(page) {
 
 document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    if (btn.id === 'btn-admin' || btn.id === 'btn-logout') return;
+    if (btn.id === 'btn-admin' || btn.id === 'btn-logout' || btn.id === 'btn-nav-more') return;
     if (btn.dataset.page) goToPage(btn.dataset.page);
   });
 });
