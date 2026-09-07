@@ -8626,7 +8626,7 @@ html[data-theme="dark"] .chat-messages {
 }
 .nav-backdrop.show { display: block !important; }
 
-/* iOS action-sheet style more menu */
+/* iOS action-sheet style more menu + animation */
 .nav-more-sheet {
   position: fixed;
   left: 0;
@@ -8638,16 +8638,21 @@ html[data-theme="dark"] .chat-messages {
   padding: 0 12px calc(88px + env(safe-area-inset-bottom, 0px));
   pointer-events: none;
   opacity: 0;
-  transform: translateY(12px);
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  transform: translateY(28px) scale(0.96);
+  transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
 }
-.nav-more-sheet:not([hidden]) {
+.nav-more-sheet.open {
   pointer-events: auto;
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 .nav-more-sheet[hidden] {
   display: none !important;
+}
+.nav-more-sheet.open[hidden] {
+  display: flex !important;
 }
 
 .nav-more-sheet-inner {
@@ -8662,6 +8667,44 @@ html[data-theme="dark"] .chat-messages {
   max-height: min(62vh, 520px);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  transform-origin: bottom center;
+}
+
+/* Nút Thêm xoay nhẹ khi mở */
+.bottom-nav .nav-btn-more .fa-ellipsis {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.bottom-nav .nav-btn-more.nav-more-open .fa-ellipsis {
+  transform: rotate(90deg) scale(1.08);
+}
+
+/* Stagger từng ô menu */
+.nav-more-item {
+  opacity: 0;
+  transform: translateY(14px) scale(0.92);
+}
+.nav-more-item.nav-item-in {
+  animation: navMoreItemIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(var(--nav-i, 0) * 0.028s + 0.04s);
+}
+@keyframes navMoreItemIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Backdrop fade */
+.nav-backdrop {
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.nav-backdrop.show {
+  opacity: 1;
 }
 
 .nav-more-handle {
@@ -8702,8 +8745,10 @@ html[data-theme="dark"] .chat-messages {
   font-size: 0.7rem !important;
   font-weight: 600 !important;
   cursor: pointer;
-  transition: transform 0.12s ease, background 0.15s ease;
+  transition: background 0.15s ease;
   position: relative;
+  opacity: 0;
+  transform: translateY(14px) scale(0.92);
 }
 .nav-more-item i {
   font-size: 1.35rem !important;

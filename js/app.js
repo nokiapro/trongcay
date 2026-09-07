@@ -938,16 +938,37 @@ document.getElementById('btn-gate-logout')?.addEventListener('click', () => {
 });
 
 
+function isNavMoreOpen() {
+  const sheet = document.getElementById('nav-more-sheet');
+  return !!(sheet && sheet.classList.contains('open'));
+}
+
 function closeNavMore() {
   const sheet = document.getElementById('nav-more-sheet');
   const moreBtn = document.getElementById('btn-nav-more');
   const backdrop = document.getElementById('nav-backdrop');
   if (sheet) {
-    sheet.hidden = true;
-    sheet.setAttribute('hidden', '');
+    sheet.classList.remove('open');
+    // Sau animation mới ẩn hẳn
+    const hide = () => {
+      if (!sheet.classList.contains('open')) {
+        sheet.hidden = true;
+        sheet.setAttribute('hidden', '');
+      }
+    };
+    sheet.addEventListener('transitionend', function onEnd(e) {
+      if (e.target !== sheet) return;
+      sheet.removeEventListener('transitionend', onEnd);
+      hide();
+    });
+    setTimeout(hide, 280);
   }
-  if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
+  if (moreBtn) {
+    moreBtn.setAttribute('aria-expanded', 'false');
+    moreBtn.classList.remove('nav-more-open');
+  }
   backdrop?.classList.remove('show');
+  document.body.classList.remove('nav-more-visible');
 }
 
 function openNavMore() {
@@ -957,15 +978,29 @@ function openNavMore() {
   if (sheet) {
     sheet.hidden = false;
     sheet.removeAttribute('hidden');
+    // force reflow để animation chạy
+    void sheet.offsetWidth;
+    sheet.classList.add('open');
+    // Stagger animation cho từng item
+    const items = sheet.querySelectorAll('.nav-more-item');
+    items.forEach((el, i) => {
+      el.style.setProperty('--nav-i', String(i));
+      el.classList.remove('nav-item-in');
+      void el.offsetWidth;
+      el.classList.add('nav-item-in');
+    });
   }
-  if (moreBtn) moreBtn.setAttribute('aria-expanded', 'true');
+  if (moreBtn) {
+    moreBtn.setAttribute('aria-expanded', 'true');
+    moreBtn.classList.add('nav-more-open');
+  }
   backdrop?.classList.add('show');
+  document.body.classList.add('nav-more-visible');
 }
 
 function toggleNavMore() {
-  const sheet = document.getElementById('nav-more-sheet');
-  if (!sheet || sheet.hidden || sheet.hasAttribute('hidden')) openNavMore();
-  else closeNavMore();
+  if (isNavMoreOpen()) closeNavMore();
+  else openNavMore();
 }
 
 function closeMobileNav() {
@@ -979,12 +1014,26 @@ function openMobileNav() {
 }
 
 document.getElementById('menu-toggle')?.addEventListener('click', openMobileNav);
-document.getElementById('nav-backdrop')?.addEventListener('click', closeNavMore);
+document.getElementById('nav-backdrop')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  closeNavMore();
+});
 document.getElementById('btn-nav-more')?.addEventListener('click', (e) => {
   e.preventDefault();
   e.stopPropagation();
   toggleNavMore();
 });
+
+// Chạm bất kỳ đâu ngoài menu Thêm + nút Thêm → đóng
+document.addEventListener('pointerdown', (e) => {
+  if (!isNavMoreOpen()) return;
+  const sheet = document.getElementById('nav-more-sheet');
+  const moreBtn = document.getElementById('btn-nav-more');
+  const t = e.target;
+  if (sheet && sheet.contains(t)) return;
+  if (moreBtn && moreBtn.contains(t)) return;
+  closeNavMore();
+}, true);
 
 const NAV_PRIMARY_PAGES = { garden: 1, shop: 1, inventory: 1, quests: 1 };
 
