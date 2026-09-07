@@ -858,7 +858,7 @@ auth.onAuthStateChanged(async (user) => {
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
               else if (typeof savePlayer === 'function') await savePlayer();
               if (typeof showToast === 'function' && (mr.starOk || mr.mythOk)) {
-                showToast(((Game.getRobotEmoji && Game.getRobotEmoji()) || '🤖') + ' rà kho · ghép bùa 100%', 'success');
+                showToast(((Game.getRobotDisplayName && Game.getRobotDisplayName()) || 'Người máy') + ' rà kho · ghép bùa 100%', 'success');
               }
             }
           }
@@ -4566,22 +4566,21 @@ function activityFaIcon(text, type) {
   const s = String(text || '');
   const t = String(type || '');
   if (t === 'offline' || s.indexOf('BÙ OFFLINE') >= 0 || s.indexOf('Bù offline') >= 0) return 'fa-solid fa-bolt';
-  if (t === 'offline_detail') return 'fa-solid fa-circle-info';
+  if (t === 'offline_detail' || s.indexOf('Tóm tắt:') >= 0) return 'fa-solid fa-circle-info';
   if (t === 'harvest_offline' || s.indexOf('Thu hoạch') >= 0) return 'fa-solid fa-basket-shopping';
-  if (t === 'fairy_rain') return 'fa-solid fa-cloud-sun-rain';
-  if (t === 'rain') return 'fa-solid fa-cloud-rain';
-  if (t === 'fairy_care') return 'fa-solid fa-wand-magic-sparkles';
+  if (t === 'fairy_rain' || t === 'rain') return 'fa-solid fa-cloud-rain';
+  if (t === 'robot_rain' || t === 'robot_offline' || t === 'robot_merge' || s.indexOf('Người máy') >= 0) return 'fa-solid fa-circle-dot';
+  if (t === 'helper_buy' || s.indexOf('Giúp việc') >= 0) return 'fa-solid fa-circle-dot';
+  if (t === 'fairy_care') return 'fa-solid fa-circle-dot';
   if (s.indexOf('Trồng') >= 0 || s.indexOf('trồng lại') >= 0) return 'fa-solid fa-seedling';
   if (s.indexOf('Tưới') >= 0 || s.indexOf('tưới') >= 0) return 'fa-solid fa-droplet';
   if (s.indexOf('Bón') >= 0 || s.indexOf('phân') >= 0) return 'fa-solid fa-flask';
-  if (s.indexOf('Tiên') >= 0) return 'fa-solid fa-wand-magic-sparkles';
   if (s.indexOf('NYC') >= 0 || s.indexOf('Người yêu') >= 0) return 'fa-solid fa-heart';
-  if (s.indexOf('Giúp việc') >= 0 || s.indexOf('Helper') >= 0) return 'fa-solid fa-user-tie';
-  if (s.indexOf('Mua') >= 0) return 'fa-solid fa-cart-shopping';
+  if (s.indexOf('Mua') >= 0 || s.indexOf('mua') >= 0) return 'fa-solid fa-cart-shopping';
   if (s.indexOf('Bán') >= 0) return 'fa-solid fa-tags';
   if (s.indexOf('Lên cấp') >= 0) return 'fa-solid fa-star';
   if (s.indexOf('Thành tựu') >= 0) return 'fa-solid fa-medal';
-  if (s.indexOf('Ghép') >= 0) return 'fa-solid fa-flask-vial';
+  if (s.indexOf('Ghép') >= 0 || s.indexOf('ghép') >= 0) return 'fa-solid fa-flask-vial';
   if (s.indexOf('Nhổ') >= 0) return 'fa-solid fa-trash';
   if (s.indexOf('mưa') >= 0 || s.indexOf('Mưa') >= 0) return 'fa-solid fa-cloud-rain';
   if (s.indexOf('pet') >= 0 || s.indexOf('Pet') >= 0) return 'fa-solid fa-paw';
