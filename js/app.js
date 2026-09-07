@@ -1035,6 +1035,26 @@ document.addEventListener('pointerdown', (e) => {
   closeNavMore();
 }, true);
 
+// Admin / Đăng xuất trong menu Thêm — bắt chắc sự kiện (không bị scrub/dock chặn)
+document.getElementById('btn-admin')?.addEventListener('pointerup', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  closeNavMore();
+  window.location.href = 'admin';
+}, true);
+document.getElementById('btn-logout')?.addEventListener('pointerup', async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  closeNavMore();
+  try {
+    await auth.signOut();
+  } catch (_) {}
+  currentUser = null;
+  currentPlayer = null;
+  isAdmin = false;
+  if (typeof showLogin === 'function') showLogin();
+}, true);
+
 const NAV_PRIMARY_PAGES = { garden: 1, shop: 1, inventory: 1, quests: 1 };
 
 function syncNavActive(page) {
@@ -1110,6 +1130,8 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
       const t = e.target.closest(selector);
       if (!t || !container.contains(t)) return;
       if (t.id === 'btn-nav-more') return; // nút Thêm: tap thường
+      // Admin / Đăng xuất: không scrub, để click/pointerup handler chạy
+      if (t.id === 'btn-admin' || t.id === 'btn-logout') return;
       holding = true;
       scrubbed = false;
       startX = e.clientX;

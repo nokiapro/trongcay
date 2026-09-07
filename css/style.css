@@ -9566,3 +9566,91 @@ body.dark .pill-dd-item.active {
     font-size: clamp(0.58rem, 3vw, 0.72rem) !important;
   }
 }
+
+
+/* ========== UI fix frames + more menu click (v1.9.155) ========== */
+/* Bỏ khung/nền đen khối chi tiết ô đất */
+.plot-detail-card,
+#plot-detail .plot-detail-card,
+#modal-plot .plot-detail-card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Bỏ khung/nền panel bạn bè bên trái + list item đậm */
+.friends-panel,
+#page-friends .friends-panel,
+html[data-theme="dark"] .friends-panel,
+body.dark .friends-panel {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.friends-list,
+#page-friends .friends-list {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.friend-item {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: none !important;
+}
+html[data-theme="dark"] .friend-item,
+body.dark .friend-item {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+html[data-theme="dark"] #page-friends,
+html[data-theme="dark"] #page-friends .page-header,
+body.dark #page-friends {
+  background: transparent !important;
+}
+
+/* Chat panel nhẹ hơn, không khối đen đặc */
+.chat-panel {
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 8px 28px rgba(20, 30, 50, 0.08) !important;
+}
+html[data-theme="dark"] .chat-panel,
+body.dark .chat-panel {
+  background: rgba(35, 39, 49, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Khi menu Thêm mở: dock không chặn click (trừ nút Thêm) */
+body.nav-more-visible .bottom-nav {
+  pointer-events: none !important;
+}
+body.nav-more-visible .bottom-nav .nav-dock {
+  pointer-events: none !important;
+}
+body.nav-more-visible .bottom-nav #btn-nav-more {
+  pointer-events: auto !important;
+}
+body.nav-more-visible .nav-more-sheet,
+body.nav-more-visible .nav-more-sheet-inner,
+body.nav-more-visible .nav-more-grid,
+body.nav-more-visible .nav-more-item {
+  pointer-events: auto !important;
+  z-index: 200 !important;
+}
+.nav-more-sheet {
+  z-index: 200 !important;
+}
+.nav-more-item#btn-admin,
+.nav-more-item#btn-logout {
+  position: relative;
+  z-index: 5;
+  cursor: pointer !important;
+}
