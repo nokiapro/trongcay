@@ -1077,6 +1077,102 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
   });
 });
 
+/* ===== Giữ & trượt trên thanh nav để chuyển tab (scrub) ===== */
+(function setupNavTabScrub() {
+  const dock = () => document.querySelector('#bottom-nav .nav-dock');
+  const moreGrid = () => document.querySelector('#nav-more-sheet .nav-more-grid');
+
+  function tabUnderPoint(container, x, y, selector) {
+    if (!container) return null;
+    const els = Array.from(container.querySelectorAll(selector));
+    for (const el of els) {
+      if (el.id === 'btn-nav-more') continue;
+      if (el.id === 'btn-admin' || el.id === 'btn-logout') {
+        // vẫn cho scrub tới admin/logout nhưng không auto-click logout khi chỉ lướt
+      }
+      const r = el.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return el;
+    }
+    return null;
+  }
+
+  function bindScrub(container, selector, opts) {
+    if (!container || container.dataset.navScrubBound === '1') return;
+    container.dataset.navScrubBound = '1';
+
+    let holding = false;
+    let lastPage = null;
+    let startX = 0, startY = 0;
+    let scrubbed = false;
+
+    container.addEventListener('pointerdown', (e) => {
+      if (e.button != null && e.button !== 0) return;
+      const t = e.target.closest(selector);
+      if (!t || !container.contains(t)) return;
+      if (t.id === 'btn-nav-more') return; // nút Thêm: tap thường
+      holding = true;
+      scrubbed = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      lastPage = t.dataset.page || null;
+      try { container.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+
+    container.addEventListener('pointermove', (e) => {
+      if (!holding) return;
+      const dx = Math.abs(e.clientX - startX);
+      const dy = Math.abs(e.clientY - startY);
+      if (dx < 6 && dy < 6) return;
+      scrubbed = true;
+      const el = tabUnderPoint(container, e.clientX, e.clientY, selector);
+      if (!el) return;
+      // Không auto kích hoạt logout/admin khi chỉ lướt
+      if (el.id === 'btn-logout' || el.id === 'btn-admin') return;
+      const page = el.dataset.page;
+      if (!page || page === lastPage) return;
+      lastPage = page;
+      // Highlight nhanh
+      container.querySelectorAll(selector).forEach(b => {
+        if (b.dataset.page) b.classList.toggle('active', b.dataset.page === page);
+      });
+      if (typeof goToPage === 'function') goToPage(page);
+      try { if (navigator.vibrate) navigator.vibrate(6); } catch (_) {}
+    });
+
+    function endHold(e) {
+      if (!holding) return;
+      holding = false;
+      try {
+        if (e && e.pointerId != null) container.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      // Nếu chỉ giữ yên trên 1 tab rồi thả → coi như tap chọn tab đó
+      if (!scrubbed && lastPage && typeof goToPage === 'function') {
+        // click handler cũng sẽ fire; tránh double bằng cách không gọi lại nếu đã active
+        const cur = document.querySelector('.page.active');
+        const curId = cur && cur.id ? cur.id.replace(/^page-/, '') : '';
+        if (curId !== lastPage) goToPage(lastPage);
+      }
+      lastPage = null;
+      scrubbed = false;
+    }
+
+    container.addEventListener('pointerup', endHold);
+    container.addEventListener('pointercancel', endHold);
+    container.addEventListener('lostpointercapture', () => { holding = false; });
+  }
+
+  function init() {
+    const d = dock();
+    if (d) bindScrub(d, '.nav-btn', {});
+    const g = moreGrid();
+    if (g) bindScrub(g, '.nav-more-item', {});
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
+
 document.getElementById('btn-admin')?.addEventListener('click', () => {
   window.location.href = 'admin';
 });

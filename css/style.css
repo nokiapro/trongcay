@@ -8864,3 +8864,158 @@ html[data-theme="dark"] .nav-more-item.active i {
     font-size: 0.62rem !important;
   }
 }
+
+
+/* ========== iOS glass light/dark (v1.9.146) ========== */
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-shadow: 0 8px 32px rgba(15, 40, 30, 0.1);
+  --glass-blur: 20px;
+  --glass-sat: 180%;
+  --chrome-bg: rgba(255, 255, 255, 0.65);
+  --chrome-border: rgba(255, 255, 255, 0.45);
+}
+
+html[data-theme="dark"] {
+  --glass-bg: rgba(28, 28, 30, 0.55);
+  --glass-bg-strong: rgba(28, 28, 30, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --chrome-bg: rgba(22, 28, 26, 0.72);
+  --chrome-border: rgba(255, 255, 255, 0.08);
+  --bg-main: #0b1411;
+  --bg-card: rgba(28, 36, 32, 0.72);
+  --text-main: #f2fbf6;
+  --text-muted: #9dbeb0;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --input-bg: rgba(255, 255, 255, 0.06);
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-2: rgba(255, 255, 255, 0.1);
+}
+
+html {
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+body {
+  transition: background-color 0.35s ease, color 0.35s ease, background-image 0.45s ease;
+}
+
+.glass,
+.header,
+.modal-content,
+.login-card,
+.card-panel,
+.plot-detail-card,
+.friends-panel,
+.chat-panel,
+.quest-card,
+.rank-card,
+.bank-card,
+.shop-item,
+.inv-card,
+.garden-switcher,
+.weather,
+.garden-cycle-chip {
+  background: var(--glass-bg-strong) !important;
+  backdrop-filter: saturate(var(--glass-sat)) blur(var(--glass-blur));
+  -webkit-backdrop-filter: saturate(var(--glass-sat)) blur(var(--glass-blur));
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow);
+}
+
+.header {
+  background: var(--chrome-bg) !important;
+  border-bottom: 1px solid var(--chrome-border) !important;
+  backdrop-filter: saturate(180%) blur(24px) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(24px) !important;
+}
+
+html[data-theme="dark"] .header {
+  background: rgba(12, 18, 16, 0.72) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.modal {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.28) !important;
+}
+html[data-theme="dark"] .modal {
+  background: rgba(0, 0, 0, 0.45) !important;
+}
+
+.modal-content {
+  border-radius: 22px !important;
+}
+
+/* Nav dock already glass — strengthen */
+.bottom-nav .nav-dock {
+  background: var(--glass-bg-strong) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+  backdrop-filter: saturate(180%) blur(24px) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(24px) !important;
+}
+
+.nav-more-sheet-inner {
+  background: var(--glass-bg-strong) !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+
+/* Drag reorder visual */
+.nav-btn.nav-dragging,
+.nav-more-item.nav-dragging {
+  opacity: 0.95 !important;
+  transform: scale(1.12) !important;
+  z-index: 5;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.22);
+  transition: none !important;
+  animation: none !important;
+}
+.nav-btn.nav-drag-over,
+.nav-more-item.nav-drag-over {
+  outline: 2px dashed var(--primary);
+  outline-offset: 2px;
+}
+.nav-dock.nav-edit-mode .nav-btn[data-page] {
+  animation: navJiggle 0.35s ease-in-out infinite alternate;
+}
+.nav-more-grid.nav-edit-mode .nav-more-item {
+  animation: navJiggle 0.35s ease-in-out infinite alternate;
+}
+@keyframes navJiggle {
+  from { transform: rotate(-1.2deg); }
+  to { transform: rotate(1.2deg); }
+}
+.nav-btn.nav-dragging,
+.nav-more-item.nav-dragging,
+.nav-dock.nav-edit-mode .nav-btn.nav-dragging,
+.nav-more-grid.nav-edit-mode .nav-more-item.nav-dragging {
+  animation: none !important;
+}
+
+.nav-edit-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 180;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main);
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: var(--glass-shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.nav-edit-hint.show { opacity: 1; }
