@@ -3652,8 +3652,8 @@ const Game = {
     c.rules = c.rules.filter(r => r && r.kind && r.id).map(r => ({
       kind: r.kind,
       id: String(r.id),
-      minStock: Math.max(0, Math.min(9999, parseInt(r.minStock, 10) || 0)),
-      buyQty: Math.max(1, Math.min(9999, parseInt(r.buyQty, 10) || 1)),
+      minStock: Math.max(0, Math.min(999999999, parseInt(r.minStock, 10) || 0)),
+      buyQty: Math.max(1, Math.min(999999999, parseInt(r.buyQty, 10) || 1)),
       enabled: r.enabled !== false
     }));
     return c;
@@ -3666,8 +3666,8 @@ const Game = {
       rules: Array.isArray(cfg && cfg.rules) ? cfg.rules.filter(r => r && r.kind && r.id).map(r => ({
         kind: r.kind,
         id: String(r.id),
-        minStock: Math.max(0, Math.min(9999, parseInt(r.minStock, 10) || 0)),
-        buyQty: Math.max(1, Math.min(9999, parseInt(r.buyQty, 10) || 1)),
+        minStock: Math.max(0, Math.min(999999999, parseInt(r.minStock, 10) || 0)),
+        buyQty: Math.max(1, Math.min(999999999, parseInt(r.buyQty, 10) || 1)),
         enabled: r.enabled !== false
       })) : []
     };
@@ -3723,7 +3723,7 @@ const Game = {
 
 
   helperBuySilent(kind, id, qty) {
-    qty = Math.max(1, Math.min(9999, parseInt(qty, 10) || 1));
+    qty = Math.max(1, Math.min(999999999, parseInt(qty, 10) || 1));
     if (kind === 'seed') {
       const plant = this.getPlant(id);
       if (!plant) return { ok: false, bought: 0, cost: 0, msg: 'Không có hạt' };
@@ -3831,7 +3831,14 @@ const Game = {
       // Mua bùa 100% (đồ mua đi) khi cần ghép
       buyProtect: true,
       // Mua thêm + ghép mọi loại hạt đang có trong kho (kể cả mua shop) — mặc định TẮT
-      buyAnySeeds: false
+      buyAnySeeds: false,
+      // Nấu ăn trong Bếp — mặc định TẮT
+      cookEnabled: false,
+      cookNormal: true,
+      cookStar: false,
+      cookMyth: false,
+      // Số món mỗi công thức đạt mức này thì dừng (không nấu thêm / không trùng lặp)
+      cookTargetQty: 10
     };
   },
   getRobotConfig() {
@@ -3846,17 +3853,29 @@ const Game = {
     if (typeof c.buyFairySeeds !== 'boolean') c.buyFairySeeds = true;
     if (typeof c.buyProtect !== 'boolean') c.buyProtect = true;
     if (typeof c.buyAnySeeds !== 'boolean') c.buyAnySeeds = false;
+    if (typeof c.cookEnabled !== 'boolean') c.cookEnabled = false;
+    if (typeof c.cookNormal !== 'boolean') c.cookNormal = true;
+    if (typeof c.cookStar !== 'boolean') c.cookStar = false;
+    if (typeof c.cookMyth !== 'boolean') c.cookMyth = false;
+    if (!Number.isFinite(Number(c.cookTargetQty)) || Number(c.cookTargetQty) < 1) c.cookTargetQty = 10;
+    else c.cookTargetQty = Math.max(1, Math.min(999999, Math.floor(Number(c.cookTargetQty))));
     return c;
   },
   setRobotConfig(cfg) {
     if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
     const prev = this.getRobotConfig();
+    const tq = cfg && cfg.cookTargetQty != null ? Math.floor(Number(cfg.cookTargetQty)) : prev.cookTargetQty;
     currentPlayer.robotConfig = {
       customName: (cfg && typeof cfg.customName === 'string') ? cfg.customName.trim().slice(0, 20) : (prev.customName || ''),
       gender: cfg && cfg.gender === 'male' ? 'male' : 'female',
       buyFairySeeds: cfg && typeof cfg.buyFairySeeds === 'boolean' ? cfg.buyFairySeeds : (prev.buyFairySeeds !== false),
       buyProtect: cfg && typeof cfg.buyProtect === 'boolean' ? cfg.buyProtect : (prev.buyProtect !== false),
-      buyAnySeeds: cfg && typeof cfg.buyAnySeeds === 'boolean' ? cfg.buyAnySeeds : !!prev.buyAnySeeds
+      buyAnySeeds: cfg && typeof cfg.buyAnySeeds === 'boolean' ? cfg.buyAnySeeds : !!prev.buyAnySeeds,
+      cookEnabled: cfg && typeof cfg.cookEnabled === 'boolean' ? cfg.cookEnabled : !!prev.cookEnabled,
+      cookNormal: cfg && typeof cfg.cookNormal === 'boolean' ? cfg.cookNormal : (prev.cookNormal !== false),
+      cookStar: cfg && typeof cfg.cookStar === 'boolean' ? cfg.cookStar : !!prev.cookStar,
+      cookMyth: cfg && typeof cfg.cookMyth === 'boolean' ? cfg.cookMyth : !!prev.cookMyth,
+      cookTargetQty: Number.isFinite(tq) && tq >= 1 ? Math.min(999999, tq) : 10
     };
     return { ok: true, msg: 'Đã lưu Người máy' };
   },
@@ -4096,6 +4115,76 @@ const Game = {
    * Rà kho: CHỈ ghép bulk bùa 100%. KHÔNG mua hạt shop.
    * Mua hạt chỉ khi Tiên nhặt → robotBuyFairyMarkedSeeds / robotAfterRainCollect.
    */
+
+  /**
+   * Người máy nấu ăn: mỗi công thức + mỗi tier chỉ nấu 1 lần/tick tới mức cookTargetQty.
+   * Không nấu trùng nếu đã đủ số món trong kho món.
+   */
+  robotTickCook(opts) {
+    if (!this.isRobotActive() || !currentPlayer) return { ok: false, cooked: 0 };
+    const cfg = this.getRobotConfig();
+    if (!cfg.cookEnabled) return { ok: true, cooked: 0, skipped: true };
+    const target = Math.max(1, Math.min(999999, Math.floor(Number(cfg.cookTargetQty) || 10)));
+    const tiers = [];
+    if (cfg.cookNormal !== false) tiers.push('normal');
+    if (cfg.cookStar === true) tiers.push('star');
+    if (cfg.cookMyth === true) tiers.push('myth');
+    if (!tiers.length) return { ok: true, cooked: 0, msg: 'Chưa chọn loại sản phẩm nấu' };
+
+    this.normalizeHarvestBags && this.normalizeHarvestBags();
+    const inv = currentPlayer.inventory || (currentPlayer.inventory = {});
+    const recipes = this.getRecipes() || [];
+    let cooked = 0;
+    const lines = [];
+    const seen = new Set(); // chống trùng recipe+tier trong 1 lần chạy
+
+    for (const recipe of recipes) {
+      if (!recipe || !recipe.id || !Array.isArray(recipe.ingredients) || !recipe.ingredients.length) continue;
+      for (const tier of tiers) {
+        const key = recipe.id + '|' + tier;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        const bagKey = this.harvestBagKey(tier);
+        const dishKey = this.dishBagKey(tier);
+        const harvest = inv[bagKey] || (inv[bagKey] = {});
+        if (!inv[dishKey]) inv[dishKey] = {};
+        const haveDish = Number(inv[dishKey][recipe.id]) || 0;
+        if (haveDish >= target) continue; // đã đủ mức người chơi đặt
+
+        let maxTimes = target - haveDish;
+        for (const ing of recipe.ingredients) {
+          const need = Math.max(1, Number(ing.qty) || 1);
+          const have = Number(harvest[ing.plantId]) || 0;
+          maxTimes = Math.min(maxTimes, Math.floor(have / need));
+        }
+        maxTimes = Math.floor(maxTimes);
+        if (maxTimes < 1) continue;
+
+        // Trừ nguyên liệu + cộng món (không gọi cookRecipe để tránh save từng lần)
+        for (const ing of recipe.ingredients) {
+          const need = Math.max(1, Number(ing.qty) || 1) * maxTimes;
+          harvest[ing.plantId] = (Number(harvest[ing.plantId]) || 0) - need;
+          if (harvest[ing.plantId] <= 0) delete harvest[ing.plantId];
+        }
+        inv[dishKey][recipe.id] = haveDish + maxTimes;
+        const xpBase = (Number(recipe.xp) || 1) * maxTimes;
+        const xpGain = Math.ceil(xpBase * (this.getSeedXpMult ? this.getSeedXpMult(tier) : 1));
+        currentPlayer.xp = (currentPlayer.xp || 0) + xpGain;
+        cooked += maxTimes;
+        const tag = tier === 'myth' ? '✨' : (tier === 'star' ? '⭐' : '');
+        if (lines.length < 6) lines.push((recipe.name || recipe.id) + tag + '×' + maxTimes);
+      }
+    }
+
+    const silent = opts && opts.silent;
+    if (!silent && cooked > 0) {
+      const name = this.getRobotDisplayName ? this.getRobotDisplayName() : 'Người máy';
+      this.addActivity(name + ' nấu: ' + lines.join(', ') + (cooked > 0 ? ' (tới mức ' + target + ')' : ''), { type: 'robot_cook' });
+    }
+    return { ok: true, cooked, lines, target };
+  },
+
   async robotMergeAllBag(opts) {
     if (!this.isRobotActive() || !currentPlayer) return { ok: false, starDid: 0, mythDid: 0 };
     if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {}, protects: {} };
@@ -4138,6 +4227,17 @@ const Game = {
         console.warn('robotBulkMerge100', plantId, e);
       }
     }
+
+    // Nấu ăn theo cấu hình (nếu bật)
+    let cookN = 0;
+    try {
+      const cr = this.robotTickCook({ silent: true });
+      cookN = (cr && cr.cooked) || 0;
+      if (!silent && cookN > 0 && cr.lines && cr.lines.length) {
+        const nm = this.getRobotDisplayName();
+        this.addActivity(nm + ' nấu: ' + cr.lines.join(', '), { type: 'robot_cook' });
+      }
+    } catch (e) { console.warn('robotTickCook', e); }
 
     if (!silent && (starOk || mythOk || starDid || mythDid || seedsBought)) {
       const name = this.getRobotDisplayName();

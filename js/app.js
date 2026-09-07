@@ -536,7 +536,7 @@ function renderAgentGardenToggles(hostId, gardensEnabled, kind) {
     const on = !(ge[sel] === false || ge[String(sel)] === false);
     html += `<label class="garden-toggle-row agent-garden-enable">
       <span class="garden-toggle-label"><i class="fa-solid fa-power-off"></i> Bật trên Vườn ${sel + 1}</span>
-      <input type="checkbox" class="garden-toggle-switch" id="${k}-garden-enabled" data-garden="${sel}" ${on ? 'checked' : ''} />
+      <input type="checkbox" class="garden-toggle-switch ios-toggle" id="${k}-garden-enabled" data-garden="${sel}" ${on ? 'checked' : ''} />
     </label>
     <p class="bulk-hint">Đang cấu hình <strong>Vườn ${sel + 1}</strong> — mỗi vườn có cấu hình riêng.</p>`;
     if (k === 'nyc') {
@@ -648,21 +648,22 @@ function openRobotConfigModal() {
   const g = cfg.gender === 'male' ? 'male' : 'female';
   const gEl = document.querySelector('input[name="robot-gender"][value="' + g + '"]');
   if (gEl) gEl.checked = true;
-  const buyFairy = cfg.buyFairySeeds !== false;
-  const bfOn = document.querySelector('input[name="robot-buy-fairy"][value="1"]');
-  const bfOff = document.querySelector('input[name="robot-buy-fairy"][value="0"]');
-  if (buyFairy) { if (bfOn) bfOn.checked = true; }
-  else { if (bfOff) bfOff.checked = true; }
-  const buyProt = cfg.buyProtect !== false;
-  const bpOn = document.querySelector('input[name="robot-buy-protect"][value="1"]');
-  const bpOff = document.querySelector('input[name="robot-buy-protect"][value="0"]');
-  if (buyProt) { if (bpOn) bpOn.checked = true; }
-  else { if (bpOff) bpOff.checked = true; }
-  const buyAny = cfg.buyAnySeeds === true;
-  const baOn = document.querySelector('input[name="robot-buy-any"][value="1"]');
-  const baOff = document.querySelector('input[name="robot-buy-any"][value="0"]');
-  if (buyAny) { if (baOn) baOn.checked = true; }
-  else { if (baOff) baOff.checked = true; }
+  const elFairy = document.getElementById('robot-buy-fairy-toggle');
+  if (elFairy) elFairy.checked = cfg.buyFairySeeds !== false;
+  const elProt = document.getElementById('robot-buy-protect-toggle');
+  if (elProt) elProt.checked = cfg.buyProtect !== false;
+  const elAny = document.getElementById('robot-buy-any-toggle');
+  if (elAny) elAny.checked = cfg.buyAnySeeds === true;
+  const elCook = document.getElementById('robot-cook-enabled');
+  if (elCook) elCook.checked = cfg.cookEnabled === true;
+  const elCN = document.getElementById('robot-cook-normal');
+  if (elCN) elCN.checked = cfg.cookNormal !== false;
+  const elCS = document.getElementById('robot-cook-star');
+  if (elCS) elCS.checked = cfg.cookStar === true;
+  const elCM = document.getElementById('robot-cook-myth');
+  if (elCM) elCM.checked = cfg.cookMyth === true;
+  const elTQ = document.getElementById('robot-cook-target');
+  if (elTQ) elTQ.value = String(Math.max(1, Math.floor(Number(cfg.cookTargetQty) || 10)));
   document.getElementById('modal-robot-config')?.classList.add('show');
 }
 
@@ -671,9 +672,14 @@ function bindRobotConfigUI() {
     const res = Game.setRobotConfig({
       customName: (document.getElementById('robot-custom-name')?.value || '').trim().slice(0, 20),
       gender: document.querySelector('input[name="robot-gender"]:checked')?.value || 'female',
-      buyFairySeeds: document.querySelector('input[name="robot-buy-fairy"]:checked')?.value !== '0',
-      buyProtect: document.querySelector('input[name="robot-buy-protect"]:checked')?.value !== '0',
-      buyAnySeeds: document.querySelector('input[name="robot-buy-any"]:checked')?.value === '1'
+      buyFairySeeds: !!document.getElementById('robot-buy-fairy-toggle')?.checked,
+      buyProtect: !!document.getElementById('robot-buy-protect-toggle')?.checked,
+      buyAnySeeds: !!document.getElementById('robot-buy-any-toggle')?.checked,
+      cookEnabled: !!document.getElementById('robot-cook-enabled')?.checked,
+      cookNormal: !!document.getElementById('robot-cook-normal')?.checked,
+      cookStar: !!document.getElementById('robot-cook-star')?.checked,
+      cookMyth: !!document.getElementById('robot-cook-myth')?.checked,
+      cookTargetQty: Math.max(1, Math.floor(Number(document.getElementById('robot-cook-target')?.value) || 10))
     });
     if (res.ok) {
       // Đồng bộ tên/giới tính với field hồ sơ nếu đang mở
@@ -6363,9 +6369,9 @@ function renderHelperRulesList() {
         <button type="button" class="helper-rule-del" data-del="${idx}" title="Xóa"><i class="fa-solid fa-trash"></i></button>
       </div>
       <div class="helper-rule-fields">
-        <label class="helper-field">Mốc kho<input type="number" min="0" max="9999" data-i="${idx}" data-f="minStock" value="${r.minStock}" /></label>
-        <label class="helper-field">Mua thêm<input type="number" min="1" max="9999" data-i="${idx}" data-f="buyQty" value="${r.buyQty}" /></label>
-        <label class="helper-field helper-field-toggle"><span>Bật</span><input type="checkbox" data-i="${idx}" data-f="enabled" ${r.enabled !== false ? 'checked' : ''}/></label>
+        <label class="helper-field">Mốc kho<input type="number" min="0" max="999999999" data-i="${idx}" data-f="minStock" value="${r.minStock}" /></label>
+        <label class="helper-field">Mua thêm<input type="number" min="1" max="999999999" data-i="${idx}" data-f="buyQty" value="${r.buyQty}" /></label>
+        <label class="helper-field helper-field-toggle ios-toggle-row"><span>Bật</span><input type="checkbox" class="ios-toggle" data-i="${idx}" data-f="enabled" ${r.enabled !== false ? 'checked' : ''}/></label>
       </div>
     `;
     host.appendChild(row);
@@ -6378,8 +6384,8 @@ function renderHelperRulesList() {
     else {
       let v = parseInt(inp.value, 10);
       if (!Number.isFinite(v)) v = 0;
-      if (f === 'buyQty') v = Math.max(1, Math.min(9999, v));
-      if (f === 'minStock') v = Math.max(0, Math.min(9999, v));
+      if (f === 'buyQty') v = Math.max(1, Math.min(999999999, v));
+      if (f === 'minStock') v = Math.max(0, Math.min(999999999, v));
       _helperRulesDraft[i][f] = v;
     }
   };
@@ -6434,8 +6440,8 @@ document.getElementById('btn-helper-add-rule')?.addEventListener('click', () => 
   }
   _helperRulesDraft.push({
     kind, id,
-    minStock: Number.isFinite(minStock) ? Math.max(0, Math.min(9999, minStock)) : 5,
-    buyQty: Number.isFinite(buyQty) && buyQty > 0 ? Math.max(1, Math.min(9999, buyQty)) : 10,
+    minStock: Number.isFinite(minStock) ? Math.max(0, Math.min(999999999, minStock)) : 5,
+    buyQty: Number.isFinite(buyQty) && buyQty > 0 ? Math.max(1, Math.min(999999999, buyQty)) : 10,
     enabled: true
   });
   renderHelperRulesList();
@@ -6452,8 +6458,8 @@ document.getElementById('btn-save-helper-config')?.addEventListener('click', asy
     else {
       let v = parseInt(inp.value, 10);
       if (!Number.isFinite(v)) v = f === 'buyQty' ? 1 : 0;
-      if (f === 'buyQty') v = Math.max(1, Math.min(9999, v));
-      if (f === 'minStock') v = Math.max(0, Math.min(9999, v));
+      if (f === 'buyQty') v = Math.max(1, Math.min(999999999, v));
+      if (f === 'minStock') v = Math.max(0, Math.min(999999999, v));
       _helperRulesDraft[i][f] = v;
     }
   });
