@@ -277,6 +277,28 @@ function addNycPlantFromSelect() {
   renderNycPlantListUI();
 }
 
+/** Map key "plantId|kind" → [chỉ số vườn 0-based] đã cài hạt đó trong NYC */
+function getNycSeedConfiguredGardens() {
+  const map = {};
+  if (typeof Game === 'undefined' || !currentPlayer) return map;
+  const n = (Game.getGardenCount && Game.getGardenCount()) || 1;
+  for (let gi = 0; gi < n; gi++) {
+    const cfg = Game.getNycConfigForGarden ? Game.getNycConfigForGarden(gi) : null;
+    if (!cfg) continue;
+    const list = (cfg.plantList && cfg.plantList.length)
+      ? cfg.plantList
+      : (cfg.plantId ? [{ plantId: cfg.plantId, seedKind: cfg.seedKind || 'normal' }] : []);
+    list.forEach(it => {
+      if (!it || !it.plantId) return;
+      const k = it.seedKind === 'myth' ? 'myth' : (it.seedKind === 'star' ? 'star' : 'normal');
+      const key = it.plantId + '|' + k;
+      if (!map[key]) map[key] = [];
+      if (map[key].indexOf(gi) < 0) map[key].push(gi);
+    });
+  }
+  return map;
+}
+
 function openNycConfigModal() {
   if (!currentPlayer) return;
   const base = Game.getNycConfig();
@@ -287,44 +309,49 @@ function openNycConfigModal() {
   if (!sel) return;
   const seeds = (currentPlayer.inventory && currentPlayer.inventory.seeds) || {};
   const stars = (currentPlayer.inventory && currentPlayer.inventory.seedsStar) || {};
+  const myths = (currentPlayer.inventory && currentPlayer.inventory.seedsMyth) || {};
+  const usedMap = (typeof getNycSeedConfiguredGardens === 'function') ? getNycSeedConfiguredGardens() : {};
+  const gardenLabel = (arr) => {
+    if (!arr || !arr.length) return '';
+    // Hiện số vườn 1-based, bỏ vườn đang cấu hình khỏi nhãn "vườn khác" nếu muốn — vẫn hiện đủ để phân biệt
+    return arr.map(g => 'Vườn ' + (g + 1)).join(', ');
+  };
   const opts = ['<option value="">— Chưa chọn hạt —</option>'];
-  Object.keys(seeds).filter(id => (seeds[id] || 0) > 0).forEach(id => {
+  const pushOpt = (id, kind, qtyLabel, selc, force) => {
     const p = Game.getPlant(id);
-    if (!p) return;
-    const val = id + '|normal';
+    if (!p && !force) return;
+    const name = p ? ((p.icon || '') + ' ' + p.name) : id;
+    const val = id + '|' + kind;
+    const used = usedMap[val] || usedMap[id + '|' + kind] || [];
+    const dim = used.length > 0;
+    const usedTxt = dim ? (' · đã cài ' + gardenLabel(used)) : '';
+    const dimAttr = dim ? ' data-dimmed="1"' : '';
+    opts.push('<option value="' + val + '" ' + (selc || '') + dimAttr + '>' + name + ' · ' + qtyLabel + usedTxt + '</option>');
+  };
+  Object.keys(seeds).filter(id => (seeds[id] || 0) > 0).forEach(id => {
     const selc = (cfg.plantId === id && cfg.seedKind === 'normal') ? 'selected' : '';
-    opts.push(`<option value="${val}" ${selc}>${p.icon} ${p.name} · thường x${seeds[id]}</option>`);
+    pushOpt(id, 'normal', 'thường x' + seeds[id], selc);
   });
   Object.keys(stars).filter(id => (stars[id] || 0) > 0).forEach(id => {
-    const p = Game.getPlant(id);
-    if (!p) return;
-    const val = id + '|star';
     const selc = (cfg.plantId === id && cfg.seedKind === 'star') ? 'selected' : '';
-    opts.push(`<option value="${val}" ${selc}>${p.icon} ${p.name} ⭐ · sao x${stars[id]}</option>`);
+    pushOpt(id, 'star', '⭐ sao x' + stars[id], selc);
   });
-  const myths = (currentPlayer.inventory && currentPlayer.inventory.seedsMyth) || {};
   Object.keys(myths).filter(id => (myths[id] || 0) > 0).forEach(id => {
-    const p = Game.getPlant(id);
-    if (!p) return;
-    const val = id + '|myth';
     const selc = (cfg.plantId === id && cfg.seedKind === 'myth') ? 'selected' : '';
-    opts.push(`<option value="${val}" ${selc}>${p.icon} ${p.name} ✨ · huyền thoại x${myths[id]}</option>`);
+    pushOpt(id, 'myth', '✨ huyền thoại x' + myths[id], selc);
   });
   if (cfg.plantId) {
     const haveN = (seeds[cfg.plantId] || 0) > 0;
     const haveS = (stars[cfg.plantId] || 0) > 0;
     const haveM = (myths[cfg.plantId] || 0) > 0;
     if (cfg.seedKind === 'myth' && !haveM) {
-      const p = Game.getPlant(cfg.plantId);
-      if (p) opts.push(`<option value="${cfg.plantId}|myth" selected>${p.icon} ${p.name} ✨ (hết hạt huyền thoại)</option>`);
+      pushOpt(cfg.plantId, 'myth', '✨ hết hạt huyền thoại', 'selected', true);
     }
     if (cfg.seedKind === 'star' && !haveS) {
-      const p = Game.getPlant(cfg.plantId);
-      if (p) opts.push(`<option value="${cfg.plantId}|star" selected>${p.icon} ${p.name} ⭐ (hết hạt sao)</option>`);
+      pushOpt(cfg.plantId, 'star', '⭐ hết hạt sao', 'selected', true);
     }
     if (cfg.seedKind === 'normal' && !haveN) {
-      const p = Game.getPlant(cfg.plantId);
-      if (p) opts.push(`<option value="${cfg.plantId}|normal" selected>${p.icon} ${p.name} (hết hạt thường)</option>`);
+      pushOpt(cfg.plantId, 'normal', 'hết hạt thường', 'selected', true);
     }
   }
   sel.innerHTML = opts.join('');
@@ -1936,6 +1963,10 @@ function mountPillDropdown(select, opts = {}) {
       if (opt.disabled) {
         btn.disabled = true;
         btn.style.opacity = '0.45';
+      } else if (opt.dataset && opt.dataset.dimmed === '1') {
+        // Hạt đã cài ở vườn khác — làm mờ để phân biệt, vẫn chọn được
+        btn.style.opacity = '0.45';
+        btn.classList.add('pill-dd-item-dimmed');
       }
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
