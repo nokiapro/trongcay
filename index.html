@@ -19,7 +19,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/style.css?v=1.9.158" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.159" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -867,24 +867,32 @@
 
       <label style="margin-top:12px;display:block">Mua thêm hạt Tiên nhặt</label>
       <div class="nyc-mode-row">
-        <label class="checkbox-row"><input type="radio" name="robot-buy-fairy" value="1" checked /> Có mua (đủ 10.000 hạt mỗi loại Tiên đã nhặt)</label>
-        <label class="checkbox-row"><input type="radio" name="robot-buy-fairy" value="0" /> Không mua thêm hạt</label>
+        <label class="checkbox-row ios-toggle-row"><span>Có mua (đủ 10.000 mỗi loại Tiên đã nhặt)</span><input type="checkbox" class="ios-toggle" id="robot-buy-fairy-toggle" checked /></label>
       </div>
       <p class="bulk-hint">Chỉ mua các loại hạt Tiên vừa nhặt khi mưa — không mua hạt bạn tự mua shop.</p>
 
       <label style="margin-top:12px;display:block">Mua đồ (bùa 100%)</label>
       <div class="nyc-mode-row">
-        <label class="checkbox-row"><input type="radio" name="robot-buy-protect" value="1" checked /> Có mua bùa 100% khi cần ghép</label>
-        <label class="checkbox-row"><input type="radio" name="robot-buy-protect" value="0" /> Không mua bùa (chỉ ghép nếu đã có trong kho)</label>
+        <label class="checkbox-row ios-toggle-row"><span>Có mua bùa 100% khi cần ghép</span><input type="checkbox" class="ios-toggle" id="robot-buy-protect-toggle" checked /></label>
       </div>
       <p class="bulk-hint">Bùa 100% dùng để ghép hạt thường → sao → huyền thoại chắc chắn thành công.</p>
 
       <label style="margin-top:12px;display:block">Mua + ghép hạt trong kho / mua shop</label>
       <div class="nyc-mode-row">
-        <label class="checkbox-row"><input type="radio" name="robot-buy-any" value="1" /> Bật — tự mua đủ 10.000 rồi ghép mọi loại hạt đang có trong kho</label>
-        <label class="checkbox-row"><input type="radio" name="robot-buy-any" value="0" checked /> Tắt (mặc định)</label>
+        <label class="checkbox-row ios-toggle-row"><span>Bật mua + ghép hạt kho/shop</span><input type="checkbox" class="ios-toggle" id="robot-buy-any-toggle" /></label>
       </div>
-      <p class="bulk-hint">Khi bật: nếu bạn mua hạt ở cửa hàng hoặc kho còn hạt (≥1), Người máy tự mua thêm đủ 10.000 rồi ghép. <strong>Mặc định tắt</strong> — cần tự bật.</p>
+      <p class="bulk-hint">Khi bật: nếu bạn mua hạt ở cửa hàng hoặc kho còn hạt (≥1), Người máy tự mua thêm đủ 10.000 rồi ghép. <strong>Mặc định tắt</strong>.</p>
+
+      <label style="margin-top:14px;display:block"><i class="fa-solid fa-utensils"></i> Nấu ăn (Bếp)</label>
+      <div class="nyc-mode-row">
+        <label class="checkbox-row ios-toggle-row"><span>Bật nấu sản phẩm</span><input type="checkbox" class="ios-toggle" id="robot-cook-enabled" /></label>
+        <label class="checkbox-row ios-toggle-row"><span>Nấu hàng thường</span><input type="checkbox" class="ios-toggle" id="robot-cook-normal" checked /></label>
+        <label class="checkbox-row ios-toggle-row"><span>Nấu hàng sao ⭐</span><input type="checkbox" class="ios-toggle" id="robot-cook-star" /></label>
+        <label class="checkbox-row ios-toggle-row"><span>Nấu hàng huyền thoại ✨</span><input type="checkbox" class="ios-toggle" id="robot-cook-myth" /></label>
+      </div>
+      <label style="margin-top:8px;display:block">Số món mỗi công thức (đạt mức này thì dừng)</label>
+      <input type="number" id="robot-cook-target" class="cfg-name-input" min="1" max="999999" step="1" value="10" placeholder="VD: 10" />
+      <p class="bulk-hint">Người máy nấu từng công thức tới đúng số món bạn nhập, không nấu trùng khi đã đủ. Chỉ dùng sản phẩm thu hoạch đúng loại (thường/sao/HT) đã bật.</p>
 
       <div class="modal-actions" style="margin-top:14px">
         <button id="btn-save-robot-config" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu</button>
@@ -895,12 +903,12 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.158"></script>
-  <script src="js/data.js?v=1.9.158"></script>
-  <script src="js/fa-icons.js?v=1.9.158"></script>
-  <script src="js/game.js?v=1.9.158"></script>
-  <script src="js/features.js?v=1.9.158"></script>
-  <script src="js/app.js?v=1.9.158"></script>
+  <script src="js/firebase-config.js?v=1.9.159"></script>
+  <script src="js/data.js?v=1.9.159"></script>
+  <script src="js/fa-icons.js?v=1.9.159"></script>
+  <script src="js/game.js?v=1.9.159"></script>
+  <script src="js/features.js?v=1.9.159"></script>
+  <script src="js/app.js?v=1.9.159"></script>
   <script>
   (function () {
     if (!('serviceWorker' in navigator)) return;
