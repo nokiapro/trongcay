@@ -1437,8 +1437,8 @@ html[data-theme="dark"] .seed-option:hover {
   border-color: var(--primary-light);
 }
 html[data-theme="dark"] .plot-detail-card {
-  background: #15241c;
-  border-color: #2d6a4f;
+  background: transparent;
+  border-color: transparent;
 }
 html[data-theme="dark"] .plot.empty {
   background: #15241c;
@@ -7806,9 +7806,7 @@ textarea::placeholder {
 .album-item,
 .market-sell-box,
 .bank-stat,
-.plot-detail-card,
 .seed-option,
-.modal-content,
 .level-badge-showcase {
   background: var(--card) !important;
   color: var(--text) !important;
@@ -9088,7 +9086,6 @@ body.dark .glass::before {
 .modal-content,
 .login-card,
 .card-panel,
-.plot-detail-card,
 .friends-panel,
 .chat-panel,
 .quest-card,
@@ -9569,18 +9566,7 @@ body.dark .pill-dd-item.active {
 
 
 /* ========== UI fix frames + more menu click (v1.9.155) ========== */
-/* Bỏ khung/nền đen khối chi tiết ô đất */
-.plot-detail-card,
-#plot-detail .plot-detail-card,
-#modal-plot .plot-detail-card {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
+/* plot-detail-card: khung do block modal-plot phụ trách */
 
 /* Bỏ khung/nền panel bạn bè bên trái + list item đậm */
 .friends-panel,
@@ -9656,69 +9642,81 @@ body.nav-more-visible .nav-more-item {
 }
 
 
-/* ========== Modal plot: gọn info, bỏ nền đen nút (v1.9.156) ========== */
+
+
+
+
+/* ========== Modal plot: khung info bo góc (v1.9.158) ========== */
 #modal-plot .modal-content {
-  background: rgba(255, 255, 255, 0.92) !important;
+  background: #f4f6f8 !important;
+  background-image: none !important;
   border: 1px solid rgba(0, 0, 0, 0.06) !important;
-  box-shadow: 0 16px 48px rgba(20, 30, 50, 0.16) !important;
-  backdrop-filter: blur(24px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+  box-shadow: 0 18px 50px rgba(20, 30, 50, 0.18) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   color: #111318 !important;
 }
 html[data-theme="dark"] #modal-plot .modal-content,
 body.dark #modal-plot .modal-content {
-  background: rgba(44, 44, 46, 0.94) !important;
+  background: #2c2c2e !important;
+  background-image: none !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.45) !important;
+  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.5) !important;
   color: #f5f6fa !important;
 }
 
-/* Khối thông tin phía trên: không khung lồng, gộp vào modal */
-#modal-plot #plot-detail,
-#modal-plot .plot-detail-card,
-#modal-plot #plot-detail .plot-detail-card {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  padding: 0 !important;
-  margin: 0 0 8px !important;
-}
-#modal-plot #plot-detail p,
-#modal-plot .plot-detail-card p {
-  margin-bottom: 6px !important;
-}
-
-/* Ô nâng cấp: nền rất nhẹ, không đen */
-#modal-plot .plot-upgrade-box {
-  background: rgba(34, 197, 94, 0.08) !important;
-  border: 1px solid rgba(34, 197, 94, 0.18) !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border-radius: 16px !important;
-  padding: 12px !important;
-  margin-top: 8px !important;
-}
-html[data-theme="dark"] #modal-plot .plot-upgrade-box,
-body.dark #modal-plot .plot-upgrade-box {
-  background: rgba(34, 197, 94, 0.1) !important;
-  border: 1px solid rgba(34, 197, 94, 0.22) !important;
-}
-
-/* Hàng nút Nhổ bỏ / Đóng: không nền đen phía dưới */
-#modal-plot .modal-actions {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  padding: 8px 0 0 !important;
-  margin: 8px 0 0 !important;
-}
+#modal-plot .modal-content::before,
+#modal-plot .modal-content::after,
+#modal-plot .plot-upgrade-box::before,
+#modal-plot .plot-upgrade-box::after,
 #modal-plot .modal-actions::before,
 #modal-plot .modal-actions::after {
   display: none !important;
   content: none !important;
+}
+
+/* Khung info: hình chữ nhật bo góc rõ */
+#modal-plot #plot-detail > .plot-detail-card,
+#modal-plot .plot-detail-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  background-image: none !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 14px 16px !important;
+  margin: 0 0 12px !important;
+}
+html[data-theme="dark"] #modal-plot #plot-detail > .plot-detail-card,
+html[data-theme="dark"] #modal-plot .plot-detail-card,
+body.dark #modal-plot .plot-detail-card {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 16px !important;
+}
+#modal-plot .plot-detail-card p {
+  margin: 0 0 6px !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Ô nâng cấp */
+#modal-plot .plot-upgrade-box {
+  background: rgba(34, 197, 94, 0.1) !important;
+  border: 1px solid rgba(34, 197, 94, 0.22) !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  padding: 12px !important;
+  margin: 0 0 12px !important;
+}
+
+/* Hàng nút: không nền phụ */
+#modal-plot .modal-actions {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 4px 0 0 !important;
+  margin: 0 !important;
 }
