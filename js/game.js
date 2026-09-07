@@ -271,7 +271,29 @@ const Game = {
     while (guard++ < 30) {
       const last = currentPlayer.gardens[currentPlayer.gardens.length - 1];
       if (last && last.length >= max) {
+        const newGi = currentPlayer.gardens.length; // chỉ số vườn sắp mở
         currentPlayer.gardens.push(this.makeEmptyPlots());
+        // Vườn mới: KHÔNG tự trồng hạt (NYC/Tiên) — tắt đến khi người chơi bật trong cấu hình
+        try {
+          if (!currentPlayer.nycConfig || typeof currentPlayer.nycConfig !== 'object') {
+            currentPlayer.nycConfig = { gardensEnabled: {}, byGarden: {} };
+          }
+          if (!currentPlayer.nycConfig.gardensEnabled || typeof currentPlayer.nycConfig.gardensEnabled !== 'object') {
+            currentPlayer.nycConfig.gardensEnabled = {};
+          }
+          currentPlayer.nycConfig.gardensEnabled[String(newGi)] = false;
+          currentPlayer.nycConfig.gardensEnabled[newGi] = false;
+        } catch (_) {}
+        try {
+          if (!currentPlayer.fairyConfig || typeof currentPlayer.fairyConfig !== 'object') {
+            currentPlayer.fairyConfig = { gardensEnabled: {} };
+          }
+          if (!currentPlayer.fairyConfig.gardensEnabled || typeof currentPlayer.fairyConfig.gardensEnabled !== 'object') {
+            currentPlayer.fairyConfig.gardensEnabled = {};
+          }
+          currentPlayer.fairyConfig.gardensEnabled[String(newGi)] = false;
+          currentPlayer.fairyConfig.gardensEnabled[newGi] = false;
+        } catch (_) {}
       } else break;
     }
   },
