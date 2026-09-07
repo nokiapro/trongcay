@@ -3509,11 +3509,19 @@ const Game = {
       ? Math.max(1, Math.min(999, parseInt(cfg.count, 10) || 1))
       : 99999;
     let n = 0;
+    let miss = 0;
     for (let i = 0; i < plots.length && n < limit; i++) {
       const plot = plots[i];
       if (!plot || plot.plantId) continue;
-      if (this._nycPlantOneAt(plot, cfg, t, gi)) n++;
-      else break; 
+      // Hết loại trên → _nycPlantOneAt tự chọn loại tiếp trong plantList
+      if (this._nycPlantOneAt(plot, cfg, t, gi)) {
+        n++;
+        miss = 0;
+      } else {
+        // Không trồng được ô này (hết mọi loại trong list) → dừng sớm
+        miss++;
+        if (miss >= 1) break;
+      }
     }
     return n;
   },
@@ -4276,36 +4284,23 @@ const Game = {
     }
 
     const cfg = this.getNycConfigForGarden(gIdx);
-    if (cfg.plantId) {
-      const kind = cfg.seedKind === 'myth' ? 'myth' : (cfg.seedKind === 'star' ? 'star' : 'normal');
-      const seeds = (currentPlayer.inventory && currentPlayer.inventory.seeds) || {};
-      const stars = (currentPlayer.inventory && currentPlayer.inventory.seedsStar) || {};
-      const myths = (currentPlayer.inventory && currentPlayer.inventory.seedsMyth) || {};
-      const have = kind === 'myth' ? (myths[cfg.plantId] || 0) : (kind === 'star' ? (stars[cfg.plantId] || 0) : (seeds[cfg.plantId] || 0));
-      if (have > 0) {
-        const empty = [];
-        plots.forEach((p, i) => { if (!p.plantId) empty.push(i); });
-        let want = cfg.mode === 'count' ? Math.min(cfg.count || 1, empty.length, have) : Math.min(empty.length, have);
-        if (want > 0) {
-          // plantMultiple dùng currentPlayer.plots — tạm gắn rồi trả lại vườn đang xem
-          const prevActive = currentPlayer.activeGarden;
-          const prevPlots = currentPlayer.plots;
-          currentPlayer.activeGarden = gIdx;
-          currentPlayer.plots = plots;
-          try {
-            const res = await this.plantMultiple(cfg.plantId, want, kind, now);
-            if (res.ok) {
-              const m = (res.msg || '').match(/(\d+)/);
-              planted = m ? parseInt(m[1], 10) : want;
-            }
-          } finally {
-            currentPlayer.gardens[gIdx] = currentPlayer.plots;
-            currentPlayer.activeGarden = prevActive;
-            currentPlayer.plots = (Array.isArray(currentPlayer.gardens[prevActive])
-              ? currentPlayer.gardens[prevActive]
-              : prevPlots);
-          }
+    // Trồng theo plantList ưu tiên: hết loại trên → trồng loại tiếp ngay (không chờ)
+    const hasPlantCfg = (cfg.plantList && cfg.plantList.length) || cfg.plantId;
+    if (hasPlantCfg) {
+      const prevActive = currentPlayer.activeGarden;
+      const prevPlots = currentPlayer.plots;
+      currentPlayer.activeGarden = gIdx;
+      currentPlayer.plots = plots;
+      try {
+        planted = this._nycPlantEmptiesAt(plots, cfg, now, gIdx) || 0;
+      } finally {
+        if (Array.isArray(currentPlayer.gardens)) {
+          currentPlayer.gardens[gIdx] = currentPlayer.plots;
         }
+        currentPlayer.activeGarden = prevActive;
+        currentPlayer.plots = (Array.isArray(currentPlayer.gardens) && Array.isArray(currentPlayer.gardens[prevActive])
+          ? currentPlayer.gardens[prevActive]
+          : prevPlots);
       }
     } else if (harvested > 0) {
       await savePlayer();
