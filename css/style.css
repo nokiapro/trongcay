@@ -9654,3 +9654,71 @@ body.nav-more-visible .nav-more-item {
   z-index: 5;
   cursor: pointer !important;
 }
+
+
+/* ========== Modal plot: gọn info, bỏ nền đen nút (v1.9.156) ========== */
+#modal-plot .modal-content {
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 16px 48px rgba(20, 30, 50, 0.16) !important;
+  backdrop-filter: blur(24px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+  color: #111318 !important;
+}
+html[data-theme="dark"] #modal-plot .modal-content,
+body.dark #modal-plot .modal-content {
+  background: rgba(44, 44, 46, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 20px 56px rgba(0, 0, 0, 0.45) !important;
+  color: #f5f6fa !important;
+}
+
+/* Khối thông tin phía trên: không khung lồng, gộp vào modal */
+#modal-plot #plot-detail,
+#modal-plot .plot-detail-card,
+#modal-plot #plot-detail .plot-detail-card {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+  margin: 0 0 8px !important;
+}
+#modal-plot #plot-detail p,
+#modal-plot .plot-detail-card p {
+  margin-bottom: 6px !important;
+}
+
+/* Ô nâng cấp: nền rất nhẹ, không đen */
+#modal-plot .plot-upgrade-box {
+  background: rgba(34, 197, 94, 0.08) !important;
+  border: 1px solid rgba(34, 197, 94, 0.18) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-radius: 16px !important;
+  padding: 12px !important;
+  margin-top: 8px !important;
+}
+html[data-theme="dark"] #modal-plot .plot-upgrade-box,
+body.dark #modal-plot .plot-upgrade-box {
+  background: rgba(34, 197, 94, 0.1) !important;
+  border: 1px solid rgba(34, 197, 94, 0.22) !important;
+}
+
+/* Hàng nút Nhổ bỏ / Đóng: không nền đen phía dưới */
+#modal-plot .modal-actions {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 8px 0 0 !important;
+  margin: 8px 0 0 !important;
+}
+#modal-plot .modal-actions::before,
+#modal-plot .modal-actions::after {
+  display: none !important;
+  content: none !important;
+}
