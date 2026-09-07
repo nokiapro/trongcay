@@ -1703,3 +1703,21 @@ html[data-theme="dark"] #mail-target-label {
 .admin-main {
   box-sizing: border-box;
 }
+
+/* Liquid Glass Pro sync for admin v1.9.149 */
+.admin-body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto Condensed, sans-serif;
+}
+.admin-dashboard,
+.admin-main {
+  background: transparent !important;
+}
+.admin-login {
+  background: transparent !important;
+}
+.admin-menu-btn {
+  background: var(--lg-glass2, rgba(255,255,255,.68)) !important;
+  border: 1px solid var(--lg-stroke, rgba(255,255,255,.72)) !important;
+  color: var(--lg-text, #111) !important;
+  backdrop-filter: blur(20px);
+}
