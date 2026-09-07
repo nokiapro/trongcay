@@ -609,6 +609,62 @@ function openFairyConfigModal() {
   syncFairyConfigFormVisibility();
   document.getElementById('modal-fairy-config')?.classList.add('show');
 }
+function openRobotConfigModal() {
+  if (!currentPlayer) return;
+  if (!(Game.hasRobot && Game.hasRobot())) {
+    if (typeof showToast === 'function') showToast('Người máy chỉ do admin cấp quyền!', 'error');
+    return;
+  }
+  const cfg = Game.getRobotConfig();
+  const nameInp = document.getElementById('robot-custom-name');
+  if (nameInp) nameInp.value = cfg.customName || '';
+  const g = cfg.gender === 'male' ? 'male' : 'female';
+  const gEl = document.querySelector('input[name="robot-gender"][value="' + g + '"]');
+  if (gEl) gEl.checked = true;
+  const buyFairy = cfg.buyFairySeeds !== false;
+  const bfOn = document.querySelector('input[name="robot-buy-fairy"][value="1"]');
+  const bfOff = document.querySelector('input[name="robot-buy-fairy"][value="0"]');
+  if (buyFairy) { if (bfOn) bfOn.checked = true; }
+  else { if (bfOff) bfOff.checked = true; }
+  const buyProt = cfg.buyProtect !== false;
+  const bpOn = document.querySelector('input[name="robot-buy-protect"][value="1"]');
+  const bpOff = document.querySelector('input[name="robot-buy-protect"][value="0"]');
+  if (buyProt) { if (bpOn) bpOn.checked = true; }
+  else { if (bpOff) bpOff.checked = true; }
+  const buyAny = cfg.buyAnySeeds === true;
+  const baOn = document.querySelector('input[name="robot-buy-any"][value="1"]');
+  const baOff = document.querySelector('input[name="robot-buy-any"][value="0"]');
+  if (buyAny) { if (baOn) baOn.checked = true; }
+  else { if (baOff) baOff.checked = true; }
+  document.getElementById('modal-robot-config')?.classList.add('show');
+}
+
+function bindRobotConfigUI() {
+  document.getElementById('btn-save-robot-config')?.addEventListener('click', async () => {
+    const res = Game.setRobotConfig({
+      customName: (document.getElementById('robot-custom-name')?.value || '').trim().slice(0, 20),
+      gender: document.querySelector('input[name="robot-gender"]:checked')?.value || 'female',
+      buyFairySeeds: document.querySelector('input[name="robot-buy-fairy"]:checked')?.value !== '0',
+      buyProtect: document.querySelector('input[name="robot-buy-protect"]:checked')?.value !== '0',
+      buyAnySeeds: document.querySelector('input[name="robot-buy-any"]:checked')?.value === '1'
+    });
+    if (res.ok) {
+      // Đồng bộ tên/giới tính với field hồ sơ nếu đang mở
+      const pName = document.getElementById('profile-robot-name');
+      if (pName) pName.value = (document.getElementById('robot-custom-name')?.value || '').trim().slice(0, 20);
+      const pg = document.querySelector('input[name="robot-gender"]:checked')?.value || 'female';
+      const pGen = document.querySelector('input[name="profile-robot-gender"][value="' + pg + '"]');
+      if (pGen) pGen.checked = true;
+      await savePlayer();
+      showToast(res.msg, 'success');
+      if (typeof refreshSupportMenuStatus === 'function') refreshSupportMenuStatus();
+      document.getElementById('modal-robot-config')?.classList.remove('show');
+    } else {
+      showToast(res.msg || 'Lỗi lưu', 'error');
+    }
+  });
+}
+
 
 function bindFairyConfigUI() {
   document.getElementById('btn-fairy-config')?.addEventListener('click', (e) => {
@@ -2824,15 +2880,7 @@ document.getElementById('btn-harvest-all')?.addEventListener('click', () => {
       if (typeof showToast === 'function') showToast('Người máy chỉ do admin cấp quyền!', 'error');
       return;
     }
-    // Đổi tên trong hồ sơ Tôi
-    const pageBtn = document.querySelector('.nav-btn[data-page="profile"]');
-    if (pageBtn) pageBtn.click();
-    else if (typeof showPage === 'function') showPage('profile');
-    setTimeout(() => {
-      const el = document.getElementById('profile-robot-name');
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
-    }, 200);
-    if (typeof showToast === 'function') showToast('Đặt tên Người máy trong hồ sơ Tôi', 'info');
+    if (typeof openRobotConfigModal === 'function') openRobotConfigModal();
   });
 })();
 
@@ -4559,36 +4607,23 @@ function renderActivityPage() {
 }
 
 
-/** Sau 0h00 GMT+7: xóa activity ngày cũ trên client + Firebase (player hiện tại) */
-let _activityMidnightTimer = null;
+/**
+ * Log activity: xóa dần từng dòng đã quá 24 giờ (rolling).
+ * Không còn xóa hàng loạt lúc 0h00 GMT+7 (tránh lỗi nửa đêm).
+ * scheduleActivityMidnightPrune giữ tên để login cũ gọi được — chỉ bật interval.
+ */
+let _activityPruneInterval = null;
 function scheduleActivityMidnightPrune() {
-  if (_activityMidnightTimer) {
-    try { clearTimeout(_activityMidnightTimer); } catch (_) {}
-    _activityMidnightTimer = null;
-  }
-  if (typeof msUntilNextGmt7Midnight !== 'function') return;
-  const wait = msUntilNextGmt7Midnight();
-  _activityMidnightTimer = setTimeout(async () => {
-    try {
-      if (currentPlayer && typeof pruneCurrentPlayerActivity === 'function') {
-        const changed = pruneCurrentPlayerActivity();
-        if (changed && typeof savePlayer === 'function') {
-          await savePlayer({ silent: true, action: 'activity-day-reset' });
-        }
-        if (typeof renderActivityPage === 'function') renderActivityPage();
-      }
-    } catch (e) {
-      console.warn('activity midnight prune', e);
-    }
-    scheduleActivityMidnightPrune();
-  }, wait);
+  // Không hẹn 0h00 nữa — prune rolling do interval bên dưới
+  if (_activityPruneInterval) return;
+  _activityPruneInterval = true; // flag: interval đã gắn ở dưới
 }
-// Kiểm tra định kỳ (tab ngủ / lệch giờ)
+// Mỗi phút: bỏ log > 24h (xóa dần, không đợi nửa đêm)
 setInterval(() => {
   try {
     if (!currentPlayer || typeof pruneCurrentPlayerActivity !== 'function') return;
     if (pruneCurrentPlayerActivity() && typeof savePlayer === 'function') {
-      savePlayer({ silent: true, action: 'activity-day-reset' }).catch(() => {});
+      savePlayer({ silent: true, action: 'activity-24h-prune' }).catch(() => {});
       if (typeof renderActivityPage === 'function') {
         const page = document.getElementById('page-activity');
         if (page && page.classList.contains('active')) renderActivityPage();
@@ -4731,6 +4766,7 @@ document.querySelectorAll('.modal').forEach(modal => {
 
 if (typeof bindNycConfigUI === 'function') bindNycConfigUI();
 if (typeof bindFairyConfigUI === 'function') bindFairyConfigUI();
+if (typeof bindRobotConfigUI === 'function') bindRobotConfigUI();
 
 
 function applyTheme(mode) {

@@ -8417,15 +8417,31 @@ html[data-theme="dark"] .chat-messages {
 }
 
 
-/* Người máy decor */
+/* Người máy decor — đi quanh vườn như helper/tiên */
 .garden-decor-robot,
 .garden-decor-robot.garden-roamer {
   filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.85));
   z-index: 6;
+  font-size: 1.65rem;
+  will-change: transform;
+  animation-name: roam-path-1;
+  animation-duration: 16s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-delay: var(--delay, 0s);
 }
-.garden-decor-robot[data-path="1"] { animation-duration: 14s; }
-.garden-decor-robot[data-path="2"] { animation-duration: 17s; }
-.garden-decor-robot[data-path="3"] { animation-duration: 12s; }
+.garden-decor-robot[data-path="1"] {
+  animation-name: roam-path-1;
+  animation-duration: 14s;
+}
+.garden-decor-robot[data-path="2"] {
+  animation-name: roam-path-2;
+  animation-duration: 17s;
+}
+.garden-decor-robot[data-path="3"] {
+  animation-name: roam-path-3;
+  animation-duration: 12s;
+}
 .buff-card.robot-card {
   background: linear-gradient(135deg, rgba(14,165,233,0.10), rgba(56,189,248,0.16));
   border-color: transparent;

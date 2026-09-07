@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 
-const APP_VERSION = '1.9.133';
+const APP_VERSION = '1.9.138';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13484,12 +13484,19 @@ function msUntilNextGmt7Midnight(nowMsVal) {
   return Math.max(500, next - now + 50);
 }
 
+/** Giữ log tối đa 24 giờ (rolling) — không xóa hàng loạt lúc 0h00 */
+const ACTIVITY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
 /**
- * Chỉ giữ activity trong ngày GMT+7 hiện tại.
+ * Xóa dần activity đã quá 24 giờ (theo timestamp a.t).
+ * Không phụ thuộc mốc 0h00 → tránh lỗi reset nửa đêm.
  * @returns {{ list: Array, removed: number, changed: boolean }}
  */
-function pruneActivityToToday(list, nowMsVal) {
-  const dayStart = getGmt7DayStartMs(nowMsVal);
+function pruneActivityOlderThan24h(list, nowMsVal) {
+  const now = (typeof nowMsVal === 'number' && nowMsVal > 0)
+    ? nowMsVal
+    : ((typeof nowMs === 'function') ? nowMs() : Date.now());
+  const cutoff = now - ACTIVITY_MAX_AGE_MS;
   if (!Array.isArray(list) || !list.length) {
     return { list: Array.isArray(list) ? list : [], removed: 0, changed: false };
   }
@@ -13499,25 +13506,32 @@ function pruneActivityToToday(list, nowMsVal) {
     if (!a || typeof a !== 'object') continue;
     let ts = Number(a.t);
     if (!Number.isFinite(ts) || ts <= 0) {
-      // cố parse chuỗi time (vi-VN / ISO)
       if (a.time) {
         const p = Date.parse(String(a.time));
         if (Number.isFinite(p)) ts = p;
       }
     }
-    // Không có timestamp đáng tin → coi là cũ, bỏ (tránh giữ log ngày qua)
-    if (!Number.isFinite(ts) || ts <= 0) continue;
-    if (ts >= dayStart) kept.push(a);
+    // Không có timestamp → giữ tạm (tránh xóa nhầm), sẽ bị cắt bởi limit độ dài
+    if (!Number.isFinite(ts) || ts <= 0) {
+      kept.push(a);
+      continue;
+    }
+    if (ts >= cutoff) kept.push(a);
   }
   const removed = list.length - kept.length;
   return { list: kept, removed, changed: removed > 0 };
 }
 
-/** Áp dụng prune lên currentPlayer.activity; trả về true nếu có xóa */
+/** Alias cũ — gọi rolling 24h (tương thích admin / chỗ gọi cũ) */
+function pruneActivityToToday(list, nowMsVal) {
+  return pruneActivityOlderThan24h(list, nowMsVal);
+}
+
+/** Áp dụng prune rolling 24h lên currentPlayer.activity; trả về true nếu có xóa */
 function pruneCurrentPlayerActivity(opts) {
   opts = opts || {};
   if (!currentPlayer) return false;
-  const r = pruneActivityToToday(currentPlayer.activity || [], opts.now);
+  const r = pruneActivityOlderThan24h(currentPlayer.activity || [], opts.now);
   if (r.changed || !Array.isArray(currentPlayer.activity)) {
     currentPlayer.activity = r.list;
     if (r.changed) {
@@ -14112,7 +14126,7 @@ async function loadPlayer(uid, email) {
     }
     if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
 
-    // Hoạt động gần đây: chỉ giữ trong ngày (GMT+7), xóa log ngày cũ
+    // Hoạt động gần đây: xóa dần log đã quá 24 giờ (không xóa lúc 0h00)
     try {
       if (pruneCurrentPlayerActivity()) {
         _playerDirty = true;
