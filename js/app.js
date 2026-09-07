@@ -4990,12 +4990,15 @@ if (typeof bindRobotConfigUI === 'function') bindRobotConfigUI();
 
 function applyTheme(mode) {
   const root = document.documentElement;
-  if (mode === 'dark') {
+  const isDark = mode === 'dark';
+  if (isDark) {
     root.setAttribute('data-theme', 'dark');
+    document.body.classList.add('dark');
     const ic = document.getElementById('theme-icon');
     if (ic) ic.className = 'fa-solid fa-sun';
   } else {
     root.removeAttribute('data-theme');
+    document.body.classList.remove('dark');
     const ic = document.getElementById('theme-icon');
     if (ic) ic.className = 'fa-solid fa-moon';
   }

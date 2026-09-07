@@ -8866,44 +8866,155 @@ html[data-theme="dark"] .nav-more-item.active i {
 }
 
 
-/* ========== iOS glass light/dark (v1.9.146) ========== */
+
+
+/* ========== Liquid Glass iOS 26 (from ok.html) v1.9.148 ========== */
 :root {
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-bg-strong: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.55);
-  --glass-shadow: 0 8px 32px rgba(15, 40, 30, 0.1);
-  --glass-blur: 20px;
+  --lg-bg: #eef3f8;
+  --lg-text: #111318;
+  --lg-text-secondary: #68707c;
+  --lg-glass: rgba(255, 255, 255, 0.52);
+  --lg-glass-strong: rgba(255, 255, 255, 0.72);
+  --lg-glass-border: rgba(255, 255, 255, 0.75);
+  --lg-shadow:
+    0 20px 60px rgba(31, 41, 55, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  --lg-accent: #007aff;
+  --lg-accent-2: #5e5ce6;
+  --lg-radius: 28px;
+
+  /* Map into app tokens */
+  --bg-main: var(--lg-bg);
+  --bg-card: var(--lg-glass-strong);
+  --text-main: var(--lg-text);
+  --text-muted: var(--lg-text-secondary);
+  --border-color: var(--lg-glass-border);
+  --input-bg: rgba(255, 255, 255, 0.55);
+  --card: var(--lg-glass-strong);
+  --surface: rgba(255, 255, 255, 0.35);
+  --surface-2: rgba(255, 255, 255, 0.5);
+  --shadow-card: var(--lg-shadow);
+  --shadow: var(--lg-shadow);
+  --glass-bg: var(--lg-glass);
+  --glass-bg-strong: var(--lg-glass-strong);
+  --glass-border: var(--lg-glass-border);
+  --glass-shadow: var(--lg-shadow);
+  --glass-blur: 35px;
   --glass-sat: 180%;
-  --chrome-bg: rgba(255, 255, 255, 0.65);
-  --chrome-border: rgba(255, 255, 255, 0.45);
+  --chrome-bg: var(--lg-glass-strong);
+  --chrome-border: var(--lg-glass-border);
 }
 
-html[data-theme="dark"] {
-  --glass-bg: rgba(28, 28, 30, 0.55);
-  --glass-bg-strong: rgba(28, 28, 30, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-  --chrome-bg: rgba(22, 28, 26, 0.72);
-  --chrome-border: rgba(255, 255, 255, 0.08);
-  --bg-main: #0b1411;
-  --bg-card: rgba(28, 36, 32, 0.72);
-  --text-main: #f2fbf6;
-  --text-muted: #9dbeb0;
-  --border-color: rgba(255, 255, 255, 0.1);
+html[data-theme="dark"],
+body.dark {
+  --lg-bg: #080a0f;
+  --lg-text: #f5f7fb;
+  --lg-text-secondary: #9aa1ad;
+  --lg-glass: rgba(25, 28, 36, 0.55);
+  --lg-glass-strong: rgba(35, 39, 49, 0.72);
+  --lg-glass-border: rgba(255, 255, 255, 0.14);
+  --lg-shadow:
+    0 25px 70px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  --bg-main: var(--lg-bg);
+  --bg-card: var(--lg-glass-strong);
+  --text-main: var(--lg-text);
+  --text-muted: var(--lg-text-secondary);
+  --border-color: var(--lg-glass-border);
   --input-bg: rgba(255, 255, 255, 0.06);
+  --card: var(--lg-glass-strong);
   --surface: rgba(255, 255, 255, 0.06);
   --surface-2: rgba(255, 255, 255, 0.1);
+  --shadow-card: var(--lg-shadow);
+  --shadow: var(--lg-shadow);
+  --glass-bg: var(--lg-glass);
+  --glass-bg-strong: var(--lg-glass-strong);
+  --glass-border: var(--lg-glass-border);
+  --glass-shadow: var(--lg-shadow);
+  --chrome-bg: var(--lg-glass-strong);
+  --chrome-border: var(--lg-glass-border);
 }
 
 html {
-  transition: background-color 0.35s ease, color 0.35s ease;
+  scroll-behavior: smooth;
+  transition: background-color 0.5s ease, color 0.5s ease;
 }
 
 body {
-  transition: background-color 0.35s ease, color 0.35s ease, background-image 0.45s ease;
+  min-height: 100vh;
+  color: var(--lg-text);
+  background: var(--lg-bg) !important;
+  background-image: none !important;
+  overflow-x: hidden;
+  transition: background 0.5s ease, color 0.5s ease;
 }
 
-.glass,
+/* Background orbs */
+.liquid-bg {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.liquid-bg .orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.65;
+  animation: liquidFloat 12s ease-in-out infinite;
+  will-change: transform;
+}
+
+.liquid-bg .orb.one {
+  width: 420px;
+  height: 420px;
+  background: #72a8ff;
+  top: -120px;
+  left: -80px;
+}
+
+.liquid-bg .orb.two {
+  width: 360px;
+  height: 360px;
+  background: #c084fc;
+  right: -100px;
+  top: 20%;
+  animation-delay: -4s;
+}
+
+.liquid-bg .orb.three {
+  width: 400px;
+  height: 400px;
+  background: #60e1c8;
+  bottom: -180px;
+  left: 35%;
+  animation-delay: -8s;
+}
+
+html[data-theme="dark"] .liquid-bg .orb,
+body.dark .liquid-bg .orb {
+  opacity: 0.25;
+}
+
+@keyframes liquidFloat {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(30px, -25px, 0) scale(1.08); }
+}
+
+/* Core glass utility */
+.glass {
+  background: var(--lg-glass);
+  border: 1px solid var(--lg-glass-border);
+  backdrop-filter: blur(35px) saturate(180%);
+  -webkit-backdrop-filter: blur(35px) saturate(180%);
+  box-shadow: var(--lg-shadow);
+  transition: background 0.5s ease, border 0.5s ease, box-shadow 0.5s ease;
+}
+
+/* Apply liquid glass to main chrome */
 .header,
 .modal-content,
 .login-card,
@@ -8918,104 +9029,95 @@ body {
 .inv-card,
 .garden-switcher,
 .weather,
-.garden-cycle-chip {
-  background: var(--glass-bg-strong) !important;
-  backdrop-filter: saturate(var(--glass-sat)) blur(var(--glass-blur));
-  -webkit-backdrop-filter: saturate(var(--glass-sat)) blur(var(--glass-blur));
-  border: 1px solid var(--glass-border) !important;
-  box-shadow: var(--glass-shadow);
+.garden-cycle-chip,
+.auth-loading-card,
+.bottom-nav .nav-dock,
+.nav-more-sheet-inner,
+.update-banner-inner,
+.server-announce {
+  background: var(--lg-glass) !important;
+  border: 1px solid var(--lg-glass-border) !important;
+  backdrop-filter: blur(35px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(35px) saturate(180%) !important;
+  box-shadow: var(--lg-shadow) !important;
+  transition: background 0.5s ease, border 0.5s ease, box-shadow 0.5s ease, color 0.5s ease;
 }
 
 .header {
-  background: var(--chrome-bg) !important;
-  border-bottom: 1px solid var(--chrome-border) !important;
-  backdrop-filter: saturate(180%) blur(24px) !important;
-  -webkit-backdrop-filter: saturate(180%) blur(24px) !important;
+  background: var(--lg-glass-strong) !important;
+  border-radius: 0 !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-top: none !important;
 }
 
-html[data-theme="dark"] .header {
-  background: rgba(12, 18, 16, 0.72) !important;
-  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+.modal-content,
+.login-card,
+.card-panel {
+  border-radius: var(--lg-radius) !important;
 }
 
 .modal {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  background: rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  background: rgba(15, 20, 30, 0.28) !important;
+  transition: background 0.4s ease;
 }
-html[data-theme="dark"] .modal {
+html[data-theme="dark"] .modal,
+body.dark .modal {
   background: rgba(0, 0, 0, 0.45) !important;
 }
 
-.modal-content {
-  border-radius: 22px !important;
+/* Buttons glass secondary feel */
+.btn-secondary,
+.btn-icon {
+  background: var(--lg-glass-strong) !important;
+  border: 1px solid var(--lg-glass-border) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: var(--lg-text) !important;
+  transition: transform 0.25s ease, background 0.35s ease;
+}
+.btn-icon:hover { transform: scale(1.06); }
+.btn-icon:active { transform: scale(0.94); }
+
+.btn-primary {
+  background: linear-gradient(135deg, #007aff, #5e5ce6) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 12px 30px rgba(0, 122, 255, 0.25) !important;
 }
 
-/* Nav dock already glass — strengthen */
-.bottom-nav .nav-dock {
-  background: var(--glass-bg-strong) !important;
-  border: 1px solid var(--glass-border) !important;
-  box-shadow: var(--glass-shadow) !important;
-  backdrop-filter: saturate(180%) blur(24px) !important;
-  -webkit-backdrop-filter: saturate(180%) blur(24px) !important;
+/* Plot cards softer glass */
+.plot {
+  background: var(--lg-glass) !important;
+  border: 1px solid var(--lg-glass-border) !important;
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: var(--lg-shadow);
 }
 
-.nav-more-sheet-inner {
-  background: var(--glass-bg-strong) !important;
-  border: 1px solid var(--glass-border) !important;
-  box-shadow: var(--glass-shadow) !important;
+/* Dark overrides that conflicted with old green theme */
+html[data-theme="dark"] body,
+body.dark {
+  background: var(--lg-bg) !important;
+  color: var(--lg-text) !important;
 }
 
-/* Drag reorder visual */
-.nav-btn.nav-dragging,
-.nav-more-item.nav-dragging {
-  opacity: 0.95 !important;
-  transform: scale(1.12) !important;
-  z-index: 5;
-  box-shadow: 0 10px 28px rgba(0,0,0,0.22);
-  transition: none !important;
-  animation: none !important;
-}
-.nav-btn.nav-drag-over,
-.nav-more-item.nav-drag-over {
-  outline: 2px dashed var(--primary);
-  outline-offset: 2px;
-}
-.nav-dock.nav-edit-mode .nav-btn[data-page] {
-  animation: navJiggle 0.35s ease-in-out infinite alternate;
-}
-.nav-more-grid.nav-edit-mode .nav-more-item {
-  animation: navJiggle 0.35s ease-in-out infinite alternate;
-}
-@keyframes navJiggle {
-  from { transform: rotate(-1.2deg); }
-  to { transform: rotate(1.2deg); }
-}
-.nav-btn.nav-dragging,
-.nav-more-item.nav-dragging,
-.nav-dock.nav-edit-mode .nav-btn.nav-dragging,
-.nav-more-grid.nav-edit-mode .nav-more-item.nav-dragging {
-  animation: none !important;
+html[data-theme="dark"] .header,
+body.dark .header {
+  background: var(--lg-glass-strong) !important;
+  border-bottom-color: var(--lg-glass-border) !important;
 }
 
-.nav-edit-hint {
-  position: fixed;
-  left: 50%;
-  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
-  z-index: 180;
-  padding: 8px 14px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-main);
-  background: var(--glass-bg-strong);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: var(--glass-shadow);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
+html[data-theme="dark"] .bottom-nav .nav-dock,
+body.dark .bottom-nav .nav-dock {
+  background: var(--lg-glass-strong) !important;
 }
-.nav-edit-hint.show { opacity: 1; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .liquid-bg .orb {
+    animation: none !important;
+  }
+}
