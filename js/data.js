@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 
-const APP_VERSION = '1.9.142';
+const APP_VERSION = '1.9.143';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,

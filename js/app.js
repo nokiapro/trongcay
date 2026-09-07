@@ -2279,9 +2279,9 @@ function renderGarden() {
           : (isStar ? `<span class="plot-badge-star" title="Hạt sao">⭐</span>` : '');
 
         const remain = Game.getRemainingSeconds(plot);
-        // Khi còn ≤ 10s: ẩn timer trên ô (đếm ngược hiện ở nút cạnh Hỗ trợ, tránh nhảy layout)
+        // Luôn hiện timer trên ô (kể cả ≤10s)
         const timerHtml = !ready
-          ? `<div class="plot-timer" data-role="timer"${remain > 0 && remain <= 10 ? ' hidden' : ''}><i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}</div>`
+          ? `<div class="plot-timer" data-role="timer"><i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}</div>`
           : '';
         div.innerHTML = `
           <div class="plot-badges"><span class="plot-badge-left">${waterBadge}${starBadge}</span><span class="plot-badge-right">${fertBadge}</span></div>
@@ -4877,11 +4877,9 @@ function softUpdateGarden() {
 }
 function softUpdateGardenUI() {
   if (!currentPlayer) return;
-  // Đang chạy NYC care — chỉ cập nhật nút đếm ngược, không đụng grid vườn đang xem
-  if (typeof Game !== 'undefined' && Game._nycBusy) {
-    if (typeof updateHarvestCountdownButton === 'function') updateHarvestCountdownButton();
-    return;
-  }
+  // Luôn cập nhật nút đếm ngược (kể cả lúc NYC busy)
+  if (typeof updateHarvestCountdownButton === 'function') updateHarvestCountdownButton();
+  // NYC busy: vẫn cập nhật timer/progress trên ô, chỉ tránh renderGarden full (nhảy vườn)
   const gardenPage = document.getElementById('page-garden');
   if (gardenPage && !gardenPage.classList.contains('active')) return;
   const plots = Array.isArray(currentPlayer.plots) ? currentPlayer.plots : Object.values(currentPlayer.plots || {});
@@ -4911,16 +4909,9 @@ function softUpdateGardenUI() {
         if (statusEl && statusEl.nextSibling) el.insertBefore(tm, statusEl.nextSibling);
         else el.appendChild(tm);
       }
-      // Khi còn ≤ 10s: không cập nhật số giây trên ô (tránh nhảy layout) — đếm ngược hiện ở nút cạnh Hỗ trợ
-      if (remain > 10) {
-        tm.innerHTML = `<i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}`;
-        tm.hidden = false;
-      } else if (remain > 0) {
-        tm.hidden = true;
-      } else {
-        tm.innerHTML = `<i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}`;
-        tm.hidden = false;
-      }
+      // Luôn hiện đếm ngược trên ô (kể cả ≤10s) — nút cạnh Hỗ trợ chỉ là phụ
+      tm.innerHTML = `<i class="fa-regular fa-clock"></i> ${Game.formatTime(remain)}`;
+      tm.hidden = false;
     } else if (tm) {
       tm.remove();
     }
