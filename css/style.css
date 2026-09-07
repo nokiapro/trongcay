@@ -9300,3 +9300,102 @@ body.dark {
   .orb { animation: none !important; }
   * { transition: none !important; }
 }
+
+
+/* ========== Fix colors v1.9.150 ========== */
+/* Version badge — rõ trên header sáng/tối */
+.app-version-badge {
+  margin-left: 8px !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  color: #15803d !important;
+  background: rgba(34, 197, 94, 0.18) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  padding: 2px 8px !important;
+  border-radius: 999px !important;
+  vertical-align: middle !important;
+}
+html[data-theme="dark"] .app-version-badge,
+body.dark .app-version-badge {
+  color: #86efac !important;
+  background: rgba(34, 197, 94, 0.2) !important;
+  border-color: rgba(134, 239, 172, 0.35) !important;
+}
+
+/* Tên hạt trên ô — đọc rõ trên nền kính sáng/tối */
+.plot-name {
+  color: #14532d !important;
+  text-shadow: none !important;
+  font-weight: 700 !important;
+}
+.plot.plot-normal .plot-name {
+  color: #166534 !important;
+}
+.plot.plot-star .plot-name {
+  color: #a16207 !important;
+  text-shadow: 0 0 4px rgba(251, 191, 36, 0.25) !important;
+}
+.plot.plot-myth .plot-name {
+  color: #6b21a8 !important;
+  text-shadow: 0 0 4px rgba(168, 85, 247, 0.2) !important;
+}
+html[data-theme="dark"] .plot-name,
+body.dark .plot-name {
+  color: #ecfdf5 !important;
+}
+html[data-theme="dark"] .plot.plot-normal .plot-name,
+body.dark .plot.plot-normal .plot-name {
+  color: #bbf7d0 !important;
+}
+html[data-theme="dark"] .plot.plot-star .plot-name,
+body.dark .plot.plot-star .plot-name {
+  color: #fde68a !important;
+}
+html[data-theme="dark"] .plot.plot-myth .plot-name,
+body.dark .plot.plot-myth .plot-name {
+  color: #e9d5ff !important;
+}
+
+/* Bỏ nền kính/trắng ở chip toolbar vườn (Sau mưa, Phân bón, timer, switcher wrapper) */
+.garden-controls-main .weather,
+.garden-controls-main .fertilizer-info,
+.garden-controls-main .garden-cycle-chip,
+.garden-controls-main #btn-global-timer,
+.weather,
+.fertilizer-info,
+.garden-cycle-chip,
+#btn-global-timer {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: var(--lg-text, #14532d) !important;
+}
+html[data-theme="dark"] .garden-controls-main .weather,
+html[data-theme="dark"] .garden-controls-main .fertilizer-info,
+html[data-theme="dark"] .garden-controls-main .garden-cycle-chip,
+html[data-theme="dark"] .garden-controls-main #btn-global-timer,
+html[data-theme="dark"] .weather,
+html[data-theme="dark"] .fertilizer-info,
+html[data-theme="dark"] .garden-cycle-chip,
+html[data-theme="dark"] #btn-global-timer,
+body.dark .weather,
+body.dark .fertilizer-info,
+body.dark .garden-cycle-chip,
+body.dark #btn-global-timer {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--lg-text, #f5f6fa) !important;
+}
+
+/* Wrapper garden-switcher không nền */
+.garden-switcher,
+#garden-switcher {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
