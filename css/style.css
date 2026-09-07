@@ -9356,7 +9356,7 @@ body.dark .plot.plot-myth .plot-name {
   color: #e9d5ff !important;
 }
 
-/* Bỏ nền kính/trắng ở chip toolbar vườn (Sau mưa, Phân bón, timer, switcher wrapper) */
+/* Khôi phục nền pill 3 chip: Sau mưa / Phân bón / timer */
 .garden-controls-main .weather,
 .garden-controls-main .fertilizer-info,
 .garden-controls-main .garden-cycle-chip,
@@ -9365,12 +9365,17 @@ body.dark .plot.plot-myth .plot-name {
 .fertilizer-info,
 .garden-cycle-chip,
 #btn-global-timer {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  color: var(--lg-text, #14532d) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 2px 10px rgba(20, 30, 50, 0.08) !important;
+  backdrop-filter: blur(12px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(160%) !important;
+  color: #1c1c1e !important;
+  border-radius: 999px !important;
+}
+.garden-controls-main .fertilizer-info,
+.fertilizer-info {
+  color: #7c3aed !important;
 }
 html[data-theme="dark"] .garden-controls-main .weather,
 html[data-theme="dark"] .garden-controls-main .fertilizer-info,
@@ -9384,13 +9389,18 @@ body.dark .weather,
 body.dark .fertilizer-info,
 body.dark .garden-cycle-chip,
 body.dark #btn-global-timer {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  color: var(--lg-text, #f5f6fa) !important;
+  background: rgba(44, 44, 46, 0.88) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35) !important;
+  color: #f5f5f7 !important;
+}
+html[data-theme="dark"] .fertilizer-info,
+html[data-theme="dark"] .garden-controls-main .fertilizer-info,
+body.dark .fertilizer-info {
+  color: #c4b5fd !important;
 }
 
-/* Wrapper garden-switcher không nền */
+/* Wrapper garden-switcher vẫn trong suốt */
 .garden-switcher,
 #garden-switcher {
   background: transparent !important;
@@ -9398,4 +9408,70 @@ body.dark #btn-global-timer {
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+/* Auth loading — Liquid Glass sáng/tối */
+.auth-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf1f6 !important;
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(34, 197, 94, .14), transparent 32%),
+    radial-gradient(circle at 90% 30%, rgba(22, 163, 74, .12), transparent 30%),
+    radial-gradient(circle at 50% 100%, rgba(52, 199, 89, .10), transparent 35%) !important;
+  transition: background .5s ease;
+}
+html[data-theme="dark"] .auth-loading,
+body.dark .auth-loading {
+  background: #080a0f !important;
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(34, 197, 94, .10), transparent 28%),
+    radial-gradient(circle at 90% 30%, rgba(22, 163, 74, .10), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(52, 199, 89, .06), transparent 35%) !important;
+}
+.auth-loading-card {
+  text-align: center;
+  color: #111318 !important;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 28px 36px;
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.35), rgba(255,255,255,.1)),
+    rgba(255, 255, 255, .55) !important;
+  border: 1px solid rgba(255, 255, 255, .72) !important;
+  backdrop-filter: blur(38px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(38px) saturate(180%) !important;
+  box-shadow:
+    0 25px 80px rgba(20, 30, 50, .14),
+    inset 0 1px 0 rgba(255, 255, 255, .9) !important;
+}
+html[data-theme="dark"] .auth-loading-card,
+body.dark .auth-loading-card {
+  color: #f5f6fa !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.02)),
+    rgba(35, 39, 49, .68) !important;
+  border: 1px solid rgba(255, 255, 255, .13) !important;
+  box-shadow:
+    0 30px 100px rgba(0, 0, 0, .5),
+    inset 0 1px 0 rgba(255, 255, 255, .08) !important;
+}
+.auth-loading-card i {
+  font-size: 2rem;
+  margin-bottom: 12px;
+  display: block;
+  color: #22c55e !important;
+}
+html[data-theme="dark"] .auth-loading-card i,
+body.dark .auth-loading-card i {
+  color: #4ade80 !important;
+}
+.auth-loading-card p {
+  color: inherit !important;
+  margin: 0;
 }
