@@ -364,7 +364,7 @@
       <section id="page-activity" class="page">
         <div class="page-header">
           <h1><i class="fa-solid fa-clock-rotate-left"></i> HOẠT ĐỘNG HÔM NAY</h1>
-        <p class="page-sub" style="margin:4px 0 0;font-size:0.9rem;color:#64748b">Tóm tắt theo vườn · Tiên · NYC · Robot (GMT+7)</p>
+        <p class="page-sub" style="margin:4px 0 0;font-size:0.9rem;color:#64748b">Bấm vào dòng để xem chi tiết</p>
         </div>
         <div class="activity-section">
           <ul id="activity-list" class="activity-list"></ul>
@@ -904,6 +904,16 @@
         <button id="btn-save-robot-config" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Lưu</button>
         <button class="btn btn-secondary modal-close">Đóng</button>
       </div>
+    </div>
+  </div>
+
+  <div id="modal-activity-detail" class="modal">
+    <div class="modal-content modal-activity-content">
+      <div class="activity-detail-head">
+        <h2 id="activity-detail-title"><i class="fa-solid fa-clock-rotate-left"></i> Chi tiết</h2>
+        <button type="button" class="btn btn-secondary modal-close" id="btn-close-activity-detail">Đóng</button>
+      </div>
+      <div id="activity-detail-body" class="activity-detail-body"></div>
     </div>
   </div>
 
