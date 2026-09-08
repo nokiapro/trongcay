@@ -56,25 +56,31 @@ function updateUserUI() {
   updateDailyBtn();
 }
 
+function updateLoginStreakUI() {
+  const el = document.getElementById('profile-streak');
+  const countEl = document.getElementById('profile-streak-count');
+  if (!el || !countEl) return;
+  if (typeof Game === 'undefined' || !Game.getLoginStreak) {
+    el.style.display = 'none';
+    return;
+  }
+  const s = Game.getLoginStreak() || 0;
+  const max = (Game.getMaxLoginStreak && Game.getMaxLoginStreak()) || 0;
+  if (s > 0) {
+    el.style.display = 'inline-flex';
+    countEl.textContent = String(s);
+    el.title = 'Chuỗi đăng nhập: ' + s + ' ngày' + (max > s ? ' · Kỷ lục ' + max + ' ngày' : '');
+  } else {
+    el.style.display = 'none';
+  }
+}
+
 function updateDailyBtn() {
   const btn = document.getElementById('btn-daily');
-  if (btn) {
+  if (btn && typeof Game !== 'undefined' && Game.hasClaimedDaily) {
     btn.style.display = Game.hasClaimedDaily() ? 'none' : 'inline-flex';
   }
-  // Badge streak luôn hiện nếu có chuỗi
-  const badge = document.getElementById('login-streak-badge');
-  const countEl = document.getElementById('login-streak-count');
-  if (badge && countEl && typeof Game !== 'undefined' && Game.getLoginStreak) {
-    const s = Game.getLoginStreak() || 0;
-    const max = (Game.getMaxLoginStreak && Game.getMaxLoginStreak()) || 0;
-    if (s > 0) {
-      badge.style.display = 'inline-flex';
-      countEl.textContent = String(s);
-      badge.title = 'Chuỗi đăng nhập: ' + s + ' ngày' + (max > s ? ' (kỷ lục ' + max + ')' : '');
-    } else {
-      badge.style.display = 'none';
-    }
-  }
+  updateLoginStreakUI();
 }
 
 function showRainEffect() {
@@ -1716,6 +1722,7 @@ function applyProfileAvatarFrame() {
 
 function renderProfile() {
   if (currentPlayer && typeof updateProfileLevelTag === "function") updateProfileLevelTag(currentPlayer.level || 1);
+  if (typeof updateLoginStreakUI === 'function') updateLoginStreakUI();
   if (!currentUser || !currentPlayer) return;
   document.getElementById('profile-uid').textContent = currentUser.uid;
   document.getElementById('profile-name').value = getDisplayName();

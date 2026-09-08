@@ -143,14 +143,9 @@
           <div>
             <h1><i class="fa-duotone fa-trees"></i> VƯỜN CỦA TÔI</h1>
           </div>
-          <div class="daily-streak-wrap">
-            <button id="btn-daily" class="btn btn-warning">
-              <i class="fa-solid fa-gift"></i> Thưởng ngày
-            </button>
-            <span id="login-streak-badge" class="login-streak-badge" title="Chuỗi đăng nhập" style="display:none">
-              <i class="fa-solid fa-fire"></i> <strong id="login-streak-count">0</strong>
-            </span>
-          </div>
+          <button id="btn-daily" class="btn btn-warning">
+            <i class="fa-solid fa-gift"></i> Thưởng ngày
+          </button>
         </div>
         <div class="garden-controls">
           <div class="garden-controls-main">
@@ -491,6 +486,11 @@
               <div id="profile-avatar-fallback" class="profile-avatar-fallback"><i class="fa-solid fa-user"></i></div>
             </div>
             <div id="profile-level-tag" class="tree-level-tag profile-level-under-avatar tier-tree-1">LEVEL <span id="profile-level-num">1</span></div>
+            <div id="profile-streak" class="profile-streak" title="Chuỗi đăng nhập" style="display:none">
+              <i class="fa-solid fa-fire"></i>
+              <span id="profile-streak-count">0</span>
+              <span class="profile-streak-label">ngày</span>
+            </div>
           </div>
           <div class="profile-field">
             <label>Tên hiển thị</label>

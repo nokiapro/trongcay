@@ -5677,42 +5677,13 @@ const Game = {
     return lines;
   },
 
+  /**
+   * addActivity: giữ API cũ để không vỡ call site.
+   * Nhật ký thật = dayStats (trackDayStat) → trang Hoạt động (buildDayLogLines).
+   * Không ghi text log / không toast.
+   */
   addActivity(text, meta) {
-    if (!currentPlayer) return;
-    // Hệ thống mới: ưu tiên thống kê ngày, không spam text log
-    const type = (meta && meta.type) ? String(meta.type) : '';
-    const msg = String(text || '');
-
-    // Map một số type cũ → trackDayStat
-    try {
-      if (type === 'rain' || type === 'fairy_rain' || type === 'robot_rain') {
-        this.trackDayStat('rain', { count: 1 });
-      }
-      if (type === 'helper_buy') {
-        // text dạng: "Giúp việc mua: ... (−123🪙)" — cố gắng parse cost
-        const costM = msg.match(/−([\d.,]+)\s*🪙|-\s*([\d.,]+)\s*🪙/);
-        const cost = costM ? Number(String(costM[1] || costM[2]).replace(/\./g, '').replace(/,/g, '')) : 0;
-        this.trackDayStat('helper_buy', { qty: 1, cost: cost || 0 });
-      }
-      if (type === 'robot_cook') {
-        this.trackDayStat('robot_cook', { name: 'món', qty: 1 });
-      }
-      if (type === 'offline' || type === 'offline_detail') {
-        if (meta && meta.offlineMs) this.trackDayStat('offline', { ms: meta.offlineMs });
-      }
-      if (type === 'fairy_care') {
-        // không parse chi tiết — caller nên gọi trackDayStat trực tiếp
-      }
-    } catch (_) {}
-
-    // Không còn lưu hàng trăm dòng text. Chỉ giữ activity rỗng / tối thiểu.
-    if (!currentPlayer.activity) currentPlayer.activity = [];
-    // Giới hạn: không push log thường nữa
-    if (currentPlayer.activity.length > 5) {
-      currentPlayer.activity = currentPlayer.activity.slice(0, 5);
-    }
-
-    // Refresh UI nhật ký nếu đang mở
+    // no-op: thống kê qua trackDayStat ở các điểm quan trọng
     if (typeof renderActivityPage === 'function') {
       try {
         const page = document.getElementById('page-activity');

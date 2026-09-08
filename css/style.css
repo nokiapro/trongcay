@@ -10073,3 +10073,27 @@ html[data-theme="dark"] .admin-topbar {
   color: #64748b;
   list-style: none;
 }
+
+
+/* Streak trên hồ sơ (Tôi) */
+.profile-streak {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+.profile-streak i { font-size: 0.95em; }
+.profile-streak-label { font-weight: 600; opacity: 0.95; }
+.profile-avatar-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
