@@ -2699,7 +2699,7 @@ const Game = {
 
           const growSec = this.getEffectiveGrowTime(plot, t);
           // force=true để không bỏ sót khi isReadyAt lệch nhẹ
-          const r = this._nycHarvestOneAt(plot, t, gi, cfg, canReplant && !!cfg.plantId, true, true);
+          const r = this._nycHarvestOneAt(plot, t, gi, cfg, canReplant && !!((cfg.plantList && cfg.plantList.length) || cfg.plantId), true, true);
           if (r && r.harvested) {
             recordHarvestStat(r, gi + ':' + i, growSec);
             // Sau replant: ép tưới để vòng sau tính đúng growSec ngắn
@@ -2947,7 +2947,7 @@ const Game = {
 
               // Đảm bảo có cây để bắt đầu chuỗi
               if (!plot.plantId) {
-                if (!(canReplant && cfg.plantId && this._nycPlantOneAt(plot, cfg, from, gi))) continue;
+                if (!(canReplant && ((cfg.plantList && cfg.plantList.length) || cfg.plantId) && this._nycPlantOneAt(plot, cfg, from, gi))) continue;
               }
 
               plot.waterCount = 3;
@@ -3004,7 +3004,7 @@ const Game = {
 
                 // Có cây?
                 if (!plot.plantId) {
-                  if (!(canReplant && cfg.plantId && this._nycPlantOneAt(plot, cfg, harvestT - growMs, gi))) break;
+                  if (!(canReplant && ((cfg.plantList && cfg.plantList.length) || cfg.plantId) && this._nycPlantOneAt(plot, cfg, harvestT - growMs, gi))) break;
                 }
 
                 // Chỉ chỉnh plantedAt về đúng mốc chín của vòng này (không reset tùy tiện)
@@ -3015,7 +3015,7 @@ const Game = {
 
                 let r = null;
                 try {
-                  r = this._nycHarvestOneAt(plot, harvestT, gi, cfg, canReplant && !!cfg.plantId, true, true);
+                  r = this._nycHarvestOneAt(plot, harvestT, gi, cfg, canReplant && !!((cfg.plantList && cfg.plantList.length) || cfg.plantId), true, true);
                 } catch (e) {
                   console.warn('math harvest', gi, i, c, e);
                   break;
@@ -3043,7 +3043,7 @@ const Game = {
                   plot.seedStar = false;
     plot.seedMyth = false;
                   const fake = { harvested: 1, planted: 0, amount, plantName, plantId: hid, seedStar: wasStar };
-                  if (canReplant && cfg.plantId && this._nycPlantOneAt(plot, cfg, harvestT, gi)) {
+                  if (canReplant && ((cfg.plantList && cfg.plantList.length) || cfg.plantId) && this._nycPlantOneAt(plot, cfg, harvestT, gi)) {
                     fake.planted = 1;
                   }
                   recordHarvestStat(fake, gi + ':' + i, growSec);
@@ -3055,7 +3055,7 @@ const Game = {
                 // Chuẩn bị vòng sau
                 if (c < plotCycles - 1) {
                   if (!plot.plantId) {
-                    if (!(canReplant && cfg.plantId && this._nycPlantOneAt(plot, cfg, harvestT, gi))) break;
+                    if (!(canReplant && ((cfg.plantList && cfg.plantList.length) || cfg.plantId) && this._nycPlantOneAt(plot, cfg, harvestT, gi))) break;
                   }
                   if (plot.plantId) {
                     plot.plantedAt = harvestT;
@@ -3857,8 +3857,8 @@ const Game = {
     if (typeof c.cookNormal !== 'boolean') c.cookNormal = true;
     if (typeof c.cookStar !== 'boolean') c.cookStar = false;
     if (typeof c.cookMyth !== 'boolean') c.cookMyth = false;
-    if (!Number.isFinite(Number(c.cookTargetQty)) || Number(c.cookTargetQty) < 1) c.cookTargetQty = 10;
-    else c.cookTargetQty = Math.max(1, Math.min(999999, Math.floor(Number(c.cookTargetQty))));
+    if (!Number.isFinite(Number(c.cookTargetQty))) c.cookTargetQty = 10;
+    else c.cookTargetQty = Math.max(0, Math.floor(Number(c.cookTargetQty))); // 0 = không giới hạn
     return c;
   },
   setRobotConfig(cfg) {
@@ -3875,7 +3875,7 @@ const Game = {
       cookNormal: cfg && typeof cfg.cookNormal === 'boolean' ? cfg.cookNormal : (prev.cookNormal !== false),
       cookStar: cfg && typeof cfg.cookStar === 'boolean' ? cfg.cookStar : !!prev.cookStar,
       cookMyth: cfg && typeof cfg.cookMyth === 'boolean' ? cfg.cookMyth : !!prev.cookMyth,
-      cookTargetQty: Number.isFinite(tq) && tq >= 1 ? Math.min(999999, tq) : 10
+      cookTargetQty: Number.isFinite(tq) && tq >= 0 ? tq : 10
     };
     return { ok: true, msg: 'Đã lưu Người máy' };
   },
@@ -4124,7 +4124,10 @@ const Game = {
     if (!this.isRobotActive() || !currentPlayer) return { ok: false, cooked: 0 };
     const cfg = this.getRobotConfig();
     if (!cfg.cookEnabled) return { ok: true, cooked: 0, skipped: true };
-    const target = Math.max(1, Math.min(999999, Math.floor(Number(cfg.cookTargetQty) || 10)));
+    const rawTarget = Math.floor(Number(cfg.cookTargetQty));
+    // 0 hoặc âm = không giới hạn (nấu đến hết nguyên liệu)
+    const unlimitedCook = !Number.isFinite(rawTarget) || rawTarget <= 0;
+    const target = unlimitedCook ? Number.MAX_SAFE_INTEGER : rawTarget;
     const tiers = [];
     if (cfg.cookNormal !== false) tiers.push('normal');
     if (cfg.cookStar === true) tiers.push('star');
@@ -4150,9 +4153,9 @@ const Game = {
         const harvest = inv[bagKey] || (inv[bagKey] = {});
         if (!inv[dishKey]) inv[dishKey] = {};
         const haveDish = Number(inv[dishKey][recipe.id]) || 0;
-        if (haveDish >= target) continue; // đã đủ mức người chơi đặt
+        if (!unlimitedCook && haveDish >= target) continue; // đã đủ mức người chơi đặt
 
-        let maxTimes = target - haveDish;
+        let maxTimes = unlimitedCook ? 1e12 : (target - haveDish);
         for (const ing of recipe.ingredients) {
           const need = Math.max(1, Number(ing.qty) || 1);
           const have = Number(harvest[ing.plantId]) || 0;
@@ -4180,7 +4183,7 @@ const Game = {
     const silent = opts && opts.silent;
     if (!silent && cooked > 0) {
       const name = this.getRobotDisplayName ? this.getRobotDisplayName() : 'Người máy';
-      this.addActivity(name + ' nấu: ' + lines.join(', ') + (cooked > 0 ? ' (tới mức ' + target + ')' : ''), { type: 'robot_cook' });
+      this.addActivity(name + ' nấu: ' + lines.join(', ') + (cooked > 0 ? (unlimitedCook ? ' (không giới hạn)' : (' (tới mức ' + target + ')')) : ''), { type: 'robot_cook' });
     }
     return { ok: true, cooked, lines, target };
   },
@@ -4459,14 +4462,23 @@ const Game = {
     }
     if (!this.isNycGardenEnabled(gIdx)) return false;
     const cfg = this.getNycConfigForGarden(gIdx);
-    if (!cfg.plantId) return false;
-    const kind = cfg.seedKind === 'myth' ? 'myth' : (cfg.seedKind === 'star' ? 'star' : 'normal');
+    const candidates = (cfg.plantList && cfg.plantList.length)
+      ? cfg.plantList
+      : (cfg.plantId ? [{ plantId: cfg.plantId, seedKind: cfg.seedKind || 'normal' }] : []);
+    if (!candidates.length) return false;
+    if (!list.some(p => p && !p.plantId)) return false;
+    // Có ít nhất 1 loại trong danh sách còn hạt (hoặc unlimited) → cần trồng
+    if (this.isUnlimitedResources && this.isUnlimitedResources()) return true;
     const seeds = (currentPlayer.inventory && currentPlayer.inventory.seeds) || {};
     const stars = (currentPlayer.inventory && currentPlayer.inventory.seedsStar) || {};
     const myths = (currentPlayer.inventory && currentPlayer.inventory.seedsMyth) || {};
-    const have = kind === 'myth' ? (myths[cfg.plantId] || 0) : (kind === 'star' ? (stars[cfg.plantId] || 0) : (seeds[cfg.plantId] || 0));
-    if (have < 1) return false;
-    return list.some(p => p && !p.plantId);
+    for (const c of candidates) {
+      if (!c || !c.plantId) continue;
+      const kind = c.seedKind === 'myth' ? 'myth' : (c.seedKind === 'star' ? 'star' : 'normal');
+      const bag = kind === 'myth' ? myths : (kind === 'star' ? stars : seeds);
+      if ((Number(bag[c.plantId]) || 0) >= 1) return true;
+    }
+    return false;
   },
 
   nycHasWork() {

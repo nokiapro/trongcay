@@ -663,7 +663,7 @@ function openRobotConfigModal() {
   const elCM = document.getElementById('robot-cook-myth');
   if (elCM) elCM.checked = cfg.cookMyth === true;
   const elTQ = document.getElementById('robot-cook-target');
-  if (elTQ) elTQ.value = String(Math.max(1, Math.floor(Number(cfg.cookTargetQty) || 10)));
+  if (elTQ) elTQ.value = String(Math.max(0, Math.floor(Number(cfg.cookTargetQty) || 0)));
   document.getElementById('modal-robot-config')?.classList.add('show');
 }
 
@@ -679,7 +679,7 @@ function bindRobotConfigUI() {
       cookNormal: !!document.getElementById('robot-cook-normal')?.checked,
       cookStar: !!document.getElementById('robot-cook-star')?.checked,
       cookMyth: !!document.getElementById('robot-cook-myth')?.checked,
-      cookTargetQty: Math.max(1, Math.floor(Number(document.getElementById('robot-cook-target')?.value) || 10))
+      cookTargetQty: Math.max(0, Math.floor(Number(document.getElementById('robot-cook-target')?.value) || 0))
     });
     if (res.ok) {
       // Đồng bộ tên/giới tính với field hồ sơ nếu đang mở
