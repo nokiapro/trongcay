@@ -4587,8 +4587,16 @@ select.pill-dd-native {
   white-space: nowrap !important;
 }
 
-/* Dòng riêng dưới toolbar: mọi vườn trên 1 hàng (không wrap) */
+/* Đếm 10s: neo absolute — không chiếm chỗ, không đẩy vườn lên/xuống */
+.garden-controls {
+  position: relative;
+}
 .harvest-countdown-host {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 35;
   display: flex;
   flex-wrap: nowrap;
   gap: 6px;
@@ -4596,19 +4604,28 @@ select.pill-dd-native {
   justify-content: center;
   width: 100%;
   max-width: 100%;
-  margin: 8px 0 0;
+  margin: 0;
   padding: 0 4px;
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
+  pointer-events: none; /* host không chặn click vườn */
+}
+.harvest-countdown-host .btn-boost-countdown {
+  pointer-events: auto; /* nút vẫn bấm được nếu cần */
 }
 .harvest-countdown-host:empty,
 .harvest-countdown-host[hidden] {
   display: none !important;
   margin: 0;
   padding: 0;
+}
+/* garden-stage không bị đè nặng: countdown chỉ 1 hàng nhỏ phía trên grid */
+.garden-stage {
+  position: relative;
+  z-index: 1;
 }
 
 /* Nút đếm ngược 10s khi cây sắp chín — mỗi vườn 1 nút, cùng 1 dòng */
@@ -9883,3 +9900,5 @@ html[data-theme="dark"] .admin-topbar {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+/* v1.9.162 harvest countdown no layout shift */
