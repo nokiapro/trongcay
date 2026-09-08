@@ -14196,13 +14196,9 @@ async function loadPlayer(uid, email) {
     if (typeof currentPlayer.loginStreak !== 'number') currentPlayer.loginStreak = 0;
     if (typeof currentPlayer.maxLoginStreak !== 'number') currentPlayer.maxLoginStreak = 0;
     if (currentPlayer.lastLoginDay == null) currentPlayer.lastLoginDay = null;
-    // Nhật ký mới: xóa text log cũ, dùng dayStats
-    if (!currentPlayer.dayStats || !currentPlayer.dayStats.dayKey) {
-      currentPlayer.activity = [];
-    } else if (Array.isArray(currentPlayer.activity) && currentPlayer.activity.length > 10) {
-      // Dọn log text dài cũ
-      currentPlayer.activity = [];
-    }
+    if (!Array.isArray(currentPlayer.activityLogs)) currentPlayer.activityLogs = [];
+    // Giữ activity text cũ để tương thích, không dùng để render
+    if (!Array.isArray(currentPlayer.activity)) currentPlayer.activity = [];
     if (!currentPlayer.inventory.protects) currentPlayer.inventory.protects = {};
     if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
     if (typeof currentPlayer.fairyUntil !== 'number') currentPlayer.fairyUntil = 0;

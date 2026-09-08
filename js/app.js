@@ -4848,19 +4848,163 @@ function activityFaIcon(text, type) {
   if (t === 'helper') return 'fa-solid fa-user-check';
   if (t === 'robot') return 'fa-solid fa-robot';
   if (t === 'offline') return 'fa-solid fa-bolt';
-  if (t === 'levelup') return 'fa-solid fa-star';
+  if (t === 'level' || t === 'levelup') return 'fa-solid fa-star';
   if (t === 'rain') return 'fa-solid fa-cloud-rain';
-  if (t === 'daily') return 'fa-solid fa-gift';
+  if (t === 'reward' || t === 'daily') return 'fa-solid fa-gift';
   return 'fa-solid fa-circle-dot';
 }
+
+function formatActivityDetailHtml(log) {
+  if (!log) return '<p>Không có dữ liệu.</p>';
+  const d = log.detail || {};
+  const type = log.type;
+  let html = '';
+
+  if (type === 'offline') {
+    html += '<div class="ad-block"><div class="ad-label">Thời gian offline</div><div class="ad-value">' +
+      (d.durationText || log.summary?.duration || '—') + '</div></div>';
+    if (d.garden) {
+      html += '<div class="ad-block"><div class="ad-label">🌱 Vườn</div><ul class="ad-list">';
+      html += '<li>Thu hoạch: ' + (d.garden.harvested || 0) + ' ô</li>';
+      html += '<li>Sản phẩm: +' + (d.garden.product || 0) + ' SP</li>';
+      html += '<li>Trồng lại: ' + (d.garden.replanted || 0) + ' ô</li>';
+      html += '</ul></div>';
+    }
+    if (d.nyc && (d.nyc.gardens || d.nyc.cells)) {
+      html += '<div class="ad-block"><div class="ad-label">❤️ NYC</div><ul class="ad-list">';
+      html += '<li>Số vườn xử lý: ' + (d.nyc.gardens || 0) + '</li>';
+      html += '<li>Số ô xử lý: ' + (d.nyc.cells || 0) + '</li>';
+      html += '</ul></div>';
+    }
+    if (d.robot) {
+      html += '<div class="ad-block"><div class="ad-label">🤖 Robot</div><ul class="ad-list">';
+      html += '<li>Mua hạt: ' + (d.robot.seedsBought || 0) + '</li>';
+      html += '<li>Nấu: ' + (d.robot.cooked || 0) + '</li>';
+      html += '<li>Ghép ⭐: ' + (d.robot.starMerged || 0) + '</li>';
+      html += '<li>Ghép ✨: ' + (d.robot.mythicMerged || 0) + '</li>';
+      html += '</ul></div>';
+    }
+    if (d.fairy) {
+      html += '<div class="ad-block"><div class="ad-label">🧚 Tiên</div><ul class="ad-list">';
+      html += '<li>Tưới: ' + (d.fairy.watered || 0) + ' ô</li>';
+      html += '<li>Nhặt hạt mưa: ' + (d.fairy.rainSeeds || 0) + '</li>';
+      html += '</ul></div>';
+    }
+    if (d.xp) html += '<div class="ad-block"><div class="ad-label">⭐ XP</div><div class="ad-value">+' + Number(d.xp).toLocaleString() + ' XP</div></div>';
+    if (d.rainHits) html += '<div class="ad-block"><div class="ad-label">🌧️ Mưa</div><div class="ad-value">' + d.rainHits + ' trận</div></div>';
+    return html || '<p>Không có chi tiết offline.</p>';
+  }
+
+  if (type === 'garden') {
+    html += '<ul class="ad-list">';
+    html += '<li>Trồng: ' + (d.planted || 0) + ' ô (' + (d.plantActions || 0) + ' lượt)</li>';
+    html += '<li>Thu hoạch: ' + (d.harvestYield || 0) + ' SP · ' + (d.plotsHarvested || 0) + ' ô (' + (d.harvestCycles || 0) + ' lần)</li>';
+    html += '<li>Trồng lại: ' + (d.replanted || 0) + ' ô</li>';
+    html += '</ul>';
+    return html;
+  }
+
+  if (type === 'nyc') {
+    html += '<ul class="ad-list">';
+    html += '<li>Số vườn: ' + (d.gardens || 0) + '</li>';
+    html += '<li>Số ô: ' + (d.plots || 0) + '</li>';
+    html += '<li>Thu: ' + (d.harvestYield || 0) + ' SP</li>';
+    html += '</ul>';
+    if (d.byGarden && typeof d.byGarden === 'object') {
+      html += '<div class="ad-label" style="margin-top:10px">Chi tiết từng vườn</div><ul class="ad-list">';
+      Object.keys(d.byGarden).forEach(name => {
+        const g = d.byGarden[name] || {};
+        html += '<li><strong>' + name + '</strong>: ' + (g.plots || 0) + ' ô · +' + (g.yield || 0) + ' SP</li>';
+      });
+      html += '</ul>';
+    }
+    return html;
+  }
+
+  if (type === 'robot') {
+    html += '<ul class="ad-list">';
+    html += '<li>Tổng hạt mua: ' + (d.seedTotal || 0) + '</li>';
+    if (d.seedsBought) {
+      Object.keys(d.seedsBought).forEach(nm => {
+        html += '<li>Hạt ' + nm + ': ×' + d.seedsBought[nm] + '</li>';
+      });
+    }
+    if (d.seedCost) html += '<li>Chi phí: −' + Number(d.seedCost).toLocaleString() + '🪙</li>';
+    html += '<li>Nấu: ' + (d.cookCount || 0) + ' món</li>';
+    if (d.cooked) {
+      Object.keys(d.cooked).forEach(nm => {
+        html += '<li>Món ' + nm + ': ×' + d.cooked[nm] + '</li>';
+      });
+    }
+    html += '<li>Ghép ⭐: ' + (d.starMerged || 0) + '</li>';
+    html += '<li>Ghép ✨: ' + (d.mythicMerged || 0) + '</li>';
+    html += '</ul>';
+    return html;
+  }
+
+  if (type === 'fairy') {
+    html += '<ul class="ad-list">';
+    html += '<li>Vườn tưới: ' + (d.gardensWatered || 0) + '</li>';
+    html += '<li>Tưới ô: ' + (d.watered || 0) + '</li>';
+    html += '<li>Bón: ' + (d.fertActions || 0) + ' lần</li>';
+    html += '<li>Nhặt hạt mưa: ' + (d.rainSeeds || 0) + '</li>';
+    html += '</ul>';
+    return html;
+  }
+
+  if (type === 'helper') {
+    html += '<ul class="ad-list">';
+    html += '<li>Phân mua: ' + (d.fertBought || 0) + '</li>';
+    html += '<li>Chi tiêu: −' + Number(d.spent || 0).toLocaleString() + '🪙</li>';
+    html += '</ul>';
+    return html;
+  }
+
+  if (type === 'level') {
+    html += '<ul class="ad-list">';
+    (d.steps || []).forEach(s => { html += '<li>' + s + '</li>'; });
+    html += '</ul>';
+    return html;
+  }
+
+  if (type === 'rain') {
+    return '<ul class="ad-list"><li>Số trận: ' + (d.rainCount || 0) + '</li><li>Hạt nhặt: ' + (d.rainSeeds || 0) + '</li></ul>';
+  }
+
+  if (type === 'reward') {
+    return '<ul class="ad-list"><li>Xu: +' + Number(d.coins || 0).toLocaleString() + '🪙</li><li>Streak: ' + (d.streak || 0) + '🔥</li></ul>';
+  }
+
+  // generic
+  return '<pre class="ad-pre">' + JSON.stringify(d, null, 2) + '</pre>';
+}
+
+function openActivityDetail(logId) {
+  const log = (typeof Game !== 'undefined' && Game.getActivityLogById)
+    ? Game.getActivityLogById(logId)
+    : null;
+  const modal = document.getElementById('modal-activity-detail');
+  const title = document.getElementById('activity-detail-title');
+  const body = document.getElementById('activity-detail-body');
+  if (!modal || !body) return;
+  const icon = activityFaIcon('', log?.type);
+  const t = (log && log.summary && log.summary.title) ? log.summary.title : 'Chi tiết';
+  if (title) title.innerHTML = '<i class="' + icon + '"></i> ' + t;
+  body.innerHTML = formatActivityDetailHtml(log);
+  modal.classList.add('show');
+}
+
+
+document.getElementById('btn-close-activity-detail')?.addEventListener('click', () => {
+  document.getElementById('modal-activity-detail')?.classList.remove('show');
+});
+document.getElementById('modal-activity-detail')?.addEventListener('click', (e) => {
+  if (e.target.id === 'modal-activity-detail') e.currentTarget.classList.remove('show');
+});
 
 function renderActivityPage() {
   const actList = document.getElementById('activity-list');
   if (!actList || !currentPlayer) return;
-
-  try {
-    if (typeof Game !== 'undefined' && Game.ensureDayStats) Game.ensureDayStats();
-  } catch (_) {}
 
   const lines = (typeof Game !== 'undefined' && Game.buildDayLogLines)
     ? Game.buildDayLogLines()
@@ -4873,14 +5017,22 @@ function renderActivityPage() {
 
   actList.innerHTML = lines.map(a => {
     const icon = activityFaIcon(a.text, a.type);
-    return `<li class="activity-item activity-summary" data-id="${a.id || ''}">
+    return `<li class="activity-item activity-summary activity-clickable" data-id="${a.id || ''}" role="button" tabindex="0">
       <span class="activity-icon"><i class="${icon}"></i></span>
       <div class="activity-body">
         <div class="activity-title"><strong>${a.title || ''}</strong></div>
         <div class="activity-text">${a.text || ''}</div>
       </div>
+      <span class="activity-chevron"><i class="fa-solid fa-chevron-right"></i></span>
     </li>`;
   }).join('');
+
+  actList.querySelectorAll('.activity-clickable').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.getAttribute('data-id');
+      if (id) openActivityDetail(id);
+    });
+  });
 }
 
 
