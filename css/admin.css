@@ -1733,3 +1733,314 @@ html[data-theme="dark"] #mail-target-label {
   color: var(--lg-text, #111) !important;
   backdrop-filter: blur(20px);
 }
+
+
+/* ============================================================
+   Admin bottom nav (giống index) + Theme cards responsive
+   ============================================================ */
+
+.admin-bottom-nav {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 320;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(34, 197, 94, 0.2);
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+  justify-content: space-around;
+  align-items: stretch;
+  gap: 2px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.admin-nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 6px 4px;
+  border-radius: 12px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.admin-nav-btn i {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.admin-nav-btn.active,
+.admin-nav-btn:hover {
+  color: #166534;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.admin-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 330;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.admin-nav-more-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 340;
+  padding: 0 0 env(safe-area-inset-bottom, 0px);
+  pointer-events: none;
+}
+
+.admin-nav-more-sheet:not([hidden]) {
+  pointer-events: auto;
+}
+
+.admin-nav-more-inner {
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  padding: 10px 16px 20px;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+  max-height: 70vh;
+  overflow: auto;
+}
+
+.admin-nav-more-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 4px;
+  background: #cbd5e1;
+  margin: 4px auto 12px;
+}
+
+.admin-nav-more-title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 12px;
+  color: #14532d;
+}
+
+.admin-nav-more-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.admin-nav-more-item {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 12px 6px;
+  border-radius: 14px;
+  color: #166534;
+}
+
+.admin-nav-more-item i {
+  font-size: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .admin-bottom-nav {
+    display: flex;
+  }
+
+  /* Ẩn sidebar + nút hamburger trên mobile — dùng bottom nav */
+  .admin-menu-btn {
+    display: none !important;
+  }
+  .sidebar {
+    display: none !important;
+  }
+  .admin-backdrop {
+    display: none !important;
+  }
+
+  .admin-main {
+    width: 100% !important;
+    margin-left: 0 !important;
+    padding: 16px 12px calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .admin-topbar {
+    padding-left: 0 !important;
+  }
+}
+
+@media (min-width: 901px) {
+  .admin-bottom-nav,
+  .admin-nav-more-sheet,
+  .admin-nav-backdrop {
+    display: none !important;
+  }
+}
+
+/* Theme global controls */
+.theme-global-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.theme-global-controls .btn {
+  flex: 0 0 auto;
+}
+
+/* Theme cards */
+.themes-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.theme-card {
+  border: 1px solid #d1e0d8;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fff;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.theme-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.theme-card-name {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #14532d;
+}
+
+.theme-card-meta {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.theme-card-meta code {
+  background: #f1f5f9;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.theme-card-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.theme-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.theme-card-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: #52796f;
+  font-weight: 600;
+}
+
+.theme-card-grid input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1e0d8;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.theme-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (min-width: 600px) {
+  .theme-card-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .theme-card-grid label:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .themes-cards {
+    grid-template-columns: 1fr;
+  }
+  .theme-global-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .theme-global-controls .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .admin-nav-more-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Dark mode */
+html[data-theme="dark"] .admin-bottom-nav {
+  background: rgba(15, 23, 42, 0.96);
+  border-top-color: rgba(148, 163, 184, 0.2);
+}
+html[data-theme="dark"] .admin-nav-btn {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .admin-nav-btn.active,
+html[data-theme="dark"] .admin-nav-btn:hover {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.15);
+}
+html[data-theme="dark"] .admin-nav-more-inner {
+  background: #1e293b;
+}
+html[data-theme="dark"] .admin-nav-more-title {
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .admin-nav-more-item {
+  background: #0f172a;
+  border-color: #334155;
+  color: #86efac;
+}
+html[data-theme="dark"] .theme-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+html[data-theme="dark"] .theme-card-name {
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .theme-card-grid input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}

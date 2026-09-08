@@ -10155,3 +10155,15 @@ html[data-theme="dark"] .admin-topbar {
   padding: 10px;
   border-radius: 8px;
 }
+
+
+.toast.warning {
+  background: #d97706;
+  color: #fff;
+}
+.toast.error {
+  max-width: min(92vw, 420px);
+  white-space: normal;
+  line-height: 1.35;
+  padding: 12px 16px;
+}
