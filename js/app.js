@@ -58,8 +58,23 @@ function updateUserUI() {
 
 function updateDailyBtn() {
   const btn = document.getElementById('btn-daily');
-  if (!btn) return;
-  btn.style.display = Game.hasClaimedDaily() ? 'none' : 'inline-flex';
+  if (btn) {
+    btn.style.display = Game.hasClaimedDaily() ? 'none' : 'inline-flex';
+  }
+  // Badge streak luôn hiện nếu có chuỗi
+  const badge = document.getElementById('login-streak-badge');
+  const countEl = document.getElementById('login-streak-count');
+  if (badge && countEl && typeof Game !== 'undefined' && Game.getLoginStreak) {
+    const s = Game.getLoginStreak() || 0;
+    const max = (Game.getMaxLoginStreak && Game.getMaxLoginStreak()) || 0;
+    if (s > 0) {
+      badge.style.display = 'inline-flex';
+      countEl.textContent = String(s);
+      badge.title = 'Chuỗi đăng nhập: ' + s + ' ngày' + (max > s ? ' (kỷ lục ' + max + ')' : '');
+    } else {
+      badge.style.display = 'none';
+    }
+  }
 }
 
 function showRainEffect() {
@@ -830,6 +845,15 @@ auth.onAuthStateChanged(async (user) => {
     try {
       await initGlobalData();
       await loadPlayer(user.uid, user.email);
+      try {
+        if (typeof Game !== 'undefined' && Game.processLoginStreak) {
+          const sr = Game.processLoginStreak();
+          if (sr && sr.changed) {
+            if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
+            else if (typeof savePlayer === 'function') await savePlayer();
+          }
+        }
+      } catch (e) { console.warn('processLoginStreak', e); }
       try { if (typeof scheduleActivityMidnightPrune === 'function') scheduleActivityMidnightPrune(); } catch (_) {}
       if (typeof Features !== 'undefined') {
         const gate = await Features.checkAccessGates();
@@ -871,13 +895,7 @@ auth.onAuthStateChanged(async (user) => {
                 const gp = document.getElementById('page-garden');
                 if (gp && gp.classList.contains('active')) renderGarden();
               }
-              if (typeof showToast === 'function') {
-                const hours = Math.floor((r.offlineMs || 0) / 3600000);
-                const mins = Math.floor(((r.offlineMs || 0) % 3600000) / 60000);
-                const dur = r.offlineText || ((hours ? hours + 'g ' : '') + mins + 'p');
-                const detail = (r.notes && r.notes.length) ? r.notes.join(' · ') : 'xem Nhật ký';
-                showToast('⚡ Bù ' + dur + ': ' + detail, 'success');
-              }
+              // Không toast log offline — xem trang Hoạt động
               if (typeof renderActivityPage === 'function') renderActivityPage();
             }
           }
@@ -890,9 +908,7 @@ auth.onAuthStateChanged(async (user) => {
               if (typeof updateCoins === 'function') updateCoins();
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
               else if (typeof savePlayer === 'function') await savePlayer();
-              if (typeof showToast === 'function' && (mr.starOk || mr.mythOk)) {
-                showToast(((Game.getRobotDisplayName && Game.getRobotDisplayName()) || 'Người máy') + ' rà kho · ghép bùa 100%', 'success');
-              }
+              // không toast robot log
             }
           }
         } catch (e) { console.warn('robotMergeAllBag', e); }
@@ -2031,7 +2047,14 @@ document.getElementById('pref-combo-select')?.addEventListener('change', async (
 document.getElementById('btn-daily').addEventListener('click', async () => {
   const res = await Game.claimDaily();
   showToast(res.msg, res.ok ? 'success' : 'error');
-  if (res.ok) { updateCoins(); updateDailyBtn(); }
+  if (res.ok) {
+    updateCoins();
+    if (typeof Game.totalFertilizerCount === 'function') {
+      const fertEl = document.getElementById('fertilizer-count');
+      if (fertEl) fertEl.textContent = Game.totalFertilizerCount();
+    }
+  }
+  updateDailyBtn();
 });
 
 
@@ -4811,46 +4834,46 @@ function renderStats() {
 
 
 function activityFaIcon(text, type) {
-  const s = String(text || '');
   const t = String(type || '');
-  if (t === 'offline' || s.indexOf('BÙ OFFLINE') >= 0 || s.indexOf('Bù offline') >= 0) return 'fa-solid fa-bolt';
-  if (t === 'offline_detail' || s.indexOf('Tóm tắt:') >= 0) return 'fa-solid fa-circle-info';
-  if (t === 'harvest_offline' || s.indexOf('Thu hoạch') >= 0) return 'fa-solid fa-basket-shopping';
-  if (t === 'fairy_rain' || t === 'rain') return 'fa-solid fa-cloud-rain';
-  if (t === 'robot_rain' || t === 'robot_offline' || t === 'robot_merge' || s.indexOf('Người máy') >= 0) return 'fa-solid fa-circle-dot';
-  if (t === 'helper_buy' || s.indexOf('Giúp việc') >= 0) return 'fa-solid fa-circle-dot';
-  if (t === 'fairy_care') return 'fa-solid fa-circle-dot';
-  if (s.indexOf('Trồng') >= 0 || s.indexOf('trồng lại') >= 0) return 'fa-solid fa-seedling';
-  if (s.indexOf('Tưới') >= 0 || s.indexOf('tưới') >= 0) return 'fa-solid fa-droplet';
-  if (s.indexOf('Bón') >= 0 || s.indexOf('phân') >= 0) return 'fa-solid fa-flask';
-  if (s.indexOf('NYC') >= 0 || s.indexOf('Người yêu') >= 0) return 'fa-solid fa-heart';
-  if (s.indexOf('Mua') >= 0 || s.indexOf('mua') >= 0) return 'fa-solid fa-cart-shopping';
-  if (s.indexOf('Bán') >= 0) return 'fa-solid fa-tags';
-  if (s.indexOf('Lên cấp') >= 0) return 'fa-solid fa-star';
-  if (s.indexOf('Thành tựu') >= 0) return 'fa-solid fa-medal';
-  if (s.indexOf('Ghép') >= 0 || s.indexOf('ghép') >= 0) return 'fa-solid fa-flask-vial';
-  if (s.indexOf('Nhổ') >= 0) return 'fa-solid fa-trash';
-  if (s.indexOf('mưa') >= 0 || s.indexOf('Mưa') >= 0) return 'fa-solid fa-cloud-rain';
-  if (s.indexOf('pet') >= 0 || s.indexOf('Pet') >= 0) return 'fa-solid fa-paw';
-  if (s.indexOf('Admin') >= 0) return 'fa-solid fa-user-shield';
-  if (s.indexOf('thưởng') >= 0 || s.indexOf('Nhận') >= 0) return 'fa-solid fa-gift';
+  if (t === 'garden') return 'fa-solid fa-seedling';
+  if (t === 'fairy') return 'fa-solid fa-wand-magic-sparkles';
+  if (t === 'nyc') return 'fa-solid fa-heart';
+  if (t === 'helper') return 'fa-solid fa-user-check';
+  if (t === 'robot') return 'fa-solid fa-robot';
+  if (t === 'offline') return 'fa-solid fa-bolt';
+  if (t === 'levelup') return 'fa-solid fa-star';
+  if (t === 'rain') return 'fa-solid fa-cloud-rain';
+  if (t === 'daily') return 'fa-solid fa-gift';
   return 'fa-solid fa-circle-dot';
 }
 
 function renderActivityPage() {
   const actList = document.getElementById('activity-list');
   if (!actList || !currentPlayer) return;
-  // Chỉ hiện hoạt động trong ngày (GMT+7)
-  try { if (typeof pruneCurrentPlayerActivity === 'function') pruneCurrentPlayerActivity(); } catch (_) {}
-  const acts = currentPlayer.activity || [];
-  if (!acts.length) {
+
+  try {
+    if (typeof Game !== 'undefined' && Game.ensureDayStats) Game.ensureDayStats();
+  } catch (_) {}
+
+  const lines = (typeof Game !== 'undefined' && Game.buildDayLogLines)
+    ? Game.buildDayLogLines()
+    : [];
+
+  if (!lines.length) {
     actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i> Chưa có hoạt động nào hôm nay.</li>';
-  } else {
-    actList.innerHTML = acts.slice(0, 80).map(a => {
-      const icon = activityFaIcon(a.text, a.type);
-      return '<li><span class="time"><i class="fa-regular fa-clock"></i> ' + (a.time || '') + '</span><span class="act-icon"><i class="' + icon + '"></i></span><span class="act-text">' + (a.text || '') + '</span></li>';
-    }).join('');
+    return;
   }
+
+  actList.innerHTML = lines.map(a => {
+    const icon = activityFaIcon(a.text, a.type);
+    return `<li class="activity-item activity-summary" data-id="${a.id || ''}">
+      <span class="activity-icon"><i class="${icon}"></i></span>
+      <div class="activity-body">
+        <div class="activity-title"><strong>${a.title || ''}</strong></div>
+        <div class="activity-text">${a.text || ''}</div>
+      </div>
+    </li>`;
+  }).join('');
 }
 
 
@@ -5384,7 +5407,7 @@ if (!window.__careVisibilityBound) {
                 const msg = (r.notes && r.notes.length)
                   ? r.notes.join(' · ')
                   : ('Bù offline ' + (r.offlineText || '') + ' — xem Nhật ký');
-                showToast('⚡ ' + (r.offlineText ? r.offlineText + ' · ' : '') + msg, 'success');
+                // không toast offline
               }
               if (typeof renderActivityPage === 'function') renderActivityPage();
             } else if (!r || r.skipped) {

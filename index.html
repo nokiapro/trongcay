@@ -143,9 +143,14 @@
           <div>
             <h1><i class="fa-duotone fa-trees"></i> VƯỜN CỦA TÔI</h1>
           </div>
-          <button id="btn-daily" class="btn btn-warning">
-            <i class="fa-solid fa-gift"></i> Thưởng ngày
-          </button>
+          <div class="daily-streak-wrap">
+            <button id="btn-daily" class="btn btn-warning">
+              <i class="fa-solid fa-gift"></i> Thưởng ngày
+            </button>
+            <span id="login-streak-badge" class="login-streak-badge" title="Chuỗi đăng nhập" style="display:none">
+              <i class="fa-solid fa-fire"></i> <strong id="login-streak-count">0</strong>
+            </span>
+          </div>
         </div>
         <div class="garden-controls">
           <div class="garden-controls-main">
@@ -363,7 +368,8 @@
       
       <section id="page-activity" class="page">
         <div class="page-header">
-          <h1><i class="fa-solid fa-clock-rotate-left"></i> HOẠT ĐỘNG GẦN ĐÂY</h1>
+          <h1><i class="fa-solid fa-clock-rotate-left"></i> HOẠT ĐỘNG HÔM NAY</h1>
+        <p class="page-sub" style="margin:4px 0 0;font-size:0.9rem;color:#64748b">Tóm tắt theo vườn · Tiên · NYC · Robot (GMT+7)</p>
         </div>
         <div class="activity-section">
           <ul id="activity-list" class="activity-list"></ul>
