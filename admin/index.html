@@ -48,6 +48,29 @@
       <a href="../" class="btn-logout" style="text-align:center;text-decoration:none;display:block"><i class="fa-solid fa-arrow-left"></i> Về vườn</a>
     </aside>
 
+    <!-- Bottom nav (mobile) — giống index -->
+    <nav class="admin-bottom-nav" id="admin-bottom-nav" aria-label="Menu admin">
+      <button type="button" class="admin-nav-btn active" data-section="dashboard"><i class="fa-solid fa-chart-pie"></i><span>Tổng quan</span></button>
+      <button type="button" class="admin-nav-btn" data-section="plants"><i class="fa-solid fa-seedling"></i><span>Cây</span></button>
+      <button type="button" class="admin-nav-btn" data-section="users"><i class="fa-solid fa-users"></i><span>User</span></button>
+      <button type="button" class="admin-nav-btn" data-section="giftcodes"><i class="fa-solid fa-ticket"></i><span>Gift</span></button>
+      <button type="button" class="admin-nav-btn" id="admin-nav-more-btn" aria-expanded="false"><i class="fa-solid fa-ellipsis"></i><span>Thêm</span></button>
+    </nav>
+    <div id="admin-nav-backdrop" class="admin-nav-backdrop" hidden></div>
+    <div id="admin-nav-more-sheet" class="admin-nav-more-sheet" role="dialog" aria-label="Menu thêm" hidden>
+      <div class="admin-nav-more-inner">
+        <div class="admin-nav-more-handle" aria-hidden="true"></div>
+        <div class="admin-nav-more-title">Menu Admin</div>
+        <div class="admin-nav-more-grid">
+          <button type="button" class="admin-nav-btn admin-nav-more-item" data-section="settings"><i class="fa-solid fa-gear"></i><span>Cài đặt</span></button>
+          <button type="button" class="admin-nav-btn admin-nav-more-item" data-section="themes"><i class="fa-solid fa-palette"></i><span>Theme</span></button>
+          <button type="button" class="admin-nav-btn admin-nav-more-item" data-section="announce"><i class="fa-solid fa-envelope"></i><span>Thư</span></button>
+          <button type="button" class="admin-nav-btn admin-nav-more-item" data-section="reset"><i class="fa-solid fa-rotate"></i><span>Reset</span></button>
+          <a href="../" class="admin-nav-btn admin-nav-more-item" style="text-decoration:none"><i class="fa-solid fa-arrow-left"></i><span>Về vườn</span></a>
+        </div>
+      </div>
+    </div>
+
     <main class="admin-main">
       <div class="admin-topbar">
         <button id="btn-theme" class="btn btn-secondary btn-sm" title="Đổi giao diện sáng/tối" type="button">
@@ -247,7 +270,7 @@
         <h1>🎨 THEME THEO MÙA & LỄ</h1>
 
         <div class="admin-card" style="margin-bottom:16px">
-          <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+          <div class="theme-global-controls">
             <label class="maint-toggle" style="margin:0">
               <input type="checkbox" id="theme-auto-switch" checked />
               <span>Tự động chuyển theme theo lịch</span>
@@ -275,23 +298,8 @@
           </p>
         </div>
 
-        <div class="admin-card">
-          <div class="table-wrap">
-            <table class="admin-table" id="themes-table">
-              <thead>
-                <tr>
-                  <th>Theme</th>
-                  <th>Loại</th>
-                  <th>Từ ngày</th>
-                  <th>Đến ngày</th>
-                  <th>Priority</th>
-                  <th>Bật</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+        <div class="admin-card theme-list-card">
+          <div id="themes-cards" class="themes-cards"></div>
         </div>
       </section>
 
