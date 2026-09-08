@@ -5253,72 +5253,79 @@ const Game = {
   },
 
   async claimDaily() {
-    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!' };
+    if (!currentPlayer) return { ok: false, msg: 'Chưa đăng nhập!', already: false };
+    try {
+      const streakRes = this.processLoginStreak();
 
-    const streakRes = this.processLoginStreak();
-
-    const today = (typeof gameDateString === 'function') ? gameDateString() : new Date().toDateString();
-    const legacy = new Date().toDateString();
-    if (currentPlayer.lastDaily === today || currentPlayer.lastDaily === legacy) {
-      if (streakRes.changed) {
-        try { await savePlayer(); } catch (_) {}
+      const today = (typeof gameDateString === 'function') ? gameDateString() : new Date().toDateString();
+      const legacy = new Date().toDateString();
+      // Chuẩn hóa lastDaily cũ (toDateString) về gameDateString nếu cùng ngày
+      if (currentPlayer.lastDaily === legacy && today !== legacy) {
+        currentPlayer.lastDaily = today;
       }
+      if (currentPlayer.lastDaily === today || currentPlayer.lastDaily === legacy) {
+        if (streakRes && streakRes.changed) {
+          try { await savePlayer({ silent: true, action: 'streak-sync' }); } catch (_) {}
+        }
+        return {
+          ok: false,
+          already: true,
+          msg: 'Bạn đã nhận thưởng hôm nay rồi! Chuỗi: ' + this.getLoginStreak() + ' ngày 🔥'
+        };
+      }
+
+      const streak = this.getLoginStreak() || 1;
+      const rewardInfo = this.getStreakRewardTable(streak, currentPlayer.level || 1);
+      const reward = Math.max(0, Number(rewardInfo.coins) || 0);
+
+      currentPlayer.coins = (currentPlayer.coins || 0) + reward;
+      currentPlayer.lastDaily = today;
+      currentPlayer.stats = currentPlayer.stats || {};
+      currentPlayer.stats.earned = (currentPlayer.stats.earned || 0) + reward;
+
+      if (!currentPlayer.inventory) currentPlayer.inventory = {};
+      if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
+      currentPlayer.inventory.fertilizers['phan-thuong'] =
+        (currentPlayer.inventory.fertilizers['phan-thuong'] || 0) + (rewardInfo.fertNormal || 2);
+
+      (rewardInfo.fertExtra || []).forEach(f => {
+        if (!f || !f.id) return;
+        currentPlayer.inventory.fertilizers[f.id] =
+          (currentPlayer.inventory.fertilizers[f.id] || 0) + (f.qty || 1);
+      });
+
+      try {
+        this.trackDayStat('daily', { coins: reward, streak: streak });
+      } catch (e) {
+        console.warn('trackDayStat daily', e);
+      }
+
+      const saveRes = await savePlayer({ silent: true, action: 'claim-daily' });
+      if (saveRes && saveRes.ok === false) {
+        // Vẫn báo đã nhận local, nhưng cảnh báo lưu cloud
+        return {
+          ok: true,
+          msg: 'Đã nhận ' + reward.toLocaleString() + '🪙 (streak ' + streak + ') — chưa lưu Firebase: ' + (saveRes.msg || 'lỗi mạng'),
+          streak,
+          coins: reward,
+          saveWarn: true
+        };
+      }
+
+      let msg = 'Streak ' + streak + ' ngày 🔥 · Nhận ' + reward.toLocaleString() + '🪙';
+      msg += ' + ' + (rewardInfo.fertNormal || 2) + ' Phân thường';
+      if ((rewardInfo.fertExtra || []).length) msg += ' + quà mốc!';
+      if (rewardInfo.milestoneText) msg += ' (' + rewardInfo.milestoneText + ')';
+
+      return { ok: true, msg, streak, coins: reward, rewardInfo };
+    } catch (e) {
+      console.error('claimDaily', e);
       return {
         ok: false,
-        msg: 'Bạn đã nhận thưởng hôm nay rồi! Chuỗi: ' + this.getLoginStreak() + ' ngày 🔥'
+        already: false,
+        msg: 'Lỗi nhận thưởng: ' + (e && e.message ? e.message : String(e))
       };
     }
-
-    const streak = this.getLoginStreak() || 1;
-    const rewardInfo = this.getStreakRewardTable(streak, currentPlayer.level || 1);
-    const reward = rewardInfo.coins;
-
-    currentPlayer.coins = (currentPlayer.coins || 0) + reward;
-    currentPlayer.lastDaily = today;
-    currentPlayer.stats = currentPlayer.stats || {};
-    currentPlayer.stats.earned = (currentPlayer.stats.earned || 0) + reward;
-
-    if (!currentPlayer.inventory) currentPlayer.inventory = {};
-    if (!currentPlayer.inventory.fertilizers) currentPlayer.inventory.fertilizers = {};
-    currentPlayer.inventory.fertilizers['phan-thuong'] =
-      (currentPlayer.inventory.fertilizers['phan-thuong'] || 0) + (rewardInfo.fertNormal || 2);
-
-    (rewardInfo.fertExtra || []).forEach(f => {
-      if (!f || !f.id) return;
-      currentPlayer.inventory.fertilizers[f.id] =
-        (currentPlayer.inventory.fertilizers[f.id] || 0) + (f.qty || 1);
-    });
-
-    let fertText = '+' + (rewardInfo.fertNormal || 2) + ' Phân thường';
-    (rewardInfo.fertExtra || []).forEach(f => {
-      const name = (typeof this.getFertilizer === 'function' && this.getFertilizer(f.id))
-        ? this.getFertilizer(f.id).name
-        : f.id;
-      fertText += ' +' + (f.qty || 1) + ' ' + name;
-    });
-
-    const milestone = rewardInfo.milestoneText ? ' · ' + rewardInfo.milestoneText : '';
-    this.trackDayStat('daily', { coins: reward, streak: streak });
-    this.addActivity(
-      'Nhận thưởng ngày (streak ' + streak + '🔥) +' + reward + '🪙 ' + fertText + milestone
-    );
-
-    await savePlayer();
-
-    let msg = 'Streak ' + streak + ' ngày 🔥 · Nhận ' + reward.toLocaleString() + '🪙';
-    msg += ' + ' + (rewardInfo.fertNormal || 2) + ' Phân thường';
-    if ((rewardInfo.fertExtra || []).length) {
-      msg += ' + quà mốc!';
-    }
-    if (rewardInfo.milestoneText) msg += ' (' + rewardInfo.milestoneText + ')';
-
-    return {
-      ok: true,
-      msg,
-      streak,
-      coins: reward,
-      rewardInfo
-    };
   },
 
   hasClaimedDaily() {
@@ -5516,7 +5523,8 @@ const Game = {
         break;
       }
       case 'robot_seed': {
-        const name = String(d.name || d.seedId || 'hạt');
+        const raw = String(d.name || d.seedId || 'hat');
+        const name = (typeof firebaseSafeKey === 'function') ? firebaseSafeKey(raw) : raw.replace(/[.#$\/\[\]]/g, '_');
         const qty = Math.max(0, Number(d.qty) || 1);
         const cost = Math.max(0, Number(d.cost) || 0);
         ds.robot.seedsBought[name] = (ds.robot.seedsBought[name] || 0) + qty;
@@ -5524,7 +5532,8 @@ const Game = {
         break;
       }
       case 'robot_cook': {
-        const name = String(d.name || d.recipeId || 'món');
+        const raw = String(d.name || d.recipeId || 'mon');
+        const name = (typeof firebaseSafeKey === 'function') ? firebaseSafeKey(raw) : raw.replace(/[.#$\/\[\]]/g, '_');
         const qty = Math.max(0, Number(d.qty) || 1);
         ds.robot.cooked[name] = (ds.robot.cooked[name] || 0) + qty;
         ds.robot.cookCount += qty;

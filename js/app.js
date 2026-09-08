@@ -9,11 +9,23 @@ function getDisplayName(player, user) {
   return email ? email.split('@')[0] : 'Player';
 }
 
+let _toastTimer = null;
 function showToast(msg, type = '') {
   const toast = document.getElementById('toast');
-  toast.textContent = msg;
+  if (!toast) return;
+  const text = (msg == null || msg === '') ? 'Có lỗi xảy ra' : String(msg);
+  toast.textContent = text;
   toast.className = 'toast show ' + (type || '');
-  setTimeout(() => toast.classList.remove('show'), 2800);
+  toast.title = 'Bấm để đóng';
+  toast.style.cursor = 'pointer';
+  if (_toastTimer) clearTimeout(_toastTimer);
+  // Lỗi hiện lâu hơn để đọc kịp
+  const ms = (type === 'error') ? 8000 : (type === 'warning' ? 5000 : 3200);
+  _toastTimer = setTimeout(() => toast.classList.remove('show'), ms);
+  toast.onclick = () => {
+    toast.classList.remove('show');
+    if (_toastTimer) clearTimeout(_toastTimer);
+  };
 }
 
 function updateProfileLevelTag(level) {
@@ -2051,17 +2063,36 @@ document.getElementById('pref-combo-select')?.addEventListener('change', async (
 
 
 
-document.getElementById('btn-daily').addEventListener('click', async () => {
-  const res = await Game.claimDaily();
-  showToast(res.msg, res.ok ? 'success' : 'error');
-  if (res.ok) {
-    updateCoins();
-    if (typeof Game.totalFertilizerCount === 'function') {
-      const fertEl = document.getElementById('fertilizer-count');
-      if (fertEl) fertEl.textContent = Game.totalFertilizerCount();
+document.getElementById('btn-daily')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-daily');
+  if (btn) btn.disabled = true;
+  try {
+    if (typeof Game === 'undefined' || !Game.claimDaily) {
+      showToast('Game chưa sẵn sàng — F5 lại trang', 'error');
+      return;
     }
+    const res = await Game.claimDaily();
+    if (!res) {
+      showToast('Không nhận được phản hồi từ claimDaily', 'error');
+      return;
+    }
+    // Đã nhận rồi → warning (vàng), lỗi thật → error (đỏ)
+    const kind = res.ok ? 'success' : (res.already ? 'warning' : 'error');
+    showToast(res.msg || (res.ok ? 'Đã nhận thưởng!' : 'Không nhận được thưởng'), kind);
+    if (res.ok) {
+      updateCoins();
+      if (typeof Game.totalFertilizerCount === 'function') {
+        const fertEl = document.getElementById('fertilizer-count');
+        if (fertEl) fertEl.textContent = Game.totalFertilizerCount();
+      }
+    }
+    updateDailyBtn();
+  } catch (e) {
+    console.error('claimDaily error', e);
+    showToast('Lỗi thưởng ngày: ' + (e && e.message ? e.message : String(e)), 'error');
+  } finally {
+    if (btn) btn.disabled = false;
   }
-  updateDailyBtn();
 });
 
 

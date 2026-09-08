@@ -14301,6 +14301,43 @@ function notifyFirebaseSave(ok, msg, opts) {
 
 
 
+
+/** Firebase RTDB: key không được chứa . # $ / [ ] */
+function firebaseSafeKey(key) {
+  return String(key == null ? '' : key)
+    .replace(/[.#$\/\[\]]/g, '_')
+    .replace(/^\s*$/, '_empty_');
+}
+
+function sanitizeForFirebase(value, depth) {
+  if (depth == null) depth = 0;
+  if (depth > 40) return null;
+  if (value == null) return value;
+  if (typeof value !== 'object') return value;
+  if (typeof value.toJSON === 'function' && !(value instanceof Array)) {
+    try { value = value.toJSON(); } catch (_) {}
+  }
+  if (Array.isArray(value)) {
+    return value.map(v => sanitizeForFirebase(v, depth + 1));
+  }
+  const out = {};
+  Object.keys(value).forEach(k => {
+    const sk = firebaseSafeKey(k);
+    // Tránh ghi đè nếu trùng key sau sanitize
+    let finalKey = sk;
+    let n = 2;
+    while (Object.prototype.hasOwnProperty.call(out, finalKey) && finalKey !== sk) {
+      finalKey = sk + '_' + n;
+      n++;
+    }
+    if (Object.prototype.hasOwnProperty.call(out, finalKey) && sk === finalKey) {
+      // cùng key hợp lệ — merge không cần
+    }
+    out[finalKey] = sanitizeForFirebase(value[k], depth + 1);
+  });
+  return out;
+}
+
 async function savePlayer(opts) {
   opts = opts || {};
   if (!currentUser || !currentPlayer || !db) {
@@ -14382,6 +14419,12 @@ async function savePlayer(opts) {
     payload = JSON.parse(JSON.stringify(currentPlayer));
   } catch (e) {
     payload = currentPlayer;
+  }
+  // Firebase cấm key chứa . # $ / [ ] — ví dụ tên cây "Hoa Đặc Biệt #940"
+  try {
+    payload = sanitizeForFirebase(payload);
+  } catch (e) {
+    console.warn('sanitizeForFirebase', e);
   }
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {

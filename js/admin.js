@@ -40,25 +40,67 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 
-document.querySelectorAll('.side-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.side-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('sec-' + btn.dataset.section).classList.add('active');
+function goAdminSection(section) {
+  if (!section) return;
+  document.querySelectorAll('.side-btn').forEach(b => b.classList.toggle('active', b.dataset.section === section));
+  document.querySelectorAll('.admin-nav-btn[data-section]').forEach(b => b.classList.toggle('active', b.dataset.section === section));
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+  const sec = document.getElementById('sec-' + section);
+  if (sec) sec.classList.add('active');
 
-    if (btn.dataset.section === 'dashboard') renderDashboard();
-    if (btn.dataset.section === 'plants') renderPlantsTable();
-    if (btn.dataset.section === 'users') renderUsers();
-    if (btn.dataset.section === 'giftcodes') renderGiftCodes();
-    if (btn.dataset.section === 'settings') renderSettings();
-    if (btn.dataset.section === 'themes') renderThemesAdmin();
-    if (btn.dataset.section === 'announce') {
-      renderAnnounce();
-      if (typeof fillMailTargetSelect === 'function') fillMailTargetSelect();
-    }
-  });
+  // đóng sheet / sidebar mobile
+  try {
+    document.getElementById('admin-nav-more-sheet')?.setAttribute('hidden', '');
+    document.getElementById('admin-nav-backdrop')?.setAttribute('hidden', '');
+    document.getElementById('admin-nav-more-btn')?.setAttribute('aria-expanded', 'false');
+    if (typeof setAdminSidebar === 'function') setAdminSidebar(false);
+  } catch (_) {}
+
+  if (section === 'dashboard') renderDashboard();
+  if (section === 'plants') renderPlantsTable();
+  if (section === 'users') renderUsers();
+  if (section === 'giftcodes') renderGiftCodes();
+  if (section === 'settings') renderSettings();
+  if (section === 'themes') renderThemesAdmin();
+  if (section === 'announce') {
+    renderAnnounce();
+    if (typeof fillMailTargetSelect === 'function') fillMailTargetSelect();
+  }
+  if (section === 'reset') {
+    /* section only */
+  }
+  try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (_) {}
+}
+
+document.querySelectorAll('.side-btn').forEach(btn => {
+  btn.addEventListener('click', () => goAdminSection(btn.dataset.section));
 });
+
+document.querySelectorAll('.admin-nav-btn[data-section]').forEach(btn => {
+  btn.addEventListener('click', () => goAdminSection(btn.dataset.section));
+});
+
+// Bottom nav "Thêm"
+(function () {
+  const moreBtn = document.getElementById('admin-nav-more-btn');
+  const sheet = document.getElementById('admin-nav-more-sheet');
+  const backdrop = document.getElementById('admin-nav-backdrop');
+  function closeMore() {
+    if (sheet) sheet.hidden = true;
+    if (backdrop) backdrop.hidden = true;
+    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'false');
+  }
+  function openMore() {
+    if (sheet) sheet.hidden = false;
+    if (backdrop) backdrop.hidden = false;
+    if (moreBtn) moreBtn.setAttribute('aria-expanded', 'true');
+  }
+  moreBtn?.addEventListener('click', () => {
+    if (sheet && !sheet.hidden) closeMore();
+    else openMore();
+  });
+  backdrop?.addEventListener('click', closeMore);
+})();
 
 async function renderDashboard() {
   await refreshPlants();
@@ -1165,63 +1207,70 @@ function renderThemesAdmin() {
   if (nameEl) nameEl.textContent = active ? (active.name + ' (' + active.id + ')') : '—';
   if (partEl) partEl.textContent = active?.ui?.particle || '—';
 
-  // Table
-  const tbody = document.querySelector('#themes-table tbody');
-  if (!tbody) return;
+  // Cards (responsive)
+  const host = document.getElementById('themes-cards');
+  if (!host) return;
 
   const order = ['default', 'xuan', 'ha', 'thu', 'dong', 'tet', 'trung-thu', 'halloween', 'giang-sinh', 'valentine', 'quoc-khanh', 'nha-giao', 'phu-nu-83', 'phu-nu-2010'];
   const ids = order.filter(id => themes[id]).concat(Object.keys(themes).filter(id => !order.includes(id)));
 
-  tbody.innerHTML = ids.map(id => {
-    const t = themes[id];
-    return `<tr data-id="${id}">
-      <td><strong>${t.name || id}</strong><br><small style="color:#64748b">${id}</small></td>
-      <td>${t.type || '—'}</td>
-      <td>
-        <input type="datetime-local" class="theme-start" value="${toDatetimeLocalValue(t.startAt)}" ${id === 'default' ? 'disabled' : ''} style="width:170px;padding:6px 8px;border-radius:6px;border:1px solid #d1e0d8" />
-      </td>
-      <td>
-        <input type="datetime-local" class="theme-end" value="${toDatetimeLocalValue(t.endAt)}" ${id === 'default' ? 'disabled' : ''} style="width:170px;padding:6px 8px;border-radius:6px;border:1px solid #d1e0d8" />
-      </td>
-      <td>
-        <input type="number" class="theme-priority" value="${t.priority || 0}" min="0" max="999" style="width:70px;padding:6px 8px;border-radius:6px;border:1px solid #d1e0d8" />
-      </td>
-      <td style="text-align:center">
-        <input type="checkbox" class="theme-enabled" ${t.enabled !== false ? 'checked' : ''} ${id === 'default' ? 'disabled' : ''} />
-      </td>
-      <td>
-        <button type="button" class="btn btn-sm btn-secondary btn-preview-theme" data-id="${id}" title="Preview">
-          <i class="fa-solid fa-eye"></i>
+  host.innerHTML = ids.map(id => {
+    const th = themes[id];
+    const isDef = id === 'default';
+    return `<article class="theme-card" data-id="${id}">
+      <div class="theme-card-head">
+        <div>
+          <div class="theme-card-name">${th.name || id}</div>
+          <div class="theme-card-meta"><code>${id}</code> · ${th.type || '—'}</div>
+        </div>
+        <label class="theme-card-toggle">
+          <input type="checkbox" class="theme-enabled" ${th.enabled !== false ? 'checked' : ''} ${isDef ? 'disabled' : ''} />
+          <span>Bật</span>
+        </label>
+      </div>
+      <div class="theme-card-grid">
+        <label>Từ ngày
+          <input type="datetime-local" class="theme-start" value="${toDatetimeLocalValue(th.startAt)}" ${isDef ? 'disabled' : ''} />
+        </label>
+        <label>Đến ngày
+          <input type="datetime-local" class="theme-end" value="${toDatetimeLocalValue(th.endAt)}" ${isDef ? 'disabled' : ''} />
+        </label>
+        <label>Priority
+          <input type="number" class="theme-priority" value="${th.priority || 0}" min="0" max="999" />
+        </label>
+      </div>
+      <div class="theme-card-actions">
+        <button type="button" class="btn btn-sm btn-secondary btn-preview-theme" data-id="${id}">
+          <i class="fa-solid fa-eye"></i> Preview
         </button>
-        <button type="button" class="btn btn-sm btn-primary btn-save-one-theme" data-id="${id}" title="Lưu theme này">
-          <i class="fa-solid fa-floppy-disk"></i>
+        <button type="button" class="btn btn-sm btn-primary btn-save-one-theme" data-id="${id}">
+          <i class="fa-solid fa-floppy-disk"></i> Lưu
         </button>
-      </td>
-    </tr>`;
+      </div>
+    </article>`;
   }).join('');
 
-  // Bind preview / save one
-  tbody.querySelectorAll('.btn-preview-theme').forEach(btn => {
+  host.querySelectorAll('.btn-preview-theme').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
-      const t = themes[id];
-      if (t && typeof applySeasonTheme === 'function') {
-        applySeasonTheme(t);
-        showToast('Preview: ' + (t.name || id), 'info');
+      const th = themes[id];
+      if (th && typeof applySeasonTheme === 'function') {
+        applySeasonTheme(th);
+        showToast('Preview: ' + (th.name || id), 'info');
       }
     });
   });
 
-  tbody.querySelectorAll('.btn-save-one-theme').forEach(btn => {
+  host.querySelectorAll('.btn-save-one-theme').forEach(btn => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.id;
-      const row = tbody.querySelector(`tr[data-id="${id}"]`);
-      if (!row || !themes[id]) return;
+      const card = host.querySelector(`.theme-card[data-id="${id}"]`);
+      if (!card || !themes[id]) return;
 
-      const startVal = row.querySelector('.theme-start')?.value;
-      const endVal = row.querySelector('.theme-end')?.value;
-      const priority = Number(row.querySelector('.theme-priority')?.value) || 0;
-      const enabled = !!row.querySelector('.theme-enabled')?.checked;
+      const startVal = card.querySelector('.theme-start')?.value;
+      const endVal = card.querySelector('.theme-end')?.value;
+      const priority = Number(card.querySelector('.theme-priority')?.value) || 0;
+      const enabled = !!card.querySelector('.theme-enabled')?.checked;
 
       themes[id].startAt = fromDatetimeLocalValue(startVal);
       themes[id].endAt = fromDatetimeLocalValue(endVal);
@@ -1257,22 +1306,22 @@ async function saveThemeConfigToFirebase() {
 document.getElementById('btn-save-theme-global')?.addEventListener('click', async () => {
   // Lưu tất cả row đang hiện
   ensureThemeConfig();
-  const tbody = document.querySelector('#themes-table tbody');
-  if (tbody) {
-    tbody.querySelectorAll('tr[data-id]').forEach(row => {
-      const id = row.dataset.id;
-      const t = currentSettings.themeConfig.themes[id];
-      if (!t) return;
-      const startVal = row.querySelector('.theme-start')?.value;
-      const endVal = row.querySelector('.theme-end')?.value;
-      const priority = Number(row.querySelector('.theme-priority')?.value) || 0;
-      const enabled = !!row.querySelector('.theme-enabled')?.checked;
+  const host = document.getElementById('themes-cards');
+  if (host) {
+    host.querySelectorAll('.theme-card[data-id]').forEach(card => {
+      const id = card.dataset.id;
+      const th = currentSettings.themeConfig.themes[id];
+      if (!th) return;
+      const startVal = card.querySelector('.theme-start')?.value;
+      const endVal = card.querySelector('.theme-end')?.value;
+      const priority = Number(card.querySelector('.theme-priority')?.value) || 0;
+      const enabled = !!card.querySelector('.theme-enabled')?.checked;
       if (id !== 'default') {
-        t.startAt = fromDatetimeLocalValue(startVal);
-        t.endAt = fromDatetimeLocalValue(endVal);
-        t.enabled = enabled;
+        th.startAt = fromDatetimeLocalValue(startVal);
+        th.endAt = fromDatetimeLocalValue(endVal);
+        th.enabled = enabled;
       }
-      t.priority = priority;
+      th.priority = priority;
     });
   }
   await saveThemeConfigToFirebase();
