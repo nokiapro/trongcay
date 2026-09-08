@@ -52,6 +52,7 @@ document.querySelectorAll('.side-btn').forEach(btn => {
     if (btn.dataset.section === 'users') renderUsers();
     if (btn.dataset.section === 'giftcodes') renderGiftCodes();
     if (btn.dataset.section === 'settings') renderSettings();
+    if (btn.dataset.section === 'themes') renderThemesAdmin();
     if (btn.dataset.section === 'announce') {
       renderAnnounce();
       if (typeof fillMailTargetSelect === 'function') fillMailTargetSelect();
@@ -1072,4 +1073,217 @@ document.getElementById('user-search-input')?.addEventListener('input', () => {
 });
 document.getElementById('user-filter-unlimited')?.addEventListener('change', () => {
   if (typeof renderUsers === 'function') renderUsers();
+});
+
+/* ============================================================
+   THEME / MÙA LỄ ADMIN
+   ============================================================ */
+
+function ensureThemeConfig() {
+  if (!currentSettings.themeConfig) {
+    currentSettings.themeConfig = (typeof DEFAULT_THEME_CONFIG !== 'undefined')
+      ? JSON.parse(JSON.stringify(DEFAULT_THEME_CONFIG))
+      : { activeThemeId: null, forceTheme: false, autoSwitch: true, defaultThemeId: 'default', themes: {} };
+  }
+  // Merge missing themes from THEMES
+  if (typeof THEMES !== 'undefined') {
+    const tcfg = currentSettings.themeConfig;
+    tcfg.themes = tcfg.themes || {};
+    Object.keys(THEMES).forEach(id => {
+      if (!tcfg.themes[id]) {
+        tcfg.themes[id] = JSON.parse(JSON.stringify(THEMES[id]));
+      } else {
+        // Giữ startAt/endAt/enabled từ server, bổ sung field còn thiếu
+        const base = THEMES[id];
+        const cur = tcfg.themes[id];
+        if (cur.name == null) cur.name = base.name;
+        if (cur.type == null) cur.type = base.type;
+        if (cur.priority == null) cur.priority = base.priority;
+        if (cur.ui == null) cur.ui = base.ui;
+        if (cur.limited == null) cur.limited = base.limited;
+        if (cur.globalBuff == null) cur.globalBuff = base.globalBuff;
+        if (cur.decorations == null) cur.decorations = base.decorations;
+      }
+    });
+  }
+  return currentSettings.themeConfig;
+}
+
+function toDatetimeLocalValue(isoOrTs) {
+  if (!isoOrTs) return '';
+  try {
+    const d = new Date(isoOrTs);
+    if (isNaN(d.getTime())) return '';
+    // datetime-local cần YYYY-MM-DDTHH:mm (local)
+    const pad = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+      'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  } catch (_) {
+    return '';
+  }
+}
+
+function fromDatetimeLocalValue(val) {
+  if (!val) return null;
+  try {
+    // Tạo Date từ local input → ISO với offset +07 giả định
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString();
+  } catch (_) {
+    return null;
+  }
+}
+
+function renderThemesAdmin() {
+  ensureThemeConfig();
+  const cfg = currentSettings.themeConfig;
+  const themes = cfg.themes || {};
+
+  // Global controls
+  const autoEl = document.getElementById('theme-auto-switch');
+  const forceEl = document.getElementById('theme-force');
+  const forceIdEl = document.getElementById('theme-force-id');
+
+  if (autoEl) autoEl.checked = cfg.autoSwitch !== false;
+  if (forceEl) forceEl.checked = !!cfg.forceTheme;
+
+  if (forceIdEl) {
+    const opts = Object.values(themes).map(t =>
+      `<option value="${t.id}" ${cfg.activeThemeId === t.id ? 'selected' : ''}>${t.name || t.id}</option>`
+    ).join('');
+    forceIdEl.innerHTML = '<option value="">— Chọn theme —</option>' + opts;
+  }
+
+  // Active info
+  let active = null;
+  try {
+    active = (typeof getActiveTheme === 'function') ? getActiveTheme() : null;
+  } catch (_) {}
+  const nameEl = document.getElementById('theme-active-name');
+  const partEl = document.getElementById('theme-active-particle');
+  if (nameEl) nameEl.textContent = active ? (active.name + ' (' + active.id + ')') : '—';
+  if (partEl) partEl.textContent = active?.ui?.particle || '—';
+
+  // Table
+  const tbody = document.querySelector('#themes-table tbody');
+  if (!tbody) return;
+
+  const order = ['default', 'xuan', 'ha', 'thu', 'dong', 'tet', 'trung-thu', 'halloween', 'giang-sinh', 'valentine', 'quoc-khanh', 'nha-giao', 'phu-nu-83', 'phu-nu-2010'];
+  const ids = order.filter(id => themes[id]).concat(Object.keys(themes).filter(id => !order.includes(id)));
+
+  tbody.innerHTML = ids.map(id => {
+    const t = themes[id];
+    return `<tr data-id="${id}">
+      <td><strong>${t.name || id}</strong><br><small style="color:#64748b">${id}</small></td>
+      <td>${t.type || '—'}</td>
+      <td>
+        <input type="datetime-local" class="theme-start" value="${toDatetimeLocalValue(t.startAt)}" ${id === 'default' ? 'disabled' : ''} style="width:170px;padding:6px 8px;border-radius:6px;border:1px solid #d1e0d8" />
+      </td>
+      <td>
+        <input type="datetime-local" class="theme-end" value="${toDatetimeLocalValue(t.endAt)}" ${id === 'default' ? 'disabled' : ''} style="width:170px;padding:6px 8px;border-radius:6px;border:1px solid #d1e0d8" />
+      </td>
+      <td>
+        <input type="number" class="theme-priority" value="${t.priority || 0}" min="0" max="999" style="width:70px;padding:6px 8px;border-radius:6px;border:1px solid #d1e0d8" />
+      </td>
+      <td style="text-align:center">
+        <input type="checkbox" class="theme-enabled" ${t.enabled !== false ? 'checked' : ''} ${id === 'default' ? 'disabled' : ''} />
+      </td>
+      <td>
+        <button type="button" class="btn btn-sm btn-secondary btn-preview-theme" data-id="${id}" title="Preview">
+          <i class="fa-solid fa-eye"></i>
+        </button>
+        <button type="button" class="btn btn-sm btn-primary btn-save-one-theme" data-id="${id}" title="Lưu theme này">
+          <i class="fa-solid fa-floppy-disk"></i>
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Bind preview / save one
+  tbody.querySelectorAll('.btn-preview-theme').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const t = themes[id];
+      if (t && typeof applySeasonTheme === 'function') {
+        applySeasonTheme(t);
+        showToast('Preview: ' + (t.name || id), 'info');
+      }
+    });
+  });
+
+  tbody.querySelectorAll('.btn-save-one-theme').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      const row = tbody.querySelector(`tr[data-id="${id}"]`);
+      if (!row || !themes[id]) return;
+
+      const startVal = row.querySelector('.theme-start')?.value;
+      const endVal = row.querySelector('.theme-end')?.value;
+      const priority = Number(row.querySelector('.theme-priority')?.value) || 0;
+      const enabled = !!row.querySelector('.theme-enabled')?.checked;
+
+      themes[id].startAt = fromDatetimeLocalValue(startVal);
+      themes[id].endAt = fromDatetimeLocalValue(endVal);
+      themes[id].priority = priority;
+      themes[id].enabled = enabled;
+
+      await saveThemeConfigToFirebase();
+      showToast('Đã lưu theme: ' + (themes[id].name || id), 'success');
+      renderThemesAdmin();
+    });
+  });
+}
+
+async function saveThemeConfigToFirebase() {
+  ensureThemeConfig();
+  // Đồng bộ global controls
+  const autoEl = document.getElementById('theme-auto-switch');
+  const forceEl = document.getElementById('theme-force');
+  const forceIdEl = document.getElementById('theme-force-id');
+
+  if (autoEl) currentSettings.themeConfig.autoSwitch = !!autoEl.checked;
+  if (forceEl) currentSettings.themeConfig.forceTheme = !!forceEl.checked;
+  if (forceIdEl) currentSettings.themeConfig.activeThemeId = forceIdEl.value || null;
+
+  await db.ref('settings/themeConfig').set(currentSettings.themeConfig);
+  // Cũng cập nhật currentSettings đầy đủ nếu cần
+  try {
+    await db.ref('settings').update({ themeConfig: currentSettings.themeConfig });
+  } catch (_) {}
+}
+
+// Global save button
+document.getElementById('btn-save-theme-global')?.addEventListener('click', async () => {
+  // Lưu tất cả row đang hiện
+  ensureThemeConfig();
+  const tbody = document.querySelector('#themes-table tbody');
+  if (tbody) {
+    tbody.querySelectorAll('tr[data-id]').forEach(row => {
+      const id = row.dataset.id;
+      const t = currentSettings.themeConfig.themes[id];
+      if (!t) return;
+      const startVal = row.querySelector('.theme-start')?.value;
+      const endVal = row.querySelector('.theme-end')?.value;
+      const priority = Number(row.querySelector('.theme-priority')?.value) || 0;
+      const enabled = !!row.querySelector('.theme-enabled')?.checked;
+      if (id !== 'default') {
+        t.startAt = fromDatetimeLocalValue(startVal);
+        t.endAt = fromDatetimeLocalValue(endVal);
+        t.enabled = enabled;
+      }
+      t.priority = priority;
+    });
+  }
+  await saveThemeConfigToFirebase();
+  showToast('Đã lưu toàn bộ cấu hình Theme!', 'success');
+  renderThemesAdmin();
+});
+
+document.getElementById('btn-preview-active-theme')?.addEventListener('click', () => {
+  if (typeof getActiveTheme === 'function' && typeof applySeasonTheme === 'function') {
+    const t = getActiveTheme();
+    applySeasonTheme(t);
+    showToast('Đang preview: ' + (t?.name || t?.id), 'info');
+  }
 });

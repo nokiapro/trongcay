@@ -9892,3 +9892,119 @@ html[data-theme="dark"] .admin-topbar {
 }
 
 /* v1.9.163 harvest countdown reserved space */
+
+
+/* ============================================================
+   THEME THEO MÙA & LỄ (v1.9.163+)
+   ============================================================ */
+
+:root {
+  --theme-primary: #166534;
+  --theme-secondary: #22c55e;
+  --theme-accent: #fbbf24;
+  --theme-bg-gradient: linear-gradient(135deg, #064e3b 0%, #166534 50%, #14532d 100%);
+  --theme-orb-1: #22c55e;
+  --theme-orb-2: #4ade80;
+  --theme-orb-3: #86efac;
+}
+
+/* Particle layer */
+#theme-particle-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: hidden;
+}
+
+.theme-particle {
+  position: absolute;
+  top: -10%;
+  animation-name: theme-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform, opacity;
+  user-select: none;
+}
+
+@keyframes theme-fall {
+  0% {
+    transform: translateY(0) rotate(0deg) translateX(0);
+    opacity: 0;
+  }
+  10% { opacity: 0.7; }
+  90% { opacity: 0.5; }
+  100% {
+    transform: translateY(110vh) rotate(360deg) translateX(30px);
+    opacity: 0;
+  }
+}
+
+/* Lantern bay nhẹ hơn */
+.particle-lantern .theme-particle {
+  animation-name: theme-float-lantern;
+}
+
+@keyframes theme-float-lantern {
+  0% {
+    transform: translateY(100vh) translateX(0) scale(0.8);
+    opacity: 0;
+  }
+  15% { opacity: 0.85; }
+  85% { opacity: 0.7; }
+  100% {
+    transform: translateY(-20vh) translateX(40px) scale(1.1);
+    opacity: 0;
+  }
+}
+
+/* Moon */
+.theme-moon {
+  position: absolute;
+  top: 8%;
+  right: 10%;
+  font-size: 48px;
+  opacity: 0.55;
+  filter: drop-shadow(0 0 12px rgba(253, 224, 71, 0.6));
+  animation: theme-moon-pulse 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes theme-moon-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.08); opacity: 0.7; }
+}
+
+/* Áp dụng màu theme vào orbs nền nếu có */
+[data-season-theme]:not([data-season-theme="default"]) .orb1 {
+  background: var(--theme-orb-1) !important;
+}
+[data-season-theme]:not([data-season-theme="default"]) .orb2 {
+  background: var(--theme-orb-2) !important;
+}
+[data-season-theme]:not([data-season-theme="default"]) .orb3 {
+  background: var(--theme-orb-3) !important;
+}
+
+/* Banner shop theme */
+#theme-shop-banner {
+  display: none;
+  background: linear-gradient(90deg, var(--theme-primary), var(--theme-secondary));
+  color: #fff;
+  text-align: center;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  border-radius: 10px;
+  margin: 8px 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Một số theme tối cần chữ sáng hơn trên login */
+[data-season-theme="tet"] .login-card,
+[data-season-theme="trung-thu"] .login-card,
+[data-season-theme="halloween"] .login-card,
+[data-season-theme="giang-sinh"] .login-card,
+[data-season-theme="dong"] .login-card {
+  /* giữ nguyên card trắng, chỉ đổi nền xung quanh qua orb */
+}

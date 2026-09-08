@@ -41,6 +41,7 @@
         <button class="side-btn" data-section="users"><i class="fa-solid fa-users"></i> Người chơi</button>
         <button class="side-btn" data-section="giftcodes"><i class="fa-solid fa-ticket"></i> Gift code</button>
         <button class="side-btn" data-section="settings"><i class="fa-solid fa-gear"></i> Cài đặt</button>
+        <button class="side-btn" data-section="themes"><i class="fa-solid fa-palette"></i> Theme / Mùa lễ</button>
         <button class="side-btn" data-section="announce"><i class="fa-solid fa-envelope"></i> Thư / Thông báo</button>
         <button class="side-btn" data-section="reset"><i class="fa-solid fa-rotate"></i> Reset dữ liệu</button>
       </nav>
@@ -242,6 +243,58 @@
         </div>
       </section>
 
+      <section id="sec-themes" class="admin-section">
+        <h1>🎨 THEME THEO MÙA & LỄ</h1>
+
+        <div class="admin-card" style="margin-bottom:16px">
+          <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+            <label class="maint-toggle" style="margin:0">
+              <input type="checkbox" id="theme-auto-switch" checked />
+              <span>Tự động chuyển theme theo lịch</span>
+            </label>
+            <label class="maint-toggle" style="margin:0">
+              <input type="checkbox" id="theme-force" />
+              <span>Ép dùng theme</span>
+            </label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <label style="margin:0;white-space:nowrap">Theme ép:</label>
+              <select id="theme-force-id" style="min-width:180px;padding:8px 10px;border-radius:8px;border:1px solid #d1e0d8">
+                <option value="">— Chọn theme —</option>
+              </select>
+            </div>
+            <button type="button" id="btn-save-theme-global" class="btn btn-primary">
+              <i class="fa-solid fa-floppy-disk"></i> Lưu cấu hình chung
+            </button>
+            <button type="button" id="btn-preview-active-theme" class="btn btn-secondary">
+              <i class="fa-solid fa-eye"></i> Preview theme đang active
+            </button>
+          </div>
+          <p style="margin:12px 0 0;font-size:0.88rem;color:#52796f">
+            Theme đang active: <strong id="theme-active-name">—</strong>
+            · Particle: <span id="theme-active-particle">—</span>
+          </p>
+        </div>
+
+        <div class="admin-card">
+          <div class="table-wrap">
+            <table class="admin-table" id="themes-table">
+              <thead>
+                <tr>
+                  <th>Theme</th>
+                  <th>Loại</th>
+                  <th>Từ ngày</th>
+                  <th>Đến ngày</th>
+                  <th>Priority</th>
+                  <th>Bật</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <section id="sec-announce" class="admin-section">
         <h1>✉️ THƯ & THÔNG BÁO</h1>
         <div class="admin-card announce-card">
@@ -334,6 +387,7 @@
   <div id="toast" class="toast"></div>
 
   <script src="../js/firebase-config.js?v=1.9.163"></script>
+  <script src="../js/themes.js?v=1.9.163"></script>
   <script src="../js/data.js?v=1.9.163"></script>
   <script src="../js/admin.js?v=1.9.163"></script>
 

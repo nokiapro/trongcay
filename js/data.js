@@ -13112,7 +13112,18 @@ const DEFAULT_SETTINGS = {
   
   updateNotes: '',
   
-  forceUpdate: false
+  forceUpdate: false,
+
+  // Theme theo mùa & lễ
+  themeConfig: (typeof DEFAULT_THEME_CONFIG !== 'undefined')
+    ? JSON.parse(JSON.stringify(DEFAULT_THEME_CONFIG))
+    : {
+        activeThemeId: null,
+        forceTheme: false,
+        autoSwitch: true,
+        defaultThemeId: 'default',
+        themes: {}
+      }
 };
 
 
@@ -13366,6 +13377,28 @@ async function initGlobalData() {
   try {
     if (typeof applySiteIcon === 'function') applySiteIcon(currentSettings.siteIconUrl);
   } catch (_) {}
+
+  // Theme theo mùa & lễ
+  try {
+    if (typeof DEFAULT_THEME_CONFIG !== 'undefined') {
+      if (!currentSettings.themeConfig) {
+        currentSettings.themeConfig = JSON.parse(JSON.stringify(DEFAULT_THEME_CONFIG));
+      } else {
+        const tcfg = currentSettings.themeConfig;
+        tcfg.themes = tcfg.themes || {};
+        Object.keys(DEFAULT_THEME_CONFIG.themes || {}).forEach(id => {
+          if (!tcfg.themes[id]) {
+            tcfg.themes[id] = JSON.parse(JSON.stringify(DEFAULT_THEME_CONFIG.themes[id]));
+          }
+        });
+      }
+    }
+    if (typeof initSeasonThemeSystem === 'function') {
+      initSeasonThemeSystem();
+    }
+  } catch (e) {
+    console.warn('Theme init error', e);
+  }
 }
 
 

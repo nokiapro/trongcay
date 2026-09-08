@@ -6,6 +6,7 @@ const PRECACHE = [
   './manifest.webmanifest',
   './css/style.css',
   './js/firebase-config.js',
+  './js/themes.js',
   './js/data.js',
   './js/fa-icons.js',
   './js/game.js',
