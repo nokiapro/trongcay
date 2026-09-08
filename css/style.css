@@ -10097,3 +10097,61 @@ html[data-theme="dark"] .admin-topbar {
   flex-direction: column;
   align-items: center;
 }
+
+
+/* Activity Summary → Detail */
+.activity-clickable {
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.activity-clickable:active { transform: scale(0.99); }
+.activity-clickable:hover {
+  background: rgba(34, 197, 94, 0.08);
+}
+.activity-item.activity-summary {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-color, #d1e0d8);
+  margin-bottom: 8px;
+}
+.activity-chevron {
+  color: #94a3b8;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.modal-activity-content {
+  max-width: 420px;
+  width: 92%;
+  max-height: 80vh;
+  overflow: auto;
+}
+.activity-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.activity-detail-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.activity-detail-body { font-size: 0.92rem; }
+.ad-block { margin-bottom: 14px; }
+.ad-label { font-weight: 700; margin-bottom: 6px; color: var(--text-main, #14532d); }
+.ad-value { font-size: 1.05rem; }
+.ad-list { margin: 0; padding-left: 1.2em; line-height: 1.55; }
+.ad-pre {
+  font-size: 0.8rem;
+  overflow: auto;
+  background: #f1f5f9;
+  padding: 10px;
+  border-radius: 8px;
+}
