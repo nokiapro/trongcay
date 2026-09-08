@@ -947,11 +947,23 @@ select.pill-dd-native {
   justify-content: flex-end;
   margin-bottom: 12px;
   gap: 8px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
 }
 .admin-topbar .btn {
   padding: 7px 12px;
   font-size: 0.82rem;
   border-radius: 10px;
+}
+html[data-theme="dark"] .admin-topbar,
+body.dark .admin-topbar {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 html[data-theme="dark"] body.admin-body,

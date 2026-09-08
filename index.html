@@ -19,7 +19,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/style.css?v=1.9.160" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.161" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -560,7 +560,7 @@
                   <strong>Buff Tiên</strong>
                   <small>Tưới & bón theo cấu hình</small>
                 </span>
-                <input type="checkbox" id="pref-fairy-enabled" checked class="buff-switch" />
+                <input type="checkbox" id="pref-fairy-enabled" checked class="buff-switch ios-toggle" />
               </label>
               <label class="buff-card nyc-card">
                 <span class="buff-card-icon">👩‍🌾</span>
@@ -568,7 +568,7 @@
                   <strong>Buff NYC</strong>
                   <small>Tự thu & trồng lại</small>
                 </span>
-                <input type="checkbox" id="pref-nyc-enabled" checked class="buff-switch" />
+                <input type="checkbox" id="pref-nyc-enabled" checked class="buff-switch ios-toggle" />
               </label>
               <label class="buff-card helper-card">
                 <span class="buff-card-icon">💁</span>
@@ -576,7 +576,7 @@
                   <strong>Buff Giúp việc</strong>
                   <small>Tự mua theo cấu hình</small>
                 </span>
-                <input type="checkbox" id="pref-helper-enabled" checked class="buff-switch" />
+                <input type="checkbox" id="pref-helper-enabled" checked class="buff-switch ios-toggle" />
               </label>
               <label class="buff-card robot-card" id="buff-card-robot" style="display:none">
                 <span class="buff-card-icon">🤖</span>
@@ -584,7 +584,7 @@
                   <strong>Buff Người máy</strong>
                   <small>Mưa mua hạt + ghép sao/HT</small>
                 </span>
-                <input type="checkbox" id="pref-robot-enabled" checked class="buff-switch" />
+                <input type="checkbox" id="pref-robot-enabled" checked class="buff-switch ios-toggle" />
               </label>
             </div>
             <input type="checkbox" id="pref-fairy-visual" checked class="pref-visual-hidden" aria-hidden="true" tabindex="-1" />
@@ -671,7 +671,7 @@
         <button id="btn-water" class="btn btn-primary"><i class="fa-solid fa-droplet"></i> Tưới nước</button>
         <button id="btn-fertilize" class="btn btn-purple"><i class="fa-solid fa-flask"></i> Bón phân</button>
         <button id="btn-harvest" class="btn btn-success"><i class="fa-solid fa-basket-shopping"></i> Thu hoạch</button>
-        <button id="btn-remove" class="btn btn-danger"><i class="fa-solid fa-trash"></i> Nhổ bỏ</button>
+        <button id="btn-remove" class="btn btn-secondary btn-remove-plot"><i class="fa-solid fa-trash"></i> Nhổ bỏ</button>
         <button class="btn btn-secondary modal-close">Đóng</button>
       </div>
     </div>
@@ -903,12 +903,12 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.160"></script>
-  <script src="js/data.js?v=1.9.160"></script>
-  <script src="js/fa-icons.js?v=1.9.160"></script>
-  <script src="js/game.js?v=1.9.160"></script>
-  <script src="js/features.js?v=1.9.160"></script>
-  <script src="js/app.js?v=1.9.160"></script>
+  <script src="js/firebase-config.js?v=1.9.161"></script>
+  <script src="js/data.js?v=1.9.161"></script>
+  <script src="js/fa-icons.js?v=1.9.161"></script>
+  <script src="js/game.js?v=1.9.161"></script>
+  <script src="js/features.js?v=1.9.161"></script>
+  <script src="js/app.js?v=1.9.161"></script>
   <script>
   (function () {
     if (!('serviceWorker' in navigator)) return;

@@ -9102,7 +9102,6 @@ body.dark .glass::before {
 .update-banner-inner,
 .server-announce,
 .admin-card,
-.admin-topbar,
 .sidebar,
 .login-card {
   position: relative;
@@ -9831,4 +9830,56 @@ input[type="checkbox"].ios-toggle:focus-visible,
 .helper-rules input[type="checkbox"][data-f="enabled"]:checked::after,
 .helper-rule-card input[type="checkbox"][data-f="enabled"]:checked::after {
   transform: translateX(20px);
+}
+
+
+/* ========== UI buff iOS + remove btn + admin topbar (v1.9.161) ========== */
+/* Buff cards: toggle iOS */
+.buff-toggle-cards .buff-switch.ios-toggle,
+.buff-card .buff-switch.ios-toggle {
+  width: 51px !important;
+  height: 31px !important;
+  min-width: 51px !important;
+  margin: 6px auto 0 !important;
+  accent-color: unset;
+}
+.buff-card.nyc-card .buff-switch.ios-toggle:checked {
+  background: #ef4444 !important;
+}
+.buff-card.helper-card .buff-switch.ios-toggle:checked {
+  background: #3b82f6 !important;
+}
+.buff-card.fairy-card .buff-switch.ios-toggle:checked {
+  background: #34c759 !important;
+}
+.buff-card.robot-card .buff-switch.ios-toggle:checked {
+  background: #34c759 !important;
+}
+
+/* Nhổ bỏ: cùng class/css với Đóng (btn-secondary) nhưng nền đỏ */
+#modal-plot .modal-actions .btn-remove-plot,
+.btn-remove-plot.btn-secondary,
+.btn.btn-secondary.btn-remove-plot {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-weight: 700 !important;
+}
+#modal-plot .modal-actions .btn-remove-plot:hover,
+.btn-remove-plot.btn-secondary:hover {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  filter: none !important;
+  transform: translateY(-1px);
+}
+
+/* Admin topbar: không nền xám / border */
+.admin-topbar,
+html[data-theme="dark"] .admin-topbar {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
