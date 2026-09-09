@@ -4900,6 +4900,69 @@ function formatLogEventsHtml(d) {
 }
 
 function formatActivityDetailHtml(log) {
+  // Log tổng hợp (NYC / Robot / Tiên / Giúp việc / Vườn)
+  if (log && (log.aggregated || (log._event && log._event.aggregated) || (log.action === 'day_summary'))) {
+    const ev = log._event || log;
+    const d = (ev.detail) || (log.detail) || {};
+    const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const rows = [];
+    const add = (k, v) => { if (v != null && v !== '' && v !== 0) rows.push('<div class="ad-row"><span class="ad-k">' + esc(k) + '</span><span class="ad-v">' + esc(v) + '</span></div>'); };
+    add('Thời gian', (typeof Game !== 'undefined' && Game.formatLogClock) ? Game.formatLogClock(ev.timestamp || log.timestamp, true) : '');
+    add('Người làm', d.name || ev.actor || '');
+    if (ev.actor === 'nyc' || d.actor === 'nyc') {
+      add('Số vườn', d.gardens);
+      add('Số lần trồng/thu (mỗi ô = 1)', d.plantTimes);
+      add('Sản phẩm (SP)', d.harvestYield != null ? Number(d.harvestYield).toLocaleString() : '');
+      if (Array.isArray(d.byGarden) && d.byGarden.length) {
+        rows.push('<div class="ad-section">Chi tiết từng vườn</div>');
+        d.byGarden.forEach(g => {
+          rows.push('<div class="ad-row"><span class="ad-k">' + esc(g.gardenLabel || ('Vườn ' + (g.gardenIndex + 1))) + '</span><span class="ad-v">' +
+            esc((g.plantTimes != null ? (g.plantTimes + ' lần') : (g.planted != null ? (g.planted + ' lần') : '')) +
+              (g.yield ? (' · +' + Number(g.yield).toLocaleString() + ' SP') : '') +
+              (g.plotsHarvested ? (' · thu ' + g.plotsHarvested + ' ô') : '')) + '</span></div>');
+        });
+      }
+    } else if (ev.actor === 'robot' || d.actor === 'robot') {
+      add('Tiền mua hạt', d.seedCost != null ? ('-' + Number(d.seedCost).toLocaleString() + ' xu') : '');
+      add('Ghép sao', d.mergeStar);
+      add('Ghép huyền thoại', d.mergeMyth);
+      add('Số món nấu', d.cookCount);
+      if (Array.isArray(d.seedsBought) && d.seedsBought.length) {
+        rows.push('<div class="ad-section">Hạt đã mua</div>');
+        d.seedsBought.forEach(it => rows.push('<div class="ad-row"><span class="ad-k">' + esc(it.name) + '</span><span class="ad-v">×' + esc(it.qty) + '</span></div>'));
+      }
+      if (Array.isArray(d.cooked) && d.cooked.length) {
+        rows.push('<div class="ad-section">Món đã nấu</div>');
+        d.cooked.forEach(it => rows.push('<div class="ad-row"><span class="ad-k">' + esc(it.name) + '</span><span class="ad-v">×' + esc(it.qty) + '</span></div>'));
+      }
+    } else if (ev.actor === 'fairy' || d.actor === 'fairy') {
+      add('Số vườn chăm', d.gardensWatered);
+      add('Lần tưới', d.waterActions);
+      add('Lần bón', d.fertActions);
+      add('Hạt nhặt khi mưa', d.rainSeeds);
+    } else if (ev.actor === 'helper' || d.actor === 'helper') {
+      add('Tổng chi', d.spent != null ? ('-' + Number(d.spent).toLocaleString() + ' xu') : '');
+      add('Số món', d.qty);
+      if (Array.isArray(d.items) && d.items.length) {
+        rows.push('<div class="ad-section">Đã mua</div>');
+        d.items.forEach(it => rows.push('<div class="ad-row"><span class="ad-k">' + esc(it.name) + '</span><span class="ad-v">×' + esc(it.qty) + '</span></div>'));
+      }
+    } else if (ev.actor === 'garden' || d.actor === 'garden') {
+      add('Lần trồng', d.planted);
+      add('Ô thu hoạch', d.plotsHarvested);
+      add('Sản phẩm (SP)', d.harvestYield != null ? Number(d.harvestYield).toLocaleString() : '');
+      if (Array.isArray(d.byGarden) && d.byGarden.length) {
+        rows.push('<div class="ad-section">Từng vườn</div>');
+        d.byGarden.forEach(g => {
+          rows.push('<div class="ad-row"><span class="ad-k">' + esc(g.gardenLabel) + '</span><span class="ad-v">' +
+            esc('trồng ' + (g.planted || 0) + ' · thu ' + (g.plotsHarvested || 0) + ' ô · +' + Number(g.yield || 0).toLocaleString() + ' SP') +
+            '</span></div>');
+        });
+      }
+    }
+    return '<div class="activity-detail-grid">' + rows.join('') + '</div>';
+  }
+
   if (!log) return '<p>Không có dữ liệu.</p>';
   const d = log.detail || {};
   const type = log.type;
@@ -5246,13 +5309,30 @@ function renderActivityPage() {
       lastDay = day;
       html += '<li class="activity-day-head"><span class="activity-day-pill">' + esc(day) + '</span></li>';
     }
-    const timeStr = a.timeText || '';
+    let timeStr = a.timeText || '';
+    // Offline: hiện khung giờ bắt đầu → kết thúc nếu có
+    if ((a.filter === 'offline' || a.type === 'offline' || a.mode === 'offline') && a._isOfflineSummary) {
+      const off = a.offline || (a.detail && a.detail) || {};
+      const st = off.startedAt || a.firstAt;
+      const en = off.endedAt || a.timestamp;
+      if (st && en && typeof Game !== 'undefined' && Game.formatLogClock) {
+        timeStr = Game.formatLogClock(st, false) + ' – ' + Game.formatLogClock(en, false);
+      }
+    }
     const msg = a.text || a.title || 'Hành động';
     const result = a.resultLine || '';
     const isOff = (a.filter === 'offline' || a.type === 'offline' || a.mode === 'offline');
-    const cat = isOff ? 'offline' : (a.filter || a.filterKey || 'system');
-    html += '<li class="al-row activity-clickable' + (isOff ? ' al-offline' : '') + '" data-id="' + esc(a.id || '') + '">'
-      + '<div class="al-time-col"><span class="al-time">' + esc(timeStr) + '</span></div>'
+    // Tách khoảng giờ thành 2 dòng cho dễ đọc: 08:20\n– 15:42
+    let timeHtml = esc(timeStr);
+    if (timeStr.indexOf('–') >= 0 || timeStr.indexOf('-') >= 0) {
+      const parts = timeStr.split(/\s*[–-]\s*/);
+      if (parts.length === 2) {
+        timeHtml = '<span class="al-time-range">' + esc(parts[0].trim()) + '</span>'
+          + '<span class="al-time-range">– ' + esc(parts[1].trim()) + '</span>';
+      }
+    }
+    html += '<li class="al-row activity-clickable' + (isOff ? ' al-offline' : '') + (a.aggregated ? ' al-agg' : '') + '" data-id="' + esc(a.id || '') + '">'
+      + '<div class="al-time-col"><span class="al-time">' + timeHtml + '</span></div>'
       + '<div class="al-main">'
       + '<div class="al-msg">' + esc(msg) + '</div>'
       + (result ? ('<div class="al-result">' + esc(result) + '</div>') : '')

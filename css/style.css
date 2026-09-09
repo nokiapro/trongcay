@@ -10869,3 +10869,25 @@ html[data-theme="dark"] .activity-list.activity-log-pro .al-row {
   .activity-list.activity-log-pro .al-time { font-size: 0.72rem; }
   .activity-list.activity-log-pro .al-msg { font-size: 0.88rem; }
 }
+
+
+/* AL TIME RANGE — khoảng giờ cho log tổng hợp */
+.activity-list.activity-log-pro .al-row {
+  grid-template-columns: 88px minmax(0, 1fr) 16px;
+}
+.activity-list.activity-log-pro .al-time {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  white-space: pre-line;
+  word-break: break-word;
+}
+.activity-list.activity-log-pro .al-time-range {
+  display: block;
+  color: #64748b;
+  font-weight: 700;
+}
+@media (max-width: 400px) {
+  .activity-list.activity-log-pro .al-row {
+    grid-template-columns: 76px minmax(0, 1fr) 14px;
+  }
+}

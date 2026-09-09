@@ -3894,8 +3894,8 @@ const Game = {
     if (totalBought > 0) {
       currentPlayer.lastHelperBuy = now;
       const name = this.getHelperDisplayName();
-      this.trackDayStat('helper_buy', { qty: lines.length, cost: totalCost });
-      this.addActivity(`${name} mua: ${lines.slice(0, 5).join(', ')} (−${totalCost.toLocaleString()}🪙)`, { type: 'helper_buy' });
+      this.trackDayStat('helper_buy', { qty: lines.length, cost: totalCost, lines: lines.slice() });
+      this.addActivity(name + ' mua: ' + lines.slice(0, 5).join(', ') + ' (-' + totalCost.toLocaleString() + ' xu)', { type: 'helper_buy' });
     }
     return totalBought;
   },
@@ -5447,7 +5447,7 @@ const Game = {
         };
       }
 
-      let msg = 'Streak ' + streak + ' ngày 🔥 · Nhận ' + reward.toLocaleString() + '🪙';
+      let msg = 'Streak ' + streak + ' ngày 🔥 · Nhận ' + reward.toLocaleString() + ' xu';
       msg += ' + ' + (rewardInfo.fertNormal || 2) + ' Phân thường';
       if ((rewardInfo.fertExtra || []).length) msg += ' + quà mốc!';
       if (rewardInfo.milestoneText) msg += ' (' + rewardInfo.milestoneText + ')';
@@ -5768,9 +5768,9 @@ const Game = {
     if (xp != null && Number(xp) !== 0) parts.push((Number(xp) > 0 ? '+' : '') + Number(xp).toLocaleString() + ' XP');
     if (coins != null && Number(coins) !== 0) {
       const n = Number(coins);
-      parts.push((n > 0 ? '+' : '') + n.toLocaleString() + '🪙');
+      parts.push((n > 0 ? '+' : '') + n.toLocaleString() + ' xu');
     }
-    if (cost != null && Number(cost) > 0) parts.push('−' + Number(cost).toLocaleString() + '🪙');
+    if (cost != null && Number(cost) > 0) parts.push('−' + Number(cost).toLocaleString() + ' xu');
     // Offline summary
     if (ev.action === 'offline_end' || ev.action === 'offline' || ev.filter === 'offline') {
       const d = ev.detail || {};
@@ -5802,67 +5802,67 @@ const Game = {
     const act = String(ev.action || '');
 
     if (act === 'buy' || act === 'buy_seed' || act === 'robot_seed') {
-      return '🤖 Robot mua ' + (q != null ? q + ' × ' : '') + (tName || 'hạt');
+      return 'Robot mua ' + (q != null ? q + ' × ' : '') + (tName || 'hạt');
     }
     if (act === 'cook' || act === 'robot_cook') {
-      return '🤖 Robot nấu ' + (q != null ? q + ' × ' : '') + (tName || 'món');
+      return 'Robot nau ' + (q != null ? q + ' × ' : '') + (tName || 'món');
     }
     if (act === 'merge' || act === 'robot_merge') {
       const star = (ev.detail && ev.detail.star) || 0;
       const myth = (ev.detail && ev.detail.myth) || 0;
-      if (star || myth) return '🤖 Robot ghép ⭐×' + star + (myth ? ' · ✨×' + myth : '');
-      return '🤖 Robot ghép ' + (tName || 'vật phẩm') + (q != null ? ' ×' + q : '');
+      if (star || myth) return 'Robot ghep ⭐×' + star + (myth ? ' · ✨×' + myth : '');
+      return 'Robot ghep ' + (tName || 'vật phẩm') + (q != null ? ' ×' + q : '');
     }
     if (act === 'plant' || act === 'replant') {
-      return '🌱 Trồng ' + (tName || 'cây') + cell + (act === 'replant' ? ' (lại)' : '');
+      return 'Trong ' + (tName || 'cây') + cell + (act === 'replant' ? ' (lại)' : '');
     }
-    if (act === 'water') return '💧 Tưới ' + (tName || 'cây') + cell;
-    if (act === 'fert' || act === 'fertilize') return '🧪 Bón ' + (tName || 'phân') + cell;
+    if (act === 'water') return 'Tuoi ' + (tName || 'cây') + cell;
+    if (act === 'fert' || act === 'fertilize') return 'Bon ' + (tName || 'phân') + cell;
     if (act === 'harvest') {
-      let s = '🌱 Thu hoạch ' + (tName || 'cây') + cell;
+      let s = 'Thu hoach ' + (tName || 'cây') + cell;
       if (q != null) s += ' · ×' + q;
       return s;
     }
-    if (act === 'crop_ready') return '🌱 ' + (tName || 'Cây') + cell + ' đã chín';
-    if (act === 'remove' || act === 'uproot') return '🌱 Nhổ ' + (tName || 'cây') + cell;
+    if (act === 'crop_ready') return (tName || 'Cay') + cell + ' đã chín';
+    if (act === 'remove' || act === 'uproot') return 'Nho ' + (tName || 'cây') + cell;
     if (act === 'level_up' || act === 'levelup') {
       const from = (ev.detail && ev.detail.from) || (ev.before && ev.before.level);
       const to = (ev.detail && ev.detail.to) || (ev.after && ev.after.level);
-      if (from != null && to != null) return '⬆️ Lên cấp Lv ' + from + ' → Lv ' + to;
-      return '⬆️ Lên cấp';
+      if (from != null && to != null) return 'Len cap Lv ' + from + ' → Lv ' + to;
+      return 'Len cap';
     }
     if (act === 'xp' || act === 'xp_gain') {
       const xp = ev.xp != null ? ev.xp : (ev.result && ev.result.xp);
-      return '⭐ +' + (xp != null ? Number(xp).toLocaleString() : '?') + ' XP';
+      return '+' + (xp != null ? Number(xp).toLocaleString() : '?') + ' XP';
     }
     if (act === 'reward' || act === 'daily') {
-      return '🎁 Nhận thưởng' + (ev.coins ? (' · +' + Number(ev.coins).toLocaleString() + '🪙') : '');
+      return 'Nhan thuong' + (ev.coins ? (' · +' + Number(ev.coins).toLocaleString() + ' xu') : '');
     }
-    if (act === 'rain' || act === 'rain_start') return '🌧️ Mưa';
+    if (act === 'rain' || act === 'rain_start') return 'Mua';
     if (act === 'offline_end' || act === 'offline') {
       const d = ev.detail || {};
       const dur = d.durationText || '';
-      return '⚡ Offline' + (dur ? (' · ' + dur) : '');
+      return 'Offline' + (dur ? (' · ' + dur) : '');
     }
-    if (act === 'offline_start') return '⚡ Bắt đầu offline';
-    if (act === 'fairy_water') return '🧚 Tiên tưới' + cell + (tName ? (' · ' + tName) : '');
+    if (act === 'offline_start') return 'Bat dau offline';
+    if (act === 'fairy_water') return 'Tien tuoi' + cell + (tName ? (' · ' + tName) : '');
     if (act === 'fairy_rain_seed' || act === 'fairy_care') {
       if (raw) return raw.indexOf('🧚') === 0 ? raw : ('🧚 ' + raw);
-      return '🧚 Tiên chăm vườn';
+      return 'Tien cham vuon';
     }
     if (act === 'nyc_harvest' || (ev.actor === 'nyc' && act === 'harvest')) {
-      return '❤️ NYC thu hoạch' + (tName ? (' ' + tName) : '') + (q != null ? (' ×' + q) : '');
+      return 'NYC thu hoach' + (tName ? (' ' + tName) : '') + (q != null ? (' ×' + q) : '');
     }
     if (act === 'nyc_plant' || (ev.actor === 'nyc' && act === 'plant')) {
-      return '❤️ NYC trồng' + (tName ? (' ' + tName) : '') + cell;
+      return 'NYC trong' + (tName ? (' ' + tName) : '') + cell;
     }
-    if (act === 'helper_buy') return '🧹 Giúp việc mua' + (tName ? (' ' + tName) : '') + (q != null ? (' ×' + q) : '');
+    if (act === 'helper_buy') return 'Giup viec mua' + (tName ? (' ' + tName) : '') + (q != null ? (' ×' + q) : '');
 
     // String thô từ game — làm sạch nhẹ
     if (raw) {
       // NYC / Robot đã có trong text
-      if (/^NYC\b/i.test(raw) && raw.indexOf('❤️') < 0) return '❤️ ' + raw;
-      if (/^Robot\b/i.test(raw) && raw.indexOf('🤖') < 0) return '🤖 ' + raw;
+      if (/^NYC\b/i.test(raw)) return raw;
+      if (/^Robot\b/i.test(raw)) return raw;
       return raw;
     }
     return (actorIcon + ' ' + act + (tName ? (' ' + tName) : '') + (q != null ? (' ×' + q) : '')).trim() || 'Hành động';
@@ -5952,6 +5952,20 @@ const Game = {
       case 'helper_buy': {
         ds.helper.fertBought += Math.max(0, Number(d.qty) || 1);
         ds.helper.spent += Math.max(0, Number(d.cost) || 0);
+        if (!ds.helper.items) ds.helper.items = {};
+        if (d.items && typeof d.items === 'object') {
+          Object.keys(d.items).forEach(nm => {
+            ds.helper.items[nm] = (ds.helper.items[nm] || 0) + (Number(d.items[nm]) || 0);
+          });
+        } else if (d.name) {
+          ds.helper.items[d.name] = (ds.helper.items[d.name] || 0) + (Number(d.qty) || 1);
+        } else if (Array.isArray(d.lines)) {
+          d.lines.forEach(ln => {
+            const s = String(ln || '');
+            if (!s) return;
+            ds.helper.items[s] = (ds.helper.items[s] || 0) + 1;
+          });
+        }
         break;
       }
       case 'robot_seed': {
@@ -6006,52 +6020,268 @@ const Game = {
     } catch (_) {}
   },
 
-  /** Tự tạo event từ trackDayStat — CHỈ cho robot/level/reward khi có name (tránh double với addActivity) */
+  /** Sau trackDayStat → cập nhật log TỔNG HỢP theo actor (1 dòng/ngày/actor) */
   _autoPushFromTrack(kind, d, gi) {
-    if (!d) return;
-    const k = String(kind);
-    // Chỉ auto-push các kind thường không đi qua addActivity chi tiết từng món
-    const autoKinds = ['robot_seed', 'robot_cook', 'robot_merge', 'levelup', 'level_up', 'daily', 'reward'];
-    if (!autoKinds.includes(k)) return;
-    if (k.startsWith('robot') && !d.name && k !== 'robot_merge') return;
+    const k = String(kind || '');
+    // Level / thưởng: vẫn 1 event riêng (hiếm)
+    if (k === 'levelup' || k === 'level_up') {
+      const lv = (d && d.level) || (currentPlayer && currentPlayer.level);
+      this.pushGameEvent({
+        action: 'level_up',
+        actor: 'system',
+        category: 'level',
+        aggregated: false,
+        summaryText: 'Lên cấp Lv ' + lv,
+        detail: { level: lv, from: (d && d.from) || null, to: lv },
+        result: {}
+      });
+      return;
+    }
+    if (k === 'daily' || k === 'reward') {
+      this.pushGameEvent({
+        action: k,
+        actor: 'system',
+        category: 'reward',
+        aggregated: false,
+        summaryText: 'Nhận thưởng' + (d && d.coins ? (' · +' + Number(d.coins).toLocaleString() + ' xu') : ''),
+        coins: d && d.coins,
+        detail: Object.assign({}, d || {}),
+        result: { currency: (d && d.coins) || 0 }
+      });
+      return;
+    }
+    // Các kind còn lại → sync log tổng hợp
+    try { this.syncAggregatedDayLogs(k); } catch (_) {}
+  },
 
-    const list = this.ensureGameEvents();
+  /** Bỏ emoji trong chuỗi log */
+  stripLogEmoji(s) {
+    let t = String(s == null ? '' : s);
+    // Bỏ emoji / ký hiệu trang trí thường gặp trong log
+    t = t.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '');
+    t = t.replace(/[⭐✨❤️🤖🌱💧🧪🎁⬆️⚡🧚🧹👤⚙️🪙🌧️🏅]/g, '');
+    t = t.replace(/\s{2,}/g, ' ').trim();
+    return t;
+  },
+
+  /**
+   * 1 log/ngày cho mỗi actor: nyc | robot | fairy | helper | garden
+   * Cập nhật (upsert) theo id cố định agg_{dayKey}_{actor}
+   */
+  syncAggregatedDayLogs(triggerKind) {
+    if (!currentPlayer) return;
+    const ds = this.ensureDayStats();
+    if (!ds) return;
+    const dayKey = ds.dayKey || this._dayKey();
     const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
-    const recent = list[0];
-    if (recent && recent.action === k && Math.abs((recent.timestamp || 0) - now) < 120) {
-      if (d.name && recent.target && recent.target.name === d.name) return;
-      if (k === 'robot_merge') return;
-      if (k === 'levelup' || k === 'level_up' || k === 'daily' || k === 'reward') return;
+    const list = this.ensureGameEvents();
+
+    const upsert = (actor, payload) => {
+      if (!payload || !payload.summaryText) return;
+      const id = 'agg_' + dayKey.replace(/\W+/g, '_') + '_' + actor;
+      const existing = list.find(e => e && e.id === id);
+      const firstAt = (existing && existing.firstAt) ? existing.firstAt : now;
+      const lastAt = now;
+      const detail = Object.assign({}, payload.detail || {}, {
+        firstAt: firstAt,
+        lastAt: lastAt,
+        firstClock: this.formatLogClock(firstAt, true),
+        lastClock: this.formatLogClock(lastAt, true),
+        timeRange: this.formatLogClock(firstAt, false) + ' – ' + this.formatLogClock(lastAt, false)
+      });
+      // HH:mm – HH:mm (hoặc 1 mốc nếu mới bắt đầu)
+      let timeText = this.formatLogClock(lastAt, true);
+      if (firstAt && lastAt && Math.abs(lastAt - firstAt) >= 60000) {
+        timeText = this.formatLogClock(firstAt, false) + ' – ' + this.formatLogClock(lastAt, false);
+      }
+      const base = {
+        id: id,
+        action: 'day_summary',
+        actor: actor,
+        category: actor === 'garden' ? 'garden' : actor,
+        filter: actor === 'garden' ? 'garden' : actor,
+        mode: 'online',
+        aggregated: true,
+        dayKey: dayKey,
+        timestamp: lastAt,
+        firstAt: firstAt,
+        lastAt: lastAt,
+        timeText: timeText,
+        summaryText: this.stripLogEmoji(payload.summaryText),
+        text: this.stripLogEmoji(payload.summaryText),
+        resultLine: this.stripLogEmoji(payload.resultLine || ''),
+        detail: detail,
+        result: payload.result || {}
+      };
+      if (existing) {
+        Object.assign(existing, base);
+        // giữ firstAt gốc
+        existing.firstAt = firstAt;
+        existing.detail = existing.detail || {};
+        existing.detail.firstAt = firstAt;
+        existing.detail.firstClock = this.formatLogClock(firstAt, true);
+      } else {
+        list.unshift(base);
+      }
+    };
+
+    // —— NYC ——
+    const nyc = ds.nyc || {};
+    if ((nyc.plots || 0) > 0 || (nyc.harvestYield || 0) > 0 || (nyc.gardens || 0) > 0) {
+      const byG = nyc.byGarden || {};
+      const gardenLines = Object.keys(byG).map(gk => {
+        const g = byG[gk] || {};
+        return {
+          gardenIndex: Number(gk),
+          gardenLabel: 'Vườn ' + (Number(gk) + 1),
+          plantTimes: Number(g.plots) || 0, // moi o = 1 lan
+          yield: Number(g.yield) || 0
+        };
+      });
+      const totalPlant = gardenLines.reduce((s, x) => s + x.plantTimes, 0) || (nyc.plots || 0);
+      const totalYield = gardenLines.reduce((s, x) => s + x.yield, 0) || (nyc.harvestYield || 0);
+      const nGardens = nyc.gardens || gardenLines.length || 0;
+      const name = (this.getNycDisplayName && this.getNycDisplayName()) || 'NYC';
+      upsert('nyc', {
+        summaryText: name + ' · ' + nGardens + ' vườn · trồng/thu ' + totalPlant + ' lần · +' + totalYield.toLocaleString() + ' SP',
+        resultLine: totalYield ? ('+' + totalYield.toLocaleString() + ' SP') : '',
+        detail: {
+          actor: 'nyc',
+          name: name,
+          gardens: nGardens,
+          plantTimes: totalPlant,
+          harvestYield: totalYield,
+          byGarden: gardenLines,
+          note: 'Mỗi ô tính 1 lần trồng/thu'
+        },
+        result: { sp: totalYield }
+      });
     }
 
-    const actorMap = {
-      robot_seed: 'robot', robot_cook: 'robot', robot_merge: 'robot',
-      levelup: 'system', level_up: 'system', daily: 'system', reward: 'system'
-    };
-    const actor = actorMap[k] || 'system';
-    const qty = d.qty != null ? d.qty : null;
-    let summaryText = null;
-    if (k === 'robot_seed') summaryText = '🤖 Robot mua ' + (qty != null ? qty + ' × ' : '') + (d.name || 'hạt');
-    if (k === 'robot_cook') summaryText = '🤖 Robot nấu ' + (qty != null ? qty + ' × ' : '') + (d.name || 'món');
-    if (k === 'robot_merge') summaryText = '🤖 Robot ghép ⭐×' + (d.star || 0) + ' · ✨×' + (d.myth || 0);
-    if (k === 'levelup' || k === 'level_up') summaryText = '⬆️ Lên cấp Lv ' + (d.level || '');
-    if (k === 'daily' || k === 'reward') summaryText = '🎁 Nhận thưởng' + (d.coins ? (' · +' + Number(d.coins).toLocaleString() + '🪙') : '');
+    // —— Robot ——
+    const rb = ds.robot || {};
+    const seeds = rb.seedsBought || {};
+    const cooked = rb.cooked || {};
+    const seedEntries = Object.keys(seeds).map(nm => ({ name: nm, qty: seeds[nm] }));
+    const cookEntries = Object.keys(cooked).map(nm => ({ name: nm, qty: cooked[nm] }));
+    const hasRobot = seedEntries.length || cookEntries.length || (rb.mergeStar || 0) || (rb.mergeMyth || 0) || (rb.seedCost || 0);
+    if (hasRobot) {
+      const rname = (this.getRobotDisplayName && this.getRobotDisplayName()) || 'Robot';
+      const parts = [];
+      const seedQty = seedEntries.reduce((s, x) => s + (x.qty || 0), 0);
+      if (seedQty) parts.push('mua ' + seedQty.toLocaleString() + ' hạt');
+      if (rb.cookCount) parts.push('nấu ' + rb.cookCount.toLocaleString() + ' món');
+      if (rb.mergeStar) parts.push('ghép sao ×' + Number(rb.mergeStar).toLocaleString());
+      if (rb.mergeMyth) parts.push('ghép huyền thoại ×' + Number(rb.mergeMyth).toLocaleString());
+      const cost = rb.seedCost || 0;
+      upsert('robot', {
+        summaryText: rname + ' đã làm việc' + (parts.length ? (' · ' + parts.join(' · ')) : '') + (cost ? (' · -' + cost.toLocaleString() + ' xu') : ''),
+        resultLine: cost ? ('-' + cost.toLocaleString() + ' xu') : '',
+        detail: {
+          actor: 'robot',
+          name: rname,
+          seedsBought: seedEntries,
+          seedCost: cost,
+          cooked: cookEntries,
+          cookCount: rb.cookCount || 0,
+          mergeStar: rb.mergeStar || 0,
+          mergeMyth: rb.mergeMyth || 0
+        },
+        result: { currency: cost ? -cost : 0 }
+      });
+    }
 
-    this.pushGameEvent({
-      action: k,
-      actor,
-      category: this._mapKindToCategory(k),
-      target: d.name ? { type: 'item', name: d.name, id: d.plantId || d.recipeId || d.seedId || null } : null,
-      quantity: qty,
-      gardenIndex: gi,
-      cost: d.cost,
-      coins: d.coins,
-      xp: d.xp,
-      name: d.name,
-      summaryText,
-      detail: Object.assign({}, d),
-      timestamp: now
+    // —— Fairy ——
+    const fy = ds.fairy || {};
+    if ((fy.waterActions || 0) || (fy.fertActions || 0) || (fy.rainSeeds || 0) || (fy.gardensWatered || 0)) {
+      const fname = (this.getFairyDisplayName && this.getFairyDisplayName()) || 'Tiên';
+      const parts = [];
+      if (fy.gardensWatered) parts.push(fy.gardensWatered + ' vuon');
+      if (fy.waterActions) parts.push('tưới ' + fy.waterActions.toLocaleString() + ' lan');
+      if (fy.fertActions) parts.push('bón ' + fy.fertActions.toLocaleString() + ' lan');
+      if (fy.rainSeeds) parts.push('nhặt ' + fy.rainSeeds.toLocaleString() + ' hạt mưa');
+      upsert('fairy', {
+        summaryText: fname + ' đã chăm sóc' + (parts.length ? (' · ' + parts.join(' · ')) : ''),
+        resultLine: fy.rainSeeds ? ('+' + fy.rainSeeds.toLocaleString() + ' hat') : '',
+        detail: {
+          actor: 'fairy',
+          name: fname,
+          gardensWatered: fy.gardensWatered || 0,
+          waterActions: fy.waterActions || 0,
+          fertActions: fy.fertActions || 0,
+          rainSeeds: fy.rainSeeds || 0
+        },
+        result: {}
+      });
+    }
+
+    // —— Helper ——
+    const hp = ds.helper || {};
+    if ((hp.fertBought || 0) || (hp.spent || 0) || (hp.items && Object.keys(hp.items).length)) {
+      const hname = (this.getHelperDisplayName && this.getHelperDisplayName()) || 'Giúp việc';
+      const items = hp.items || {};
+      const itemLines = Object.keys(items).map(nm => ({ name: nm, qty: items[nm] }));
+      upsert('helper', {
+        summaryText: hname + ' mua' + (hp.fertBought ? (' ' + hp.fertBought + ' mon') : '') + (hp.spent ? (' · -' + Number(hp.spent).toLocaleString() + ' xu') : ''),
+        resultLine: hp.spent ? ('-' + Number(hp.spent).toLocaleString() + ' xu') : '',
+        detail: {
+          actor: 'helper',
+          name: hname,
+          items: itemLines,
+          qty: hp.fertBought || 0,
+          spent: hp.spent || 0
+        },
+        result: { currency: hp.spent ? -hp.spent : 0 }
+      });
+    }
+
+    // —— Vườn (người chơi) ——
+    const gardens = ds.gardens || {};
+    let pPlant = 0, pHarvest = 0, pYield = 0, pReplant = 0;
+    const gLines = [];
+    Object.keys(gardens).forEach(gk => {
+      const gg = gardens[gk] || {};
+      const planted = (gg.plantedQty || 0) + (gg.replanted || 0);
+      const hy = gg.harvestYield || 0;
+      const ph = gg.plotsHarvested || 0;
+      if (planted || hy || ph) {
+        pPlant += planted;
+        pHarvest += ph;
+        pYield += hy;
+        pReplant += gg.replanted || 0;
+        gLines.push({
+          gardenIndex: Number(gk),
+          gardenLabel: 'Vườn ' + (Number(gk) + 1),
+          planted: planted,
+          plotsHarvested: ph,
+          yield: hy,
+          replanted: gg.replanted || 0
+        });
+      }
     });
+    if (pPlant || pHarvest || pYield) {
+      const parts = [];
+      if (pPlant) parts.push('trồng ' + pPlant + ' lần');
+      if (pHarvest) parts.push('thu ' + pHarvest + ' ô');
+      if (pYield) parts.push('+' + pYield.toLocaleString() + ' SP');
+      upsert('garden', {
+        summaryText: 'Vườn' + (parts.length ? (' · ' + parts.join(' · ')) : ''),
+        resultLine: pYield ? ('+' + pYield.toLocaleString() + ' SP') : '',
+        detail: {
+          actor: 'garden',
+          planted: pPlant,
+          plotsHarvested: pHarvest,
+          harvestYield: pYield,
+          replanted: pReplant,
+          byGarden: gLines
+        },
+        result: { sp: pYield }
+      });
+    }
+
+    // trim
+    const maxN = (this.OFFLINE_CONFIG && this.OFFLINE_CONFIG.maxGameEvents) || 500;
+    if (list.length > maxN) currentPlayer.gameEvents = list.slice(0, maxN);
   },
 
   _pushDayEvent(kind, data, gi) {
@@ -6202,7 +6432,7 @@ const Game = {
       eventSource: entry.detail.eventSource,
       offlineSessionId: sessionId,
       timestamp: now,
-      summaryText: '⚡ Offline kết thúc · ' + duration,
+      summaryText: 'Offline kết thúc · ' + duration,
       detail: entry.detail,
       result: {
         sp: garden.product || 0,
@@ -6233,24 +6463,59 @@ const Game = {
     return entry;
   },
 
-  /** Danh sách log — đơn giản, mọi event có timestamp + text + filter */
+  /** Danh sách log — ưu tiên log TỔNG HỢP (1 dòng/actor/ngày) + offline + lên cấp */
   getActivityLogList() {
     this.ensureGameEvents();
+    // Đồng bộ tổng hợp từ dayStats trước khi vẽ
+    try { this.syncAggregatedDayLogs('refresh'); } catch (_) {}
     const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
     const KEEP = 24 * 3600 * 1000; // chỉ giữ 24 giờ
     const events = (currentPlayer && currentPlayer.gameEvents) || [];
     const list = [];
 
+    // Các action rời rạc cần ẩn (đã gộp vào tổng hợp)
+    const HIDE = {
+      plant: 1, replant: 1, water: 1, fert: 1, fertilize: 1, harvest: 1, crop_ready: 1,
+      remove: 1, uproot: 1, xp: 1, xp_gain: 1,
+      robot_seed: 1, robot_cook: 1, robot_merge: 1, robot_rain: 1,
+      fairy_water: 1, fairy_fert: 1, fairy_rain_seed: 1, fairy_care: 1,
+      nyc_plant: 1, nyc_harvest: 1, helper_buy: 1, buy_seed: 1
+    };
+
     events.forEach(e => {
       if (!e) return;
       const ts = Number(e.timestamp) || 0;
       if (!ts || (now - ts) > KEEP) return;
-      // Ẩn log XP lẻ (chỉ giữ level_up)
       const act = String(e.action || '');
-      if (act === 'xp' || act === 'xp_gain') return;
-      const text = this.formatEventSummaryText(e) || e.summaryText || e.text || e.action || 'Hành động';
-      const resultLine = this.formatEventResultLine(e);
-      const filter = e.filter || this.resolveFilterKey(e.action, e.actor, text, e.category, e.mode);
+      // Giữ: aggregated, offline, level_up, reward, day_summary, và string addActivity quan trọng
+      if (e.aggregated || act === 'day_summary') {
+        // ok
+      } else if (act === 'offline_end' || act === 'offline' || e.mode === 'offline' || e.category === 'offline') {
+        // ok
+      } else if (act === 'level_up' || act === 'levelup' || act === 'daily' || act === 'reward') {
+        // ok
+      } else if (HIDE[act]) {
+        return;
+      } else if (e.actor === 'robot' || e.actor === 'nyc' || e.actor === 'fairy' || e.actor === 'helper') {
+        // log rời của worker → ẩn (đã có tổng hợp)
+        if (act !== 'day_summary') return;
+      }
+
+      let text = e.summaryText || e.text || this.formatEventSummaryText(e) || e.action || 'Hành động';
+      text = this.stripLogEmoji(text);
+      let resultLine = e.resultLine || this.formatEventResultLine(e) || '';
+      resultLine = this.stripLogEmoji(resultLine);
+      const filter = e.filter || e.actor || this.resolveFilterKey(e.action, e.actor, text, e.category, e.mode);
+      const firstAt = Number(e.firstAt) || ts;
+      const lastAt = Number(e.lastAt) || ts;
+      let timeText = e.timeText || '';
+      if (!timeText) {
+        if (e.aggregated && firstAt && lastAt && Math.abs(lastAt - firstAt) >= 60000) {
+          timeText = this.formatLogClock(firstAt, false) + ' – ' + this.formatLogClock(lastAt, false);
+        } else {
+          timeText = this.formatLogClock(ts, true) || '';
+        }
+      }
       list.push({
         id: e.id,
         type: e.category || e.action || 'system',
@@ -6263,9 +6528,11 @@ const Game = {
         text: text,
         resultLine: resultLine,
         timestamp: ts,
-        firstAt: ts,
-        timeText: this.formatLogClock(ts, true) || '',
+        firstAt: firstAt,
+        lastAt: lastAt,
+        timeText: timeText,
         hasDetail: true,
+        aggregated: !!e.aggregated,
         _isEvent: true,
         _event: e
       });
@@ -6280,7 +6547,7 @@ const Game = {
       if (list.some(x => x.id === l.id || x.id === l.id + '_end')) return;
       const dur = (l.summary && l.summary.duration) || (l.detail && l.detail.durationText) || '';
       const sumText = (l.summary && l.summary.text) || '';
-      const text = '⚡ Offline' + (dur ? (' · ' + dur) : (sumText ? (' · ' + sumText) : ''));
+      const text = 'Offline' + (dur ? (' · ' + dur) : (sumText ? (' · ' + sumText) : ''));
       const resultLine = sumText && sumText !== dur ? sumText : '';
       list.push({
         id: l.id,
@@ -6484,7 +6751,7 @@ const Game = {
     qty = Math.min(qty, room);
     const price = (currentSettings && currentSettings.plotPrice) || 500;
     const cost = price * qty;
-    if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền! Cần ' + cost + '🪙' };
+    if (!this.chargeCoins(cost)) return { ok: false, msg: 'Không đủ tiền! Cần ' + cost + ' xu' };
     currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
     const start = currentPlayer.plots.length;
     for (let i = 0; i < qty; i++) {
