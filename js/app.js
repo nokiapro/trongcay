@@ -4900,68 +4900,151 @@ function formatLogEventsHtml(d) {
 }
 
 function formatActivityDetailHtml(log) {
-  // Log tổng hợp (NYC / Robot / Tiên / Giúp việc / Vườn)
-  if (log && (log.aggregated || (log._event && log._event.aggregated) || (log.action === 'day_summary'))) {
+  // Modal CHI TIẾT đầy đủ — list ngoài ngắn, trong này liệt kê đã làm gì
+  if (log && (log.aggregated || (log._event && log._event.aggregated) || log.action === 'day_summary' || (log._event && log._event.action === 'day_summary'))) {
     const ev = log._event || log;
-    const d = (ev.detail) || (log.detail) || {};
+    const d = Object.assign({}, (ev.detail || {}), (log.detail || {}));
+    // actor từ nhiều nguồn
+    const actor = d.actor || ev.actor || log.actor || '';
     const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const rows = [];
-    const add = (k, v) => { if (v != null && v !== '' && v !== 0) rows.push('<div class="ad-row"><span class="ad-k">' + esc(k) + '</span><span class="ad-v">' + esc(v) + '</span></div>'); };
-    add('Thời gian', (typeof Game !== 'undefined' && Game.formatLogClock) ? Game.formatLogClock(ev.timestamp || log.timestamp, true) : '');
-    add('Người làm', d.name || ev.actor || '');
-    if (ev.actor === 'nyc' || d.actor === 'nyc') {
-      add('Số vườn', d.gardens);
-      add('Số lần trồng/thu (mỗi ô = 1)', d.plantTimes);
-      add('Sản phẩm (SP)', d.harvestYield != null ? Number(d.harvestYield).toLocaleString() : '');
-      if (Array.isArray(d.byGarden) && d.byGarden.length) {
-        rows.push('<div class="ad-section">Chi tiết từng vườn</div>');
-        d.byGarden.forEach(g => {
-          rows.push('<div class="ad-row"><span class="ad-k">' + esc(g.gardenLabel || ('Vườn ' + (g.gardenIndex + 1))) + '</span><span class="ad-v">' +
-            esc((g.plantTimes != null ? (g.plantTimes + ' lần') : (g.planted != null ? (g.planted + ' lần') : '')) +
-              (g.yield ? (' · +' + Number(g.yield).toLocaleString() + ' SP') : '') +
-              (g.plotsHarvested ? (' · thu ' + g.plotsHarvested + ' ô') : '')) + '</span></div>');
-        });
-      }
-    } else if (ev.actor === 'robot' || d.actor === 'robot') {
-      add('Tiền mua hạt', d.seedCost != null ? ('-' + Number(d.seedCost).toLocaleString() + ' xu') : '');
-      add('Ghép sao', d.mergeStar);
-      add('Ghép huyền thoại', d.mergeMyth);
-      add('Số món nấu', d.cookCount);
-      if (Array.isArray(d.seedsBought) && d.seedsBought.length) {
-        rows.push('<div class="ad-section">Hạt đã mua</div>');
-        d.seedsBought.forEach(it => rows.push('<div class="ad-row"><span class="ad-k">' + esc(it.name) + '</span><span class="ad-v">×' + esc(it.qty) + '</span></div>'));
-      }
-      if (Array.isArray(d.cooked) && d.cooked.length) {
-        rows.push('<div class="ad-section">Món đã nấu</div>');
-        d.cooked.forEach(it => rows.push('<div class="ad-row"><span class="ad-k">' + esc(it.name) + '</span><span class="ad-v">×' + esc(it.qty) + '</span></div>'));
-      }
-    } else if (ev.actor === 'fairy' || d.actor === 'fairy') {
-      add('Số vườn chăm', d.gardensWatered);
-      add('Lần tưới', d.waterActions);
-      add('Lần bón', d.fertActions);
-      add('Hạt nhặt khi mưa', d.rainSeeds);
-    } else if (ev.actor === 'helper' || d.actor === 'helper') {
-      add('Tổng chi', d.spent != null ? ('-' + Number(d.spent).toLocaleString() + ' xu') : '');
-      add('Số món', d.qty);
-      if (Array.isArray(d.items) && d.items.length) {
-        rows.push('<div class="ad-section">Đã mua</div>');
-        d.items.forEach(it => rows.push('<div class="ad-row"><span class="ad-k">' + esc(it.name) + '</span><span class="ad-v">×' + esc(it.qty) + '</span></div>'));
-      }
-    } else if (ev.actor === 'garden' || d.actor === 'garden') {
-      add('Lần trồng', d.planted);
-      add('Ô thu hoạch', d.plotsHarvested);
-      add('Sản phẩm (SP)', d.harvestYield != null ? Number(d.harvestYield).toLocaleString() : '');
-      if (Array.isArray(d.byGarden) && d.byGarden.length) {
-        rows.push('<div class="ad-section">Từng vườn</div>');
-        d.byGarden.forEach(g => {
-          rows.push('<div class="ad-row"><span class="ad-k">' + esc(g.gardenLabel) + '</span><span class="ad-v">' +
-            esc('trồng ' + (g.planted || 0) + ' · thu ' + (g.plotsHarvested || 0) + ' ô · +' + Number(g.yield || 0).toLocaleString() + ' SP') +
-            '</span></div>');
-        });
+    const num = (n) => Number(n || 0).toLocaleString('vi-VN');
+    let html = '';
+
+    // Khung giờ
+    const firstAt = d.firstAt || ev.firstAt || log.firstAt;
+    const lastAt = d.lastAt || ev.lastAt || log.timestamp || ev.timestamp;
+    let timeStr = '—';
+    if (typeof Game !== 'undefined' && Game.formatLogClock) {
+      if (firstAt && lastAt && Math.abs(lastAt - firstAt) >= 1000) {
+        timeStr = Game.formatLogClock(firstAt, true) + ' → ' + Game.formatLogClock(lastAt, true);
+      } else if (lastAt || firstAt) {
+        timeStr = Game.formatLogClock(lastAt || firstAt, true);
       }
     }
-    return '<div class="activity-detail-grid">' + rows.join('') + '</div>';
+    html += '<div class="ad-hero"><div class="ad-hero-label">Thời gian hoạt động</div><div class="ad-hero-value">' + esc(timeStr) + '</div></div>';
+
+    if (actor === 'nyc') {
+      const name = d.name || 'NYC';
+      html += '<div class="ad-block"><div class="ad-label">' + esc(name) + ' đã làm gì hôm nay</div>';
+      html += '<ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Số vườn NYC xử lý</span><span class="ad-li-v">' + esc(d.gardens || 0) + ' vườn</span></li>';
+      html += '<li><span class="ad-li-k">Tổng lần trồng / thu (mỗi ô = 1 lần)</span><span class="ad-li-v">' + esc(num(d.plantTimes)) + ' lần</span></li>';
+      html += '<li><span class="ad-li-k">Tổng sản phẩm thu được</span><span class="ad-li-v">+' + esc(num(d.harvestYield)) + ' SP</span></li>';
+      html += '</ul></div>';
+
+      if (Array.isArray(d.byGarden) && d.byGarden.length) {
+        html += '<div class="ad-block"><div class="ad-label">Chi tiết từng vườn</div><ul class="ad-list ad-list-rich">';
+        d.byGarden.forEach(g => {
+          const label = g.gardenLabel || ('Vườn ' + (Number(g.gardenIndex) + 1));
+          const times = g.plantTimes != null ? g.plantTimes : (g.planted || 0);
+          const y = g.yield || 0;
+          const ph = g.plotsHarvested || 0;
+          html += '<li class="ad-li-stack"><strong>' + esc(label) + '</strong>';
+          html += '<div class="ad-li-sub">• Số lần trồng/thu (mỗi ô 1 lần): <b>' + esc(num(times)) + '</b></div>';
+          if (ph) html += '<div class="ad-li-sub">• Số ô thu hoạch: <b>' + esc(num(ph)) + '</b></div>';
+          html += '<div class="ad-li-sub">• Sản phẩm: <b>+' + esc(num(y)) + ' SP</b></div>';
+          html += '</li>';
+        });
+        html += '</ul></div>';
+      }
+      html += '<p class="ad-note">Ghi chú: mỗi ô được NYC trồng hoặc thu tính đúng 1 lần.</p>';
+      return html;
+    }
+
+    if (actor === 'robot') {
+      const name = d.name || 'Robot';
+      html += '<div class="ad-block"><div class="ad-label">' + esc(name) + ' đã làm gì hôm nay</div>';
+      html += '<ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Tổng tiền mua hạt</span><span class="ad-li-v">-' + esc(num(d.seedCost)) + ' xu</span></li>';
+      html += '<li><span class="ad-li-k">Ghép hạt sao</span><span class="ad-li-v">×' + esc(num(d.mergeStar)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Ghép hạt huyền thoại</span><span class="ad-li-v">×' + esc(num(d.mergeMyth)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Số món đã nấu</span><span class="ad-li-v">' + esc(num(d.cookCount)) + ' món</span></li>';
+      html += '</ul></div>';
+
+      if (Array.isArray(d.seedsBought) && d.seedsBought.length) {
+        html += '<div class="ad-block"><div class="ad-label">Danh sách hạt đã mua</div><ul class="ad-list ad-list-rich">';
+        d.seedsBought.forEach(it => {
+          html += '<li><span class="ad-li-k">' + esc(it.name) + '</span><span class="ad-li-v">×' + esc(num(it.qty)) + '</span></li>';
+        });
+        html += '</ul></div>';
+      } else {
+        html += '<div class="ad-block"><div class="ad-label">Danh sách hạt đã mua</div><p class="ad-empty-line">Chưa mua hạt trong phiên này.</p></div>';
+      }
+
+      if (Array.isArray(d.cooked) && d.cooked.length) {
+        html += '<div class="ad-block"><div class="ad-label">Danh sách món đã nấu</div><ul class="ad-list ad-list-rich">';
+        d.cooked.forEach(it => {
+          html += '<li><span class="ad-li-k">' + esc(it.name) + '</span><span class="ad-li-v">×' + esc(num(it.qty)) + '</span></li>';
+        });
+        html += '</ul></div>';
+      }
+
+      html += '<div class="ad-block"><div class="ad-label">Ghép hạt</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Hạt sao tạo được</span><span class="ad-li-v">×' + esc(num(d.mergeStar)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Hạt huyền thoại tạo được</span><span class="ad-li-v">×' + esc(num(d.mergeMyth)) + '</span></li>';
+      html += '</ul></div>';
+      return html;
+    }
+
+    if (actor === 'fairy') {
+      const name = d.name || 'Tiên';
+      html += '<div class="ad-block"><div class="ad-label">' + esc(name) + ' đã chăm sóc gì</div>';
+      html += '<ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Số vườn đã chăm</span><span class="ad-li-v">' + esc(num(d.gardensWatered)) + ' vườn</span></li>';
+      html += '<li><span class="ad-li-k">Số lần tưới</span><span class="ad-li-v">' + esc(num(d.waterActions)) + ' lần</span></li>';
+      html += '<li><span class="ad-li-k">Số lần bón phân</span><span class="ad-li-v">' + esc(num(d.fertActions)) + ' lần</span></li>';
+      html += '<li><span class="ad-li-k">Hạt nhặt khi mưa</span><span class="ad-li-v">' + esc(num(d.rainSeeds)) + ' hạt</span></li>';
+      html += '</ul></div>';
+      html += '<p class="ad-note">Theo cấu hình Tiên hiện tại (tưới / bón / nhặt hạt mưa).</p>';
+      return html;
+    }
+
+    if (actor === 'helper') {
+      const name = d.name || 'Giúp việc';
+      html += '<div class="ad-block"><div class="ad-label">' + esc(name) + ' đã mua gì</div>';
+      html += '<ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Tổng số món</span><span class="ad-li-v">' + esc(num(d.qty)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Tổng tiền đã mất</span><span class="ad-li-v">-' + esc(num(d.spent)) + ' xu</span></li>';
+      html += '</ul></div>';
+      if (Array.isArray(d.items) && d.items.length) {
+        html += '<div class="ad-block"><div class="ad-label">Chi tiết từng món</div><ul class="ad-list ad-list-rich">';
+        d.items.forEach(it => {
+          html += '<li><span class="ad-li-k">' + esc(it.name) + '</span><span class="ad-li-v">×' + esc(num(it.qty)) + '</span></li>';
+        });
+        html += '</ul></div>';
+      } else {
+        html += '<p class="ad-empty-line">Chưa ghi nhận danh sách món (sẽ có sau các lần mua mới).</p>';
+      }
+      return html;
+    }
+
+    if (actor === 'garden') {
+      html += '<div class="ad-block"><div class="ad-label">Bạn đã làm gì trên vườn</div>';
+      html += '<ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Số lần trồng</span><span class="ad-li-v">' + esc(num(d.planted)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Số ô thu hoạch</span><span class="ad-li-v">' + esc(num(d.plotsHarvested)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Sản phẩm nhận được</span><span class="ad-li-v">+' + esc(num(d.harvestYield)) + ' SP</span></li>';
+      html += '<li><span class="ad-li-k">Trồng lại</span><span class="ad-li-v">' + esc(num(d.replanted)) + '</span></li>';
+      html += '</ul></div>';
+      if (Array.isArray(d.byGarden) && d.byGarden.length) {
+        html += '<div class="ad-block"><div class="ad-label">Từng vườn</div><ul class="ad-list ad-list-rich">';
+        d.byGarden.forEach(g => {
+          html += '<li class="ad-li-stack"><strong>' + esc(g.gardenLabel) + '</strong>';
+          html += '<div class="ad-li-sub">• Trồng: <b>' + esc(num(g.planted)) + '</b></div>';
+          html += '<div class="ad-li-sub">• Thu: <b>' + esc(num(g.plotsHarvested)) + ' ô</b></div>';
+          html += '<div class="ad-li-sub">• Sản phẩm: <b>+' + esc(num(g.yield)) + ' SP</b></div>';
+          html += '</li>';
+        });
+        html += '</ul></div>';
+      }
+      return html;
+    }
+
+    // fallback
+    html += '<pre class="ad-pre">' + esc(JSON.stringify(d, null, 2)) + '</pre>';
+    return html;
   }
+
 
   if (!log) return '<p>Không có dữ liệu.</p>';
   const d = log.detail || {};
@@ -5196,10 +5279,15 @@ function openActivityDetail(logId) {
   const title = document.getElementById('activity-detail-title');
   const body = document.getElementById('activity-detail-body');
   if (!modal || !body) return;
-  const icon = activityFaIcon('', log?.type);
-  const t = (log && log.summary && log.summary.title) ? log.summary.title : 'Chi tiết';
-  const timeStr = formatActivityTime(log?.timestamp, log?.firstAt);
-  if (title) title.innerHTML = '<i class="' + icon + '"></i> ' + t + (timeStr ? ' <small class="activity-time-detail">' + timeStr + '</small>' : '');
+  if (!log) {
+    if (title) title.textContent = 'Chi tiết';
+    body.innerHTML = '<p>Không tìm thấy log.</p>';
+    modal.classList.add('show');
+    return;
+  }
+  const t = (log.summary && log.summary.title) ? log.summary.title
+    : (log.text || log.title || 'Chi tiết');
+  if (title) title.textContent = t;
   body.innerHTML = formatActivityDetailHtml(log);
   modal.classList.add('show');
 }

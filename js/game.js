@@ -6143,8 +6143,8 @@ const Game = {
       const nGardens = nyc.gardens || gardenLines.length || 0;
       const name = (this.getNycDisplayName && this.getNycDisplayName()) || 'NYC';
       upsert('nyc', {
-        summaryText: name + ' · ' + nGardens + ' vườn · trồng/thu ' + totalPlant + ' lần · +' + totalYield.toLocaleString() + ' SP',
-        resultLine: totalYield ? ('+' + totalYield.toLocaleString() + ' SP') : '',
+        summaryText: name + ' đã làm việc',
+        resultLine: (nGardens ? (nGardens + ' vườn') : '') + (totalYield ? ((nGardens ? ' · ' : '') + '+' + totalYield.toLocaleString() + ' SP') : ''),
         detail: {
           actor: 'nyc',
           name: name,
@@ -6175,8 +6175,8 @@ const Game = {
       if (rb.mergeMyth) parts.push('ghép huyền thoại ×' + Number(rb.mergeMyth).toLocaleString());
       const cost = rb.seedCost || 0;
       upsert('robot', {
-        summaryText: rname + ' đã làm việc' + (parts.length ? (' · ' + parts.join(' · ')) : '') + (cost ? (' · -' + cost.toLocaleString() + ' xu') : ''),
-        resultLine: cost ? ('-' + cost.toLocaleString() + ' xu') : '',
+        summaryText: rname + ' đã làm việc',
+        resultLine: (parts.length ? parts.slice(0, 2).join(' · ') : '') + (cost ? ((parts.length ? ' · ' : '') + '-' + cost.toLocaleString() + ' xu') : ''),
         detail: {
           actor: 'robot',
           name: rname,
@@ -6201,8 +6201,8 @@ const Game = {
       if (fy.fertActions) parts.push('bón ' + fy.fertActions.toLocaleString() + ' lan');
       if (fy.rainSeeds) parts.push('nhặt ' + fy.rainSeeds.toLocaleString() + ' hạt mưa');
       upsert('fairy', {
-        summaryText: fname + ' đã chăm sóc' + (parts.length ? (' · ' + parts.join(' · ')) : ''),
-        resultLine: fy.rainSeeds ? ('+' + fy.rainSeeds.toLocaleString() + ' hat') : '',
+        summaryText: fname + ' đã chăm sóc',
+        resultLine: parts.slice(0, 2).join(' · '),
         detail: {
           actor: 'fairy',
           name: fname,
@@ -6222,8 +6222,8 @@ const Game = {
       const items = hp.items || {};
       const itemLines = Object.keys(items).map(nm => ({ name: nm, qty: items[nm] }));
       upsert('helper', {
-        summaryText: hname + ' mua' + (hp.fertBought ? (' ' + hp.fertBought + ' mon') : '') + (hp.spent ? (' · -' + Number(hp.spent).toLocaleString() + ' xu') : ''),
-        resultLine: hp.spent ? ('-' + Number(hp.spent).toLocaleString() + ' xu') : '',
+        summaryText: hname + ' đã mua đồ',
+        resultLine: hp.spent ? ('-' + Number(hp.spent).toLocaleString() + ' xu') : (hp.fertBought ? (hp.fertBought + ' món') : ''),
         detail: {
           actor: 'helper',
           name: hname,
@@ -6265,8 +6265,8 @@ const Game = {
       if (pHarvest) parts.push('thu ' + pHarvest + ' ô');
       if (pYield) parts.push('+' + pYield.toLocaleString() + ' SP');
       upsert('garden', {
-        summaryText: 'Vườn' + (parts.length ? (' · ' + parts.join(' · ')) : ''),
-        resultLine: pYield ? ('+' + pYield.toLocaleString() + ' SP') : '',
+        summaryText: 'Bạn đã làm vườn',
+        resultLine: parts.slice(0, 2).join(' · '),
         detail: {
           actor: 'garden',
           planted: pPlant,
@@ -6581,6 +6581,8 @@ const Game = {
     const ev = events.find(e => e && e.id === id);
     if (ev) {
       const text = ev.summaryText || ev.text || this.formatEventSummaryText(ev) || '';
+      // Giữ nguyên detail đầy đủ (aggregated)
+      const detail = Object.assign({}, ev.detail || {}, this._buildEventDetail(ev) || {});
       return {
         id: ev.id,
         type: ev.category || ev.action,
@@ -6588,13 +6590,15 @@ const Game = {
         actor: ev.actor,
         mode: ev.mode,
         filter: ev.filter,
+        aggregated: !!ev.aggregated || ev.action === 'day_summary',
         timestamp: ev.timestamp,
-        firstAt: ev.timestamp,
+        firstAt: ev.firstAt || detail.firstAt || ev.timestamp,
+        lastAt: ev.lastAt || detail.lastAt || ev.timestamp,
         summary: {
           title: this._eventDetailTitle(ev),
           text: text
         },
-        detail: this._buildEventDetail(ev),
+        detail: detail,
         _event: ev,
         _isEvent: true
       };
@@ -6605,21 +6609,31 @@ const Game = {
 
   _eventDetailTitle(ev) {
     if (!ev) return 'Chi tiết';
+    if (ev.action === 'day_summary' || ev.aggregated) {
+      const name = (ev.detail && ev.detail.name) || '';
+      if (ev.actor === 'nyc') return (name || 'NYC') + ' — Chi tiết công việc';
+      if (ev.actor === 'robot') return (name || 'Robot') + ' — Chi tiết công việc';
+      if (ev.actor === 'fairy') return (name || 'Tiên') + ' — Chi tiết chăm sóc';
+      if (ev.actor === 'helper') return (name || 'Giúp việc') + ' — Chi tiết mua sắm';
+      if (ev.actor === 'garden') return 'Vườn — Chi tiết hoạt động';
+      return 'Chi tiết hoạt động';
+    }
     const map = {
-      plant: '🌱 Trồng cây', replant: '🌱 Trồng lại', water: '💧 Tưới nước', fert: '🧪 Bón phân',
-      harvest: '🌱 Thu hoạch', crop_ready: '🌱 Cây chín', remove: '🌱 Nhổ cây',
-      robot_seed: '🤖 Robot mua hạt', robot_cook: '🤖 Robot nấu', robot_merge: '🤖 Robot ghép',
-      level_up: '⬆️ Lên cấp', levelup: '⬆️ Lên cấp', xp: '⭐ XP',
-      reward: '🎁 Thưởng', daily: '🎁 Thưởng ngày', rain: '🌧️ Mưa',
-      offline_end: '⚡ Offline', offline: '⚡ Offline',
-      fairy_water: '🧚 Tiên tưới', fairy_rain_seed: '🧚 Tiên nhặt hạt', fairy_care: '🧚 Tiên',
-      nyc_harvest: '❤️ NYC', nyc_plant: '❤️ NYC', helper_buy: '🧹 Giúp việc'
+      plant: 'Trồng cây', replant: 'Trồng lại', water: 'Tưới nước', fert: 'Bón phân',
+      harvest: 'Thu hoạch', crop_ready: 'Cây chín', remove: 'Nhổ cây',
+      robot_seed: 'Robot mua hạt', robot_cook: 'Robot nấu', robot_merge: 'Robot ghép',
+      level_up: 'Lên cấp', levelup: 'Lên cấp', xp: 'XP',
+      reward: 'Thưởng', daily: 'Thưởng ngày', rain: 'Mưa',
+      offline_end: 'Offline', offline: 'Offline',
+      fairy_water: 'Tiên tưới', fairy_rain_seed: 'Tiên nhặt hạt', fairy_care: 'Tiên',
+      nyc_harvest: 'NYC', nyc_plant: 'NYC', helper_buy: 'Giúp việc'
     };
     if (map[ev.action]) return map[ev.action];
-    if (ev.filter === 'robot' || ev.actor === 'robot') return '🤖 Robot';
-    if (ev.filter === 'nyc' || ev.actor === 'nyc') return '❤️ NYC';
-    if (ev.filter === 'fairy' || ev.actor === 'fairy') return '🧚 Tiên';
-    return ev.summaryText || ev.action || 'Chi tiết';
+    if (ev.actor === 'robot') return 'Robot';
+    if (ev.actor === 'nyc') return 'NYC';
+    if (ev.actor === 'fairy') return 'Tiên';
+    if (ev.actor === 'helper') return 'Giúp việc';
+    return this.stripLogEmoji(ev.summaryText || ev.action || 'Chi tiết');
   },
 
   _buildEventDetail(ev) {
