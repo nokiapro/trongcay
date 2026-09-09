@@ -1131,21 +1131,8 @@ const Game = {
       currentPlayer.level = MAX_LV;
       return;
     }
-    const xpBefore = currentPlayer.xp || 0;
-    const levelBefore = currentPlayer.level || 1;
-    currentPlayer.xp = xpBefore + amount;
-    if (amount) {
-      this.pushGameEvent({
-        action: 'xp',
-        actor: 'system',
-        category: 'level',
-        quantity: amount,
-        xp: amount,
-        summaryText: '⭐ +' + Number(amount).toLocaleString() + ' XP',
-        detail: { before: { xp: xpBefore, level: levelBefore }, after: { xp: currentPlayer.xp, level: currentPlayer.level } },
-        result: { xp: amount }
-      });
-    }
+    currentPlayer.xp = (currentPlayer.xp || 0) + amount;
+    // Không log từng +XP lẻ (ngập nhật ký) — XP gắn vào harvest/cook; chỉ log khi lên cấp
     while (currentPlayer.xp >= this.xpForLevel(currentPlayer.level || 1) && (currentPlayer.level || 1) < MAX_LV) {
       currentPlayer.xp -= this.xpForLevel(currentPlayer.level || 1);
       const fromLv = currentPlayer.level || 1;
@@ -6258,6 +6245,9 @@ const Game = {
       if (!e) return;
       const ts = Number(e.timestamp) || 0;
       if (!ts || (now - ts) > KEEP) return;
+      // Ẩn log XP lẻ (chỉ giữ level_up)
+      const act = String(e.action || '');
+      if (act === 'xp' || act === 'xp_gain') return;
       const text = this.formatEventSummaryText(e) || e.summaryText || e.text || e.action || 'Hành động';
       const resultLine = this.formatEventResultLine(e);
       const filter = e.filter || this.resolveFilterKey(e.action, e.actor, text, e.category, e.mode);
