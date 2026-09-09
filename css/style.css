@@ -10348,8 +10348,9 @@ html[data-theme="dark"] .ad-ev-time { color: #94a3b8; }
 }
 .activity-filters {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 0 0 12px 0;
   margin: 0 0 4px 0;
@@ -10734,6 +10735,11 @@ html[data-theme="dark"] .activity-filter-btn.active {
   max-width: 100%;
   margin: 0 0 10px;
   padding: 0 0 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
 }
 #page-activity .activity-section.activity-section-log .activity-list {
   width: 100%;

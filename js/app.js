@@ -5208,51 +5208,37 @@ document.getElementById('btn-offline-view-detail')?.addEventListener('click', ()
 
 function _activityCategoryClass(a) {
   if (!a) return 'system';
-  const cat = String(a.type || a.category || '').toLowerCase();
-  const act = String(a.action || '').toLowerCase();
-  const actor = String(a.actor || '').toLowerCase();
-  const mode = String(a.mode || '').toLowerCase();
-  const text = String(a.text || a.title || a.summaryText || '');
+  const ev = a._event || {};
+  const cat = String(a.type || a.category || ev.category || '').toLowerCase();
+  const act = String(a.action || ev.action || '').toLowerCase();
+  const actor = String(a.actor || ev.actor || '').toLowerCase();
+  const mode = String(a.mode || ev.mode || '').toLowerCase();
+  const text = String(a.text || a.title || ev.summaryText || ev.text || '');
   const blob = (cat + ' ' + act + ' ' + actor + ' ' + mode + ' ' + text).toLowerCase();
 
-  if (mode === 'offline' || cat === 'offline' || actor === 'offline' || act.indexOf('offline') >= 0 || blob.indexOf('offline') >= 0) return 'offline';
-  if (cat === 'robot' || actor === 'robot' || act.indexOf('robot') === 0 || /robot/i.test(text)) return 'robot';
-  if (cat === 'nyc' || actor === 'nyc' || act.indexOf('nyc') === 0 || /\bnyc\b/i.test(text)) return 'nyc';
-  if (cat === 'fairy' || actor === 'fairy' || act.indexOf('fairy') === 0 || /tiên|tien/i.test(text)) return 'fairy';
-  if (cat === 'helper' || actor === 'helper' || act.indexOf('helper') === 0 || /giúp việc|giup viec/i.test(text)) return 'helper';
-  if (cat === 'level' || act === 'xp' || act === 'level_up' || act === 'levelup' || /\+\s*\d[\d.,]*\s*xp/i.test(text) || /lên cấp|len cap/i.test(text)) return 'level';
-  if (cat === 'reward' || act === 'daily' || act === 'reward' || /thưởng|thuong ngày|daily/i.test(text)) return 'reward';
-  if (cat === 'rain' || act.indexOf('rain') === 0 || /mưa|mua/i.test(text)) return 'rain';
+  if (mode === 'offline' || cat === 'offline' || actor === 'offline' || act.indexOf('offline') >= 0) return 'offline';
+  if (actor === 'robot' || cat === 'robot' || act.indexOf('robot') >= 0 || blob.indexOf('robot') >= 0) return 'robot';
+  if (actor === 'nyc' || cat === 'nyc' || act.indexOf('nyc') >= 0 || blob.indexOf('nyc') >= 0) return 'nyc';
+  if (actor === 'fairy' || cat === 'fairy' || act.indexOf('fairy') >= 0 || blob.indexOf('tiên') >= 0 || blob.indexOf('tien') >= 0 || blob.indexOf('fairy') >= 0) return 'fairy';
+  if (actor === 'helper' || cat === 'helper' || act.indexOf('helper') >= 0 || blob.indexOf('giúp việc') >= 0 || blob.indexOf('giup viec') >= 0) return 'helper';
+  if (cat === 'level' || act === 'xp' || act === 'level_up' || act === 'levelup' || /\+\s*[\d.,]+\s*xp/i.test(text) || blob.indexOf('lên cấp') >= 0) return 'level';
+  if (cat === 'reward' || act === 'daily' || act === 'reward' || blob.indexOf('thưởng') >= 0 || blob.indexOf('daily') >= 0) return 'reward';
+  if (cat === 'rain' || act.indexOf('rain') === 0 || (blob.indexOf('mưa') >= 0 && blob.indexOf('robot') < 0)) return 'rain';
   if (cat === 'garden' || ['plant','water','harvest','fert','crop_ready','replant','remove','uproot'].indexOf(act) >= 0) return 'garden';
-  if (/trồng|tuoi|tưới|thu hoạch|bón|nhổ|ô #/i.test(text) && !/nyc|robot|tiên/i.test(text)) return 'garden';
+  if ((blob.indexOf('trồng') >= 0 || blob.indexOf('tưới') >= 0 || blob.indexOf('thu hoạch') >= 0 || blob.indexOf('bón') >= 0 || blob.indexOf('ô #') >= 0) && blob.indexOf('nyc') < 0 && blob.indexOf('robot') < 0) return 'garden';
   return 'system';
 }
 
 function _activityMatchesFilter(a, filter) {
   if (!filter || filter === 'all') return true;
-  const cat = _activityCategoryClass(a);
-  if (cat === filter) return true;
-  // Fallback keyword (tránh miss do type system)
-  const blob = [a.type, a.category, a.action, a.actor, a.mode, a.text, a.title]
-    .map(x => String(x || '').toLowerCase()).join(' ');
-  const keys = {
-    garden: ['plant', 'water', 'harvest', 'fert', 'trồng', 'tưới', 'thu hoạch', 'bón', 'nhổ', 'ô #', 'vườn'],
-    robot: ['robot'],
-    nyc: ['nyc'],
-    fairy: ['fairy', 'tiên', 'tien'],
-    helper: ['helper', 'giúp việc', 'giup viec'],
-    offline: ['offline'],
-    level: ['xp', 'level', 'level_up', 'levelup', 'lên cấp', 'len cap'],
-    reward: ['reward', 'daily', 'thưởng', 'thuong']
-  };
-  const list = keys[filter] || [];
-  // Tránh false positive: garden không lấy NYC
-  if (filter === 'garden' && (/nyc/.test(blob) || /robot/.test(blob))) return false;
-  return list.some(k => blob.indexOf(k) >= 0);
+  try {
+    return _activityCategoryClass(a) === filter;
+  } catch (e) {
+    return true;
+  }
 }
 
 function _activityActorLabel(a) {
-  const actor = String(a.actor || '');
   const map = {
     player: 'Người chơi',
     robot: 'Robot',
@@ -5260,12 +5246,16 @@ function _activityActorLabel(a) {
     fairy: 'Tiên',
     helper: 'Giúp việc',
     system: 'Hệ thống',
-    offline: 'Offline'
+    offline: 'Offline',
+    garden: 'Vườn',
+    level: 'XP',
+    reward: 'Thưởng',
+    rain: 'Mưa'
   };
+  const actor = String((a && a.actor) || (a && a._event && a._event.actor) || '');
   if (actor && actor !== 'player' && map[actor]) return map[actor];
-  // Suy ra từ category/text khi actor mặc định player
   const cat = _activityCategoryClass(a);
-  if (cat !== 'system' && cat !== 'garden' && map[cat]) return map[cat];
+  if (map[cat] && cat !== 'system' && cat !== 'garden') return map[cat];
   if (map[actor]) return map[actor];
   return map[cat] || 'Game';
 }
@@ -5299,22 +5289,50 @@ function renderActivityPage() {
   const actList = document.getElementById('activity-list');
   if (!actList || !currentPlayer) return;
 
-  let lines = (typeof Game !== 'undefined' && Game.buildDayLogLines)
+  let allLines = (typeof Game !== 'undefined' && Game.buildDayLogLines)
     ? Game.buildDayLogLines()
     : [];
+  if (!Array.isArray(allLines)) allLines = [];
+
+  // Gắn filterKey ổn định cho mọi dòng
+  allLines.forEach(a => {
+    if (!a) return;
+    a.filterKey = _activityCategoryClass(a);
+  });
+
+  // Đếm theo tab
+  const counts = { all: allLines.length, garden: 0, robot: 0, nyc: 0, fairy: 0, helper: 0, offline: 0, level: 0, reward: 0 };
+  allLines.forEach(a => {
+    const k = a.filterKey || 'system';
+    if (counts[k] != null) counts[k]++;
+  });
+  document.querySelectorAll('#activity-filters .activity-filter-btn').forEach(btn => {
+    const f = btn.getAttribute('data-filter') || 'all';
+    const base = (btn.getAttribute('data-label') || btn.textContent || '').replace(/\s*\(\d+\)\s*$/, '').trim();
+    if (!btn.getAttribute('data-label')) btn.setAttribute('data-label', base);
+    const label = btn.getAttribute('data-label') || base;
+    const n = counts[f] != null ? counts[f] : 0;
+    btn.textContent = label + (f === 'all' ? (' (' + counts.all + ')') : (n ? (' (' + n + ')') : ''));
+  });
 
   const activeBtn = document.querySelector('#activity-filters .activity-filter-btn.active')
     || document.querySelector('.activity-filter-btn.active');
   const filter = (activeBtn && activeBtn.getAttribute('data-filter')) || window._activityFilter || 'all';
   window._activityFilter = filter;
+
+  let lines = allLines;
   if (filter && filter !== 'all') {
-    lines = lines.filter(a => _activityMatchesFilter(a, filter));
+    lines = allLines.filter(a => (a.filterKey || _activityCategoryClass(a)) === filter);
   }
 
   actList.classList.add('activity-timeline');
 
   if (!lines.length) {
-    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i>Chưa có hoạt động nào.<br><small>Mọi hành động trong game sẽ hiện tại đây.</small></li>';
+    const names = { garden: 'Vườn', robot: 'Robot', nyc: 'NYC', fairy: 'Tiên', helper: 'Giúp việc', offline: 'Offline', level: 'XP', reward: 'Thưởng' };
+    const tip = filter && filter !== 'all'
+      ? ('Không có sự kiện «' + (names[filter] || filter) + '» trong nhật ký hiện tại.')
+      : 'Chưa có hoạt động nào.';
+    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i>' + tip + '<br><small>Thử tab «Tất cả» hoặc chơi thêm để sinh log.</small></li>';
     return;
   }
 
