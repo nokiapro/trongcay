@@ -5207,20 +5207,48 @@ document.getElementById('btn-offline-view-detail')?.addEventListener('click', ()
 });
 
 function _activityCategoryClass(a) {
-  const cat = String(a.type || a.category || '');
-  const act = String(a.action || '');
-  const actor = String(a.actor || '');
-  const text = String(a.text || a.title || '');
-  if (a.mode === 'offline' || cat === 'offline' || actor === 'offline') return 'offline';
-  if (cat === 'robot' || actor === 'robot' || act.startsWith('robot') || /Robot/i.test(text)) return 'robot';
-  if (cat === 'nyc' || actor === 'nyc' || act.startsWith('nyc') || /\bNYC\b/i.test(text)) return 'nyc';
-  if (cat === 'fairy' || actor === 'fairy' || act.startsWith('fairy') || /Tiên/i.test(text)) return 'fairy';
-  if (cat === 'helper' || actor === 'helper' || /Giúp việc/i.test(text)) return 'helper';
-  if (cat === 'level' || act === 'xp' || act === 'level_up' || act === 'levelup' || /\+\d[\d.,]*\s*XP/i.test(text)) return 'level';
-  if (cat === 'reward' || act === 'daily' || act === 'reward') return 'reward';
-  if (cat === 'rain' || act.startsWith('rain') || /Mưa/i.test(text)) return 'rain';
-  if (cat === 'garden' || ['plant','water','harvest','fert','crop_ready','replant','remove'].includes(act)) return 'garden';
+  if (!a) return 'system';
+  const cat = String(a.type || a.category || '').toLowerCase();
+  const act = String(a.action || '').toLowerCase();
+  const actor = String(a.actor || '').toLowerCase();
+  const mode = String(a.mode || '').toLowerCase();
+  const text = String(a.text || a.title || a.summaryText || '');
+  const blob = (cat + ' ' + act + ' ' + actor + ' ' + mode + ' ' + text).toLowerCase();
+
+  if (mode === 'offline' || cat === 'offline' || actor === 'offline' || act.indexOf('offline') >= 0 || blob.indexOf('offline') >= 0) return 'offline';
+  if (cat === 'robot' || actor === 'robot' || act.indexOf('robot') === 0 || /robot/i.test(text)) return 'robot';
+  if (cat === 'nyc' || actor === 'nyc' || act.indexOf('nyc') === 0 || /\bnyc\b/i.test(text)) return 'nyc';
+  if (cat === 'fairy' || actor === 'fairy' || act.indexOf('fairy') === 0 || /tiên|tien/i.test(text)) return 'fairy';
+  if (cat === 'helper' || actor === 'helper' || act.indexOf('helper') === 0 || /giúp việc|giup viec/i.test(text)) return 'helper';
+  if (cat === 'level' || act === 'xp' || act === 'level_up' || act === 'levelup' || /\+\s*\d[\d.,]*\s*xp/i.test(text) || /lên cấp|len cap/i.test(text)) return 'level';
+  if (cat === 'reward' || act === 'daily' || act === 'reward' || /thưởng|thuong ngày|daily/i.test(text)) return 'reward';
+  if (cat === 'rain' || act.indexOf('rain') === 0 || /mưa|mua/i.test(text)) return 'rain';
+  if (cat === 'garden' || ['plant','water','harvest','fert','crop_ready','replant','remove','uproot'].indexOf(act) >= 0) return 'garden';
+  if (/trồng|tuoi|tưới|thu hoạch|bón|nhổ|ô #/i.test(text) && !/nyc|robot|tiên/i.test(text)) return 'garden';
   return 'system';
+}
+
+function _activityMatchesFilter(a, filter) {
+  if (!filter || filter === 'all') return true;
+  const cat = _activityCategoryClass(a);
+  if (cat === filter) return true;
+  // Fallback keyword (tránh miss do type system)
+  const blob = [a.type, a.category, a.action, a.actor, a.mode, a.text, a.title]
+    .map(x => String(x || '').toLowerCase()).join(' ');
+  const keys = {
+    garden: ['plant', 'water', 'harvest', 'fert', 'trồng', 'tưới', 'thu hoạch', 'bón', 'nhổ', 'ô #', 'vườn'],
+    robot: ['robot'],
+    nyc: ['nyc'],
+    fairy: ['fairy', 'tiên', 'tien'],
+    helper: ['helper', 'giúp việc', 'giup viec'],
+    offline: ['offline'],
+    level: ['xp', 'level', 'level_up', 'levelup', 'lên cấp', 'len cap'],
+    reward: ['reward', 'daily', 'thưởng', 'thuong']
+  };
+  const list = keys[filter] || [];
+  // Tránh false positive: garden không lấy NYC
+  if (filter === 'garden' && (/nyc/.test(blob) || /robot/.test(blob))) return false;
+  return list.some(k => blob.indexOf(k) >= 0);
 }
 
 function _activityActorLabel(a) {
@@ -5267,6 +5295,7 @@ function _activityResultTags(a) {
 }
 
 function renderActivityPage() {
+  try { bindActivityFilters(); } catch (_) {}
   const actList = document.getElementById('activity-list');
   if (!actList || !currentPlayer) return;
 
@@ -5274,13 +5303,12 @@ function renderActivityPage() {
     ? Game.buildDayLogLines()
     : [];
 
-  const activeBtn = document.querySelector('.activity-filter-btn.active');
-  const filter = (activeBtn && activeBtn.getAttribute('data-filter')) || 'all';
+  const activeBtn = document.querySelector('#activity-filters .activity-filter-btn.active')
+    || document.querySelector('.activity-filter-btn.active');
+  const filter = (activeBtn && activeBtn.getAttribute('data-filter')) || window._activityFilter || 'all';
+  window._activityFilter = filter;
   if (filter && filter !== 'all') {
-    lines = lines.filter(a => {
-      const cat = _activityCategoryClass(a);
-      return cat === filter;
-    });
+    lines = lines.filter(a => _activityMatchesFilter(a, filter));
   }
 
   actList.classList.add('activity-timeline');
@@ -5380,19 +5408,26 @@ function renderActivityPage() {
   });
 }
 
-// Filter buttons
-(function bindActivityFilters() {
+// Filter buttons — bind an toàn (DOM có thể chưa sẵn lúc parse)
+function bindActivityFilters() {
   const box = document.getElementById('activity-filters');
   if (!box || box._bound) return;
   box._bound = true;
   box.addEventListener('click', (e) => {
     const btn = e.target.closest('.activity-filter-btn');
     if (!btn) return;
+    e.preventDefault();
     box.querySelectorAll('.activity-filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    window._activityFilter = btn.getAttribute('data-filter') || 'all';
     renderActivityPage();
   });
-})();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bindActivityFilters);
+} else {
+  bindActivityFilters();
+}
 
 
 function scheduleActivityMidnightPrune() {
