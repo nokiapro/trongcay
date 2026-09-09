@@ -6218,99 +6218,90 @@ const Game = {
     return entry;
   },
 
-  /** Danh sách log để render — ƯU TIÊN từng event riêng */
+  /** Danh sách log — đơn giản, mọi event có timestamp + text + filter */
   getActivityLogList() {
-    this.ensureActivityLogs();
     this.ensureGameEvents();
     const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
-    const dayKey = this._dayKey();
-    const KEEP_MS = 7 * 24 * 3600 * 1000;
-    const DAY_MS = 36 * 3600 * 1000; // ~1.5 ngày cho online events
+    const KEEP = 7 * 24 * 3600 * 1000;
+    const events = (currentPlayer && currentPlayer.gameEvents) || [];
+    const list = [];
 
-    const events = (currentPlayer.gameEvents || []).filter(e => {
-      if (!e || !e.timestamp) return false;
-      const age = now - e.timestamp;
-      if (e.mode === 'offline' || e.category === 'offline') return age < KEEP_MS;
-      return age < DAY_MS || e.dayKey === dayKey;
-    });
-
-    // Offline session summaries (để detail offline đầy đủ)
-    const offlineLogs = (currentPlayer.activityLogs || []).filter(l => {
-      if (!l || l.type !== 'offline') return false;
-      const ts = l.timestamp || (l.offline && l.offline.endedAt) || 0;
-      return ts && (now - ts) < KEEP_MS;
-    });
-
-    // Map events → list items (luôn có filter key)
-    const list = events.map(e => {
-      const text = this.formatEventSummaryText(e);
+    events.forEach(e => {
+      if (!e) return;
+      const ts = Number(e.timestamp) || 0;
+      if (!ts || (now - ts) > KEEP) return;
+      const text = e.summaryText || e.text || this.formatEventSummaryText(e) || e.action || 'Hành động';
       const filter = e.filter || this.resolveFilterKey(e.action, e.actor, text, e.category, e.mode);
-      return {
+      list.push({
         id: e.id,
         type: e.category || e.action || 'system',
-        action: e.action,
-        actor: e.actor,
+        action: e.action || 'action',
+        actor: e.actor || 'player',
         mode: e.mode || 'online',
         filter: filter,
         filterKey: filter,
-        title: e.action || e.category,
+        title: text,
         text: text,
-        timestamp: e.timestamp,
-        firstAt: e.timestamp,
-        timeText: this.formatLogClock(e.timestamp),
+        timestamp: ts,
+        firstAt: ts,
+        timeText: this.formatLogClock(ts, true) || '',
         hasDetail: true,
         _isEvent: true,
         _event: e
-      };
+      });
     });
 
-    // Thêm offline summary nếu chưa có event offline_end tương ứng
-    offlineLogs.forEach(l => {
-      const has = list.some(x => x.id === l.id || x.id === (l.id + '_end'));
-      if (!has) {
-        const sum = l.summary || {};
-        list.push({
-          id: l.id,
-          type: 'offline',
-          action: 'offline',
-          actor: 'offline',
-          mode: 'offline',
-          title: sum.title || 'Offline',
-          text: sum.text || '',
-          timestamp: l.timestamp || (l.offline && l.offline.endedAt) || 0,
-          firstAt: l.firstAt || (l.offline && l.offline.startedAt) || 0,
-          timeText: this.formatLogClock(l.timestamp || (l.offline && l.offline.endedAt)),
-          hasDetail: true,
-          _isOfflineSummary: true
-        });
-      }
+    // Offline summaries
+    const logs = this.ensureActivityLogs();
+    logs.forEach(l => {
+      if (!l || l.type !== 'offline') return;
+      const ts = Number(l.timestamp) || Number(l.offline && l.offline.endedAt) || 0;
+      if (!ts || (now - ts) > KEEP) return;
+      if (list.some(x => x.id === l.id || x.id === l.id + '_end')) return;
+      const text = (l.summary && l.summary.text) || 'Offline';
+      list.push({
+        id: l.id,
+        type: 'offline',
+        action: 'offline',
+        actor: 'offline',
+        mode: 'offline',
+        filter: 'offline',
+        filterKey: 'offline',
+        title: 'Offline',
+        text: text,
+        timestamp: ts,
+        firstAt: Number(l.firstAt) || ts,
+        timeText: this.formatLogClock(ts, true) || '',
+        hasDetail: true,
+        _isOfflineSummary: true,
+        detail: l.detail,
+        offline: l.offline,
+        summary: l.summary
+      });
     });
 
-    list.sort((a, b) => {
-      const dt = (b.timestamp || 0) - (a.timestamp || 0);
-      if (dt !== 0) return dt;
-      return 0;
-    });
-    return list.slice(0, 300);
+    list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    return list.slice(0, 400);
   },
 
   getActivityLogById(id) {
     if (!id) return null;
-    // Ưu tiên gameEvents
     const events = this.ensureGameEvents();
     const ev = events.find(e => e && e.id === id);
     if (ev) {
+      const text = ev.summaryText || ev.text || this.formatEventSummaryText(ev) || '';
       return {
         id: ev.id,
         type: ev.category || ev.action,
         action: ev.action,
         actor: ev.actor,
         mode: ev.mode,
+        filter: ev.filter,
         timestamp: ev.timestamp,
         firstAt: ev.timestamp,
         summary: {
           title: this._eventDetailTitle(ev),
-          text: this.formatEventSummaryText(ev)
+          text: text
         },
         detail: this._buildEventDetail(ev),
         _event: ev,
@@ -6324,35 +6315,20 @@ const Game = {
   _eventDetailTitle(ev) {
     if (!ev) return 'Chi tiết';
     const map = {
-      plant: '🌱 Trồng cây',
-      replant: '🌱 Trồng lại',
-      water: '💧 Tưới nước',
-      fert: '🧪 Bón phân',
-      harvest: '🌱 Thu hoạch',
-      crop_ready: '🌱 Cây chín',
-      remove: '🌱 Nhổ cây',
-      buy: '🛒 Mua',
-      buy_seed: '🛒 Mua hạt',
-      robot_seed: '🤖 Robot mua hạt',
-      cook: '🤖 Robot nấu',
-      robot_cook: '🤖 Robot nấu',
-      merge: '🤖 Robot ghép',
-      robot_merge: '🤖 Robot ghép',
-      level_up: '⬆️ Lên cấp',
-      levelup: '⬆️ Lên cấp',
-      xp: '⭐ XP',
-      reward: '🎁 Thưởng',
-      daily: '🎁 Thưởng ngày',
-      rain: '🌧️ Mưa',
-      offline_end: '⚡ Offline',
-      offline: '⚡ Offline',
-      fairy_water: '🧚 Tiên tưới',
-      fairy_rain_seed: '🧚 Tiên nhặt hạt',
-      nyc_harvest: '❤️ NYC thu hoạch',
-      nyc_plant: '❤️ NYC trồng',
-      helper_buy: '🧹 Giúp việc'
+      plant: '🌱 Trồng cây', replant: '🌱 Trồng lại', water: '💧 Tưới nước', fert: '🧪 Bón phân',
+      harvest: '🌱 Thu hoạch', crop_ready: '🌱 Cây chín', remove: '🌱 Nhổ cây',
+      robot_seed: '🤖 Robot mua hạt', robot_cook: '🤖 Robot nấu', robot_merge: '🤖 Robot ghép',
+      level_up: '⬆️ Lên cấp', levelup: '⬆️ Lên cấp', xp: '⭐ XP',
+      reward: '🎁 Thưởng', daily: '🎁 Thưởng ngày', rain: '🌧️ Mưa',
+      offline_end: '⚡ Offline', offline: '⚡ Offline',
+      fairy_water: '🧚 Tiên tưới', fairy_rain_seed: '🧚 Tiên nhặt hạt', fairy_care: '🧚 Tiên',
+      nyc_harvest: '❤️ NYC', nyc_plant: '❤️ NYC', helper_buy: '🧹 Giúp việc'
     };
-    return map[ev.action] || (ev.actor === 'robot' ? '🤖 Robot' : (ev.summaryText || ev.action || 'Chi tiết'));
+    if (map[ev.action]) return map[ev.action];
+    if (ev.filter === 'robot' || ev.actor === 'robot') return '🤖 Robot';
+    if (ev.filter === 'nyc' || ev.actor === 'nyc') return '❤️ NYC';
+    if (ev.filter === 'fairy' || ev.actor === 'fairy') return '🧚 Tiên';
+    return ev.summaryText || ev.action || 'Chi tiết';
   },
 
   _buildEventDetail(ev) {
@@ -6361,10 +6337,11 @@ const Game = {
     d.action = ev.action;
     d.actor = ev.actor;
     d.category = ev.category;
+    d.filter = ev.filter;
     d.mode = ev.mode;
     d.eventSource = ev.eventSource;
     d.timestamp = ev.timestamp;
-    d.timeText = this.formatLogClock(ev.timestamp);
+    d.timeText = this.formatLogClock(ev.timestamp, true);
     d.target = ev.target;
     d.quantity = ev.quantity;
     d.result = ev.result;
@@ -6383,57 +6360,63 @@ const Game = {
     d.after = ev.after;
     d.offlineSessionId = ev.offlineSessionId;
     d.parentEventId = ev.parentEventId;
+    d.summaryText = ev.summaryText || ev.text;
     if (ev.cellId != null) d.plotLabel = '#' + (Number(ev.cellId) + 1);
-    if (ev.plantedAt) d.plantedClock = this.formatLogClock(ev.plantedAt);
-    if (ev.readyAt) d.readyClock = this.formatLogClock(ev.readyAt);
+    if (ev.plantedAt) d.plantedClock = this.formatLogClock(ev.plantedAt, true);
+    if (ev.readyAt) d.readyClock = this.formatLogClock(ev.readyAt, true);
     return d;
   },
 
-  /** Tương thích UI — trả từng dòng event */
   buildDayLogLines() {
     return this.getActivityLogList();
   },
 
   /**
-   * addActivity — tương thích string cũ + object event mới.
-   * Object structured → pushGameEvent.
-   * String: chỉ refresh UI (thống kê qua trackDayStat nếu caller đã gọi).
+   * addActivity — MỌI chuỗi / object đều thành 1 event có giờ.
    */
   addActivity(textOrEvent, meta) {
     try {
       if (textOrEvent && typeof textOrEvent === 'object' && !Array.isArray(textOrEvent)) {
-        const ev = textOrEvent;
-        // Nếu đã là event chuẩn
-        if (ev.action || ev.category || (ev.target && ev.timestamp)) {
-          this.pushGameEvent(ev);
+        if (textOrEvent.action || textOrEvent.category || textOrEvent.summaryText || textOrEvent.text) {
+          this.pushGameEvent(textOrEvent);
         } else {
-          const type = ev.type || (meta && meta.type) || 'system';
-          const kind = ev.action || type;
-          const data = Object.assign({}, ev.detail || {}, ev.data || {});
-          this.trackDayStat(kind, data);
-        }
-      } else if (typeof textOrEvent === 'string') {
-        // String path: tạo event tối thiểu nếu meta có type
-        const type = (meta && meta.type) || 'system';
-        const at = (meta && meta.at) || ((typeof nowMs === 'function') ? nowMs() : Date.now());
-        // Chỉ push nếu chưa có event gần giống trong 100ms
-        const list = this.ensureGameEvents();
-        const recent = list[0];
-        if (!(recent && recent.summaryText === textOrEvent && Math.abs((recent.timestamp || 0) - at) < 150)) {
+          const type = textOrEvent.type || (meta && meta.type) || 'system';
           this.pushGameEvent({
             action: type,
-            actor: (type && String(type).startsWith('robot')) ? 'robot'
-              : (type && String(type).startsWith('fairy')) ? 'fairy'
-              : (type && String(type).startsWith('nyc')) ? 'nyc'
-              : (type === 'harvest_offline' ? 'offline' : 'player'),
+            actor: 'player',
             category: this._mapKindToCategory(type),
-            mode: type === 'harvest_offline' ? 'offline' : 'online',
+            summaryText: textOrEvent.summary || textOrEvent.text || type,
+            text: textOrEvent.summary || textOrEvent.text || type,
+            detail: textOrEvent,
+            timestamp: (meta && meta.at) || textOrEvent.timestamp
+          });
+        }
+      } else if (typeof textOrEvent === 'string' && textOrEvent.trim()) {
+        const type = (meta && meta.type) || 'system';
+        const at = (meta && meta.at) || ((typeof nowMs === 'function') ? nowMs() : Date.now());
+        const t = textOrEvent.trim();
+        // suy actor từ type + nội dung
+        let actor = 'player';
+        if (String(type).indexOf('robot') === 0 || /robot/i.test(t)) actor = 'robot';
+        else if (String(type).indexOf('fairy') === 0 || /tiên/i.test(t)) actor = 'fairy';
+        else if (String(type).indexOf('nyc') === 0 || /\bnyc\b/i.test(t)) actor = 'nyc';
+        else if (String(type).indexOf('helper') === 0 || /giúp việc/i.test(t)) actor = 'helper';
+        else if (type === 'harvest_offline' || /offline/i.test(t)) actor = 'offline';
+
+        const list = this.ensureGameEvents();
+        const recent = list[0];
+        if (!(recent && (recent.summaryText === t || recent.text === t) && Math.abs((recent.timestamp || 0) - at) < 120)) {
+          this.pushGameEvent({
+            action: type,
+            actor: actor,
+            category: this._mapKindToCategory(type),
+            mode: (type === 'harvest_offline' || actor === 'offline') ? 'offline' : 'online',
             eventSource: type === 'harvest_offline' ? 'offline_simulation' : 'live',
-            summaryText: textOrEvent,
-            text: textOrEvent,
+            summaryText: t,
+            text: t,
             timestamp: at,
             gardenIndex: meta && meta.plotGarden,
-            detail: meta || {}
+            detail: Object.assign({}, meta || {}, { raw: t })
           });
         }
       }

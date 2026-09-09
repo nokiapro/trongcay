@@ -5206,102 +5206,51 @@ document.getElementById('btn-offline-view-detail')?.addEventListener('click', ()
   }
 });
 
-/* ========== NHẬT KÝ HÀNH ĐỘNG — UI ========== */
+/* ========== NHẬT KÝ — UI ĐƠN GIẢN ========== */
 function activityFilterKey(a) {
   if (!a) return 'system';
   if (a.filter) return a.filter;
   if (a.filterKey) return a.filterKey;
-  const ev = a._event || {};
-  if (ev.filter) return ev.filter;
+  if (a._event && a._event.filter) return a._event.filter;
   if (typeof Game !== 'undefined' && Game.resolveFilterKey) {
-    return Game.resolveFilterKey(
-      a.action || ev.action,
-      a.actor || ev.actor,
-      a.text || a.title || '',
-      a.type || a.category || ev.category,
-      a.mode || ev.mode
-    );
+    return Game.resolveFilterKey(a.action, a.actor, a.text || a.title || '', a.type, a.mode);
   }
-  const blob = [a.type, a.action, a.actor, a.mode, a.text, a.title].join(' ').toLowerCase();
-  if (blob.indexOf('offline') >= 0) return 'offline';
-  if (blob.indexOf('robot') >= 0) return 'robot';
-  if (blob.indexOf('nyc') >= 0) return 'nyc';
-  if (blob.indexOf('tiên') >= 0 || blob.indexOf('fairy') >= 0) return 'fairy';
-  if (blob.indexOf('giúp việc') >= 0 || blob.indexOf('helper') >= 0) return 'helper';
-  if (/\bxp\b/.test(blob) || blob.indexOf('level') >= 0 || blob.indexOf('lên cấp') >= 0) return 'level';
-  if (blob.indexOf('thưởng') >= 0 || blob.indexOf('reward') >= 0 || blob.indexOf('daily') >= 0) return 'reward';
-  if (blob.indexOf('mưa') >= 0) return 'rain';
-  if (blob.indexOf('trồng') >= 0 || blob.indexOf('tưới') >= 0 || blob.indexOf('thu hoạch') >= 0) return 'garden';
+  const b = [a.action, a.actor, a.type, a.text, a.title].join(' ').toLowerCase();
+  if (b.indexOf('offline') >= 0) return 'offline';
+  if (b.indexOf('robot') >= 0) return 'robot';
+  if (b.indexOf('nyc') >= 0) return 'nyc';
+  if (b.indexOf('tiên') >= 0 || b.indexOf('fairy') >= 0) return 'fairy';
+  if (b.indexOf('giúp việc') >= 0 || b.indexOf('helper') >= 0) return 'helper';
+  if (b.indexOf('xp') >= 0 || b.indexOf('level') >= 0 || b.indexOf('lên cấp') >= 0) return 'level';
+  if (b.indexOf('thưởng') >= 0 || b.indexOf('reward') >= 0 || b.indexOf('daily') >= 0) return 'reward';
+  if (b.indexOf('trồng') >= 0 || b.indexOf('tưới') >= 0 || b.indexOf('thu hoạch') >= 0 || b.indexOf('bón') >= 0) return 'garden';
   return 'system';
 }
 
-function activityActorLabel(a) {
-  const map = {
-    player: 'Bạn', robot: 'Robot', nyc: 'NYC', fairy: 'Tiên',
-    helper: 'Giúp việc', system: 'Hệ thống', offline: 'Offline'
-  };
-  const actor = String((a && a.actor) || (a && a._event && a._event.actor) || '');
-  if (actor && map[actor] && actor !== 'player') return map[actor];
-  const f = activityFilterKey(a);
-  if (f === 'robot') return 'Robot';
-  if (f === 'nyc') return 'NYC';
-  if (f === 'fairy') return 'Tiên';
-  if (f === 'helper') return 'Giúp việc';
-  if (f === 'offline') return 'Offline';
-  if (f === 'level') return 'XP';
-  if (f === 'reward') return 'Thưởng';
-  return map[actor] || 'Bạn';
-}
-
-function activityResultTags(a) {
-  const tags = [];
-  const ev = (a && a._event) || {};
-  const r = ev.result || {};
-  const qty = a.quantity != null ? a.quantity : ev.quantity;
-  const sp = ev.sp != null ? ev.sp : r.sp;
-  const xp = ev.xp != null ? ev.xp : r.xp;
-  const coins = ev.coins != null ? ev.coins : r.currency;
-  const cost = ev.cost;
-  const cell = ev.cellId != null ? ('#' + (Number(ev.cellId) + 1)) : null;
-  if (qty != null && qty !== '') tags.push({ cls: 'info', text: '×' + qty });
-  if (cell) tags.push({ cls: '', text: 'Ô ' + cell });
-  if (sp != null && Number(sp) !== 0) tags.push({ cls: 'pos', text: '+' + Number(sp).toLocaleString() + ' SP' });
-  if (xp != null && Number(xp) !== 0) tags.push({ cls: 'pos', text: '+' + Number(xp).toLocaleString() + ' XP' });
-  if (coins != null && Number(coins) !== 0) {
-    const n = Number(coins);
-    tags.push({ cls: n >= 0 ? 'pos' : 'neg', text: (n >= 0 ? '+' : '') + n.toLocaleString() + '🪙' });
-  }
-  if (cost != null && Number(cost) > 0) tags.push({ cls: 'neg', text: '−' + Number(cost).toLocaleString() + '🪙' });
-  return tags;
-}
-
 function renderActivityPage() {
-  bindActivityFilters();
+  try { bindActivityFilters(); } catch (_) {}
   const actList = document.getElementById('activity-list');
-  if (!actList || !currentPlayer) return;
+  if (!actList || typeof currentPlayer === 'undefined' || !currentPlayer) return;
 
   let all = [];
   try {
-    all = (typeof Game !== 'undefined' && Game.buildDayLogLines) ? Game.buildDayLogLines() : [];
-  } catch (e) {
-    console.warn('buildDayLogLines', e);
-    all = [];
+    all = (typeof Game !== 'undefined' && Game.buildDayLogLines) ? (Game.buildDayLogLines() || []) : [];
+  } catch (err) {
+    console.warn('buildDayLogLines', err);
   }
   if (!Array.isArray(all)) all = [];
 
-  // Đếm
-  const counts = { all: all.length, garden: 0, robot: 0, nyc: 0, fairy: 0, helper: 0, offline: 0, level: 0, reward: 0, rain: 0, system: 0 };
+  const counts = { all: all.length, garden: 0, robot: 0, nyc: 0, fairy: 0, helper: 0, offline: 0, level: 0, reward: 0 };
   all.forEach(a => {
     const k = activityFilterKey(a);
     a.filterKey = k;
     if (counts[k] != null) counts[k]++;
   });
 
-  // Cập nhật nhãn tab + số
   document.querySelectorAll('#activity-filters .activity-filter-btn').forEach(btn => {
     const f = btn.getAttribute('data-filter') || 'all';
     if (!btn.getAttribute('data-label')) {
-      btn.setAttribute('data-label', (btn.textContent || '').replace(/\s*\(\d+\)\s*$/, '').trim());
+      btn.setAttribute('data-label', String(btn.textContent || '').replace(/\s*\(\d+\)\s*$/, '').trim());
     }
     const label = btn.getAttribute('data-label');
     const n = f === 'all' ? counts.all : (counts[f] || 0);
@@ -5311,79 +5260,48 @@ function renderActivityPage() {
   const activeBtn = document.querySelector('#activity-filters .activity-filter-btn.active');
   const filter = (activeBtn && activeBtn.getAttribute('data-filter')) || window._activityFilter || 'all';
   window._activityFilter = filter;
+  const lines = filter === 'all' ? all : all.filter(a => activityFilterKey(a) === filter);
 
-  const lines = (filter === 'all') ? all : all.filter(a => activityFilterKey(a) === filter);
-
-  actList.classList.add('activity-timeline');
+  actList.className = 'activity-list activity-timeline';
 
   if (!lines.length) {
-    const names = {
-      garden: 'Vườn', robot: 'Robot', nyc: 'NYC', fairy: 'Tiên', helper: 'Giúp việc',
-      offline: 'Offline', level: 'XP', reward: 'Thưởng'
-    };
-    const tip = filter !== 'all'
-      ? ('Chưa có log «' + (names[filter] || filter) + '».')
-      : 'Chưa có hoạt động.';
-    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i>' + tip + '</li>';
+    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i>Chưa có log'
+      + (filter !== 'all' ? ' cho bộ lọc này' : '') + '.</li>';
     return;
   }
-
-  const clock = (ts) => {
-    if (!ts) return '';
-    if (typeof Game !== 'undefined' && Game.formatLogClock) return Game.formatLogClock(ts);
-    try {
-      return new Date(ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
-    } catch (_) { return ''; }
-  };
 
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-  // Nhóm ngày
-  const byDay = {};
-  const dayOrder = [];
+  let html = '';
+  let lastDay = '';
   lines.forEach(a => {
     const ts = a.timestamp || 0;
-    let dk = '';
+    let day = '';
     try {
-      dk = (typeof gameDateString === 'function')
-        ? gameDateString(ts)
+      day = (typeof gameDateString === 'function') ? gameDateString(ts)
         : new Date(ts).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-    } catch (_) { dk = '—'; }
-    if (!byDay[dk]) { byDay[dk] = []; dayOrder.push(dk); }
-    byDay[dk].push(a);
-  });
-
-  let html = '';
-  dayOrder.forEach(dk => {
-    const items = byDay[dk];
-    html += '<li class="activity-day-head"><span class="activity-day-pill"><i class="fa-solid fa-calendar-day"></i> '
-      + esc(dk) + '</span><span class="activity-day-count">' + items.length + ' sự kiện</span></li>';
-
-    items.forEach(a => {
-      const cat = activityFilterKey(a);
-      const timeStr = a.timeText || clock(a.timestamp) || '';
-      const actor = activityActorLabel(a);
-      const msg = a.text || a.title || a.action || 'Hành động';
-      const tags = activityResultTags(a);
-      const tagsHtml = tags.length
-        ? ('<div class="al-tags">' + tags.map(t => '<span class="al-tag ' + (t.cls || '') + '">' + esc(t.text) + '</span>').join('') + '</div>')
-        : '';
-      html += '<li class="al-row activity-clickable" data-id="' + esc(a.id || '') + '" role="button" tabindex="0">'
-        + '<div class="al-rail"><span class="al-dot al-cat-' + esc(cat) + '"></span>'
-        + '<span class="al-time">' + esc(timeStr) + '</span></div>'
-        + '<div class="al-main"><div class="al-top"><span class="al-actor">' + esc(actor) + '</span></div>'
-        + '<div class="al-msg">' + esc(msg) + '</div>' + tagsHtml + '</div>'
-        + '<span class="al-chevron"><i class="fa-solid fa-chevron-right"></i></span></li>';
-    });
+    } catch (_) { day = ''; }
+    if (day && day !== lastDay) {
+      lastDay = day;
+      html += '<li class="activity-day-head"><span class="activity-day-pill">' + esc(day) + '</span></li>';
+    }
+    const timeStr = a.timeText || '';
+    const msg = a.text || a.title || 'Hành động';
+    const cat = activityFilterKey(a);
+    html += '<li class="al-row activity-clickable" data-id="' + esc(a.id || '') + '">'
+      + '<div class="al-rail"><span class="al-dot al-cat-' + esc(cat) + '"></span>'
+      + '<span class="al-time">' + esc(timeStr) + '</span></div>'
+      + '<div class="al-main"><div class="al-msg">' + esc(msg) + '</div></div>'
+      + '<span class="al-chevron"><i class="fa-solid fa-chevron-right"></i></span></li>';
   });
 
   actList.innerHTML = html;
   actList.querySelectorAll('.activity-clickable').forEach(el => {
-    el.addEventListener('click', () => {
+    el.onclick = () => {
       const id = el.getAttribute('data-id');
-      if (id) openActivityDetail(id);
-    });
+      if (id && typeof openActivityDetail === 'function') openActivityDetail(id);
+    };
   });
 }
 
