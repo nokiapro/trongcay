@@ -5401,23 +5401,50 @@ const Game = {
     return parts.join(' ');
   },
 
-  /** HH:mm theo GMT+7 */
-  formatLogClock(ms) {
+  /** HH:mm:ss chính xác theo GMT+7 (withSeconds=false → HH:mm) */
+  formatLogClock(ms, withSeconds) {
     if (!ms) return '';
+    if (withSeconds == null) withSeconds = true;
+    const pad = n => String(n).padStart(2, '0');
     try {
-      if (typeof formatGameDateTime === 'function') {
-        const s = formatGameDateTime(ms, false);
-        const m = String(s).match(/(\d{1,2}:\d{2})/);
-        if (m) return m[1].padStart(5, '0');
+      // Ưu tiên Intl Asia/Ho_Chi_Minh để đúng GMT+7
+      const opts = {
+        timeZone: (typeof GAME_TIMEZONE !== 'undefined' ? GAME_TIMEZONE : 'Asia/Ho_Chi_Minh'),
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      };
+      if (withSeconds) opts.second = '2-digit';
+      let s = new Date(ms).toLocaleTimeString('en-GB', opts);
+      // en-GB → 08:32:15
+      s = String(s).replace(/,/g, '').trim();
+      const m = s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+      if (m) {
+        const hh = pad(m[1]);
+        const mm = pad(m[2]);
+        if (withSeconds) return hh + ':' + mm + ':' + pad(m[3] || '0');
+        return hh + ':' + mm;
       }
-      return new Date(ms).toLocaleTimeString('vi-VN', {
-        hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh'
-      });
+      if (typeof formatGameDateTime === 'function') {
+        const full = formatGameDateTime(ms, true);
+        const m2 = String(full).match(/(\d{1,2}:\d{2}:\d{2})/);
+        if (m2) return m2[1];
+        const m3 = String(full).match(/(\d{1,2}:\d{2})/);
+        if (m3 && !withSeconds) return m3[1].padStart(5, '0');
+      }
+      return s;
     } catch (_) {
-      const d = new Date(ms);
-      const pad = n => String(n).padStart(2, '0');
-      // fallback local
-      return pad(d.getHours()) + ':' + pad(d.getMinutes());
+      const d = new Date(Number(ms) + 7 * 3600 * 1000); // thô GMT+7
+      // better use local if GAME_TZ fails
+      try {
+        return new Date(ms).toLocaleTimeString('vi-VN', {
+          hour: '2-digit', minute: '2-digit', second: withSeconds ? '2-digit' : undefined,
+          hour12: false, timeZone: 'Asia/Ho_Chi_Minh'
+        });
+      } catch (e2) {
+        const x = new Date(ms);
+        return pad(x.getHours()) + ':' + pad(x.getMinutes()) + (withSeconds ? ':' + pad(x.getSeconds()) : '');
+      }
     }
   },
 
