@@ -5600,6 +5600,28 @@ const Game = {
     return currentPlayer.gameEvents;
   },
 
+  /** Khóa lọc cố định cho UI: all|garden|robot|nyc|fairy|helper|offline|level|reward|rain|system */
+  resolveFilterKey(action, actor, text, category, mode) {
+    const act = String(action || '').toLowerCase();
+    const ac = String(actor || '').toLowerCase();
+    const cat = String(category || '').toLowerCase();
+    const md = String(mode || '').toLowerCase();
+    const t = String(text || '');
+    const tl = t.toLowerCase();
+
+    if (md === 'offline' || cat === 'offline' || ac === 'offline' || act.indexOf('offline') >= 0 || /offline/i.test(t)) return 'offline';
+    if (ac === 'robot' || cat === 'robot' || act.indexOf('robot') >= 0 || /robot/i.test(t)) return 'robot';
+    if (ac === 'nyc' || cat === 'nyc' || act.indexOf('nyc') >= 0 || /\bnyc\b/i.test(t)) return 'nyc';
+    if (ac === 'fairy' || cat === 'fairy' || act.indexOf('fairy') >= 0 || /tiên|fairy/i.test(t)) return 'fairy';
+    if (ac === 'helper' || cat === 'helper' || act.indexOf('helper') >= 0 || /giúp việc|giup viec/i.test(t)) return 'helper';
+    if (cat === 'level' || act === 'xp' || act === 'level_up' || act === 'levelup' || /\+\s*[\d.,]+\s*xp/i.test(t) || /lên cấp/i.test(t)) return 'level';
+    if (cat === 'reward' || act === 'daily' || act === 'reward' || /thưởng|daily reward/i.test(t)) return 'reward';
+    if (cat === 'rain' || act.indexOf('rain') === 0 || (/mưa/i.test(t) && !/robot/i.test(t))) return 'rain';
+    if (cat === 'garden' || ['plant','water','harvest','fert','crop_ready','replant','remove','uproot'].indexOf(act) >= 0) return 'garden';
+    if ((/trồng|tưới|thu hoạch|bón|nhổ|ô #/i.test(t)) && !/nyc|robot|tiên/i.test(t)) return 'garden';
+    return 'system';
+  },
+
   /** Lấy / reset dayStats theo ngày GMT+7 (bộ đếm online) */
   ensureDayStats() {
     if (!currentPlayer) return null;
@@ -5713,6 +5735,15 @@ const Game = {
       if (spec.before) ev.before = spec.before;
       if (spec.after) ev.after = spec.after;
       if (spec.text) ev.text = spec.text;
+
+      // Khóa lọc cố định
+      ev.filter = this.resolveFilterKey(
+        ev.action,
+        ev.actor,
+        ev.summaryText || ev.text || (ev.target && ev.target.name) || '',
+        ev.category,
+        ev.mode
+      );
 
       const list = this.ensureGameEvents();
       list.unshift(ev);
@@ -6210,22 +6241,28 @@ const Game = {
       return ts && (now - ts) < KEEP_MS;
     });
 
-    // Map events → list items
-    const list = events.map(e => ({
-      id: e.id,
-      type: e.category || e.action || 'system',
-      action: e.action,
-      actor: e.actor,
-      mode: e.mode || 'online',
-      title: e.action || e.category,
-      text: this.formatEventSummaryText(e),
-      timestamp: e.timestamp,
-      firstAt: e.timestamp,
-      timeText: this.formatLogClock(e.timestamp),
-      hasDetail: true,
-      _isEvent: true,
-      _event: e
-    }));
+    // Map events → list items (luôn có filter key)
+    const list = events.map(e => {
+      const text = this.formatEventSummaryText(e);
+      const filter = e.filter || this.resolveFilterKey(e.action, e.actor, text, e.category, e.mode);
+      return {
+        id: e.id,
+        type: e.category || e.action || 'system',
+        action: e.action,
+        actor: e.actor,
+        mode: e.mode || 'online',
+        filter: filter,
+        filterKey: filter,
+        title: e.action || e.category,
+        text: text,
+        timestamp: e.timestamp,
+        firstAt: e.timestamp,
+        timeText: this.formatLogClock(e.timestamp),
+        hasDetail: true,
+        _isEvent: true,
+        _event: e
+      };
+    });
 
     // Thêm offline summary nếu chưa có event offline_end tương ứng
     offlineLogs.forEach(l => {

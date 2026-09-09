@@ -10746,3 +10746,30 @@ html[data-theme="dark"] .activity-filter-btn.active {
   margin: 0;
   padding: 0;
 }
+
+
+/* ACTIVITY FILTER CENTER FIX */
+#page-activity .activity-filters,
+.activity-section-log .activity-filters,
+.activity-filters {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+#page-activity .activity-section.activity-section-log {
+  max-width: 920px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.activity-list.activity-timeline::before {
+  content: none !important;
+  display: none !important;
+}
+.al-time {
+  white-space: nowrap !important;
+  font-variant-numeric: tabular-nums;
+}

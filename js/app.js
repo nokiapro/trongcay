@@ -5206,71 +5206,63 @@ document.getElementById('btn-offline-view-detail')?.addEventListener('click', ()
   }
 });
 
-function _activityCategoryClass(a) {
+/* ========== NHẬT KÝ HÀNH ĐỘNG — UI ========== */
+function activityFilterKey(a) {
   if (!a) return 'system';
+  if (a.filter) return a.filter;
+  if (a.filterKey) return a.filterKey;
   const ev = a._event || {};
-  const cat = String(a.type || a.category || ev.category || '').toLowerCase();
-  const act = String(a.action || ev.action || '').toLowerCase();
-  const actor = String(a.actor || ev.actor || '').toLowerCase();
-  const mode = String(a.mode || ev.mode || '').toLowerCase();
-  const text = String(a.text || a.title || ev.summaryText || ev.text || '');
-  const blob = (cat + ' ' + act + ' ' + actor + ' ' + mode + ' ' + text).toLowerCase();
-
-  if (mode === 'offline' || cat === 'offline' || actor === 'offline' || act.indexOf('offline') >= 0) return 'offline';
-  if (actor === 'robot' || cat === 'robot' || act.indexOf('robot') >= 0 || blob.indexOf('robot') >= 0) return 'robot';
-  if (actor === 'nyc' || cat === 'nyc' || act.indexOf('nyc') >= 0 || blob.indexOf('nyc') >= 0) return 'nyc';
-  if (actor === 'fairy' || cat === 'fairy' || act.indexOf('fairy') >= 0 || blob.indexOf('tiên') >= 0 || blob.indexOf('tien') >= 0 || blob.indexOf('fairy') >= 0) return 'fairy';
-  if (actor === 'helper' || cat === 'helper' || act.indexOf('helper') >= 0 || blob.indexOf('giúp việc') >= 0 || blob.indexOf('giup viec') >= 0) return 'helper';
-  if (cat === 'level' || act === 'xp' || act === 'level_up' || act === 'levelup' || /\+\s*[\d.,]+\s*xp/i.test(text) || blob.indexOf('lên cấp') >= 0) return 'level';
-  if (cat === 'reward' || act === 'daily' || act === 'reward' || blob.indexOf('thưởng') >= 0 || blob.indexOf('daily') >= 0) return 'reward';
-  if (cat === 'rain' || act.indexOf('rain') === 0 || (blob.indexOf('mưa') >= 0 && blob.indexOf('robot') < 0)) return 'rain';
-  if (cat === 'garden' || ['plant','water','harvest','fert','crop_ready','replant','remove','uproot'].indexOf(act) >= 0) return 'garden';
-  if ((blob.indexOf('trồng') >= 0 || blob.indexOf('tưới') >= 0 || blob.indexOf('thu hoạch') >= 0 || blob.indexOf('bón') >= 0 || blob.indexOf('ô #') >= 0) && blob.indexOf('nyc') < 0 && blob.indexOf('robot') < 0) return 'garden';
+  if (ev.filter) return ev.filter;
+  if (typeof Game !== 'undefined' && Game.resolveFilterKey) {
+    return Game.resolveFilterKey(
+      a.action || ev.action,
+      a.actor || ev.actor,
+      a.text || a.title || '',
+      a.type || a.category || ev.category,
+      a.mode || ev.mode
+    );
+  }
+  const blob = [a.type, a.action, a.actor, a.mode, a.text, a.title].join(' ').toLowerCase();
+  if (blob.indexOf('offline') >= 0) return 'offline';
+  if (blob.indexOf('robot') >= 0) return 'robot';
+  if (blob.indexOf('nyc') >= 0) return 'nyc';
+  if (blob.indexOf('tiên') >= 0 || blob.indexOf('fairy') >= 0) return 'fairy';
+  if (blob.indexOf('giúp việc') >= 0 || blob.indexOf('helper') >= 0) return 'helper';
+  if (/\bxp\b/.test(blob) || blob.indexOf('level') >= 0 || blob.indexOf('lên cấp') >= 0) return 'level';
+  if (blob.indexOf('thưởng') >= 0 || blob.indexOf('reward') >= 0 || blob.indexOf('daily') >= 0) return 'reward';
+  if (blob.indexOf('mưa') >= 0) return 'rain';
+  if (blob.indexOf('trồng') >= 0 || blob.indexOf('tưới') >= 0 || blob.indexOf('thu hoạch') >= 0) return 'garden';
   return 'system';
 }
 
-function _activityMatchesFilter(a, filter) {
-  if (!filter || filter === 'all') return true;
-  try {
-    return _activityCategoryClass(a) === filter;
-  } catch (e) {
-    return true;
-  }
-}
-
-function _activityActorLabel(a) {
+function activityActorLabel(a) {
   const map = {
-    player: 'Người chơi',
-    robot: 'Robot',
-    nyc: 'NYC',
-    fairy: 'Tiên',
-    helper: 'Giúp việc',
-    system: 'Hệ thống',
-    offline: 'Offline',
-    garden: 'Vườn',
-    level: 'XP',
-    reward: 'Thưởng',
-    rain: 'Mưa'
+    player: 'Bạn', robot: 'Robot', nyc: 'NYC', fairy: 'Tiên',
+    helper: 'Giúp việc', system: 'Hệ thống', offline: 'Offline'
   };
   const actor = String((a && a.actor) || (a && a._event && a._event.actor) || '');
-  if (actor && actor !== 'player' && map[actor]) return map[actor];
-  const cat = _activityCategoryClass(a);
-  if (map[cat] && cat !== 'system' && cat !== 'garden') return map[cat];
-  if (map[actor]) return map[actor];
-  return map[cat] || 'Game';
+  if (actor && map[actor] && actor !== 'player') return map[actor];
+  const f = activityFilterKey(a);
+  if (f === 'robot') return 'Robot';
+  if (f === 'nyc') return 'NYC';
+  if (f === 'fairy') return 'Tiên';
+  if (f === 'helper') return 'Giúp việc';
+  if (f === 'offline') return 'Offline';
+  if (f === 'level') return 'XP';
+  if (f === 'reward') return 'Thưởng';
+  return map[actor] || 'Bạn';
 }
 
-function _activityResultTags(a) {
+function activityResultTags(a) {
   const tags = [];
-  const ev = a._event || null;
-  const d = (ev && (ev.detail || ev.result)) || {};
-  const r = (ev && ev.result) || {};
-  const qty = a.quantity != null ? a.quantity : (ev && ev.quantity);
-  const sp = (ev && ev.sp) != null ? ev.sp : (r.sp != null ? r.sp : null);
-  const xp = (ev && ev.xp) != null ? ev.xp : (r.xp != null ? r.xp : null);
-  const coins = (ev && ev.coins) != null ? ev.coins : (r.currency != null ? r.currency : null);
-  const cost = ev && ev.cost != null ? ev.cost : null;
-  const cell = (ev && ev.cellId != null) ? ('#' + (Number(ev.cellId) + 1)) : null;
+  const ev = (a && a._event) || {};
+  const r = ev.result || {};
+  const qty = a.quantity != null ? a.quantity : ev.quantity;
+  const sp = ev.sp != null ? ev.sp : r.sp;
+  const xp = ev.xp != null ? ev.xp : r.xp;
+  const coins = ev.coins != null ? ev.coins : r.currency;
+  const cost = ev.cost;
+  const cell = ev.cellId != null ? ('#' + (Number(ev.cellId) + 1)) : null;
   if (qty != null && qty !== '') tags.push({ cls: 'info', text: '×' + qty });
   if (cell) tags.push({ cls: '', text: 'Ô ' + cell });
   if (sp != null && Number(sp) !== 0) tags.push({ cls: 'pos', text: '+' + Number(sp).toLocaleString() + ' SP' });
@@ -5280,141 +5272,110 @@ function _activityResultTags(a) {
     tags.push({ cls: n >= 0 ? 'pos' : 'neg', text: (n >= 0 ? '+' : '') + n.toLocaleString() + '🪙' });
   }
   if (cost != null && Number(cost) > 0) tags.push({ cls: 'neg', text: '−' + Number(cost).toLocaleString() + '🪙' });
-  if (a.mode === 'offline' || a.type === 'offline') tags.push({ cls: 'warn', text: 'Offline' });
   return tags;
 }
 
 function renderActivityPage() {
-  try { bindActivityFilters(); } catch (_) {}
+  bindActivityFilters();
   const actList = document.getElementById('activity-list');
   if (!actList || !currentPlayer) return;
 
-  let allLines = (typeof Game !== 'undefined' && Game.buildDayLogLines)
-    ? Game.buildDayLogLines()
-    : [];
-  if (!Array.isArray(allLines)) allLines = [];
+  let all = [];
+  try {
+    all = (typeof Game !== 'undefined' && Game.buildDayLogLines) ? Game.buildDayLogLines() : [];
+  } catch (e) {
+    console.warn('buildDayLogLines', e);
+    all = [];
+  }
+  if (!Array.isArray(all)) all = [];
 
-  // Gắn filterKey ổn định cho mọi dòng
-  allLines.forEach(a => {
-    if (!a) return;
-    a.filterKey = _activityCategoryClass(a);
-  });
-
-  // Đếm theo tab
-  const counts = { all: allLines.length, garden: 0, robot: 0, nyc: 0, fairy: 0, helper: 0, offline: 0, level: 0, reward: 0 };
-  allLines.forEach(a => {
-    const k = a.filterKey || 'system';
+  // Đếm
+  const counts = { all: all.length, garden: 0, robot: 0, nyc: 0, fairy: 0, helper: 0, offline: 0, level: 0, reward: 0, rain: 0, system: 0 };
+  all.forEach(a => {
+    const k = activityFilterKey(a);
+    a.filterKey = k;
     if (counts[k] != null) counts[k]++;
   });
+
+  // Cập nhật nhãn tab + số
   document.querySelectorAll('#activity-filters .activity-filter-btn').forEach(btn => {
     const f = btn.getAttribute('data-filter') || 'all';
-    const base = (btn.getAttribute('data-label') || btn.textContent || '').replace(/\s*\(\d+\)\s*$/, '').trim();
-    if (!btn.getAttribute('data-label')) btn.setAttribute('data-label', base);
-    const label = btn.getAttribute('data-label') || base;
-    const n = counts[f] != null ? counts[f] : 0;
-    btn.textContent = label + (f === 'all' ? (' (' + counts.all + ')') : (n ? (' (' + n + ')') : ''));
+    if (!btn.getAttribute('data-label')) {
+      btn.setAttribute('data-label', (btn.textContent || '').replace(/\s*\(\d+\)\s*$/, '').trim());
+    }
+    const label = btn.getAttribute('data-label');
+    const n = f === 'all' ? counts.all : (counts[f] || 0);
+    btn.textContent = label + ' (' + n + ')';
   });
 
-  const activeBtn = document.querySelector('#activity-filters .activity-filter-btn.active')
-    || document.querySelector('.activity-filter-btn.active');
+  const activeBtn = document.querySelector('#activity-filters .activity-filter-btn.active');
   const filter = (activeBtn && activeBtn.getAttribute('data-filter')) || window._activityFilter || 'all';
   window._activityFilter = filter;
 
-  let lines = allLines;
-  if (filter && filter !== 'all') {
-    lines = allLines.filter(a => (a.filterKey || _activityCategoryClass(a)) === filter);
-  }
+  const lines = (filter === 'all') ? all : all.filter(a => activityFilterKey(a) === filter);
 
   actList.classList.add('activity-timeline');
 
   if (!lines.length) {
-    const names = { garden: 'Vườn', robot: 'Robot', nyc: 'NYC', fairy: 'Tiên', helper: 'Giúp việc', offline: 'Offline', level: 'XP', reward: 'Thưởng' };
-    const tip = filter && filter !== 'all'
-      ? ('Không có sự kiện «' + (names[filter] || filter) + '» trong nhật ký hiện tại.')
-      : 'Chưa có hoạt động nào.';
-    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i>' + tip + '<br><small>Thử tab «Tất cả» hoặc chơi thêm để sinh log.</small></li>';
+    const names = {
+      garden: 'Vườn', robot: 'Robot', nyc: 'NYC', fairy: 'Tiên', helper: 'Giúp việc',
+      offline: 'Offline', level: 'XP', reward: 'Thưởng'
+    };
+    const tip = filter !== 'all'
+      ? ('Chưa có log «' + (names[filter] || filter) + '».')
+      : 'Chưa có hoạt động.';
+    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i>' + tip + '</li>';
     return;
   }
 
   const clock = (ts) => {
     if (!ts) return '';
     if (typeof Game !== 'undefined' && Game.formatLogClock) return Game.formatLogClock(ts);
-    return formatActivityTime(ts) || '';
-  };
-
-  const byDay = {};
-  const dayOrder = [];
-  lines.forEach(a => {
-    const ts = a.timestamp || a.firstAt || 0;
-    let dk = '';
     try {
-      dk = (typeof gameDateString === 'function')
-        ? gameDateString(ts)
-        : new Date(ts).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'short', day: '2-digit', month: '2-digit' });
-    } catch (_) {
-      dk = new Date(ts).toDateString();
-    }
-    if (!byDay[dk]) { byDay[dk] = []; dayOrder.push(dk); }
-    byDay[dk].push(a);
-  });
+      return new Date(ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
+    } catch (_) { return ''; }
+  };
 
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-  const rowHtml = (a) => {
-    const cat = _activityCategoryClass(a);
-    const timeStr = a.timeText || clock(a.timestamp) || '';
-    // Luôn 1 dòng HH:mm:ss — không tách gây lệch
-    const actor = _activityActorLabel(a);
-    const msg = a.text || a.title || a.action || 'Hành động';
-    const tags = _activityResultTags(a);
-    const tagsHtml = tags.length
-      ? ('<div class="al-tags">' + tags.map(t => '<span class="al-tag ' + (t.cls || '') + '">' + esc(t.text) + '</span>').join('') + '</div>')
-      : '';
-    const extraCls = [
-      cat === 'offline' ? 'al-offline' : '',
-      cat === 'level' ? 'al-level' : ''
-    ].filter(Boolean).join(' ');
-    // Nhãn action gọn, không in SYSTEM/ROBOT_MERGE thô
-    const actionLabelMap = {
-      plant: 'Trồng', water: 'Tưới', harvest: 'Thu hoạch', fert: 'Bón',
-      crop_ready: 'Chín', replant: 'Trồng lại', remove: 'Nhổ',
-      robot_seed: 'Mua hạt', robot_cook: 'Nấu', robot_merge: 'Ghép',
-      fairy_water: 'Tưới', fairy_rain_seed: 'Nhặt hạt',
-      nyc_harvest: 'Thu hoạch', nyc_plant: 'Trồng',
-      level_up: 'Lên cấp', levelup: 'Lên cấp', xp: 'XP',
-      daily: 'Thưởng', reward: 'Thưởng', offline_end: 'Offline', offline: 'Offline',
-      system: ''
-    };
-    const rawAct = String(a.action || '');
-    const actionLabel = actionLabelMap[rawAct] != null ? actionLabelMap[rawAct]
-      : (rawAct && rawAct.toLowerCase() !== 'system' ? rawAct.replace(/_/g, ' ') : '');
-
-    return `<li class="al-row activity-clickable ${extraCls}" data-id="${esc(a.id || '')}" role="button" tabindex="0">
-      <div class="al-rail">
-        <span class="al-dot al-cat-${cat}"></span>
-        <span class="al-time">${esc(timeStr)}</span>
-      </div>
-      <div class="al-main">
-        <div class="al-top">
-          <span class="al-actor">${esc(actor)}</span>
-          ${actionLabel ? '<span class="al-action">' + esc(actionLabel) + '</span>' : ''}
-        </div>
-        <div class="al-msg">${esc(msg)}</div>
-        ${tagsHtml}
-      </div>
-      <span class="al-chevron"><i class="fa-solid fa-chevron-right"></i></span>
-    </li>`;
-  };
+  // Nhóm ngày
+  const byDay = {};
+  const dayOrder = [];
+  lines.forEach(a => {
+    const ts = a.timestamp || 0;
+    let dk = '';
+    try {
+      dk = (typeof gameDateString === 'function')
+        ? gameDateString(ts)
+        : new Date(ts).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    } catch (_) { dk = '—'; }
+    if (!byDay[dk]) { byDay[dk] = []; dayOrder.push(dk); }
+    byDay[dk].push(a);
+  });
 
   let html = '';
   dayOrder.forEach(dk => {
-    const items = byDay[dk] || [];
-    html += `<li class="activity-day-head" aria-hidden="true">
-      <span class="activity-day-pill"><i class="fa-solid fa-calendar-day"></i> ${esc(dk)}</span>
-      <span class="activity-day-count">${items.length} sự kiện</span>
-    </li>`;
-    items.forEach(a => { html += rowHtml(a); });
+    const items = byDay[dk];
+    html += '<li class="activity-day-head"><span class="activity-day-pill"><i class="fa-solid fa-calendar-day"></i> '
+      + esc(dk) + '</span><span class="activity-day-count">' + items.length + ' sự kiện</span></li>';
+
+    items.forEach(a => {
+      const cat = activityFilterKey(a);
+      const timeStr = a.timeText || clock(a.timestamp) || '';
+      const actor = activityActorLabel(a);
+      const msg = a.text || a.title || a.action || 'Hành động';
+      const tags = activityResultTags(a);
+      const tagsHtml = tags.length
+        ? ('<div class="al-tags">' + tags.map(t => '<span class="al-tag ' + (t.cls || '') + '">' + esc(t.text) + '</span>').join('') + '</div>')
+        : '';
+      html += '<li class="al-row activity-clickable" data-id="' + esc(a.id || '') + '" role="button" tabindex="0">'
+        + '<div class="al-rail"><span class="al-dot al-cat-' + esc(cat) + '"></span>'
+        + '<span class="al-time">' + esc(timeStr) + '</span></div>'
+        + '<div class="al-main"><div class="al-top"><span class="al-actor">' + esc(actor) + '</span></div>'
+        + '<div class="al-msg">' + esc(msg) + '</div>' + tagsHtml + '</div>'
+        + '<span class="al-chevron"><i class="fa-solid fa-chevron-right"></i></span></li>';
+    });
   });
 
   actList.innerHTML = html;
@@ -5426,7 +5387,6 @@ function renderActivityPage() {
   });
 }
 
-// Filter buttons — bind an toàn (DOM có thể chưa sẵn lúc parse)
 function bindActivityFilters() {
   const box = document.getElementById('activity-filters');
   if (!box || box._bound) return;
@@ -5434,7 +5394,6 @@ function bindActivityFilters() {
   box.addEventListener('click', (e) => {
     const btn = e.target.closest('.activity-filter-btn');
     if (!btn) return;
-    e.preventDefault();
     box.querySelectorAll('.activity-filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     window._activityFilter = btn.getAttribute('data-filter') || 'all';
@@ -5446,7 +5405,6 @@ if (document.readyState === 'loading') {
 } else {
   bindActivityFilters();
 }
-
 
 function scheduleActivityMidnightPrune() {
   // Không hẹn 0h00 nữa — prune rolling do interval bên dưới
