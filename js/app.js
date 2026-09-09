@@ -1108,7 +1108,15 @@ function syncNavActive(page) {
   }
 }
 
+let _goToPageLock = { page: null, at: 0 };
+
 function goToPage(page) {
+  if (!page) return;
+  // Chặn double-fire: cùng page trong 400ms chỉ chạy 1 lần
+  const now = Date.now();
+  if (_goToPageLock.page === page && (now - _goToPageLock.at) < 400) return;
+  _goToPageLock = { page, at: now };
+
   syncNavActive(page);
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + page)?.classList.add('active');
@@ -1130,10 +1138,14 @@ function goToPage(page) {
   if (page === 'mail') loadPlayerMailbox();
 }
 
+// Chỉ dùng click — không pointerup (tránh 1 lần bấm = 2 lần chạy)
 document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', (e) => {
     if (btn.id === 'btn-admin' || btn.id === 'btn-logout' || btn.id === 'btn-nav-more') return;
-    if (btn.dataset.page) goToPage(btn.dataset.page);
+    if (!btn.dataset.page) return;
+    e.preventDefault();
+    e.stopPropagation();
+    goToPage(btn.dataset.page);
   });
 });
 
@@ -1207,13 +1219,8 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
       try {
         if (e && e.pointerId != null) container.releasePointerCapture(e.pointerId);
       } catch (_) {}
-      // Nếu chỉ giữ yên trên 1 tab rồi thả → coi như tap chọn tab đó
-      if (!scrubbed && lastPage && typeof goToPage === 'function') {
-        // click handler cũng sẽ fire; tránh double bằng cách không gọi lại nếu đã active
-        const cur = document.querySelector('.page.active');
-        const curId = cur && cur.id ? cur.id.replace(/^page-/, '') : '';
-        if (curId !== lastPage) goToPage(lastPage);
-      }
+      // Tap thường: để sự kiện click gọi goToPage (không gọi ở đây → tránh double)
+      // Scrub khi trượt đã gọi goToPage trong pointermove
       lastPage = null;
       scrubbed = false;
     }
@@ -1226,8 +1233,9 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
   function init() {
     const d = dock();
     if (d) bindScrub(d, '.nav-btn', {});
-    const g = moreGrid();
-    if (g) bindScrub(g, '.nav-more-item', {});
+    // Không scrub menu Thêm — tránh phải bấm 2 lần mới vào tab
+    // const g = moreGrid();
+    // if (g) bindScrub(g, '.nav-more-item', {});
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
@@ -4871,6 +4879,32 @@ function renderStats() {
 }
 
 
+function formatActivityTime(ts, firstAt) {
+  const fmt = (ms) => {
+    if (!ms) return '';
+    try {
+      if (typeof formatGameDateTime === 'function') {
+        // chỉ lấy giờ:phút
+        const s = formatGameDateTime(ms, false);
+        // formatGameDateTime thường: dd/mm/yyyy, HH:mm
+        const m = String(s).match(/(\d{1,2}:\d{2})/);
+        if (m) return m[1];
+        return s;
+      }
+      const d = new Date(ms);
+      const pad = n => String(n).padStart(2, '0');
+      // GMT+7 approx display via toLocale
+      return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
+    } catch (_) {
+      return '';
+    }
+  };
+  const t1 = fmt(firstAt || ts);
+  const t2 = fmt(ts);
+  if (t1 && t2 && t1 !== t2) return t1 + '–' + t2;
+  return t2 || t1 || '';
+}
+
 function activityFaIcon(text, type) {
   const t = String(type || '');
   if (t === 'garden') return 'fa-solid fa-seedling';
@@ -5020,7 +5054,8 @@ function openActivityDetail(logId) {
   if (!modal || !body) return;
   const icon = activityFaIcon('', log?.type);
   const t = (log && log.summary && log.summary.title) ? log.summary.title : 'Chi tiết';
-  if (title) title.innerHTML = '<i class="' + icon + '"></i> ' + t;
+  const timeStr = formatActivityTime(log?.timestamp, log?.firstAt);
+  if (title) title.innerHTML = '<i class="' + icon + '"></i> ' + t + (timeStr ? ' <small class="activity-time-detail">' + timeStr + '</small>' : '');
   body.innerHTML = formatActivityDetailHtml(log);
   modal.classList.add('show');
 }
@@ -5048,10 +5083,14 @@ function renderActivityPage() {
 
   actList.innerHTML = lines.map(a => {
     const icon = activityFaIcon(a.text, a.type);
+    const timeStr = a.timeText || formatActivityTime(a.timestamp, a.firstAt);
     return `<li class="activity-item activity-summary activity-clickable" data-id="${a.id || ''}" role="button" tabindex="0">
       <span class="activity-icon"><i class="${icon}"></i></span>
       <div class="activity-body">
-        <div class="activity-title"><strong>${a.title || ''}</strong></div>
+        <div class="activity-title">
+          <strong>${a.title || ''}</strong>
+          ${timeStr ? `<span class="activity-time">${timeStr}</span>` : ''}
+        </div>
         <div class="activity-text">${a.text || ''}</div>
       </div>
       <span class="activity-chevron"><i class="fa-solid fa-chevron-right"></i></span>

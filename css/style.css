@@ -10167,3 +10167,28 @@ html[data-theme="dark"] .admin-topbar {
   line-height: 1.35;
   padding: 12px 16px;
 }
+
+
+.activity-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.activity-time {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+.activity-time-detail {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-left: 6px;
+}
+html[data-theme="dark"] .activity-time,
+html[data-theme="dark"] .activity-time-detail {
+  color: #94a3b8;
+}
