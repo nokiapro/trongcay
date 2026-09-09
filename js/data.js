@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 
-const APP_VERSION = '1.9.183';
+const APP_VERSION = '1.9.185';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13563,19 +13563,68 @@ function pruneActivityToToday(list, nowMsVal) {
   return pruneActivityOlderThan24h(list, nowMsVal);
 }
 
-/** Áp dụng prune rolling 24h lên currentPlayer.activity; trả về true nếu có xóa */
+/** Xóa event/log có timestamp field quá 24h */
+function pruneTimestampedList(list, nowMsVal, fields) {
+  const now = (typeof nowMsVal === 'number' && nowMsVal > 0)
+    ? nowMsVal
+    : ((typeof nowMs === 'function') ? nowMs() : Date.now());
+  const cutoff = now - ACTIVITY_MAX_AGE_MS;
+  if (!Array.isArray(list) || !list.length) {
+    return { list: Array.isArray(list) ? list : [], changed: false };
+  }
+  const keys = fields || ['timestamp', 't', 'at'];
+  const kept = [];
+  for (let i = 0; i < list.length; i++) {
+    const a = list[i];
+    if (!a || typeof a !== 'object') continue;
+    let ts = 0;
+    for (let k = 0; k < keys.length; k++) {
+      const v = Number(a[keys[k]]);
+      if (Number.isFinite(v) && v > 0) { ts = v; break; }
+    }
+    if (!ts && a.offline && a.offline.endedAt) {
+      const v = Number(a.offline.endedAt);
+      if (Number.isFinite(v) && v > 0) ts = v;
+    }
+    if (!ts && a.time) {
+      const p = Date.parse(String(a.time));
+      if (Number.isFinite(p)) ts = p;
+    }
+    // Không timestamp → giữ tạm
+    if (!ts || ts >= cutoff) kept.push(a);
+  }
+  return { list: kept, changed: kept.length !== list.length };
+}
+
+/** Áp dụng prune rolling 24h: activity + gameEvents + activityLogs */
 function pruneCurrentPlayerActivity(opts) {
   opts = opts || {};
   if (!currentPlayer) return false;
-  const r = pruneActivityOlderThan24h(currentPlayer.activity || [], opts.now);
-  if (r.changed || !Array.isArray(currentPlayer.activity)) {
-    currentPlayer.activity = r.list;
-    if (r.changed) {
-      try { if (typeof markPlayerDirty === 'function') markPlayerDirty(); } catch (_) {}
-    }
-    return r.changed;
+  let changed = false;
+  const now = opts.now;
+
+  const r1 = pruneActivityOlderThan24h(currentPlayer.activity || [], now);
+  if (r1.changed || !Array.isArray(currentPlayer.activity)) {
+    currentPlayer.activity = r1.list;
+    if (r1.changed) changed = true;
   }
-  return false;
+
+  const r2 = pruneTimestampedList(currentPlayer.gameEvents || [], now, ['timestamp', 't', 'at']);
+  if (r2.changed || !Array.isArray(currentPlayer.gameEvents)) {
+    currentPlayer.gameEvents = r2.list;
+    if (r2.changed) changed = true;
+  }
+
+  const r3 = pruneTimestampedList(currentPlayer.activityLogs || [], now, ['timestamp', 't', 'at']);
+  if (r3.changed || !Array.isArray(currentPlayer.activityLogs)) {
+    currentPlayer.activityLogs = r3.list;
+    if (r3.changed) changed = true;
+  }
+
+  if (changed) {
+    try { if (typeof markPlayerDirty === 'function') markPlayerDirty(); } catch (_) {}
+  }
+  return changed;
 }
 
 

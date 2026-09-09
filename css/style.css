@@ -10773,3 +10773,99 @@ html[data-theme="dark"] .activity-filter-btn.active {
   white-space: nowrap !important;
   font-variant-numeric: tabular-nums;
 }
+
+
+/* ACTIVITY LOG PRO LAYOUT */
+.activity-list.activity-log-pro {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.activity-list.activity-log-pro .al-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 16px;
+  gap: 10px;
+  align-items: start;
+  padding: 11px 12px;
+  margin: 0 0 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--bg-card, var(--card, #fff));
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.activity-list.activity-log-pro .al-row:hover {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.04);
+}
+.activity-list.activity-log-pro .al-time-col {
+  padding-top: 2px;
+}
+.activity-list.activity-log-pro .al-time {
+  font-size: 0.78rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: #64748b;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+.activity-list.activity-log-pro .al-msg {
+  font-size: 0.92rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--text-main, var(--text, #0f172a));
+  word-break: break-word;
+}
+.activity-list.activity-log-pro .al-result {
+  margin-top: 3px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #15803d;
+  font-variant-numeric: tabular-nums;
+}
+.activity-list.activity-log-pro .al-row.al-offline {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.06);
+}
+.activity-list.activity-log-pro .al-row.al-offline .al-result {
+  color: #b45309;
+}
+.activity-list.activity-log-pro .al-chevron {
+  color: #cbd5e1;
+  padding-top: 4px;
+  font-size: 0.8rem;
+}
+.activity-list.activity-log-pro .activity-day-head {
+  list-style: none;
+  margin: 12px 0 8px;
+  padding: 0;
+}
+.activity-list.activity-log-pro .activity-day-pill {
+  display: inline-flex;
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  color: #475569;
+}
+html[data-theme="dark"] .activity-list.activity-log-pro .al-msg {
+  color: #e2e8f0;
+}
+html[data-theme="dark"] .activity-list.activity-log-pro .al-time {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .activity-list.activity-log-pro .al-row {
+  background: var(--card, #1e293b);
+}
+@media (max-width: 400px) {
+  .activity-list.activity-log-pro .al-row {
+    grid-template-columns: 64px minmax(0, 1fr) 14px;
+    gap: 8px;
+    padding: 10px;
+  }
+  .activity-list.activity-log-pro .al-time { font-size: 0.72rem; }
+  .activity-list.activity-log-pro .al-msg { font-size: 0.88rem; }
+}

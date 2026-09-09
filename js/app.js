@@ -5206,67 +5206,27 @@ document.getElementById('btn-offline-view-detail')?.addEventListener('click', ()
   }
 });
 
-/* ========== NHẬT KÝ — UI ĐƠN GIẢN ========== */
-function activityFilterKey(a) {
-  if (!a) return 'system';
-  if (a.filter) return a.filter;
-  if (a.filterKey) return a.filterKey;
-  if (a._event && a._event.filter) return a._event.filter;
-  if (typeof Game !== 'undefined' && Game.resolveFilterKey) {
-    return Game.resolveFilterKey(a.action, a.actor, a.text || a.title || '', a.type, a.mode);
-  }
-  const b = [a.action, a.actor, a.type, a.text, a.title].join(' ').toLowerCase();
-  if (b.indexOf('offline') >= 0) return 'offline';
-  if (b.indexOf('robot') >= 0) return 'robot';
-  if (b.indexOf('nyc') >= 0) return 'nyc';
-  if (b.indexOf('tiên') >= 0 || b.indexOf('fairy') >= 0) return 'fairy';
-  if (b.indexOf('giúp việc') >= 0 || b.indexOf('helper') >= 0) return 'helper';
-  if (b.indexOf('xp') >= 0 || b.indexOf('level') >= 0 || b.indexOf('lên cấp') >= 0) return 'level';
-  if (b.indexOf('thưởng') >= 0 || b.indexOf('reward') >= 0 || b.indexOf('daily') >= 0) return 'reward';
-  if (b.indexOf('trồng') >= 0 || b.indexOf('tưới') >= 0 || b.indexOf('thu hoạch') >= 0 || b.indexOf('bón') >= 0) return 'garden';
-  return 'system';
-}
-
+/* ========== NHẬT KÝ — Timeline chuyên nghiệp (24h, không filter) ========== */
 function renderActivityPage() {
-  try { bindActivityFilters(); } catch (_) {}
   const actList = document.getElementById('activity-list');
   if (!actList || typeof currentPlayer === 'undefined' || !currentPlayer) return;
 
-  let all = [];
   try {
-    all = (typeof Game !== 'undefined' && Game.buildDayLogLines) ? (Game.buildDayLogLines() || []) : [];
+    if (typeof pruneCurrentPlayerActivity === 'function') pruneCurrentPlayerActivity();
+  } catch (_) {}
+
+  let lines = [];
+  try {
+    lines = (typeof Game !== 'undefined' && Game.buildDayLogLines) ? (Game.buildDayLogLines() || []) : [];
   } catch (err) {
     console.warn('buildDayLogLines', err);
   }
-  if (!Array.isArray(all)) all = [];
+  if (!Array.isArray(lines)) lines = [];
 
-  const counts = { all: all.length, garden: 0, robot: 0, nyc: 0, fairy: 0, helper: 0, offline: 0, level: 0, reward: 0 };
-  all.forEach(a => {
-    const k = activityFilterKey(a);
-    a.filterKey = k;
-    if (counts[k] != null) counts[k]++;
-  });
-
-  document.querySelectorAll('#activity-filters .activity-filter-btn').forEach(btn => {
-    const f = btn.getAttribute('data-filter') || 'all';
-    if (!btn.getAttribute('data-label')) {
-      btn.setAttribute('data-label', String(btn.textContent || '').replace(/\s*\(\d+\)\s*$/, '').trim());
-    }
-    const label = btn.getAttribute('data-label');
-    const n = f === 'all' ? counts.all : (counts[f] || 0);
-    btn.textContent = label + ' (' + n + ')';
-  });
-
-  const activeBtn = document.querySelector('#activity-filters .activity-filter-btn.active');
-  const filter = (activeBtn && activeBtn.getAttribute('data-filter')) || window._activityFilter || 'all';
-  window._activityFilter = filter;
-  const lines = filter === 'all' ? all : all.filter(a => activityFilterKey(a) === filter);
-
-  actList.className = 'activity-list activity-timeline';
+  actList.className = 'activity-list activity-timeline activity-log-pro';
 
   if (!lines.length) {
-    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i>Chưa có log'
-      + (filter !== 'all' ? ' cho bộ lọc này' : '') + '.</li>';
+    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i>Chưa có hoạt động trong 24 giờ qua.</li>';
     return;
   }
 
@@ -5280,7 +5240,7 @@ function renderActivityPage() {
     let day = '';
     try {
       day = (typeof gameDateString === 'function') ? gameDateString(ts)
-        : new Date(ts).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+        : new Date(ts).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'short', day: '2-digit', month: '2-digit' });
     } catch (_) { day = ''; }
     if (day && day !== lastDay) {
       lastDay = day;
@@ -5288,11 +5248,15 @@ function renderActivityPage() {
     }
     const timeStr = a.timeText || '';
     const msg = a.text || a.title || 'Hành động';
-    const cat = activityFilterKey(a);
-    html += '<li class="al-row activity-clickable" data-id="' + esc(a.id || '') + '">'
-      + '<div class="al-rail"><span class="al-dot al-cat-' + esc(cat) + '"></span>'
-      + '<span class="al-time">' + esc(timeStr) + '</span></div>'
-      + '<div class="al-main"><div class="al-msg">' + esc(msg) + '</div></div>'
+    const result = a.resultLine || '';
+    const isOff = (a.filter === 'offline' || a.type === 'offline' || a.mode === 'offline');
+    const cat = isOff ? 'offline' : (a.filter || a.filterKey || 'system');
+    html += '<li class="al-row activity-clickable' + (isOff ? ' al-offline' : '') + '" data-id="' + esc(a.id || '') + '">'
+      + '<div class="al-time-col"><span class="al-time">' + esc(timeStr) + '</span></div>'
+      + '<div class="al-main">'
+      + '<div class="al-msg">' + esc(msg) + '</div>'
+      + (result ? ('<div class="al-result">' + esc(result) + '</div>') : '')
+      + '</div>'
       + '<span class="al-chevron"><i class="fa-solid fa-chevron-right"></i></span></li>';
   });
 
@@ -5303,25 +5267,6 @@ function renderActivityPage() {
       if (id && typeof openActivityDetail === 'function') openActivityDetail(id);
     };
   });
-}
-
-function bindActivityFilters() {
-  const box = document.getElementById('activity-filters');
-  if (!box || box._bound) return;
-  box._bound = true;
-  box.addEventListener('click', (e) => {
-    const btn = e.target.closest('.activity-filter-btn');
-    if (!btn) return;
-    box.querySelectorAll('.activity-filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    window._activityFilter = btn.getAttribute('data-filter') || 'all';
-    renderActivityPage();
-  });
-}
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', bindActivityFilters);
-} else {
-  bindActivityFilters();
 }
 
 function scheduleActivityMidnightPrune() {

@@ -5768,54 +5768,81 @@ const Game = {
     }
   },
 
-  /** Tạo summary text ngắn cho 1 event (hiển thị dòng list) */
+  /** Dòng kết quả ngắn: +20 SP · −200🪙 */
+  formatEventResultLine(ev) {
+    if (!ev) return '';
+    const parts = [];
+    const r = ev.result || {};
+    const sp = ev.sp != null ? ev.sp : r.sp;
+    const xp = ev.xp != null ? ev.xp : r.xp;
+    const coins = ev.coins != null ? ev.coins : r.currency;
+    const cost = ev.cost;
+    if (sp != null && Number(sp) !== 0) parts.push((Number(sp) > 0 ? '+' : '') + Number(sp).toLocaleString() + ' SP');
+    if (xp != null && Number(xp) !== 0) parts.push((Number(xp) > 0 ? '+' : '') + Number(xp).toLocaleString() + ' XP');
+    if (coins != null && Number(coins) !== 0) {
+      const n = Number(coins);
+      parts.push((n > 0 ? '+' : '') + n.toLocaleString() + '🪙');
+    }
+    if (cost != null && Number(cost) > 0) parts.push('−' + Number(cost).toLocaleString() + '🪙');
+    // Offline summary
+    if (ev.action === 'offline_end' || ev.action === 'offline' || ev.filter === 'offline') {
+      const d = ev.detail || {};
+      if (d.durationText) parts.unshift(d.durationText);
+      else if (d.durationSeconds) {
+        const sec = Number(d.durationSeconds) || 0;
+        if (typeof this.formatOfflineDuration === 'function') parts.unshift(this.formatOfflineDuration(sec * 1000));
+      }
+      if (d.garden && d.garden.product) parts.push('+' + d.garden.product + ' SP');
+      if (d.xp) parts.push('+' + Number(d.xp).toLocaleString() + ' XP');
+    }
+    return parts.join(' · ');
+  },
+
+  /** Câu list chuyên nghiệp: Ai + hành động + đối tượng */
   formatEventSummaryText(ev) {
     if (!ev) return '';
-    if (ev.summaryText) return ev.summaryText;
-    if (ev.text) return ev.text;
+    // Làm sạch chuỗi thô từ addActivity(string)
+    let raw = ev.summaryText || ev.text || '';
+    if (raw) {
+      // Giữ raw nếu đã dễ đọc; vẫn cho phép format lại theo action nếu có
+    }
     const actorIcon = {
       player: '👤', robot: '🤖', nyc: '❤️', fairy: '🧚', helper: '🧹', system: '⚙️', offline: '⚡'
     }[ev.actor] || '';
     const q = ev.quantity != null ? ev.quantity : null;
     const tName = (ev.target && ev.target.name) || ev.name || '';
-    const cell = ev.cellId != null ? (' ô #' + (Number(ev.cellId) + 1)) : '';
+    const cell = ev.cellId != null ? (' · ô #' + (Number(ev.cellId) + 1)) : '';
     const act = String(ev.action || '');
 
     if (act === 'buy' || act === 'buy_seed' || act === 'robot_seed') {
-      return (actorIcon + ' ' + (ev.actor === 'robot' ? 'Robot' : '') + ' mua ' + (q != null ? q + ' × ' : '') + (tName || 'hạt')).trim();
+      return '🤖 Robot mua ' + (q != null ? q + ' × ' : '') + (tName || 'hạt');
     }
     if (act === 'cook' || act === 'robot_cook') {
-      return (actorIcon + ' Robot nấu ' + (q != null ? q + ' × ' : '') + (tName || 'món')).trim();
+      return '🤖 Robot nấu ' + (q != null ? q + ' × ' : '') + (tName || 'món');
     }
     if (act === 'merge' || act === 'robot_merge') {
-      return (actorIcon + ' Robot ghép ' + (tName || 'vật phẩm') + (q != null ? ' ×' + q : '')).trim();
+      const star = (ev.detail && ev.detail.star) || 0;
+      const myth = (ev.detail && ev.detail.myth) || 0;
+      if (star || myth) return '🤖 Robot ghép ⭐×' + star + (myth ? ' · ✨×' + myth : '');
+      return '🤖 Robot ghép ' + (tName || 'vật phẩm') + (q != null ? ' ×' + q : '');
     }
     if (act === 'plant' || act === 'replant') {
-      return '🌱 Trồng ' + (tName || 'cây') + cell + (act === 'replant' ? ' (trồng lại)' : '');
+      return '🌱 Trồng ' + (tName || 'cây') + cell + (act === 'replant' ? ' (lại)' : '');
     }
-    if (act === 'water') {
-      return '💧 Tưới ' + (tName || 'cây') + cell;
-    }
-    if (act === 'fert' || act === 'fertilize') {
-      return '🧪 Bón ' + (tName || 'phân') + cell;
-    }
+    if (act === 'water') return '💧 Tưới ' + (tName || 'cây') + cell;
+    if (act === 'fert' || act === 'fertilize') return '🧪 Bón ' + (tName || 'phân') + cell;
     if (act === 'harvest') {
       let s = '🌱 Thu hoạch ' + (tName || 'cây') + cell;
       if (q != null) s += ' · ×' + q;
-      if (ev.sp) s += ' · +' + ev.sp + ' SP';
-      else if (ev.result && ev.result.sp) s += ' · +' + ev.result.sp + ' SP';
       return s;
     }
-    if (act === 'crop_ready') {
-      return '🌱 ' + (tName || 'Cây') + cell + ' đã chín';
-    }
-    if (act === 'remove' || act === 'uproot') {
-      return '🌱 Nhổ ' + (tName || 'cây') + cell;
-    }
+    if (act === 'crop_ready') return '🌱 ' + (tName || 'Cây') + cell + ' đã chín';
+    if (act === 'remove' || act === 'uproot') return '🌱 Nhổ ' + (tName || 'cây') + cell;
     if (act === 'level_up' || act === 'levelup') {
       const from = (ev.detail && ev.detail.from) || (ev.before && ev.before.level);
-      const to = (ev.detail && ev.detail.to) || (ev.after && ev.after.level) || ev.level;
-      return '⬆️ Lên cấp' + (from != null && to != null ? (' Lv ' + from + ' → Lv ' + to) : '');
+      const to = (ev.detail && ev.detail.to) || (ev.after && ev.after.level);
+      if (from != null && to != null) return '⬆️ Lên cấp Lv ' + from + ' → Lv ' + to;
+      return '⬆️ Lên cấp';
     }
     if (act === 'xp' || act === 'xp_gain') {
       const xp = ev.xp != null ? ev.xp : (ev.result && ev.result.xp);
@@ -5824,36 +5851,37 @@ const Game = {
     if (act === 'reward' || act === 'daily') {
       return '🎁 Nhận thưởng' + (ev.coins ? (' · +' + Number(ev.coins).toLocaleString() + '🪙') : '');
     }
-    if (act === 'rain_start') return '🌧️ Bắt đầu mưa';
-    if (act === 'rain_end') return '🌧️ Kết thúc mưa';
-    if (act === 'rain') return '🌧️ Mưa' + (q != null ? (' · ' + q + ' ô') : '');
-    if (act === 'offline_start') return '⚡ Bắt đầu offline';
+    if (act === 'rain' || act === 'rain_start') return '🌧️ Mưa';
     if (act === 'offline_end' || act === 'offline') {
-      const dur = (ev.detail && ev.detail.durationText) || '';
-      return '⚡ Offline kết thúc' + (dur ? (' · ' + dur) : '');
+      const d = ev.detail || {};
+      const dur = d.durationText || '';
+      return '⚡ Offline' + (dur ? (' · ' + dur) : '');
     }
+    if (act === 'offline_start') return '⚡ Bắt đầu offline';
     if (act === 'fairy_water') return '🧚 Tiên tưới' + cell + (tName ? (' · ' + tName) : '');
-    if (act === 'fairy_rain_seed') return '🧚 Tiên nhặt hạt' + (q != null ? (' ×' + q) : '') + (tName ? (' ' + tName) : '');
+    if (act === 'fairy_rain_seed' || act === 'fairy_care') {
+      if (raw) return raw.indexOf('🧚') === 0 ? raw : ('🧚 ' + raw);
+      return '🧚 Tiên chăm vườn';
+    }
     if (act === 'nyc_harvest' || (ev.actor === 'nyc' && act === 'harvest')) {
-      return '❤️ NYC thu hoạch ' + (tName || '') + (q != null ? (' ×' + q) : '');
+      return '❤️ NYC thu hoạch' + (tName ? (' ' + tName) : '') + (q != null ? (' ×' + q) : '');
     }
     if (act === 'nyc_plant' || (ev.actor === 'nyc' && act === 'plant')) {
-      return '❤️ NYC trồng ' + (tName || '') + cell;
+      return '❤️ NYC trồng' + (tName ? (' ' + tName) : '') + cell;
     }
-    if (act === 'helper_buy') return '🧹 Giúp việc mua ' + (tName || 'vật phẩm') + (q != null ? (' ×' + q) : '');
-    if (act === 'currency' || act === 'coins') {
-      const c = ev.coins != null ? ev.coins : (ev.result && ev.result.currency);
-      const sign = c >= 0 ? '+' : '';
-      return '💰 ' + sign + Number(c || 0).toLocaleString() + '🪙' + (ev.detail && ev.detail.source ? (' · ' + ev.detail.source) : '');
+    if (act === 'helper_buy') return '🧹 Giúp việc mua' + (tName ? (' ' + tName) : '') + (q != null ? (' ×' + q) : '');
+
+    // String thô từ game — làm sạch nhẹ
+    if (raw) {
+      // NYC / Robot đã có trong text
+      if (/^NYC\b/i.test(raw) && raw.indexOf('❤️') < 0) return '❤️ ' + raw;
+      if (/^Robot\b/i.test(raw) && raw.indexOf('🤖') < 0) return '🤖 ' + raw;
+      return raw;
     }
-    // fallback
-    return (actorIcon + ' ' + act + (tName ? (' ' + tName) : '') + (q != null ? (' ×' + q) : '')).trim();
+    return (actorIcon + ' ' + act + (tName ? (' ' + tName) : '') + (q != null ? (' ×' + q) : '')).trim() || 'Hành động';
   },
 
-  /**
-   * Ghi nhận thống kê + đồng bộ activityLogs (summary/detail).
-   * Vẫn giữ để tương thích code cũ gọi trackDayStat.
-   */
+
   trackDayStat(kind, data) {
     if (!currentPlayer) return;
     const ds = this.ensureDayStats();
@@ -6222,7 +6250,7 @@ const Game = {
   getActivityLogList() {
     this.ensureGameEvents();
     const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
-    const KEEP = 7 * 24 * 3600 * 1000;
+    const KEEP = 24 * 3600 * 1000; // chỉ giữ 24 giờ
     const events = (currentPlayer && currentPlayer.gameEvents) || [];
     const list = [];
 
@@ -6230,7 +6258,8 @@ const Game = {
       if (!e) return;
       const ts = Number(e.timestamp) || 0;
       if (!ts || (now - ts) > KEEP) return;
-      const text = e.summaryText || e.text || this.formatEventSummaryText(e) || e.action || 'Hành động';
+      const text = this.formatEventSummaryText(e) || e.summaryText || e.text || e.action || 'Hành động';
+      const resultLine = this.formatEventResultLine(e);
       const filter = e.filter || this.resolveFilterKey(e.action, e.actor, text, e.category, e.mode);
       list.push({
         id: e.id,
@@ -6242,6 +6271,7 @@ const Game = {
         filterKey: filter,
         title: text,
         text: text,
+        resultLine: resultLine,
         timestamp: ts,
         firstAt: ts,
         timeText: this.formatLogClock(ts, true) || '',
@@ -6258,7 +6288,10 @@ const Game = {
       const ts = Number(l.timestamp) || Number(l.offline && l.offline.endedAt) || 0;
       if (!ts || (now - ts) > KEEP) return;
       if (list.some(x => x.id === l.id || x.id === l.id + '_end')) return;
-      const text = (l.summary && l.summary.text) || 'Offline';
+      const dur = (l.summary && l.summary.duration) || (l.detail && l.detail.durationText) || '';
+      const sumText = (l.summary && l.summary.text) || '';
+      const text = '⚡ Offline' + (dur ? (' · ' + dur) : (sumText ? (' · ' + sumText) : ''));
+      const resultLine = sumText && sumText !== dur ? sumText : '';
       list.push({
         id: l.id,
         type: 'offline',
@@ -6269,6 +6302,7 @@ const Game = {
         filterKey: 'offline',
         title: 'Offline',
         text: text,
+        resultLine: resultLine,
         timestamp: ts,
         firstAt: Number(l.firstAt) || ts,
         timeText: this.formatLogClock(ts, true) || '',
