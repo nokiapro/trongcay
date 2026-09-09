@@ -5074,14 +5074,24 @@ function renderActivityPage() {
     : [];
 
   if (!lines.length) {
-    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i> Chưa có hoạt động nào hôm nay.</li>';
+    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i> Chưa có hoạt động nào gần đây.</li>';
     return;
   }
 
-  actList.innerHTML = lines.map(a => {
+  // Tách Offline / Online
+  const offlineLines = lines.filter(a => a.type === 'offline');
+  const onlineLines = lines.filter(a => a.type !== 'offline');
+
+  const clock = (ts) => {
+    if (!ts) return '';
+    if (typeof Game !== 'undefined' && Game.formatLogClock) return Game.formatLogClock(ts);
+    return formatActivityTime(ts) || '';
+  };
+
+  function rowHtml(a, extraClass) {
     const icon = activityFaIcon(a.text, a.type);
-    const timeStr = a.timeText || formatActivityTime(a.timestamp, a.firstAt);
-    return `<li class="activity-item activity-summary activity-clickable" data-id="${a.id || ''}" role="button" tabindex="0">
+    const timeStr = a.timeText || clock(a.timestamp);
+    return `<li class="activity-item activity-summary activity-clickable ${extraClass || ''}" data-id="${a.id || ''}" role="button" tabindex="0">
       <span class="activity-icon"><i class="${icon}"></i></span>
       <div class="activity-body">
         <div class="activity-title">
@@ -5092,7 +5102,54 @@ function renderActivityPage() {
       </div>
       <span class="activity-chevron"><i class="fa-solid fa-chevron-right"></i></span>
     </li>`;
-  }).join('');
+  }
+
+  let html = '';
+
+  // --- ONLINE hôm nay ---
+  if (onlineLines.length) {
+    let onlineFrom = null;
+    let onlineTo = null;
+    onlineLines.forEach(a => {
+      const t0 = a.firstAt || a.timestamp;
+      const t1 = a.timestamp;
+      if (t0 && (!onlineFrom || t0 < onlineFrom)) onlineFrom = t0;
+      if (t1 && (!onlineTo || t1 > onlineTo)) onlineTo = t1;
+    });
+    const range =
+      (onlineFrom && onlineTo && clock(onlineFrom) !== clock(onlineTo))
+        ? (clock(onlineFrom) + ' → ' + clock(onlineTo))
+        : (clock(onlineTo || onlineFrom) || 'Hôm nay');
+
+    html += `<li class="activity-section-head activity-section-online" aria-hidden="true">
+      <span class="activity-section-badge online"><i class="fa-solid fa-circle"></i> Online</span>
+      <span class="activity-section-range">${range}</span>
+    </li>`;
+    onlineLines.forEach(a => { html += rowHtml(a, 'activity-online'); });
+  }
+
+  // --- OFFLINE: mỗi lần một khối riêng ---
+  if (offlineLines.length) {
+    offlineLines.forEach((a, idx) => {
+      const full = (typeof Game !== 'undefined' && Game.getActivityLogById)
+        ? Game.getActivityLogById(a.id) : null;
+      const d = (full && full.detail) || {};
+      const off = (full && full.offline) || {};
+      const startTs = off.startedAt || d.startedAt || a.firstAt || a.timestamp;
+      const endTs = off.endedAt || d.endedAt || a.timestamp;
+      const dur = d.durationText || (full && full.summary && full.summary.duration) || '';
+      const fromC = d.startedClock || clock(startTs);
+      const toC = d.endedClock || clock(endTs);
+
+      html += `<li class="activity-section-head activity-section-offline" aria-hidden="true">
+        <span class="activity-section-badge offline"><i class="fa-solid fa-bolt"></i> Offline #${offlineLines.length - idx}</span>
+        <span class="activity-section-range">${fromC || '?'} → ${toC || '?'} · ${dur || ''}</span>
+      </li>`;
+      html += rowHtml(a, 'activity-offline');
+    });
+  }
+
+  actList.innerHTML = html;
 
   actList.querySelectorAll('.activity-clickable').forEach(el => {
     el.addEventListener('click', () => {

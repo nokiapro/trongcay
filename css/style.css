@@ -10258,3 +10258,69 @@ html[data-theme="dark"] .activity-time-detail {
 .activity-time {
   flex-shrink: 0;
 }
+
+
+/* Tách khối Online / Offline */
+.activity-section-head {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 4px 6px;
+  margin: 12px 0 6px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+}
+.activity-section-head:first-child {
+  margin-top: 0;
+}
+.activity-section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.activity-section-badge.online {
+  background: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+}
+.activity-section-badge.online i {
+  font-size: 0.55rem;
+  color: #22c55e;
+}
+.activity-section-badge.offline {
+  background: rgba(245, 158, 11, 0.18);
+  color: #b45309;
+}
+.activity-section-range {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+}
+.activity-item.activity-offline {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.06);
+}
+.activity-item.activity-online {
+  border-color: rgba(34, 197, 94, 0.2);
+}
+html[data-theme="dark"] .activity-section-badge.online {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+html[data-theme="dark"] .activity-section-badge.offline {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fbbf24;
+}
+html[data-theme="dark"] .activity-section-range {
+  color: #94a3b8;
+}
+html[data-theme="dark"] .activity-item.activity-offline {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+}
