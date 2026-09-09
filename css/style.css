@@ -9620,14 +9620,14 @@ body.dark .chat-panel {
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25) !important;
 }
 
-/* Khi menu Thêm mở: dock không chặn click (trừ nút Thêm) */
+/* Khi menu Thêm mở: vẫn cho bấm 4 tab chính (Vườn/Shop/Kho/NV) */
 body.nav-more-visible .bottom-nav {
   pointer-events: none !important;
 }
 body.nav-more-visible .bottom-nav .nav-dock {
-  pointer-events: none !important;
+  pointer-events: auto !important;
 }
-body.nav-more-visible .bottom-nav #btn-nav-more {
+body.nav-more-visible .bottom-nav .nav-btn {
   pointer-events: auto !important;
 }
 body.nav-more-visible .nav-more-sheet,
@@ -10191,4 +10191,59 @@ html[data-theme="dark"] .admin-topbar {
 html[data-theme="dark"] .activity-time,
 html[data-theme="dark"] .activity-time-detail {
   color: #94a3b8;
+}
+
+
+/* nav-btn always clickable */
+.bottom-nav .nav-dock,
+.bottom-nav .nav-btn {
+  pointer-events: auto !important;
+}
+
+
+/* Offline return popup */
+.modal-offline-return-content {
+  max-width: 360px;
+  width: 92%;
+  text-align: center;
+}
+.modal-offline-return-content h2 {
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #b45309;
+}
+.offline-return-duration {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  color: var(--text-main, #14532d);
+}
+.offline-return-stats {
+  list-style: none;
+  padding: 0;
+  margin: 0 auto;
+  text-align: left;
+  max-width: 260px;
+}
+.offline-return-stats li {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  font-weight: 600;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.offline-return-stats li:last-child { border-bottom: none; }
+.activity-time-sep {
+  margin: 0 4px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+.activity-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
 }

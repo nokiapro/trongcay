@@ -3481,12 +3481,20 @@ const Game = {
       totalHarvest,
       totalPlant,
       totalYieldAmount,
+      uniquePlotsHarvested: typeof harvestedPlotKeys !== 'undefined' ? harvestedPlotKeys.size : 0,
       harvestByPlant,
       fairyCycles,
       helperBuys,
       rainHits,
       rainWatered,
       rainChance,
+      from: from,
+      to: now,
+      fairyRainSeeds: typeof rainCollectSeeds !== 'undefined' ? (rainCollectSeeds || 0) : 0,
+      robotSeedsBought: (typeof robotOffline !== 'undefined' && robotOffline) ? (robotOffline.seedsBought || 0) : 0,
+      robotStar: (typeof robotOffline !== 'undefined' && robotOffline) ? (robotOffline.starDid || robotOffline.starOk || 0) : 0,
+      robotMyth: (typeof robotOffline !== 'undefined' && robotOffline) ? (robotOffline.mythDid || robotOffline.mythOk || 0) : 0,
+      nycGardens: (typeof nycGardenIndexes !== 'undefined' && nycGardenIndexes) ? nycGardenIndexes.length : 0,
       fromLog: fromLog || null
     };
   },
@@ -5377,19 +5385,40 @@ const Game = {
 
   
   formatOfflineDuration(ms) {
-    ms = Math.max(0, Number(ms) || 0);
-    const s = Math.floor(ms / 1000);
-    const d = Math.floor(s / 86400);
-    const h = Math.floor((s % 86400) / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
+    const s = Math.max(0, Math.floor(Number(ms) / 1000));
+    if (s < 60) return s + ' giây';
+    const days = Math.floor(s / 86400);
+    const hours = Math.floor((s % 86400) / 3600);
+    const mins = Math.floor((s % 3600) / 60);
     const parts = [];
-    if (d) parts.push(d + ' ngày');
-    if (h) parts.push(h + ' giờ');
-    if (m) parts.push(m + ' phút');
-    if (sec && !d) parts.push(sec + ' giây');
-    return parts.length ? parts.join(' ') : '0 giây';
+    if (days) parts.push(days + ' ngày');
+    if (hours) parts.push(hours + ' giờ');
+    if (mins) parts.push(mins + ' phút');
+    // dưới 1 giờ: chỉ phút (không ghi 0 giờ)
+    if (!parts.length) return '0 giây';
+    return parts.join(' ');
   },
+
+  /** HH:mm theo GMT+7 */
+  formatLogClock(ms) {
+    if (!ms) return '';
+    try {
+      if (typeof formatGameDateTime === 'function') {
+        const s = formatGameDateTime(ms, false);
+        const m = String(s).match(/(\d{1,2}:\d{2})/);
+        if (m) return m[1].padStart(5, '0');
+      }
+      return new Date(ms).toLocaleTimeString('vi-VN', {
+        hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh'
+      });
+    } catch (_) {
+      const d = new Date(ms);
+      const pad = n => String(n).padStart(2, '0');
+      // fallback local
+      return pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+  },
+
 
   
 
@@ -5407,8 +5436,10 @@ const Game = {
     return 'log_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
   },
 
-  _dayKey() {
-    return (typeof gameDateString === 'function') ? gameDateString() : new Date().toDateString();
+  _dayKey(ms) {
+    if (typeof gameDateString === 'function') return gameDateString(ms);
+    if (ms) return new Date(ms).toDateString();
+    return new Date().toDateString();
   },
 
   ensureActivityLogs() {
@@ -5856,14 +5887,15 @@ const Game = {
    * Tạo 1 log Offline duy nhất (gom toàn bộ hoạt động trong phiên offline).
    */
   addOfflineLog(report) {
-    if (!currentPlayer || !report) return;
+    if (!currentPlayer || !report) return null;
     const logs = this.ensureActivityLogs();
-    const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
-    const dayKey = this._dayKey();
-    const offlineMs = Number(report.offlineMs) || 0;
-    const duration = (typeof this.formatOfflineDuration === 'function')
-      ? this.formatOfflineDuration(offlineMs)
-      : (Math.round(offlineMs / 60000) + ' phút');
+    const now = Number(report.to) || ((typeof nowMs === 'function') ? nowMs() : Date.now());
+    const startedAt = Number(report.from) || (now - (Number(report.offlineMs) || 0));
+    const offlineMs = Math.max(0, Number(report.offlineMs) || (now - startedAt) || 0);
+    // Mỗi lần offline = 1 log riêng (id unique, không gộp)
+    const dayKey = this._dayKey(now);
+    const duration = this.formatOfflineDuration(offlineMs);
+    const durationSeconds = Math.round(offlineMs / 1000);
 
     const garden = {
       harvested: report.uniquePlotsHarvested || report.totalHarvest || 0,
@@ -5886,29 +5918,39 @@ const Game = {
     };
     const xp = report.xpGained || 0;
 
-    const sumParts = [];
+    const sumParts = [duration];
     if (garden.product) sumParts.push('+' + garden.product + ' SP');
-    if (xp) sumParts.push('+' + xp.toLocaleString() + ' XP');
-    if (nyc.gardens || nyc.cells) sumParts.push('NYC ' + (nyc.gardens || 0) + ' vườn');
+    if (xp) sumParts.push('+' + Number(xp).toLocaleString() + ' XP');
+    if (nyc.gardens) sumParts.push('NYC ' + nyc.gardens + ' vườn');
     const robotJobs = (robot.seedsBought || 0) + (robot.cooked || 0) + (robot.starMerged || 0) + (robot.mythicMerged || 0);
     if (robotJobs) sumParts.push('Robot ' + robotJobs + ' việc');
-    if (fairy.watered) sumParts.push('Tiên tưới ' + fairy.watered);
+    if (fairy.watered) sumParts.push('Tiên ' + fairy.watered + ' ô');
 
     const entry = {
       id: this._logId(),
       type: 'offline',
       dayKey,
       timestamp: now,
-      firstAt: now,
+      firstAt: startedAt,
+      offline: {
+        startedAt,
+        endedAt: now,
+        durationSeconds,
+        durationMs: offlineMs
+      },
       summary: {
         title: 'Offline',
         duration,
-        text: sumParts.join(' · ') || duration
+        text: sumParts.join(' · ')
       },
       detail: {
-        durationSeconds: Math.round(offlineMs / 1000),
+        durationSeconds,
         durationText: duration,
         offlineMs,
+        startedAt,
+        endedAt: now,
+        startedClock: this.formatLogClock(startedAt),
+        endedClock: this.formatLogClock(now),
         garden,
         nyc,
         robot,
@@ -5919,14 +5961,10 @@ const Game = {
       }
     };
 
+    // Luôn unshift log mới — KHÔNG merge với offline cũ
     logs.unshift(entry);
-    if (logs.length > 80) currentPlayer.activityLogs = logs.slice(0, 80);
-
-    // Cũng cộng vào dayStats để các summary online không lệch (optional)
-    try {
-      if (offlineMs) this.trackDayStat('offline', { ms: offlineMs });
-      // Không gọi sync full để tránh double-count garden trong online — offline đứng riêng
-    } catch (_) {}
+    if (logs.length > 120) currentPlayer.activityLogs = logs.slice(0, 120);
+    return entry;
   },
 
   /** Danh sách log để render (ưu tiên activityLogs, fallback legacy) */
@@ -5934,15 +5972,22 @@ const Game = {
     this.ensureActivityLogs();
     try { this.syncActivityLogsFromDayStats(); } catch (_) {}
     const logs = (currentPlayer && currentPlayer.activityLogs) || [];
-    // Chỉ hiện log hôm nay + offline gần đây (24h)
     const dayKey = this._dayKey();
     const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
-    return logs.filter(l => {
+    const OFFLINE_KEEP_MS = 7 * 24 * 3600 * 1000;
+    const list = logs.filter(l => {
       if (!l) return false;
+      if (l.type === 'offline') {
+        const ts = l.timestamp || (l.offline && l.offline.endedAt) || 0;
+        return ts && (now - ts) < OFFLINE_KEEP_MS;
+      }
+      // online: hôm nay
       if (l.dayKey === dayKey) return true;
-      if (l.type === 'offline' && l.timestamp && (now - l.timestamp) < 24 * 3600 * 1000) return true;
       return false;
     });
+    // Mới nhất trên cùng
+    list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    return list;
   },
 
   getActivityLogById(id) {
@@ -5956,16 +6001,17 @@ const Game = {
     return list.map(l => {
       const sum = l.summary || {};
       let text = sum.text || '';
-      if (l.type === 'offline' && sum.duration) {
-        text = sum.duration + (text ? ' · ' + text : '');
-      }
+      // offline: duration đã nằm trong text
+      const ts = l.timestamp || (l.offline && l.offline.endedAt) || 0;
+      const firstAt = l.firstAt || (l.offline && l.offline.startedAt) || ts;
       return {
         id: l.id,
         type: l.type,
         title: sum.title || l.type || 'Log',
         text,
-        timestamp: l.timestamp,
-        firstAt: l.firstAt || l.timestamp,
+        timestamp: ts,
+        firstAt,
+        timeText: this.formatLogClock(ts),
         hasDetail: !!l.detail
       };
     });
@@ -5985,11 +6031,12 @@ const Game = {
   },
 
   logOfflineReport(report) {
-    if (!report || !currentPlayer) return;
+    if (!report || !currentPlayer) return null;
     try {
-      this.addOfflineLog(report);
+      return this.addOfflineLog(report);
     } catch (e) {
       console.warn('logOfflineReport', e);
+      return null;
     }
   },
 

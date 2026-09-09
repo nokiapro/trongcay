@@ -905,7 +905,7 @@ auth.onAuthStateChanged(async (user) => {
           }
           if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
             const r = await Game.simulateOfflineCare();
-            if (r && !r.skipped && (r.changed || (r.offlineMs || 0) >= 60000)) {
+            if (r && !r.skipped && (r.offlineMs || 0) >= 60000) {
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(600);
               else if (typeof savePlayer === 'function') await savePlayer();
               if (typeof updateCoins === 'function') updateCoins();
@@ -913,8 +913,13 @@ auth.onAuthStateChanged(async (user) => {
                 const gp = document.getElementById('page-garden');
                 if (gp && gp.classList.contains('active')) renderGarden();
               }
-              // Không toast log offline — xem trang Hoạt động
               if (typeof renderActivityPage === 'function') renderActivityPage();
+              // Popup thông báo offline
+              try {
+                const logs = (currentPlayer && currentPlayer.activityLogs) || [];
+                const lastOff = logs.find(l => l && l.type === 'offline');
+                if (typeof showOfflineReturnModal === 'function') showOfflineReturnModal(r, lastOff);
+              } catch (_) {}
             }
           }
         } catch (e) { console.warn('simulateOfflineCare', e); }
@@ -1138,109 +1143,43 @@ function goToPage(page) {
   if (page === 'mail') loadPlayerMailbox();
 }
 
-// Chỉ dùng click — không pointerup (tránh 1 lần bấm = 2 lần chạy)
-document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', (e) => {
+// Nav: event delegation — chắc chắn 4 nút chính luôn bấm được
+(function bindNavClicks() {
+  function onNavClick(e) {
+    const btn = e.target.closest('.nav-btn');
+    if (!btn) return;
     if (btn.id === 'btn-admin' || btn.id === 'btn-logout' || btn.id === 'btn-nav-more') return;
-    if (!btn.dataset.page) return;
+    const page = btn.dataset.page;
+    if (!page) return;
     e.preventDefault();
     e.stopPropagation();
-    goToPage(btn.dataset.page);
+    // Luôn gỡ trạng thái menu Thêm (tránh pointer-events bị khóa)
+    try {
+      document.body.classList.remove('nav-more-visible');
+      document.getElementById('nav-backdrop')?.classList.remove('show');
+    } catch (_) {}
+    goToPage(page);
+  }
+  const dock = document.querySelector('#bottom-nav .nav-dock');
+  if (dock) dock.addEventListener('click', onNavClick);
+  const moreGrid = document.querySelector('#nav-more-sheet .nav-more-grid');
+  if (moreGrid) moreGrid.addEventListener('click', onNavClick);
+  // Fallback: từng nút (phòng HTML khác)
+  document.querySelectorAll('.nav-btn[data-page]').forEach(btn => {
+    if (btn.dataset.navBound === '1') return;
+    btn.dataset.navBound = '1';
+    btn.addEventListener('click', onNavClick);
   });
-});
+})();
 
-/* ===== Giữ & trượt trên thanh nav để chuyển tab (scrub) ===== */
+/* Scrub nav đã tắt — gây conflict pointer với nút bottom dock */
 (function setupNavTabScrub() {
-  const dock = () => document.querySelector('#bottom-nav .nav-dock');
-  const moreGrid = () => document.querySelector('#nav-more-sheet .nav-more-grid');
-
-  function tabUnderPoint(container, x, y, selector) {
-    if (!container) return null;
-    const els = Array.from(container.querySelectorAll(selector));
-    for (const el of els) {
-      if (el.id === 'btn-nav-more') continue;
-      if (el.id === 'btn-admin' || el.id === 'btn-logout') {
-        // vẫn cho scrub tới admin/logout nhưng không auto-click logout khi chỉ lướt
-      }
-      const r = el.getBoundingClientRect();
-      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return el;
-    }
-    return null;
-  }
-
-  function bindScrub(container, selector, opts) {
-    if (!container || container.dataset.navScrubBound === '1') return;
-    container.dataset.navScrubBound = '1';
-
-    let holding = false;
-    let lastPage = null;
-    let startX = 0, startY = 0;
-    let scrubbed = false;
-
-    container.addEventListener('pointerdown', (e) => {
-      if (e.button != null && e.button !== 0) return;
-      const t = e.target.closest(selector);
-      if (!t || !container.contains(t)) return;
-      if (t.id === 'btn-nav-more') return; // nút Thêm: tap thường
-      // Admin / Đăng xuất: không scrub, để click/pointerup handler chạy
-      if (t.id === 'btn-admin' || t.id === 'btn-logout') return;
-      holding = true;
-      scrubbed = false;
-      startX = e.clientX;
-      startY = e.clientY;
-      lastPage = t.dataset.page || null;
-      try { container.setPointerCapture(e.pointerId); } catch (_) {}
-    });
-
-    container.addEventListener('pointermove', (e) => {
-      if (!holding) return;
-      const dx = Math.abs(e.clientX - startX);
-      const dy = Math.abs(e.clientY - startY);
-      if (dx < 6 && dy < 6) return;
-      scrubbed = true;
-      const el = tabUnderPoint(container, e.clientX, e.clientY, selector);
-      if (!el) return;
-      // Không auto kích hoạt logout/admin khi chỉ lướt
-      if (el.id === 'btn-logout' || el.id === 'btn-admin') return;
-      const page = el.dataset.page;
-      if (!page || page === lastPage) return;
-      lastPage = page;
-      // Highlight nhanh
-      container.querySelectorAll(selector).forEach(b => {
-        if (b.dataset.page) b.classList.toggle('active', b.dataset.page === page);
-      });
-      if (typeof goToPage === 'function') goToPage(page);
-      try { if (navigator.vibrate) navigator.vibrate(6); } catch (_) {}
-    });
-
-    function endHold(e) {
-      if (!holding) return;
-      holding = false;
-      try {
-        if (e && e.pointerId != null) container.releasePointerCapture(e.pointerId);
-      } catch (_) {}
-      // Tap thường: để sự kiện click gọi goToPage (không gọi ở đây → tránh double)
-      // Scrub khi trượt đã gọi goToPage trong pointermove
-      lastPage = null;
-      scrubbed = false;
-    }
-
-    container.addEventListener('pointerup', endHold);
-    container.addEventListener('pointercancel', endHold);
-    container.addEventListener('lostpointercapture', () => { holding = false; });
-  }
-
-  function init() {
-    const d = dock();
-    if (d) bindScrub(d, '.nav-btn', {});
-    // Không scrub menu Thêm — tránh phải bấm 2 lần mới vào tab
-    // const g = moreGrid();
-    // if (g) bindScrub(g, '.nav-more-item', {});
-  }
-
+  // no-op (giữ hàm để không vỡ reference cũ nếu có)
+  function init() {}
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
+
 
 
 document.getElementById('btn-admin')?.addEventListener('click', () => {
@@ -4880,29 +4819,24 @@ function renderStats() {
 
 
 function formatActivityTime(ts, firstAt) {
-  const fmt = (ms) => {
-    if (!ms) return '';
-    try {
-      if (typeof formatGameDateTime === 'function') {
-        // chỉ lấy giờ:phút
-        const s = formatGameDateTime(ms, false);
-        // formatGameDateTime thường: dd/mm/yyyy, HH:mm
-        const m = String(s).match(/(\d{1,2}:\d{2})/);
-        if (m) return m[1];
-        return s;
-      }
-      const d = new Date(ms);
-      const pad = n => String(n).padStart(2, '0');
-      // GMT+7 approx display via toLocale
-      return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
-    } catch (_) {
-      return '';
+  // Danh sách: chỉ HH:mm của mốc log (timestamp)
+  if (typeof Game !== 'undefined' && Game.formatLogClock) {
+    return Game.formatLogClock(ts || firstAt) || '';
+  }
+  if (!ts && !firstAt) return '';
+  try {
+    const ms = ts || firstAt;
+    if (typeof formatGameDateTime === 'function') {
+      const s = formatGameDateTime(ms, false);
+      const m = String(s).match(/(\d{1,2}:\d{2})/);
+      if (m) return m[1].padStart(5, '0');
     }
-  };
-  const t1 = fmt(firstAt || ts);
-  const t2 = fmt(ts);
-  if (t1 && t2 && t1 !== t2) return t1 + '–' + t2;
-  return t2 || t1 || '';
+    return new Date(ms).toLocaleTimeString('vi-VN', {
+      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh'
+    });
+  } catch (_) {
+    return '';
+  }
 }
 
 function activityFaIcon(text, type) {
@@ -4926,8 +4860,15 @@ function formatActivityDetailHtml(log) {
   let html = '';
 
   if (type === 'offline') {
-    html += '<div class="ad-block"><div class="ad-label">Thời gian offline</div><div class="ad-value">' +
-      (d.durationText || log.summary?.duration || '—') + '</div></div>';
+    html += '<div class="ad-block"><div class="ad-label">⚡ Offline</div>';
+    if (d.startedClock || d.endedClock) {
+      html += '<div class="ad-value" style="font-size:0.9rem">Offline từ: <strong>' + (d.startedClock || '—') +
+        '</strong> · Online lại: <strong>' + (d.endedClock || '—') + '</strong></div>';
+    }
+    html += '<div class="ad-value" style="margin-top:6px">Thời gian: <strong>' +
+      (d.durationText || log.summary?.duration || '—') + '</strong>';
+    if (d.durationSeconds) html += ' <span style="opacity:.7">(' + d.durationSeconds + 's)</span>';
+    html += '</div></div>';
     if (d.garden) {
       html += '<div class="ad-block"><div class="ad-label">🌱 Vườn</div><ul class="ad-list">';
       html += '<li>Thu hoạch: ' + (d.garden.harvested || 0) + ' ô</li>';
@@ -5068,6 +5009,62 @@ document.getElementById('modal-activity-detail')?.addEventListener('click', (e) 
   if (e.target.id === 'modal-activity-detail') e.currentTarget.classList.remove('show');
 });
 
+let _lastOfflineLogId = null;
+function showOfflineReturnModal(report, logEntry) {
+  if (!report) return;
+  const ms = Number(report.offlineMs) || 0;
+  if (ms < 60 * 1000) return; // dưới 1 phút: không popup
+
+  const modal = document.getElementById('modal-offline-return');
+  const durEl = document.getElementById('offline-return-duration');
+  const statsEl = document.getElementById('offline-return-stats');
+  if (!modal || !statsEl) {
+    // fallback toast
+    const text = (typeof Game !== 'undefined' && Game.formatOfflineDuration)
+      ? Game.formatOfflineDuration(ms) : Math.round(ms / 60000) + ' phút';
+    if (typeof showToast === 'function') showToast('⚡ Bạn đã offline ' + text, 'info');
+    return;
+  }
+
+  const dur = (report.offlineText) ||
+    (typeof Game !== 'undefined' && Game.formatOfflineDuration ? Game.formatOfflineDuration(ms) : '');
+  if (durEl) durEl.innerHTML = 'Bạn đã offline <strong>' + dur + '</strong>';
+
+  const items = [];
+  const sp = report.totalYieldAmount || report.totalHarvest || 0;
+  if (sp) items.push({ icon: '🌱', text: '+' + sp + ' SP' });
+  if (report.xpGained) items.push({ icon: '⭐', text: '+' + Number(report.xpGained).toLocaleString() + ' XP' });
+  const robotJobs = (report.robotSeedsBought || 0) + (report.robotStar || 0) + (report.robotMyth || 0) + (report.robotCooked || 0);
+  if (robotJobs) items.push({ icon: '🤖', text: robotJobs + ' việc' });
+  if (report.nycGardens) items.push({ icon: '❤️', text: report.nycGardens + ' vườn NYC' });
+  if (report.rainWatered || report.fairyCycles) {
+    items.push({ icon: '🧚', text: (report.rainWatered || report.fairyCycles || 0) + ' ô tiên' });
+  }
+  if (report.fairyRainSeeds) items.push({ icon: '🌱', text: 'Nhặt ' + report.fairyRainSeeds + ' hạt mưa' });
+  if (report.rainHits) items.push({ icon: '🌧️', text: report.rainHits + ' trận mưa' });
+
+  statsEl.innerHTML = items.length
+    ? items.map(it => '<li><span>' + it.icon + '</span> ' + it.text + '</li>').join('')
+    : '<li style="opacity:.7">Không có hoạt động offline đáng kể</li>';
+
+  _lastOfflineLogId = (logEntry && logEntry.id) || null;
+  modal.classList.add('show');
+}
+
+document.getElementById('btn-offline-return-close')?.addEventListener('click', () => {
+  document.getElementById('modal-offline-return')?.classList.remove('show');
+});
+document.getElementById('modal-offline-return')?.addEventListener('click', (e) => {
+  if (e.target.id === 'modal-offline-return') e.currentTarget.classList.remove('show');
+});
+document.getElementById('btn-offline-view-detail')?.addEventListener('click', () => {
+  document.getElementById('modal-offline-return')?.classList.remove('show');
+  if (typeof goToPage === 'function') goToPage('activity');
+  if (_lastOfflineLogId && typeof openActivityDetail === 'function') {
+    setTimeout(() => openActivityDetail(_lastOfflineLogId), 200);
+  }
+});
+
 function renderActivityPage() {
   const actList = document.getElementById('activity-list');
   if (!actList || !currentPlayer) return;
@@ -5088,8 +5085,8 @@ function renderActivityPage() {
       <span class="activity-icon"><i class="${icon}"></i></span>
       <div class="activity-body">
         <div class="activity-title">
+          ${timeStr ? `<span class="activity-time">${timeStr}</span><span class="activity-time-sep">·</span>` : ''}
           <strong>${a.title || ''}</strong>
-          ${timeStr ? `<span class="activity-time">${timeStr}</span>` : ''}
         </div>
         <div class="activity-text">${a.text || ''}</div>
       </div>
@@ -5625,20 +5622,19 @@ if (!window.__careVisibilityBound) {
         if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
           try {
             const r = await Game.simulateOfflineCare();
-            if (r && !r.skipped && (r.changed || (r.offlineMs || 0) >= 60000)) {
+            if (r && !r.skipped && (r.offlineMs || 0) >= 60000) {
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(800);
               if (typeof updateCoins === 'function') updateCoins();
               if (typeof renderGarden === 'function') {
                 const gp = document.getElementById('page-garden');
                 if (gp && gp.classList.contains('active')) renderGarden();
               }
-              if (typeof showToast === 'function') {
-                const msg = (r.notes && r.notes.length)
-                  ? r.notes.join(' · ')
-                  : ('Bù offline ' + (r.offlineText || '') + ' — xem Nhật ký');
-                // không toast offline
-              }
               if (typeof renderActivityPage === 'function') renderActivityPage();
+              try {
+                const logs = (currentPlayer && currentPlayer.activityLogs) || [];
+                const lastOff = logs.find(l => l && l.type === 'offline');
+                if (typeof showOfflineReturnModal === 'function') showOfflineReturnModal(r, lastOff);
+              } catch (_) {}
             } else if (!r || r.skipped) {
               const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
               currentPlayer.lastSeenAt = t;
