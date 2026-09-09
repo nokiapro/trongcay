@@ -4903,6 +4903,82 @@ function formatActivityDetailHtml(log) {
   if (!log) return '<p>Không có dữ liệu.</p>';
   const d = log.detail || {};
   const type = log.type;
+
+  // === EVENT RIÊNG (nhật ký chi tiết) ===
+  if (log._isEvent || log._event || (d.action && d.timestamp && d.actor)) {
+    const ev = log._event || {};
+    const act = d.action || log.action || ev.action || type;
+    const actor = d.actor || log.actor || ev.actor || 'player';
+    let html = '';
+    html += '<div class="ad-block"><div class="ad-label">' + (log.summary && log.summary.title ? log.summary.title : act) + '</div>';
+    html += '<ul class="ad-list">';
+    html += '<li><strong>Thời gian:</strong> ' + (d.timeText || (typeof Game !== 'undefined' && Game.formatLogClock ? Game.formatLogClock(d.timestamp || log.timestamp) : '')) + '</li>';
+    if (actor) html += '<li><strong>Người thực hiện:</strong> ' + actor + '</li>';
+    if (d.mode) html += '<li><strong>Chế độ:</strong> ' + d.mode + (d.eventSource ? ' (' + d.eventSource + ')' : '') + '</li>';
+    if (d.name || (d.target && d.target.name)) {
+      html += '<li><strong>Vật phẩm / Cây:</strong> ' + (d.name || d.target.name) + '</li>';
+    }
+    if (d.target && d.target.id) html += '<li><strong>ID:</strong> ' + d.target.id + '</li>';
+    if (d.quantity != null) html += '<li><strong>Số lượng:</strong> ×' + d.quantity + '</li>';
+    if (d.plotLabel || d.cellId != null) {
+      html += '<li><strong>Ô:</strong> ' + (d.plotLabel || ('#' + (Number(d.cellId) + 1))) + '</li>';
+    }
+    if (d.gardenIndex != null) html += '<li><strong>Vườn:</strong> #' + (Number(d.gardenIndex) + 1) + '</li>';
+    if (d.cost != null) html += '<li><strong>Chi phí:</strong> −' + Number(d.cost).toLocaleString() + '🪙</li>';
+    if (d.coins != null) html += '<li><strong>Xu:</strong> ' + (Number(d.coins) >= 0 ? '+' : '') + Number(d.coins).toLocaleString() + '🪙</li>';
+    if (d.sp != null) html += '<li><strong>SP:</strong> +' + Number(d.sp).toLocaleString() + '</li>';
+    if (d.xp != null) html += '<li><strong>XP:</strong> +' + Number(d.xp).toLocaleString() + '</li>';
+    if (d.plantedClock) html += '<li><strong>Trồng lúc:</strong> ' + d.plantedClock + '</li>';
+    if (d.readyClock) html += '<li><strong>Chín lúc:</strong> ' + d.readyClock + '</li>';
+    if (d.ingredients && typeof d.ingredients === 'object') {
+      html += '<li><strong>Nguyên liệu:</strong><ul>';
+      Object.keys(d.ingredients).forEach(k => {
+        html += '<li>' + k + ' ×' + d.ingredients[k] + '</li>';
+      });
+      html += '</ul></li>';
+    }
+    if (d.result && typeof d.result === 'object') {
+      const r = d.result;
+      if (r.currency != null) html += '<li><strong>Tiền thay đổi:</strong> ' + r.currency + '</li>';
+      if (r.xp != null) html += '<li><strong>XP (result):</strong> +' + r.xp + '</li>';
+      if (r.sp != null) html += '<li><strong>SP (result):</strong> +' + r.sp + '</li>';
+    }
+    if (d.before && typeof d.before === 'object') {
+      html += '<li><strong>Trước:</strong> <code>' + JSON.stringify(d.before) + '</code></li>';
+    }
+    if (d.after && typeof d.after === 'object') {
+      html += '<li><strong>Sau:</strong> <code>' + JSON.stringify(d.after) + '</code></li>';
+    }
+    // Offline session detail
+    if (act === 'offline_end' || act === 'offline' || type === 'offline') {
+      if (d.startedClock || d.endedClock) {
+        html += '<li><strong>Offline từ:</strong> ' + (d.startedClock || '—') + ' → ' + (d.endedClock || '—') + '</li>';
+      }
+      if (d.durationText) html += '<li><strong>Thời lượng:</strong> ' + d.durationText + '</li>';
+      if (d.garden) {
+        html += '<li><strong>Vườn:</strong> thu ' + (d.garden.product || 0) + ' SP · ' + (d.garden.harvested || 0) + ' ô</li>';
+      }
+      if (d.robot) {
+        const rj = (d.robot.seedsBought||0)+(d.robot.cooked||0)+(d.robot.starMerged||0)+(d.robot.mythicMerged||0);
+        if (rj) html += '<li><strong>Robot:</strong> ' + rj + ' việc</li>';
+      }
+      if (d.nyc && d.nyc.gardens) html += '<li><strong>NYC:</strong> ' + d.nyc.gardens + ' vườn</li>';
+      if (d.fairy && d.fairy.watered) html += '<li><strong>Tiên:</strong> ' + d.fairy.watered + ' ô</li>';
+      if (d.xp) html += '<li><strong>XP offline:</strong> +' + Number(d.xp).toLocaleString() + '</li>';
+      if (Array.isArray(d.timeline) && d.timeline.length) {
+        html += '</ul><div class="ad-block"><div class="ad-label">📋 Timeline offline</div><ul class="ad-list">';
+        d.timeline.slice(0, 100).forEach(te => {
+          const tclock = (typeof Game !== 'undefined' && Game.formatLogClock && te.timestamp)
+            ? Game.formatLogClock(te.timestamp) : '';
+          const ttxt = te.summaryText || te.text || te.action || te.type || '';
+          html += '<li>' + (tclock ? tclock + ' · ' : '') + ttxt + '</li>';
+        });
+      }
+    }
+    html += '</ul></div>';
+    return html;
+  }
+
   let html = '';
 
   if (type === 'offline') {
@@ -5116,18 +5192,34 @@ function renderActivityPage() {
   const actList = document.getElementById('activity-list');
   if (!actList || !currentPlayer) return;
 
-  const lines = (typeof Game !== 'undefined' && Game.buildDayLogLines)
+  let lines = (typeof Game !== 'undefined' && Game.buildDayLogLines)
     ? Game.buildDayLogLines()
     : [];
+
+  // Filter
+  const activeBtn = document.querySelector('.activity-filter-btn.active');
+  const filter = (activeBtn && activeBtn.getAttribute('data-filter')) || 'all';
+  if (filter && filter !== 'all') {
+    lines = lines.filter(a => {
+      const cat = a.type || a.action || '';
+      const actor = a.actor || '';
+      const mode = a.mode || '';
+      if (filter === 'garden') return cat === 'garden' || ['plant','water','harvest','fert','crop_ready','replant','remove'].includes(a.action);
+      if (filter === 'robot') return cat === 'robot' || actor === 'robot' || String(a.action||'').startsWith('robot');
+      if (filter === 'nyc') return cat === 'nyc' || actor === 'nyc' || String(a.action||'').startsWith('nyc');
+      if (filter === 'fairy') return cat === 'fairy' || actor === 'fairy' || String(a.action||'').startsWith('fairy');
+      if (filter === 'helper') return cat === 'helper' || actor === 'helper';
+      if (filter === 'offline') return mode === 'offline' || cat === 'offline' || actor === 'offline';
+      if (filter === 'level') return cat === 'level' || a.action === 'xp' || a.action === 'level_up' || a.action === 'levelup';
+      if (filter === 'reward') return cat === 'reward' || a.action === 'daily' || a.action === 'reward';
+      return true;
+    });
+  }
 
   if (!lines.length) {
     actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i> Chưa có hoạt động nào gần đây.</li>';
     return;
   }
-
-  // Tách Offline / Online
-  const offlineLines = lines.filter(a => a.type === 'offline');
-  const onlineLines = lines.filter(a => a.type !== 'offline');
 
   const clock = (ts) => {
     if (!ts) return '';
@@ -5135,66 +5227,47 @@ function renderActivityPage() {
     return formatActivityTime(ts) || '';
   };
 
-  function rowHtml(a, extraClass) {
-    const icon = activityFaIcon(a.text, a.type);
+  // Nhóm theo ngày
+  const byDay = {};
+  const dayOrder = [];
+  lines.forEach(a => {
+    const ts = a.timestamp || a.firstAt || 0;
+    let dk = '';
+    try {
+      dk = (typeof gameDateString === 'function') ? gameDateString(ts) : new Date(ts).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    } catch (_) {
+      dk = new Date(ts).toDateString();
+    }
+    if (!byDay[dk]) { byDay[dk] = []; dayOrder.push(dk); }
+    byDay[dk].push(a);
+  });
+
+  const rowHtml = (a, extraClass) => {
     const timeStr = a.timeText || clock(a.timestamp);
+    const icon = activityFaIcon(a.text, a.type || a.action);
     return `<li class="activity-item activity-summary activity-clickable ${extraClass || ''}" data-id="${a.id || ''}" role="button" tabindex="0">
       <span class="activity-icon"><i class="${icon}"></i></span>
       <div class="activity-body">
         <div class="activity-title">
           ${timeStr ? `<span class="activity-time">${timeStr}</span><span class="activity-time-sep">·</span>` : ''}
-          <strong>${a.title || ''}</strong>
+          <span class="activity-title-text">${a.title || a.action || a.type || ''}</span>
         </div>
         <div class="activity-text">${a.text || ''}</div>
       </div>
       <span class="activity-chevron"><i class="fa-solid fa-chevron-right"></i></span>
     </li>`;
-  }
+  };
 
   let html = '';
-
-  // --- ONLINE hôm nay ---
-  if (onlineLines.length) {
-    let onlineFrom = null;
-    let onlineTo = null;
-    onlineLines.forEach(a => {
-      const t0 = a.firstAt || a.timestamp;
-      const t1 = a.timestamp;
-      if (t0 && (!onlineFrom || t0 < onlineFrom)) onlineFrom = t0;
-      if (t1 && (!onlineTo || t1 > onlineTo)) onlineTo = t1;
-    });
-    const range =
-      (onlineFrom && onlineTo && clock(onlineFrom) !== clock(onlineTo))
-        ? (clock(onlineFrom) + ' → ' + clock(onlineTo))
-        : (clock(onlineTo || onlineFrom) || 'Hôm nay');
-
-    html += `<li class="activity-section-head activity-section-online" aria-hidden="true">
-      <span class="activity-section-badge online"><i class="fa-solid fa-circle"></i> Online</span>
-      <span class="activity-section-range">${range}</span>
+  dayOrder.forEach(dk => {
+    html += `<li class="activity-section-head" aria-hidden="true">
+      <span class="activity-section-badge"><i class="fa-solid fa-calendar-day"></i> ${dk}</span>
     </li>`;
-    onlineLines.forEach(a => { html += rowHtml(a, 'activity-online'); });
-  }
-
-  // --- OFFLINE: mỗi lần một khối riêng ---
-  if (offlineLines.length) {
-    offlineLines.forEach((a, idx) => {
-      const full = (typeof Game !== 'undefined' && Game.getActivityLogById)
-        ? Game.getActivityLogById(a.id) : null;
-      const d = (full && full.detail) || {};
-      const off = (full && full.offline) || {};
-      const startTs = off.startedAt || d.startedAt || a.firstAt || a.timestamp;
-      const endTs = off.endedAt || d.endedAt || a.timestamp;
-      const dur = d.durationText || (full && full.summary && full.summary.duration) || '';
-      const fromC = d.startedClock || clock(startTs);
-      const toC = d.endedClock || clock(endTs);
-
-      html += `<li class="activity-section-head activity-section-offline" aria-hidden="true">
-        <span class="activity-section-badge offline"><i class="fa-solid fa-bolt"></i> Offline #${offlineLines.length - idx}</span>
-        <span class="activity-section-range">${fromC || '?'} → ${toC || '?'} · ${dur || ''}</span>
-      </li>`;
-      html += rowHtml(a, 'activity-offline');
+    byDay[dk].forEach(a => {
+      const cls = (a.mode === 'offline' || a.type === 'offline') ? 'activity-offline' : 'activity-online';
+      html += rowHtml(a, cls);
     });
-  }
+  });
 
   actList.innerHTML = html;
 
@@ -5206,13 +5279,21 @@ function renderActivityPage() {
   });
 }
 
+// Filter buttons
+(function bindActivityFilters() {
+  const box = document.getElementById('activity-filters');
+  if (!box || box._bound) return;
+  box._bound = true;
+  box.addEventListener('click', (e) => {
+    const btn = e.target.closest('.activity-filter-btn');
+    if (!btn) return;
+    box.querySelectorAll('.activity-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderActivityPage();
+  });
+})();
 
-/**
- * Log activity: xóa dần từng dòng đã quá 24 giờ (rolling).
- * Không còn xóa hàng loạt lúc 0h00 GMT+7 (tránh lỗi nửa đêm).
- * scheduleActivityMidnightPrune giữ tên để login cũ gọi được — chỉ bật interval.
- */
-let _activityPruneInterval = null;
+
 function scheduleActivityMidnightPrune() {
   // Không hẹn 0h00 nữa — prune rolling do interval bên dưới
   if (_activityPruneInterval) return;
