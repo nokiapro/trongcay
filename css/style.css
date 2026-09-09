@@ -10324,3 +10324,9 @@ html[data-theme="dark"] .activity-item.activity-offline {
   background: rgba(245, 158, 11, 0.1);
   border-color: rgba(245, 158, 11, 0.3);
 }
+
+
+.ad-events { margin-top: 14px; padding-top: 10px; border-top: 1px dashed rgba(148,163,184,0.4); }
+.ad-events-list { max-height: 240px; overflow-y: auto; }
+.ad-ev-time { font-weight: 700; color: #64748b; font-variant-numeric: tabular-nums; }
+html[data-theme="dark"] .ad-ev-time { color: #94a3b8; }

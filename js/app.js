@@ -905,7 +905,7 @@ auth.onAuthStateChanged(async (user) => {
           }
           if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
             const r = await Game.simulateOfflineCare();
-            if (r && !r.skipped && (r.offlineMs || 0) >= 60000) {
+            if (r && !r.skipped && (r.offlineMs || 0) >= ((typeof Game !== "undefined" && Game.OFFLINE_CONFIG && Game.OFFLINE_CONFIG.thresholdMs) || 300000)) {
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(600);
               else if (typeof savePlayer === 'function') await savePlayer();
               if (typeof updateCoins === 'function') updateCoins();
@@ -4853,6 +4853,50 @@ function activityFaIcon(text, type) {
   return 'fa-solid fa-circle-dot';
 }
 
+
+function formatLogEventsHtml(d) {
+  const evs = (d && Array.isArray(d.events)) ? d.events : [];
+  if (!evs.length) return '';
+  const clock = (ts) => {
+    if (!ts) return '';
+    if (typeof Game !== 'undefined' && Game.formatLogClock) return Game.formatLogClock(ts);
+    try {
+      return new Date(ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
+    } catch (_) { return ''; }
+  };
+  const label = (ev) => {
+    const a = String(ev.action || '');
+    const parts = [];
+    if (a === 'plant') parts.push('Trồng ' + (ev.plots || ev.qty || 1) + ' ô');
+    else if (a === 'replant') parts.push('Trồng lại ' + (ev.plots || 1) + ' ô');
+    else if (a === 'harvest') parts.push('Thu ' + (ev.plots || 1) + ' ô · +' + (ev.yield || 0) + ' SP');
+    else if (a === 'fairy_water') parts.push('Tưới ' + (ev.actions || ev.plots || 1) + ' ô');
+    else if (a === 'fairy_fert') parts.push('Bón ' + (ev.actions || 1) + ' lần');
+    else if (a === 'fairy_rain_seed') parts.push('Nhặt ' + (ev.qty || 1) + ' hạt mưa');
+    else if (a === 'nyc_plant') parts.push('NYC trồng ' + (ev.plots || 1) + ' ô');
+    else if (a === 'nyc_harvest') parts.push('NYC thu +' + (ev.yield || 0) + ' SP');
+    else if (a === 'helper_buy') parts.push('Mua phân ×' + (ev.qty || 1) + (ev.cost ? ' (−' + Number(ev.cost).toLocaleString() + '🪙)' : ''));
+    else if (a === 'robot_seed') parts.push('Mua hạt ' + (ev.name || '') + ' ×' + (ev.qty || 1));
+    else if (a === 'robot_cook') parts.push('Nấu ' + (ev.name || 'món') + ' ×' + (ev.qty || 1));
+    else if (a === 'robot_merge') parts.push('Ghép ⭐' + (ev.star || 0) + ' · ✨' + (ev.myth || 0));
+    else if (a === 'rain') parts.push('Mưa ×' + (ev.count || 1));
+    else if (a === 'levelup') parts.push('Lên cấp ' + (ev.level || ''));
+    else if (a === 'daily') parts.push('Thưởng +' + Number(ev.coins || 0).toLocaleString() + '🪙');
+    else if (a === 'xp') parts.push('+' + (ev.xp || 0) + ' XP');
+    else parts.push(a + (ev.qty != null ? ' ×' + ev.qty : '') + (ev.plots != null ? ' · ' + ev.plots + ' ô' : ''));
+    return parts.join('');
+  };
+  // show last 40
+  const slice = evs.slice(-40);
+  let h = '<div class="ad-block ad-events"><div class="ad-label">📋 Chi tiết thao tác (' + evs.length + ')</div><ul class="ad-list ad-events-list">';
+  slice.forEach(ev => {
+    h += '<li><span class="ad-ev-time">' + clock(ev.timestamp) + '</span> · ' + label(ev) + '</li>';
+  });
+  if (evs.length > 40) h += '<li style="opacity:.7">… và ' + (evs.length - 40) + ' thao tác trước</li>';
+  h += '</ul></div>';
+  return h;
+}
+
 function formatActivityDetailHtml(log) {
   if (!log) return '<p>Không có dữ liệu.</p>';
   const d = log.detail || {};
@@ -4898,7 +4942,7 @@ function formatActivityDetailHtml(log) {
     }
     if (d.xp) html += '<div class="ad-block"><div class="ad-label">⭐ XP</div><div class="ad-value">+' + Number(d.xp).toLocaleString() + ' XP</div></div>';
     if (d.rainHits) html += '<div class="ad-block"><div class="ad-label">🌧️ Mưa</div><div class="ad-value">' + d.rainHits + ' trận</div></div>';
-    return html || '<p>Không có chi tiết offline.</p>';
+    return (html || '<p>Không có chi tiết offline.</p>') + formatLogEventsHtml(d);
   }
 
   if (type === 'garden') {
@@ -4907,7 +4951,7 @@ function formatActivityDetailHtml(log) {
     html += '<li>Thu hoạch: ' + (d.harvestYield || 0) + ' SP · ' + (d.plotsHarvested || 0) + ' ô (' + (d.harvestCycles || 0) + ' lần)</li>';
     html += '<li>Trồng lại: ' + (d.replanted || 0) + ' ô</li>';
     html += '</ul>';
-    return html;
+    return html + formatLogEventsHtml(d);
   }
 
   if (type === 'nyc') {
@@ -4924,7 +4968,7 @@ function formatActivityDetailHtml(log) {
       });
       html += '</ul>';
     }
-    return html;
+    return html + formatLogEventsHtml(d);
   }
 
   if (type === 'robot') {
@@ -4945,7 +4989,7 @@ function formatActivityDetailHtml(log) {
     html += '<li>Ghép ⭐: ' + (d.starMerged || 0) + '</li>';
     html += '<li>Ghép ✨: ' + (d.mythicMerged || 0) + '</li>';
     html += '</ul>';
-    return html;
+    return html + formatLogEventsHtml(d);
   }
 
   if (type === 'fairy') {
@@ -4955,7 +4999,7 @@ function formatActivityDetailHtml(log) {
     html += '<li>Bón: ' + (d.fertActions || 0) + ' lần</li>';
     html += '<li>Nhặt hạt mưa: ' + (d.rainSeeds || 0) + '</li>';
     html += '</ul>';
-    return html;
+    return html + formatLogEventsHtml(d);
   }
 
   if (type === 'helper') {
@@ -4963,22 +5007,22 @@ function formatActivityDetailHtml(log) {
     html += '<li>Phân mua: ' + (d.fertBought || 0) + '</li>';
     html += '<li>Chi tiêu: −' + Number(d.spent || 0).toLocaleString() + '🪙</li>';
     html += '</ul>';
-    return html;
+    return html + formatLogEventsHtml(d);
   }
 
   if (type === 'level') {
     html += '<ul class="ad-list">';
     (d.steps || []).forEach(s => { html += '<li>' + s + '</li>'; });
     html += '</ul>';
-    return html;
+    return html + formatLogEventsHtml(d);
   }
 
   if (type === 'rain') {
-    return '<ul class="ad-list"><li>Số trận: ' + (d.rainCount || 0) + '</li><li>Hạt nhặt: ' + (d.rainSeeds || 0) + '</li></ul>';
+    return '<ul class="ad-list"><li>Số trận: ' + (d.rainCount || 0) + '</li><li>Hạt nhặt: ' + (d.rainSeeds || 0) + '</li></ul>' + formatLogEventsHtml(d);
   }
 
   if (type === 'reward') {
-    return '<ul class="ad-list"><li>Xu: +' + Number(d.coins || 0).toLocaleString() + '🪙</li><li>Streak: ' + (d.streak || 0) + '🔥</li></ul>';
+    return '<ul class="ad-list"><li>Xu: +' + Number(d.coins || 0).toLocaleString() + '🪙</li><li>Streak: ' + (d.streak || 0) + '🔥</li></ul>' + formatLogEventsHtml(d);
   }
 
   // generic
@@ -5013,7 +5057,8 @@ let _lastOfflineLogId = null;
 function showOfflineReturnModal(report, logEntry) {
   if (!report) return;
   const ms = Number(report.offlineMs) || 0;
-  if (ms < 60 * 1000) return; // dưới 1 phút: không popup
+  const thr = (typeof Game !== "undefined" && Game.OFFLINE_CONFIG && Game.OFFLINE_CONFIG.thresholdMs) || (5 * 60 * 1000);
+  if (ms < thr) return; // dưới threshold: không popup
 
   const modal = document.getElementById('modal-offline-return');
   const durEl = document.getElementById('offline-return-duration');
@@ -5679,7 +5724,7 @@ if (!window.__careVisibilityBound) {
         if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
           try {
             const r = await Game.simulateOfflineCare();
-            if (r && !r.skipped && (r.offlineMs || 0) >= 60000) {
+            if (r && !r.skipped && (r.offlineMs || 0) >= ((typeof Game !== "undefined" && Game.OFFLINE_CONFIG && Game.OFFLINE_CONFIG.thresholdMs) || 300000)) {
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(800);
               if (typeof updateCoins === 'function') updateCoins();
               if (typeof renderGarden === 'function') {

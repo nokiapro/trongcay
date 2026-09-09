@@ -1535,6 +1535,7 @@ const Game = {
     plot.watered = true;
     plot.waterCount = count + 1;
     plot.lastWatered = (typeof nowMs==="function"?nowMs():Date.now());
+    try { this._pushDayEvent('water', { plots: 1, plotId }, currentPlayer.activeGarden || 0); this.syncActivityLogsFromDayStats(); } catch(_){}
     this.addActivity(`Tưới nước ô #${plotId + 1} (${plot.waterCount}/3)`);
     if (typeof Features !== 'undefined') Features.trackQuest('water', 1);
     if (typeof recordGameEvent === 'function') {
@@ -1565,6 +1566,7 @@ const Game = {
     if (currentPlayer.inventory.fertilizers[fertId] <= 0) delete currentPlayer.inventory.fertilizers[fertId];
     plot.fertilizerId = fertId;
     plot.fertilizedAt = (typeof nowMs==="function"?nowMs():Date.now());
+    try { this._pushDayEvent('fert', { plots: 1, plotId, name: fert.name }, currentPlayer.activeGarden || 0); this.syncActivityLogsFromDayStats(); } catch(_){}
     this.addActivity(`Bón ${fert.name} ô #${plotId + 1}`);
     if (typeof recordGameEvent === 'function') {
       recordGameEvent('fert', {
@@ -2427,8 +2429,8 @@ const Game = {
 
     
     
-    const OFFLINE_MIN_MS = 30 * 1000;
-    const OFFLINE_LOG_MIN_MS = 60 * 1000;
+    const OFFLINE_MIN_MS = (this.OFFLINE_CONFIG && this.OFFLINE_CONFIG.thresholdMs) || (5 * 60 * 1000);
+    const OFFLINE_LOG_MIN_MS = OFFLINE_MIN_MS;
     const offlineGap = now - from;
     if (offlineGap < OFFLINE_MIN_MS) {
       currentPlayer.lastCatchUpAt = now;
@@ -5427,10 +5429,18 @@ const Game = {
 
 
   /* ============================================================
-   * HỆ THỐNG LOG Summary → Detail
-   * currentPlayer.activityLogs[] = { id, type, dayKey, timestamp, summary, detail }
-   * dayStats = bộ đếm trong ngày (gộp online)
+   * HỆ THỐNG LOG CHI TIẾT (Summary → Detail + events[])
+   * currentPlayer.activityLogs[] = { id, type, mode, dayKey, timestamp, summary, detail }
+   * dayStats = bộ đếm + _events[type][] trong ngày
    * ============================================================ */
+
+  OFFLINE_CONFIG: {
+    thresholdMs: 5 * 60 * 1000,
+    showPopup: true,
+    createLog: true,
+    showSecondsUnderMinute: true,
+    maxDetailLogs: 100
+  },
 
   _logId() {
     return 'log_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
@@ -5467,7 +5477,8 @@ const Game = {
         rainSeeds: 0,
         dailyClaim: 0,
         streak: 0,
-        xpGained: 0
+        xpGained: 0,
+        _events: {}
       };
     }
     const ds = currentPlayer.dayStats;
@@ -5478,6 +5489,7 @@ const Game = {
     if (!ds.robot) ds.robot = { seedsBought: {}, seedCost: 0, cooked: {}, cookCount: 0, mergeStar: 0, mergeMyth: 0 };
     if (!Array.isArray(ds.levelUps)) ds.levelUps = [];
     if (!ds.nyc.byGarden) ds.nyc.byGarden = {};
+    if (!ds._events || typeof ds._events !== 'object') ds._events = {};
     return ds;
   },
 
@@ -5639,8 +5651,56 @@ const Game = {
         break;
     }
 
+    // Ghi event chi tiết (giới hạn maxDetailLogs / loại)
+    try { this._pushDayEvent(kind, d, gi); } catch (_) {}
+
     // Đồng bộ activityLogs (online groups) — không đụng offline entry
     try { this.syncActivityLogsFromDayStats(); } catch (_) {}
+  },
+
+  /**
+   * Đẩy 1 event chi tiết vào dayStats._events[category]
+   * kind: plant|harvest|... → map category
+   */
+  _mapKindToCategory(kind) {
+    const k = String(kind || '');
+    if (k === 'plant' || k === 'replant' || k === 'harvest' || k === 'water' || k === 'fert') return 'garden';
+    if (k.indexOf('fairy') === 0) return 'fairy';
+    if (k.indexOf('nyc') === 0) return 'nyc';
+    if (k.indexOf('helper') === 0) return 'helper';
+    if (k.indexOf('robot') === 0) return 'robot';
+    if (k === 'rain') return 'rain';
+    if (k === 'levelup') return 'level';
+    if (k === 'daily') return 'reward';
+    if (k === 'xp') return 'xp';
+    if (k === 'offline') return 'offline';
+    return k || 'system';
+  },
+
+  _pushDayEvent(kind, data, gi) {
+    const ds = this.ensureDayStats();
+    if (!ds) return;
+    const cat = this._mapKindToCategory(kind);
+    if (cat === 'offline') return; // offline có log riêng
+    if (!ds._events[cat]) ds._events[cat] = [];
+    const maxN = (this.OFFLINE_CONFIG && this.OFFLINE_CONFIG.maxDetailLogs) || 100;
+    const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
+    const d = data || {};
+    const ev = {
+      timestamp: now,
+      action: String(kind),
+      gardenIndex: gi != null ? gi : undefined
+    };
+    // copy số liệu quan trọng
+    ['plots', 'qty', 'yield', 'actions', 'cycles', 'name', 'cost', 'coins', 'streak',
+      'level', 'xp', 'star', 'myth', 'count', 'ms', 'itemId', 'seedId', 'recipeId'].forEach(k => {
+      if (d[k] != null) ev[k] = d[k];
+    });
+    if (d.replant) ev.replant = true;
+    ds._events[cat].push(ev);
+    if (ds._events[cat].length > maxN) {
+      ds._events[cat] = ds._events[cat].slice(-maxN);
+    }
   },
 
   /**
@@ -5870,12 +5930,26 @@ const Game = {
       });
     }
 
-    // Gán firstAt (lần đầu trong ngày) + timestamp (cập nhật gần nhất)
+    // Gán firstAt + events[] chi tiết từ dayStats
+    const evMap = (ds && ds._events) || {};
     rebuilt.forEach(e => {
       if (!e) return;
       const prev = firstAtMap[e.id];
       e.firstAt = prev || e.timestamp || now;
       if (!e.timestamp) e.timestamp = now;
+      e.mode = e.type === 'offline' ? 'offline' : 'online';
+      // Gắn events theo type (garden dùng chung events.garden)
+      let cat = e.type;
+      if (cat === 'garden') cat = 'garden';
+      const evs = evMap[cat] || [];
+      if (!e.detail) e.detail = {};
+      // garden: filter theo gardenIndex nếu có
+      if (e.type === 'garden' && e.detail.gardenIndex != null) {
+        const gi = e.detail.gardenIndex;
+        e.detail.events = evs.filter(x => x.gardenIndex == null || Number(x.gardenIndex) === Number(gi)).slice(-100);
+      } else if (e.type !== 'offline') {
+        e.detail.events = evs.slice(-100);
+      }
     });
     // Sort: newest first (offline kept by timestamp)
     rebuilt.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -6018,10 +6092,33 @@ const Game = {
   },
 
   /**
-   * addActivity: API cũ — no-op text spam.
-   * Thống kê thật qua trackDayStat / addOfflineLog.
+   * addActivity — tương thích string cũ + object event mới.
+   * Object: { type, summary, detail, timestamp }
+   * String: chỉ refresh UI (thống kê qua trackDayStat).
    */
-  addActivity(text, meta) {
+  addActivity(textOrEvent, meta) {
+    try {
+      if (textOrEvent && typeof textOrEvent === 'object' && !Array.isArray(textOrEvent)) {
+        const ev = textOrEvent;
+        const type = ev.type || (meta && meta.type) || 'system';
+        const kind = ev.action || type;
+        const data = Object.assign({}, ev.detail || {}, ev.data || {});
+        if (ev.summary && typeof ev.summary === 'object') {
+          // structured — track + optional custom
+          this.trackDayStat(kind, data);
+        } else if (ev.summary || ev.text) {
+          this.trackDayStat(kind, data);
+        } else {
+          this.trackDayStat(kind, data);
+        }
+      }
+      // string path: meta.type có thể map
+      if (typeof textOrEvent === 'string' && meta && meta.type) {
+        // không double-count nếu caller đã trackDayStat
+      }
+    } catch (e) {
+      console.warn('addActivity', e);
+    }
     if (typeof renderActivityPage === 'function') {
       try {
         const page = document.getElementById('page-activity');
