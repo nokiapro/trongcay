@@ -4866,33 +4866,35 @@ function formatLogEventsHtml(d) {
   };
   const label = (ev) => {
     const a = String(ev.action || '');
-    const parts = [];
-    if (a === 'plant') parts.push('Trồng ' + (ev.plots || ev.qty || 1) + ' ô');
-    else if (a === 'replant') parts.push('Trồng lại ' + (ev.plots || 1) + ' ô');
-    else if (a === 'harvest') parts.push('Thu ' + (ev.plots || 1) + ' ô · +' + (ev.yield || 0) + ' SP');
-    else if (a === 'fairy_water') parts.push('Tưới ' + (ev.actions || ev.plots || 1) + ' ô');
-    else if (a === 'fairy_fert') parts.push('Bón ' + (ev.actions || 1) + ' lần');
-    else if (a === 'fairy_rain_seed') parts.push('Nhặt ' + (ev.qty || 1) + ' hạt mưa');
-    else if (a === 'nyc_plant') parts.push('NYC trồng ' + (ev.plots || 1) + ' ô');
-    else if (a === 'nyc_harvest') parts.push('NYC thu +' + (ev.yield || 0) + ' SP');
-    else if (a === 'helper_buy') parts.push('Mua phân ×' + (ev.qty || 1) + (ev.cost ? ' (−' + Number(ev.cost).toLocaleString() + '🪙)' : ''));
-    else if (a === 'robot_seed') parts.push('Mua hạt ' + (ev.name || '') + ' ×' + (ev.qty || 1));
-    else if (a === 'robot_cook') parts.push('Nấu ' + (ev.name || 'món') + ' ×' + (ev.qty || 1));
-    else if (a === 'robot_merge') parts.push('Ghép ⭐' + (ev.star || 0) + ' · ✨' + (ev.myth || 0));
-    else if (a === 'rain') parts.push('Mưa ×' + (ev.count || 1));
-    else if (a === 'levelup') parts.push('Lên cấp ' + (ev.level || ''));
-    else if (a === 'daily') parts.push('Thưởng +' + Number(ev.coins || 0).toLocaleString() + '🪙');
-    else if (a === 'xp') parts.push('+' + (ev.xp || 0) + ' XP');
-    else parts.push(a + (ev.qty != null ? ' ×' + ev.qty : '') + (ev.plots != null ? ' · ' + ev.plots + ' ô' : ''));
-    return parts.join('');
+    const n = ev.name ? String(ev.name) : '';
+    const costStr = (ev.cost != null && Number(ev.cost) > 0) ? (' · −' + Number(ev.cost).toLocaleString() + '🪙') : '';
+    if (a === 'plant') return 'Trồng ' + (n ? n + ' · ' : '') + (ev.plots || ev.qty || 1) + ' ô';
+    if (a === 'water') return 'Tưới ' + (ev.plots || 1) + ' ô' + (ev.plotId != null ? ' (#' + (Number(ev.plotId) + 1) + ')' : '');
+    if (a === 'fert') return 'Bón ' + (n || 'phân') + ' · ' + (ev.plots || 1) + ' ô';
+    if (a === 'replant') return 'Trồng lại ' + (n ? n + ' · ' : '') + (ev.plots || 1) + ' ô';
+    if (a === 'harvest') return 'Thu hoạch ' + (n ? n + ' · ' : '') + (ev.plots || 1) + ' ô · +' + (ev.yield || 0) + ' SP';
+    if (a === 'fairy_water') return 'Tiên tưới ' + (ev.actions || ev.plots || 1) + ' ô';
+    if (a === 'fairy_fert') return 'Tiên bón ' + (ev.actions || 1) + ' lần';
+    if (a === 'fairy_rain_seed') return 'Nhặt hạt mưa ×' + (ev.qty || 1) + (n ? ' (' + n + ')' : '');
+    if (a === 'nyc_plant') return 'NYC trồng ' + (n ? n + ' · ' : '') + (ev.plots || 1) + ' ô';
+    if (a === 'nyc_harvest') return 'NYC thu ' + (n ? n + ' · ' : '') + '+' + (ev.yield || 0) + ' SP';
+    if (a === 'helper_buy') return 'Giúp việc mua phân ×' + (ev.qty || 1) + costStr;
+    if (a === 'robot_seed') return 'Robot mua hạt «' + (n || '?') + '» ×' + Number(ev.qty || 1).toLocaleString() + costStr;
+    if (a === 'robot_cook') return 'Robot nấu «' + (n || 'món') + '» ×' + Number(ev.qty || 1).toLocaleString();
+    if (a === 'robot_merge') return 'Robot ghép ⭐×' + (ev.star || 0) + ' · ✨×' + (ev.myth || 0);
+    if (a === 'rain') return 'Mưa ×' + (ev.count || 1) + ' trận';
+    if (a === 'levelup') return 'Lên cấp → Lv ' + (ev.level || '');
+    if (a === 'daily') return 'Thưởng ngày +' + Number(ev.coins || 0).toLocaleString() + '🪙' + (ev.streak ? ' · streak ' + ev.streak : '');
+    if (a === 'xp') return 'Nhận +' + (ev.xp || 0) + ' XP';
+    return a + (n ? ' · ' + n : '') + (ev.qty != null ? ' ×' + ev.qty : '') + (ev.plots != null ? ' · ' + ev.plots + ' ô' : '') + costStr;
   };
-  // show last 40
-  const slice = evs.slice(-40);
+  // hiện tối đa 80 event gần nhất
+  const slice = evs.slice(-80);
   let h = '<div class="ad-block ad-events"><div class="ad-label">📋 Chi tiết thao tác (' + evs.length + ')</div><ul class="ad-list ad-events-list">';
   slice.forEach(ev => {
     h += '<li><span class="ad-ev-time">' + clock(ev.timestamp) + '</span> · ' + label(ev) + '</li>';
   });
-  if (evs.length > 40) h += '<li style="opacity:.7">… và ' + (evs.length - 40) + ' thao tác trước</li>';
+  if (evs.length > 80) h += '<li style="opacity:.7">… và ' + (evs.length - 80) + ' thao tác trước</li>';
   h += '</ul></div>';
   return h;
 }

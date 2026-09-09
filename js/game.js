@@ -1400,7 +1400,7 @@ const Game = {
     currentPlayer.stats.planted = (currentPlayer.stats.planted || 0) + 1;
     const plant = this.getPlant(plantId);
     const _pTag = usedMyth ? '✨ ' : (usedStar ? '⭐ ' : '');
-    this.trackDayStat('plant', { plots: 1, actions: 1, gardenIndex: currentPlayer.activeGarden || 0 });
+    this.trackDayStat('plant', { plots: 1, actions: 1, gardenIndex: currentPlayer.activeGarden || 0, name: plant.name || plantId });
     if (fairyWatered) this.trackDayStat('fairy_water', { actions: 1, gardenIndex: currentPlayer.activeGarden || 0 });
     this.addActivity(`Trồng ${_pTag}${plant.name} vào ô #${plotId + 1}` + (fairyWatered ? ' · Tiên tưới ngay' : ''));
     if (typeof Features !== 'undefined') Features.trackQuest('plant', 1);
@@ -1514,7 +1514,7 @@ const Game = {
         Features.trackQuest('plant', planted);
         if (fairyWateredN > 0) Features.trackQuest('water', fairyWateredN * 3);
       }
-      this.trackDayStat('plant', { plots: planted, actions: 1, gardenIndex: currentPlayer.activeGarden || 0 });
+      this.trackDayStat('plant', { plots: planted, actions: 1, gardenIndex: currentPlayer.activeGarden || 0, name: plant.name || plantId });
       if (fairyWateredN) this.trackDayStat('fairy_water', { actions: fairyWateredN, gardenIndex: currentPlayer.activeGarden || 0 });
       this.addActivity(`Trồng ${planted} ô ${plant.name}` + (fairyWateredN ? ` · Tiên tưới ${fairyWateredN} ô` : '') + ' (đồng bộ giờ)');
       const ach = this.checkAchievements();
@@ -4163,6 +4163,14 @@ const Game = {
       seeds[plantId] = have + needBuy;
       seedsBought += needBuy;
       seedsCost += cost;
+      try {
+        this.trackDayStat('robot_seed', {
+          name: plant.name || plantId,
+          seedId: plantId,
+          qty: needBuy,
+          cost: cost
+        });
+      } catch (_) {}
     }
     return { bought: seedsBought, cost: seedsCost };
   },
@@ -4237,16 +4245,18 @@ const Game = {
     }
 
     const silent = opts && opts.silent;
-    if (!silent && cooked > 0) {
-      const name = this.getRobotDisplayName ? this.getRobotDisplayName() : 'Người máy';
+    if (cooked > 0) {
       try {
         (lines || []).forEach(ln => {
           const m = String(ln).match(/^(.+?)(?:⭐|✨)?×(\d+)$/);
-          if (m) this.trackDayStat('robot_cook', { name: m[1], qty: Number(m[2]) || 1 });
+          if (m) this.trackDayStat('robot_cook', { name: m[1].trim(), qty: Number(m[2]) || 1 });
           else this.trackDayStat('robot_cook', { name: String(ln), qty: 1 });
         });
       } catch (_) {}
-      this.addActivity(name + ' nấu: ' + lines.join(', ') + (cooked > 0 ? (unlimitedCook ? ' (không giới hạn)' : (' (tới mức ' + target + ')')) : ''), { type: 'robot_cook' });
+      if (!silent) {
+        const name = this.getRobotDisplayName ? this.getRobotDisplayName() : 'Người máy';
+        this.addActivity(name + ' nấu: ' + lines.join(', ') + (unlimitedCook ? ' (không giới hạn)' : (' (tới mức ' + target + ')')), { type: 'robot_cook' });
+      }
     }
     return { ok: true, cooked, lines, target };
   },
@@ -4512,7 +4522,7 @@ const Game = {
     if (harvested > 0 || planted > 0) {
       currentPlayer.lastNycCare = now;
       if (harvested > 0) {
-        this.trackDayStat('harvest', { yield: totalAmount || harvested, plots: harvested, cycles: 1, gardenIndex: gIdx });
+        this.trackDayStat('harvest', { yield: totalAmount || harvested, plots: harvested, cycles: 1, gardenIndex: gIdx, name: 'tự động' });
         this.trackDayStat('nyc_harvest', { yield: totalAmount || harvested, plots: harvested, gardenIndex: gIdx });
       }
       if (planted > 0) {
@@ -4991,7 +5001,7 @@ const Game = {
     }
     if (total > 0) {
       this.addXp(totalXp);
-      this.trackDayStat('harvest', { yield: total, plots: plotsDone, cycles: 1, gardenIndex: currentPlayer.activeGarden || 0 });
+      this.trackDayStat('harvest', { yield: total, plots: plotsDone, cycles: 1, gardenIndex: currentPlayer.activeGarden || 0, name: 'nhiều loại' });
       this.addActivity(`Thu hoạch ${plotsDone} ô: ${total} sản phẩm (+${totalXp} XP)`);
       const ach = this.checkAchievements();
       await savePlayer();
@@ -5720,7 +5730,7 @@ const Game = {
     };
     // copy số liệu quan trọng
     ['plots', 'qty', 'yield', 'actions', 'cycles', 'name', 'cost', 'coins', 'streak',
-      'level', 'xp', 'star', 'myth', 'count', 'ms', 'itemId', 'seedId', 'recipeId'].forEach(k => {
+      'level', 'xp', 'star', 'myth', 'count', 'ms', 'itemId', 'seedId', 'recipeId', 'plotId', 'text'].forEach(k => {
       if (d[k] != null) ev[k] = d[k];
     });
     if (d.replant) ev.replant = true;
