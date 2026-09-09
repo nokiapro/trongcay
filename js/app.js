@@ -5210,14 +5210,15 @@ function _activityCategoryClass(a) {
   const cat = String(a.type || a.category || '');
   const act = String(a.action || '');
   const actor = String(a.actor || '');
+  const text = String(a.text || a.title || '');
   if (a.mode === 'offline' || cat === 'offline' || actor === 'offline') return 'offline';
-  if (cat === 'robot' || actor === 'robot' || act.startsWith('robot')) return 'robot';
-  if (cat === 'nyc' || actor === 'nyc' || act.startsWith('nyc')) return 'nyc';
-  if (cat === 'fairy' || actor === 'fairy' || act.startsWith('fairy')) return 'fairy';
-  if (cat === 'helper' || actor === 'helper') return 'helper';
-  if (cat === 'level' || act === 'xp' || act === 'level_up' || act === 'levelup') return 'level';
+  if (cat === 'robot' || actor === 'robot' || act.startsWith('robot') || /Robot/i.test(text)) return 'robot';
+  if (cat === 'nyc' || actor === 'nyc' || act.startsWith('nyc') || /\bNYC\b/i.test(text)) return 'nyc';
+  if (cat === 'fairy' || actor === 'fairy' || act.startsWith('fairy') || /Tiên/i.test(text)) return 'fairy';
+  if (cat === 'helper' || actor === 'helper' || /Giúp việc/i.test(text)) return 'helper';
+  if (cat === 'level' || act === 'xp' || act === 'level_up' || act === 'levelup' || /\+\d[\d.,]*\s*XP/i.test(text)) return 'level';
   if (cat === 'reward' || act === 'daily' || act === 'reward') return 'reward';
-  if (cat === 'rain' || act.startsWith('rain')) return 'rain';
+  if (cat === 'rain' || act.startsWith('rain') || /Mưa/i.test(text)) return 'rain';
   if (cat === 'garden' || ['plant','water','harvest','fert','crop_ready','replant','remove'].includes(act)) return 'garden';
   return 'system';
 }
@@ -5233,8 +5234,11 @@ function _activityActorLabel(a) {
     system: 'Hệ thống',
     offline: 'Offline'
   };
-  if (map[actor]) return map[actor];
+  if (actor && actor !== 'player' && map[actor]) return map[actor];
+  // Suy ra từ category/text khi actor mặc định player
   const cat = _activityCategoryClass(a);
+  if (cat !== 'system' && cat !== 'garden' && map[cat]) return map[cat];
+  if (map[actor]) return map[actor];
   return map[cat] || 'Game';
 }
 
@@ -5314,14 +5318,7 @@ function renderActivityPage() {
   const rowHtml = (a) => {
     const cat = _activityCategoryClass(a);
     const timeStr = a.timeText || clock(a.timestamp) || '';
-    // Tách HH:mm và :ss cho dễ đọc
-    let timeMain = timeStr;
-    let timeSec = '';
-    const tm = String(timeStr).match(/^(\d{1,2}:\d{2})(?::(\d{2}))?$/);
-    if (tm) {
-      timeMain = tm[1];
-      timeSec = tm[2] || '';
-    }
+    // Luôn 1 dòng HH:mm:ss — không tách gây lệch
     const actor = _activityActorLabel(a);
     const msg = a.text || a.title || a.action || 'Hành động';
     const tags = _activityResultTags(a);
@@ -5332,16 +5329,30 @@ function renderActivityPage() {
       cat === 'offline' ? 'al-offline' : '',
       cat === 'level' ? 'al-level' : ''
     ].filter(Boolean).join(' ');
+    // Nhãn action gọn, không in SYSTEM/ROBOT_MERGE thô
+    const actionLabelMap = {
+      plant: 'Trồng', water: 'Tưới', harvest: 'Thu hoạch', fert: 'Bón',
+      crop_ready: 'Chín', replant: 'Trồng lại', remove: 'Nhổ',
+      robot_seed: 'Mua hạt', robot_cook: 'Nấu', robot_merge: 'Ghép',
+      fairy_water: 'Tưới', fairy_rain_seed: 'Nhặt hạt',
+      nyc_harvest: 'Thu hoạch', nyc_plant: 'Trồng',
+      level_up: 'Lên cấp', levelup: 'Lên cấp', xp: 'XP',
+      daily: 'Thưởng', reward: 'Thưởng', offline_end: 'Offline', offline: 'Offline',
+      system: ''
+    };
+    const rawAct = String(a.action || '');
+    const actionLabel = actionLabelMap[rawAct] != null ? actionLabelMap[rawAct]
+      : (rawAct && rawAct.toLowerCase() !== 'system' ? rawAct.replace(/_/g, ' ') : '');
 
     return `<li class="al-row activity-clickable ${extraCls}" data-id="${esc(a.id || '')}" role="button" tabindex="0">
       <div class="al-rail">
         <span class="al-dot al-cat-${cat}"></span>
-        <span class="al-time">${esc(timeMain)}${timeSec ? '\n<span style="opacity:.75">:' + esc(timeSec) + '</span>' : ''}</span>
+        <span class="al-time">${esc(timeStr)}</span>
       </div>
       <div class="al-main">
         <div class="al-top">
           <span class="al-actor">${esc(actor)}</span>
-          <span class="al-action">${esc(a.action || cat || '')}</span>
+          ${actionLabel ? '<span class="al-action">' + esc(actionLabel) + '</span>' : ''}
         </div>
         <div class="al-msg">${esc(msg)}</div>
         ${tagsHtml}
