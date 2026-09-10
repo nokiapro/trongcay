@@ -5443,11 +5443,29 @@ function openActivityDetail(logId, cachedLog) {
 
 
 
-document.getElementById('btn-close-activity-detail')?.addEventListener('click', () => {
-  document.getElementById('modal-activity-detail')?.classList.remove('show');
+function closeActivityDetail() {
+  const modal = document.getElementById('modal-activity-detail');
+  if (!modal) return;
+  modal.classList.remove('show');
+  // openActivityDetail gán style.display = 'flex' → phải xóa khi đóng
+  modal.style.display = '';
+  modal.style.zIndex = '';
+}
+
+document.getElementById('btn-close-activity-detail')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  closeActivityDetail();
 });
 document.getElementById('modal-activity-detail')?.addEventListener('click', (e) => {
-  if (e.target.id === 'modal-activity-detail') e.currentTarget.classList.remove('show');
+  if (e.target.id === 'modal-activity-detail') closeActivityDetail();
+});
+// Esc để đóng
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const m = document.getElementById('modal-activity-detail');
+    if (m && m.classList.contains('show')) closeActivityDetail();
+  }
 });
 
 let _lastOfflineLogId = null;
@@ -5756,7 +5774,14 @@ function renderLevelPage() {
 
 
 function closeModals() {
-  document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
+  document.querySelectorAll('.modal').forEach(m => {
+    m.classList.remove('show');
+    // Xóa inline display nếu có (modal log detail)
+    if (m.id === 'modal-activity-detail') {
+      m.style.display = '';
+      m.style.zIndex = '';
+    }
+  });
 }
 
 document.querySelectorAll('.modal-close').forEach(btn => {
