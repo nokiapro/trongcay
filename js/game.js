@@ -5832,7 +5832,7 @@ const Game = {
 
       const list = this.ensureGameEvents();
       list.unshift(ev);
-      const maxN = (this.OFFLINE_CONFIG && this.OFFLINE_CONFIG.maxGameEvents) || 500;
+      const maxN = (this.OFFLINE_CONFIG && this.OFFLINE_CONFIG.maxGameEvents) || 250;
       if (list.length > maxN) currentPlayer.gameEvents = list.slice(0, maxN);
 
       // Cũng đẩy vào dayStats._events để summary vẫn có chi tiết
@@ -6276,8 +6276,20 @@ const Game = {
       });
       return;
     }
-    // Các kind còn lại → sync log tổng hợp
-    try { this.syncAggregatedDayLogs(k); } catch (_) {}
+    // Các kind còn lại → sync log tổng hợp (debounce, tránh gọi mỗi hành động)
+    try {
+      const self = this;
+      if (self._aggSyncTimer) clearTimeout(self._aggSyncTimer);
+      self._aggDirty = true;
+      self._aggSyncTimer = setTimeout(function () {
+        self._aggSyncTimer = null;
+        try {
+          self.syncAggregatedDayLogs(k);
+          self._lastAggSync = (typeof nowMs === 'function') ? nowMs() : Date.now();
+          self._aggDirty = false;
+        } catch (_) {}
+      }, 500);
+    } catch (_) {}
   },
 
   /** Bỏ emoji trong chuỗi log */
@@ -6704,8 +6716,15 @@ const Game = {
   /** Danh sách log — ưu tiên log TỔNG HỢP (1 dòng/actor/ngày) + offline + lên cấp */
   getActivityLogList() {
     this.ensureGameEvents();
-    // Đồng bộ tổng hợp từ dayStats trước khi vẽ
-    try { this.syncAggregatedDayLogs('refresh'); } catch (_) {}
+    // Sync tổng hợp khi cần (không gọi mỗi lần mở tab nếu vừa sync)
+    try {
+      const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
+      if (this._aggDirty || !this._lastAggSync || (t - this._lastAggSync) > 2500) {
+        this.syncAggregatedDayLogs('refresh');
+        this._lastAggSync = t;
+        this._aggDirty = false;
+      }
+    } catch (_) {}
     const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
     const KEEP = 24 * 3600 * 1000; // chỉ giữ 24 giờ
     const events = (currentPlayer && currentPlayer.gameEvents) || [];
