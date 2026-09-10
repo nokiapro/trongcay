@@ -3239,7 +3239,9 @@ const Game = {
     if (this.isHelperActive()) {
       const prev = currentPlayer.lastHelperBuy || 0;
       let buys = 0;
-      const helperTries = Math.max(3, Math.min(48, Math.ceil(offlineGap / (15 * 60 * 1000)) + 2));
+      // Phân chia thời gian: mỗi ~30 phút offline cho 1 đợt mua tối đa, không gộp ẩu cả cửa sổ dài
+      // Offline 1h → tối đa ~2-3 đợt; offline dài mới tăng dần, trần 24 đợt
+      const helperTries = Math.max(1, Math.min(24, Math.floor(offlineGap / (30 * 60 * 1000)) + 1));
       let helperItems = 0;
       for (let k = 0; k < helperTries; k++) {
         currentPlayer.lastHelperBuy = 0;
@@ -3254,7 +3256,7 @@ const Game = {
       else {
         helperBuys = buys;
         helperItemsBought = helperItems;
-        notes.push('Giúp việc mua ' + helperItems + ' đồ (' + buys + ' đợt)');
+        notes.push('Giúp việc mua ' + helperItems + ' đồ (' + buys + ' đợt · theo ' + helperTries + ' khung giờ)');
       }
     }
 
@@ -3335,6 +3337,11 @@ const Game = {
     const _helperItems = helperItemsBought || 0;
     const _ro = (typeof robotOffline === 'object' && robotOffline) ? robotOffline : {};
     lines.push('BÙ OFFLINE — vắng ' + offlineText + ' (từ ' + new Date(from).toLocaleString('vi-VN') + ' → ' + new Date(now).toLocaleString('vi-VN') + ')');
+    // Phân chia thời gian: ghi rõ không gộp cả 24h một cục, chỉ tính đúng cửa sổ vắng thực tế
+    if (offlineMs >= 3600 * 1000) {
+      const hours = Math.max(1, Math.round(offlineMs / 3600000));
+      lines.push('Phân khung giờ: tính theo đúng ' + hours + ' giờ vắng (không gộp 24h / không tính giờ đã qua ngoài cửa sổ này)');
+    }
     lines.push(
       'Tóm tắt: Mưa ' + rainHits + ' trận' +
       ' · Tiên nhặt ' + Number(_rainSeeds).toLocaleString() + ' hạt' +
