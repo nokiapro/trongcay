@@ -2913,6 +2913,7 @@ html[data-theme="dark"] .login-screen {
 }
 
 html[data-theme="dark"] .login-card,
+html[data-theme="dark"] .modal-content,
 html[data-theme="dark"] input,
 html[data-theme="dark"] .profile-field input,
 html[data-theme="dark"] .chat-input-row input,
@@ -2923,10 +2924,7 @@ html[data-theme="dark"] .friends-add input {
   border-radius: 999px;
 }
 html[data-theme="dark"] .modal-content {
-  background: var(--surface);
-  color: var(--text);
-  border-color: var(--border);
-  border-radius: 22px !important;
+  border-radius: 22px;
 }
 html[data-theme="dark"] .chat-panel {
   background: var(--card);
@@ -3097,81 +3095,61 @@ html[data-theme="dark"] .chat-bubble .chat-time-tip::after {
 
 
 
-/* ========== SCROLLBAR ĐẸP (PC + Mobile WebKit) ========== */
 * {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: rgba(34, 197, 94, 0.55) transparent;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-light) transparent;
 }
 
+
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 *::-webkit-scrollbar-track {
   background: transparent;
   border-radius: 999px;
-  margin: 6px 0;
 }
 *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(74, 222, 128, 0.85), rgba(34, 197, 94, 0.7));
+  background: linear-gradient(180deg, var(--primary-light), var(--primary));
   border-radius: 999px;
-  border: 1.5px solid transparent;
+  border: 2px solid transparent;
   background-clip: padding-box;
-  min-height: 36px;
-  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.12);
+  min-height: 40px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #4ade80, #22c55e);
+  background: linear-gradient(180deg, var(--primary), var(--primary-dark));
   background-clip: padding-box;
-  border: 1.5px solid transparent;
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.35);
-}
-*::-webkit-scrollbar-thumb:active {
-  background: linear-gradient(180deg, #22c55e, #16a34a);
-  background-clip: padding-box;
+  border: 2px solid transparent;
 }
 *::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-/* Track nhẹ cho panel / modal / list */
+
 .seed-list::-webkit-scrollbar-track,
 .friends-list::-webkit-scrollbar-track,
 .chat-messages::-webkit-scrollbar-track,
 .shop-grid::-webkit-scrollbar-track,
 .rank-list::-webkit-scrollbar-track,
 .inv-panel::-webkit-scrollbar-track,
-.modal-content::-webkit-scrollbar-track,
-.activity-list::-webkit-scrollbar-track,
-#modal-activity-detail-box::-webkit-scrollbar-track {
-  background: rgba(34, 197, 94, 0.06);
+.modal-content::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
   border-radius: 999px;
-  margin: 4px 2px;
+  margin: 4px 0;
 }
 
-/* Dark mode */
-html[data-theme="dark"] *,
-body.dark * {
-  scrollbar-color: rgba(82, 183, 136, 0.55) transparent;
+html[data-theme="dark"] * {
+  scrollbar-color: #3d6b54 #121a16;
 }
-html[data-theme="dark"] *::-webkit-scrollbar-thumb,
-body.dark *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(82, 183, 136, 0.9), rgba(45, 106, 79, 0.75));
+html[data-theme="dark"] *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3d6b54, #2a4a38);
   background-clip: padding-box;
-  border: 1.5px solid transparent;
-  box-shadow: 0 0 0 1px rgba(82, 183, 136, 0.15);
+  border: 2px solid transparent;
 }
-html[data-theme="dark"] *::-webkit-scrollbar-thumb:hover,
-body.dark *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #6bcf9a, #3d6b54);
+html[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #52b788, #3d6b54);
   background-clip: padding-box;
-  border: 1.5px solid transparent;
-  box-shadow: 0 0 10px rgba(82, 183, 136, 0.4);
-}
-html[data-theme="dark"] *::-webkit-scrollbar-thumb:active,
-body.dark *::-webkit-scrollbar-thumb:active {
-  background: linear-gradient(180deg, #52b788, #2d6a4f);
-  background-clip: padding-box;
+  border: 2px solid transparent;
 }
 html[data-theme="dark"] .seed-list::-webkit-scrollbar-track,
 html[data-theme="dark"] .friends-list::-webkit-scrollbar-track,
@@ -3179,25 +3157,9 @@ html[data-theme="dark"] .chat-messages::-webkit-scrollbar-track,
 html[data-theme="dark"] .shop-grid::-webkit-scrollbar-track,
 html[data-theme="dark"] .rank-list::-webkit-scrollbar-track,
 html[data-theme="dark"] .inv-panel::-webkit-scrollbar-track,
-html[data-theme="dark"] .modal-content::-webkit-scrollbar-track,
-html[data-theme="dark"] .activity-list::-webkit-scrollbar-track,
-html[data-theme="dark"] #modal-activity-detail-box::-webkit-scrollbar-track,
-body.dark .modal-content::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+html[data-theme="dark"] .modal-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
 }
-
-/* Mobile: scrollbar mảnh hơn, vẫn đủ chạm */
-@media (max-width: 768px) {
-  *::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  *::-webkit-scrollbar-thumb {
-    min-height: 28px;
-    border-width: 1px;
-  }
-}
-
 
 
 
@@ -10384,6 +10346,53 @@ html[data-theme="dark"] .ad-ev-time { color: #94a3b8; }
   gap: 0;
   overflow: hidden;
 }
+.activity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 0 12px 0;
+  margin: 0 0 4px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+}
+.activity-filters::-webkit-scrollbar { height: 3px; }
+.activity-filter-btn {
+  flex: 0 0 auto;
+  border: 1px solid rgba(148, 163, 184, 0.45) !important;
+  background: var(--bg-card, #fff) !important;
+  color: var(--text-main, #334155) !important;
+  border-radius: 999px !important;
+  padding: 7px 12px !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  box-shadow: none !important;
+  white-space: nowrap;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+}
+.activity-filter-btn:hover {
+  border-color: rgba(34, 197, 94, 0.55) !important;
+  background: rgba(34, 197, 94, 0.08) !important;
+}
+.activity-filter-btn.active {
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.28) !important;
+}
 
 #page-activity .activity-section {
   padding: 4px 10px 20px;
@@ -10697,6 +10706,14 @@ html[data-theme="dark"] .al-row {
 }
 html[data-theme="dark"] .al-msg { color: #e2e8f0; }
 html[data-theme="dark"] .al-time { color: #94a3b8; }
+html[data-theme="dark"] .activity-filter-btn {
+  background: rgba(30, 41, 59, 0.9) !important;
+  color: #e2e8f0 !important;
+}
+html[data-theme="dark"] .activity-filter-btn.active {
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  color: #fff !important;
+}
 
 @media (max-width: 380px) {
   .activity-list .al-row { grid-template-columns: 58px minmax(0, 1fr) 16px; gap: 6px; padding: 9px 8px 9px 6px; }
@@ -10713,6 +10730,17 @@ html[data-theme="dark"] .al-time { color: #94a3b8; }
   box-sizing: border-box;
   padding: 12px 14px 14px;
 }
+#page-activity .activity-section.activity-section-log .activity-filters {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 10px;
+  padding: 0 0 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
 #page-activity .activity-section.activity-section-log .activity-list {
   width: 100%;
   margin: 0;
@@ -10721,6 +10749,17 @@ html[data-theme="dark"] .al-time { color: #94a3b8; }
 
 
 /* ACTIVITY FILTER CENTER FIX */
+#page-activity .activity-filters,
+.activity-section-log .activity-filters,
+.activity-filters {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
 #page-activity .activity-section.activity-section-log {
   max-width: 920px;
   margin-left: auto;
@@ -10961,222 +11000,3 @@ html[data-theme="dark"] .activity-detail-grid .ad-v { color: #e2e8f0; }
 html[data-theme="dark"] .ad-hero-value,
 html[data-theme="dark"] .ad-li-v,
 html[data-theme="dark"] .ad-li-sub { color: #e2e8f0; }
-
-
-/* FIX: vườn tắt + log xám → trắng dễ đọc */
-.agent-garden-tab.off {
-  opacity: 1 !important;
-  color: #f8fafc !important;
-  border-color: rgba(248, 250, 252, 0.35) !important;
-  background: rgba(248, 250, 252, 0.08) !important;
-}
-.agent-garden-tab.off small {
-  opacity: 0.9 !important;
-  color: #e2e8f0 !important;
-}
-html[data-theme="dark"] .agent-garden-tab {
-  color: #f1f5f9;
-}
-html[data-theme="dark"] .agent-garden-tab:not(.active):not(.off) {
-  color: #f8fafc;
-}
-
-/* Log list: chữ sáng */
-.activity-list.activity-log-pro .al-msg {
-  color: #f8fafc !important;
-}
-.activity-list.activity-log-pro .al-time,
-.activity-list.activity-log-pro .al-time-range {
-  color: #e2e8f0 !important;
-}
-.activity-list.activity-log-pro .al-result {
-  color: #86efac !important;
-}
-.activity-list.activity-log-pro .activity-day-pill {
-  color: #f1f5f9 !important;
-  background: rgba(248, 250, 252, 0.12) !important;
-}
-html:not([data-theme="dark"]) .activity-list.activity-log-pro .al-msg {
-  color: #0f172a !important;
-}
-html:not([data-theme="dark"]) .activity-list.activity-log-pro .al-time,
-html:not([data-theme="dark"]) .activity-list.activity-log-pro .al-time-range {
-  color: #475569 !important;
-}
-
-/* Modal chi tiết PC: luôn hiện body */
-#modal-activity-detail.modal.show {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-  z-index: 10050 !important;
-}
-#modal-activity-detail .modal-activity-content {
-  max-width: min(520px, 94vw) !important;
-  width: 94% !important;
-  max-height: 85vh !important;
-  overflow: auto !important;
-  display: block !important;
-  padding: 16px 18px 20px !important;
-}
-#modal-activity-detail .activity-detail-body {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  min-height: 80px;
-  margin-top: 12px;
-  color: #f8fafc !important;
-}
-#modal-activity-detail .activity-detail-body .ad-li-k,
-#modal-activity-detail .activity-detail-body .ad-label,
-#modal-activity-detail .activity-detail-body .ad-hero-label,
-#modal-activity-detail .activity-detail-body .ad-note {
-  color: #cbd5e1 !important;
-}
-#modal-activity-detail .activity-detail-body .ad-li-v,
-#modal-activity-detail .activity-detail-body .ad-hero-value,
-#modal-activity-detail .activity-detail-body .ad-li-sub,
-#modal-activity-detail .activity-detail-body strong {
-  color: #f8fafc !important;
-}
-#modal-activity-detail .ad-list-rich > li {
-  background: rgba(248, 250, 252, 0.08) !important;
-}
-#modal-activity-detail .ad-hero {
-  background: rgba(34, 197, 94, 0.15) !important;
-}
-html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body {
-  color: #0f172a !important;
-}
-html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-li-v,
-html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-hero-value {
-  color: #0f172a !important;
-}
-html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-li-k {
-  color: #64748b !important;
-}
-
-
-/* Vườn tab đang chọn: số 99/99 trắng rõ */
-.agent-garden-tab.active,
-.agent-garden-tab.active small {
-  color: #ffffff !important;
-  opacity: 1 !important;
-}
-.agent-garden-tab.active small {
-  opacity: 0.95 !important;
-}
-
-/* Modal nhật ký: không bo pill, body luôn hiện */
-#modal-activity-detail .modal-content,
-#modal-activity-detail .modal-activity-content {
-  border-radius: 22px !important;
-  max-width: min(560px, 94vw) !important;
-  width: 94% !important;
-  max-height: 88vh !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  padding: 18px 20px 22px !important;
-  display: block !important;
-}
-#modal-activity-detail .activity-detail-head {
-  display: flex !important;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-#modal-activity-detail .activity-detail-head h2 {
-  color: #f8fafc !important;
-  font-size: 1.05rem !important;
-  margin: 0 !important;
-}
-#modal-activity-detail #activity-detail-body,
-#modal-activity-detail .activity-detail-body {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  min-height: 120px !important;
-  height: auto !important;
-  max-height: none !important;
-  overflow: visible !important;
-  color: #f8fafc !important;
-  margin-top: 10px !important;
-  padding-top: 4px !important;
-}
-
-
-/* MODAL LOG DETAIL — PC FIX v193b */
-#modal-activity-detail.modal {
-  z-index: 10060 !important;
-}
-#modal-activity-detail.modal.show {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-#modal-activity-detail .modal-content,
-#modal-activity-detail .modal-activity-content,
-#modal-activity-detail-box {
-  border-radius: 22px !important;
-  max-width: min(560px, 94vw) !important;
-  width: 94% !important;
-  max-height: 88vh !important;
-  overflow: auto !important;
-  display: block !important;
-  padding: 18px 20px 22px !important;
-  box-sizing: border-box !important;
-}
-#modal-activity-detail #activity-detail-body {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  min-height: 80px !important;
-  color: #f8fafc !important;
-}
-
-
-/* UNBLOCK CLICKS: modal chỉ hiện khi .show */
-.modal {
-  display: none !important;
-  pointer-events: none;
-}
-.modal.show {
-  display: flex !important;
-  pointer-events: auto !important;
-}
-#modal-activity-detail.modal.show {
-  display: flex !important;
-  pointer-events: auto !important;
-  z-index: 10060 !important;
-}
-/* auth-loading không chặn sau khi ẩn */
-#auth-loading[aria-hidden="true"],
-#auth-loading[style*="display: none"],
-#auth-loading[style*="display:none"] {
-  pointer-events: none !important;
-  display: none !important;
-}
-
-
-/* AUTH LOADING UNBLOCK — không bao giờ chặn click vĩnh viễn */
-#auth-loading[aria-hidden="true"] {
-  display: none !important;
-  pointer-events: none !important;
-  visibility: hidden !important;
-  z-index: -1 !important;
-}
-#auth-loading {
-  /* Cho phép tắt bằng inline style */
-}
-
-
-/* Auth ready → loading không bao giờ chặn click */
-body.auth-ready #auth-loading,
-#auth-loading.auth-loading-done {
-  display: none !important;
-  pointer-events: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  z-index: -1 !important;
-}
