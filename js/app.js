@@ -5279,17 +5279,43 @@ function openActivityDetail(logId) {
   const title = document.getElementById('activity-detail-title');
   const body = document.getElementById('activity-detail-body');
   if (!modal || !body) return;
+  modal.classList.add('show');
   if (!log) {
     if (title) title.textContent = 'Chi tiết';
-    body.innerHTML = '<p>Không tìm thấy log.</p>';
-    modal.classList.add('show');
+    body.innerHTML = '<p class="ad-empty-line">Không tìm thấy log.</p>';
     return;
   }
   const t = (log.summary && log.summary.title) ? log.summary.title
     : (log.text || log.title || 'Chi tiết');
   if (title) title.textContent = t;
-  body.innerHTML = formatActivityDetailHtml(log);
-  modal.classList.add('show');
+  let html = '';
+  try {
+    html = formatActivityDetailHtml(log) || '';
+  } catch (err) {
+    console.warn('formatActivityDetailHtml', err);
+    html = '';
+  }
+  if (!html || !String(html).trim()) {
+    // Fallback: hiện raw detail để PC không bị modal trống
+    const d = (log.detail) || (log._event && log._event.detail) || {};
+    const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const lines = [];
+    lines.push('<div class="ad-block"><div class="ad-label">Thông tin</div><ul class="ad-list ad-list-rich">');
+    lines.push('<li><span class="ad-li-k">Nội dung</span><span class="ad-li-v">' + esc(log.text || log.summary && log.summary.text || '—') + '</span></li>');
+    if (log.actor) lines.push('<li><span class="ad-li-k">Actor</span><span class="ad-li-v">' + esc(log.actor) + '</span></li>');
+    Object.keys(d).forEach(k => {
+      const v = d[k];
+      if (v == null || typeof v === 'object') return;
+      lines.push('<li><span class="ad-li-k">' + esc(k) + '</span><span class="ad-li-v">' + esc(v) + '</span></li>');
+    });
+    lines.push('</ul></div>');
+    html = lines.join('');
+  }
+  body.innerHTML = html;
+  body.style.display = 'block';
+  body.style.visibility = 'visible';
+  body.style.opacity = '1';
+  body.style.color = '#f8fafc';
 }
 
 
@@ -5323,17 +5349,33 @@ function showOfflineReturnModal(report, logEntry) {
   if (durEl) durEl.innerHTML = 'Bạn đã offline <strong>' + dur + '</strong>';
 
   const items = [];
-  const sp = report.totalYieldAmount || report.totalHarvest || 0;
-  if (sp) items.push({ icon: '🌱', text: '+' + sp + ' SP' });
-  if (report.xpGained) items.push({ icon: '⭐', text: '+' + Number(report.xpGained).toLocaleString() + ' XP' });
-  const robotJobs = (report.robotSeedsBought || 0) + (report.robotStar || 0) + (report.robotMyth || 0) + (report.robotCooked || 0);
-  if (robotJobs) items.push({ icon: '🤖', text: robotJobs + ' việc' });
-  if (report.nycGardens) items.push({ icon: '❤️', text: report.nycGardens + ' vườn NYC' });
-  if (report.rainWatered || report.fairyCycles) {
-    items.push({ icon: '🧚', text: (report.rainWatered || report.fairyCycles || 0) + ' ô tiên' });
+  const sp = Number(report.totalYieldAmount || 0) || 0;
+  const plotsH = Number(report.uniquePlotsHarvested || report.totalHarvest || 0) || 0;
+  if (sp) items.push({ icon: '🌱', text: '+' + Number(sp).toLocaleString('vi-VN') + ' SP' + (plotsH ? (' · ' + plotsH + ' ô') : '') });
+  if (report.xpGained) items.push({ icon: '⭐', text: '+' + Number(report.xpGained).toLocaleString('vi-VN') + ' XP' });
+  // Robot: không cộng số hạt thành "việc" (tránh 139992 việc)
+  const rSeed = Number(report.robotSeedsBought || 0) || 0;
+  const rStar = Number(report.robotStar || 0) || 0;
+  const rMyth = Number(report.robotMyth || 0) || 0;
+  const rCook = Number(report.robotCooked || 0) || 0;
+  const rParts = [];
+  if (rSeed) rParts.push('mua ' + rSeed.toLocaleString('vi-VN') + ' hạt');
+  if (rStar) rParts.push('ghép sao ×' + rStar.toLocaleString('vi-VN'));
+  if (rMyth) rParts.push('huyền thoại ×' + rMyth.toLocaleString('vi-VN'));
+  if (rCook) rParts.push('nấu ' + rCook.toLocaleString('vi-VN'));
+  if (rParts.length) items.push({ icon: '🤖', text: rParts.join(' · ') });
+  if (report.nycGardens) {
+    const nycP = Number(report.nycPlots || report.totalPlant || 0) || 0;
+    items.push({ icon: '❤️', text: report.nycGardens + ' vườn NYC' + (nycP ? (' · ' + nycP.toLocaleString('vi-VN') + ' lần') : '') });
   }
-  if (report.fairyRainSeeds) items.push({ icon: '🌱', text: 'Nhặt ' + report.fairyRainSeeds + ' hạt mưa' });
+  // Tiên: chu kỳ chăm / ô tưới — tách rõ
+  const fairyCycles = Number(report.fairyCycles || 0) || 0;
+  const rainWatered = Number(report.rainWatered || 0) || 0;
+  if (fairyCycles) items.push({ icon: '🧚', text: 'Chăm ' + fairyCycles.toLocaleString('vi-VN') + ' chu kỳ' });
+  else if (rainWatered) items.push({ icon: '🧚', text: 'Tưới ' + rainWatered.toLocaleString('vi-VN') + ' ô' });
+  if (report.fairyRainSeeds) items.push({ icon: '🌱', text: 'Nhặt ' + Number(report.fairyRainSeeds).toLocaleString('vi-VN') + ' hạt mưa' });
   if (report.rainHits) items.push({ icon: '🌧️', text: report.rainHits + ' trận mưa' });
+  if (report.helperBuys) items.push({ icon: '🧹', text: 'Giúp việc mua ' + Number(report.helperBuys).toLocaleString('vi-VN') + ' món' });
 
   statsEl.innerHTML = items.length
     ? items.map(it => '<li><span>' + it.icon + '</span> ' + it.text + '</li>').join('')
