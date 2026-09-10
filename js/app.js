@@ -154,48 +154,30 @@ function hideRainEffect() {
 
 function hideAuthLoading() {
   const el = document.getElementById('auth-loading');
-  if (el) {
-    el.style.display = 'none';
-    el.style.pointerEvents = 'none';
-    el.setAttribute('aria-hidden', 'true');
-  }
+  if (el) el.style.display = 'none';
 }
-
 function showAuthLoading() {
   const el = document.getElementById('auth-loading');
-  if (el) {
-    el.style.display = 'flex';
-    el.style.pointerEvents = 'auto';
-    el.removeAttribute('aria-hidden');
-  }
+  if (el) el.style.display = 'flex';
 }
 
 function showLogin() {
   hideAuthLoading();
-  const login = document.getElementById('login-screen');
-  const appEl = document.getElementById('app-screen');
-  if (login) login.style.display = 'flex';
-  if (appEl) appEl.style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display = 'none';
 }
 
 function showApp() {
   hideAuthLoading();
-  try {
-    document.querySelectorAll('.modal.show').forEach(m => {
-      m.classList.remove('show');
-      m.style.display = '';
-    });
-    document.getElementById('nav-backdrop')?.classList.remove('show');
-    document.body.classList.remove('nav-more-visible');
-  } catch (_) {}
-  const login = document.getElementById('login-screen');
-  const appEl = document.getElementById('app-screen');
-  if (login) login.style.display = 'none';
-  if (appEl) appEl.style.display = 'block';
-  try {
-    if (typeof renderAgentGardenToggles === 'function') renderAgentGardenToggles();
-    if (typeof updateCoins === 'function') updateCoins();
-  } catch (_) {}
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  updateCoins();
+  updateUserUI();
+  updateFairyBadge();
+  listenServerAnnounce();
+  let page = 'garden';
+  try { page = sessionStorage.getItem('vx_page') || 'garden'; } catch (_) {}
+  goToPage(page);
 }
 
 function updateFairyBadge() {
@@ -891,23 +873,16 @@ auth.onAuthStateChanged(async (user) => {
         }
       } catch (e) { console.warn('processLoginStreak', e); }
       try { if (typeof scheduleActivityMidnightPrune === 'function') scheduleActivityMidnightPrune(); } catch (_) {}
-      if (typeof Features !== 'undefined' && Features.checkAccessGates) {
-        try {
-          const gate = await Promise.race([
-            Features.checkAccessGates(),
-            new Promise((resolve) => setTimeout(() => resolve({ blocked: false }), 3000))
-          ]);
-          if (gate && gate.blocked) {
-            hideAuthLoading();
-            showAccessGate(gate);
-            return;
-          }
-        } catch (ge) { console.warn('checkAccessGates', ge); }
+      if (typeof Features !== 'undefined') {
+        const gate = await Features.checkAccessGates();
+        if (gate.blocked) {
+          showAccessGate(gate);
+          return;
+        }
       }
       if (typeof Features !== 'undefined') Features.ensureQuests();
-      if (typeof listenPlayerTimers === 'function') listenPlayerTimers();
-      // Vào game trước, offline chạy nền sau
-      showApp();
+      if (typeof listenPlayerTimers === 'function') listenPlayerTimers(); 
+      
       setTimeout(async () => {
         try {
           if (typeof syncPlayerOnEnter === 'function') {
@@ -961,7 +936,8 @@ auth.onAuthStateChanged(async (user) => {
           }
         } catch (e) { console.warn('robotMergeAllBag', e); }
         if (typeof forceBackgroundCare === 'function') forceBackgroundCare('login');
-      }, 1500);
+      }, 500);
+      showApp();
       if (typeof loadPlayerMailbox === 'function') loadPlayerMailbox().catch(() => {});
     } catch (e) {
       console.error(e);
@@ -979,8 +955,6 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 function showAccessGate(gate) {
-  try { hideAuthLoading(); } catch (_) {}
-
   const el = document.getElementById('access-gate');
   if (!el) return;
   document.getElementById('app-screen').style.display = 'none';
@@ -4880,199 +4854,450 @@ function activityFaIcon(text, type) {
 }
 
 
-function openActivityDetail(logId, cachedLog) {
-  try {
-    const modal = document.getElementById('modal-activity-detail');
-    const titleEl = document.getElementById('activity-detail-title');
-    const body = document.getElementById('activity-detail-body');
-    const box = document.getElementById('modal-activity-detail-box') || (modal && modal.querySelector('.modal-content'));
-    if (!modal || !body) {
-      console.warn('[log] modal missing', !!modal, !!body);
-      return;
-    }
-
-    // Ưu tiên log đã cache từ list (đầy đủ detail)
-    let log = cachedLog || null;
-    if (!log && window._activityLogMap && logId && window._activityLogMap[logId]) {
-      log = window._activityLogMap[logId];
-    }
-    if (!log && typeof Game !== 'undefined' && Game.getActivityLogById) {
-      try { log = Game.getActivityLogById(logId); } catch (e) { console.warn(e); }
-    }
-    if (!log && Array.isArray(window._lastActivityLines)) {
-      log = window._lastActivityLines.find(x => x && x.id === logId) || null;
-    }
-
-    // Chỉ dùng class .show — không gán inline display (tránh kẹt overlay không đóng được)
-    modal.style.display = '';
-    modal.style.zIndex = '';
-    modal.classList.add('show');
-    if (box) {
-      box.style.borderRadius = '22px';
-      box.style.maxWidth = '560px';
-      box.style.width = '94%';
-      box.style.maxHeight = '88vh';
-      box.style.overflow = 'auto';
-      box.style.padding = '18px 20px 22px';
-    }
-
-    const esc = (s) => String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const num = (n) => Number(n || 0).toLocaleString('vi-VN');
-    const row = (k, v) =>
-      '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 12px;margin:0 0 6px;border-radius:10px;background:rgba(248,250,252,0.1)">'
-      + '<span style="color:#cbd5e1;font-weight:600">' + esc(k) + '</span>'
-      + '<span style="color:#f8fafc;font-weight:800;text-align:right">' + esc(v) + '</span></div>';
-    const head = (t) =>
-      '<div style="margin:14px 0 8px;font-size:0.75rem;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:#94a3b8">' + esc(t) + '</div>';
-
-    if (!log) {
-      if (titleEl) titleEl.textContent = 'Chi tiết';
-      body.innerHTML = '<p style="color:#f8fafc;padding:8px 0">Không tìm thấy dữ liệu log (id: ' + esc(logId) + ').</p>';
-      return;
-    }
-
-    const ev = log._event || {};
-    const d = Object.assign({}, ev.detail || {}, log.detail || {});
-    let actor = d.actor || log.actor || ev.actor || log.filter || '';
-    // Suy actor từ title nếu thiếu
-    if (!actor || actor === 'player' || actor === 'system') {
-      const blob = [log.text, log.title, (log.summary && log.summary.title), d.name, ev.summaryText].join(' ');
-      if (/robot|người máy|phạm văn/i.test(blob) && /làm việc|mua|ghép|nấu/i.test(blob)) actor = 'robot';
-      else if (/nyc|người yêu/i.test(blob)) actor = 'nyc';
-      else if (/tiên|chăm sóc/i.test(blob)) actor = 'fairy';
-      else if (/giúp việc|mua đồ/i.test(blob)) actor = 'helper';
-      else if (/offline/i.test(blob)) actor = 'offline';
-      else if (/vườn|bạn đã/i.test(blob)) actor = 'garden';
-    }
-
-    const titleText = (log.summary && log.summary.title) || log.text || log.title || d.name || 'Chi tiết';
-    if (titleEl) titleEl.textContent = titleText;
-
-    const firstAt = d.firstAt || log.firstAt || ev.firstAt;
-    const lastAt = d.lastAt || log.lastAt || log.timestamp || ev.timestamp;
-    let timeStr = '—';
+function formatLogEventsHtml(d) {
+  const evs = (d && Array.isArray(d.events)) ? d.events : [];
+  if (!evs.length) return '';
+  const clock = (ts) => {
+    if (!ts) return '';
+    if (typeof Game !== 'undefined' && Game.formatLogClock) return Game.formatLogClock(ts);
     try {
-      if (typeof Game !== 'undefined' && Game.formatLogClock) {
-        if (firstAt && lastAt && Math.abs(lastAt - firstAt) >= 1000) {
-          timeStr = Game.formatLogClock(firstAt, true) + ' → ' + Game.formatLogClock(lastAt, true);
-        } else {
-          timeStr = Game.formatLogClock(lastAt || firstAt, true) || '—';
-        }
+      return new Date(ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
+    } catch (_) { return ''; }
+  };
+  const label = (ev) => {
+    const a = String(ev.action || '');
+    const n = ev.name ? String(ev.name) : '';
+    const costStr = (ev.cost != null && Number(ev.cost) > 0) ? (' · −' + Number(ev.cost).toLocaleString() + '🪙') : '';
+    if (a === 'plant') return 'Trồng ' + (n ? n + ' · ' : '') + (ev.plots || ev.qty || 1) + ' ô';
+    if (a === 'water') return 'Tưới ' + (ev.plots || 1) + ' ô' + (ev.plotId != null ? ' (#' + (Number(ev.plotId) + 1) + ')' : '');
+    if (a === 'fert') return 'Bón ' + (n || 'phân') + ' · ' + (ev.plots || 1) + ' ô';
+    if (a === 'replant') return 'Trồng lại ' + (n ? n + ' · ' : '') + (ev.plots || 1) + ' ô';
+    if (a === 'harvest') return 'Thu hoạch ' + (n ? n + ' · ' : '') + (ev.plots || 1) + ' ô · +' + (ev.yield || 0) + ' SP';
+    if (a === 'fairy_water') return 'Tiên tưới ' + (ev.actions || ev.plots || 1) + ' ô';
+    if (a === 'fairy_fert') return 'Tiên bón ' + (ev.actions || 1) + ' lần';
+    if (a === 'fairy_rain_seed') return 'Nhặt hạt mưa ×' + (ev.qty || 1) + (n ? ' (' + n + ')' : '');
+    if (a === 'nyc_plant') return 'NYC trồng ' + (n ? n + ' · ' : '') + (ev.plots || 1) + ' ô';
+    if (a === 'nyc_harvest') return 'NYC thu ' + (n ? n + ' · ' : '') + '+' + (ev.yield || 0) + ' SP';
+    if (a === 'helper_buy') return 'Giúp việc mua phân ×' + (ev.qty || 1) + costStr;
+    if (a === 'robot_seed') return 'Robot mua hạt «' + (n || '?') + '» ×' + Number(ev.qty || 1).toLocaleString() + costStr;
+    if (a === 'robot_cook') return 'Robot nấu «' + (n || 'món') + '» ×' + Number(ev.qty || 1).toLocaleString();
+    if (a === 'robot_merge') return 'Robot ghép ⭐×' + (ev.star || 0) + ' · ✨×' + (ev.myth || 0);
+    if (a === 'rain') return 'Mưa ×' + (ev.count || 1) + ' trận';
+    if (a === 'levelup') return 'Lên cấp → Lv ' + (ev.level || '');
+    if (a === 'daily') return 'Thưởng ngày +' + Number(ev.coins || 0).toLocaleString() + '🪙' + (ev.streak ? ' · streak ' + ev.streak : '');
+    if (a === 'xp') return 'Nhận +' + (ev.xp || 0) + ' XP';
+    return a + (n ? ' · ' + n : '') + (ev.qty != null ? ' ×' + ev.qty : '') + (ev.plots != null ? ' · ' + ev.plots + ' ô' : '') + costStr;
+  };
+  // hiện tối đa 80 event gần nhất
+  const slice = evs.slice(-80);
+  let h = '<div class="ad-block ad-events"><div class="ad-label">📋 Chi tiết thao tác (' + evs.length + ')</div><ul class="ad-list ad-events-list">';
+  slice.forEach(ev => {
+    h += '<li><span class="ad-ev-time">' + clock(ev.timestamp) + '</span> · ' + label(ev) + '</li>';
+  });
+  if (evs.length > 80) h += '<li style="opacity:.7">… và ' + (evs.length - 80) + ' thao tác trước</li>';
+  h += '</ul></div>';
+  return h;
+}
+
+function formatActivityDetailHtml(log) {
+  // Modal CHI TIẾT đầy đủ — list ngoài ngắn, trong này liệt kê đã làm gì
+  if (log && (log.aggregated || (log._event && log._event.aggregated) || log.action === 'day_summary' || (log._event && log._event.action === 'day_summary'))) {
+    const ev = log._event || log;
+    const d = Object.assign({}, (ev.detail || {}), (log.detail || {}));
+    // actor từ nhiều nguồn
+    const actor = d.actor || ev.actor || log.actor || '';
+    const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const num = (n) => Number(n || 0).toLocaleString('vi-VN');
+    let html = '';
+
+    // Khung giờ
+    const firstAt = d.firstAt || ev.firstAt || log.firstAt;
+    const lastAt = d.lastAt || ev.lastAt || log.timestamp || ev.timestamp;
+    let timeStr = '—';
+    if (typeof Game !== 'undefined' && Game.formatLogClock) {
+      if (firstAt && lastAt && Math.abs(lastAt - firstAt) >= 1000) {
+        timeStr = Game.formatLogClock(firstAt, true) + ' → ' + Game.formatLogClock(lastAt, true);
+      } else if (lastAt || firstAt) {
+        timeStr = Game.formatLogClock(lastAt || firstAt, true);
       }
-    } catch (_) {}
+    }
+    html += '<div class="ad-hero"><div class="ad-hero-label">Thời gian hoạt động</div><div class="ad-hero-value">' + esc(timeStr) + '</div></div>';
+
+    if (actor === 'nyc') {
+      const name = d.name || 'NYC';
+      html += '<div class="ad-block"><div class="ad-label">' + esc(name) + ' đã làm gì hôm nay</div>';
+      html += '<ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Số vườn NYC xử lý</span><span class="ad-li-v">' + esc(d.gardens || 0) + ' vườn</span></li>';
+      html += '<li><span class="ad-li-k">Tổng lần trồng / thu (mỗi ô = 1 lần)</span><span class="ad-li-v">' + esc(num(d.plantTimes)) + ' lần</span></li>';
+      html += '<li><span class="ad-li-k">Tổng sản phẩm thu được</span><span class="ad-li-v">+' + esc(num(d.harvestYield)) + ' SP</span></li>';
+      html += '</ul></div>';
+
+      if (Array.isArray(d.byGarden) && d.byGarden.length) {
+        html += '<div class="ad-block"><div class="ad-label">Chi tiết từng vườn</div><ul class="ad-list ad-list-rich">';
+        d.byGarden.forEach(g => {
+          const label = g.gardenLabel || ('Vườn ' + (Number(g.gardenIndex) + 1));
+          const times = g.plantTimes != null ? g.plantTimes : (g.planted || 0);
+          const y = g.yield || 0;
+          const ph = g.plotsHarvested || 0;
+          html += '<li class="ad-li-stack"><strong>' + esc(label) + '</strong>';
+          html += '<div class="ad-li-sub">• Số lần trồng/thu (mỗi ô 1 lần): <b>' + esc(num(times)) + '</b></div>';
+          if (ph) html += '<div class="ad-li-sub">• Số ô thu hoạch: <b>' + esc(num(ph)) + '</b></div>';
+          html += '<div class="ad-li-sub">• Sản phẩm: <b>+' + esc(num(y)) + ' SP</b></div>';
+          html += '</li>';
+        });
+        html += '</ul></div>';
+      }
+      html += '<p class="ad-note">Ghi chú: mỗi ô được NYC trồng hoặc thu tính đúng 1 lần.</p>';
+      return html;
+    }
+
+    if (actor === 'robot') {
+      const name = d.name || 'Robot';
+      html += '<div class="ad-block"><div class="ad-label">' + esc(name) + ' đã làm gì hôm nay</div>';
+      html += '<ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Tổng tiền mua hạt</span><span class="ad-li-v">-' + esc(num(d.seedCost)) + ' xu</span></li>';
+      html += '<li><span class="ad-li-k">Ghép hạt sao</span><span class="ad-li-v">×' + esc(num(d.mergeStar)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Ghép hạt huyền thoại</span><span class="ad-li-v">×' + esc(num(d.mergeMyth)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Số món đã nấu</span><span class="ad-li-v">' + esc(num(d.cookCount)) + ' món</span></li>';
+      html += '</ul></div>';
+
+      if (Array.isArray(d.seedsBought) && d.seedsBought.length) {
+        html += '<div class="ad-block"><div class="ad-label">Danh sách hạt đã mua</div><ul class="ad-list ad-list-rich">';
+        d.seedsBought.forEach(it => {
+          html += '<li><span class="ad-li-k">' + esc(it.name) + '</span><span class="ad-li-v">×' + esc(num(it.qty)) + '</span></li>';
+        });
+        html += '</ul></div>';
+      } else {
+        html += '<div class="ad-block"><div class="ad-label">Danh sách hạt đã mua</div><p class="ad-empty-line">Chưa mua hạt trong phiên này.</p></div>';
+      }
+
+      if (Array.isArray(d.cooked) && d.cooked.length) {
+        html += '<div class="ad-block"><div class="ad-label">Danh sách món đã nấu</div><ul class="ad-list ad-list-rich">';
+        d.cooked.forEach(it => {
+          html += '<li><span class="ad-li-k">' + esc(it.name) + '</span><span class="ad-li-v">×' + esc(num(it.qty)) + '</span></li>';
+        });
+        html += '</ul></div>';
+      }
+
+      html += '<div class="ad-block"><div class="ad-label">Ghép hạt</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Hạt sao tạo được</span><span class="ad-li-v">×' + esc(num(d.mergeStar)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Hạt huyền thoại tạo được</span><span class="ad-li-v">×' + esc(num(d.mergeMyth)) + '</span></li>';
+      html += '</ul></div>';
+      return html;
+    }
+
+    if (actor === 'fairy') {
+      const name = d.name || 'Tiên';
+      html += '<div class="ad-block"><div class="ad-label">' + esc(name) + ' đã chăm sóc gì</div>';
+      html += '<ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Số vườn đã chăm</span><span class="ad-li-v">' + esc(num(d.gardensWatered)) + ' vườn</span></li>';
+      html += '<li><span class="ad-li-k">Số lần tưới</span><span class="ad-li-v">' + esc(num(d.waterActions)) + ' lần</span></li>';
+      html += '<li><span class="ad-li-k">Số lần bón phân</span><span class="ad-li-v">' + esc(num(d.fertActions)) + ' lần</span></li>';
+      html += '<li><span class="ad-li-k">Hạt nhặt khi mưa</span><span class="ad-li-v">' + esc(num(d.rainSeeds)) + ' hạt</span></li>';
+      html += '</ul></div>';
+      html += '<p class="ad-note">Theo cấu hình Tiên hiện tại (tưới / bón / nhặt hạt mưa).</p>';
+      return html;
+    }
+
+    if (actor === 'helper') {
+      const name = d.name || 'Giúp việc';
+      html += '<div class="ad-block"><div class="ad-label">' + esc(name) + ' đã mua gì</div>';
+      html += '<ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Tổng số món</span><span class="ad-li-v">' + esc(num(d.qty)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Tổng tiền đã mất</span><span class="ad-li-v">-' + esc(num(d.spent)) + ' xu</span></li>';
+      html += '</ul></div>';
+      if (Array.isArray(d.items) && d.items.length) {
+        html += '<div class="ad-block"><div class="ad-label">Chi tiết từng món</div><ul class="ad-list ad-list-rich">';
+        d.items.forEach(it => {
+          html += '<li><span class="ad-li-k">' + esc(it.name) + '</span><span class="ad-li-v">×' + esc(num(it.qty)) + '</span></li>';
+        });
+        html += '</ul></div>';
+      } else {
+        html += '<p class="ad-empty-line">Chưa ghi nhận danh sách món (sẽ có sau các lần mua mới).</p>';
+      }
+      return html;
+    }
+
+    if (actor === 'garden') {
+      html += '<div class="ad-block"><div class="ad-label">Bạn đã làm gì trên vườn</div>';
+      html += '<ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Số lần trồng</span><span class="ad-li-v">' + esc(num(d.planted)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Số ô thu hoạch</span><span class="ad-li-v">' + esc(num(d.plotsHarvested)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Sản phẩm nhận được</span><span class="ad-li-v">+' + esc(num(d.harvestYield)) + ' SP</span></li>';
+      html += '<li><span class="ad-li-k">Trồng lại</span><span class="ad-li-v">' + esc(num(d.replanted)) + '</span></li>';
+      html += '</ul></div>';
+      if (Array.isArray(d.byGarden) && d.byGarden.length) {
+        html += '<div class="ad-block"><div class="ad-label">Từng vườn</div><ul class="ad-list ad-list-rich">';
+        d.byGarden.forEach(g => {
+          html += '<li class="ad-li-stack"><strong>' + esc(g.gardenLabel) + '</strong>';
+          html += '<div class="ad-li-sub">• Trồng: <b>' + esc(num(g.planted)) + '</b></div>';
+          html += '<div class="ad-li-sub">• Thu: <b>' + esc(num(g.plotsHarvested)) + ' ô</b></div>';
+          html += '<div class="ad-li-sub">• Sản phẩm: <b>+' + esc(num(g.yield)) + ' SP</b></div>';
+          html += '</li>';
+        });
+        html += '</ul></div>';
+      }
+      return html;
+    }
+
+    // fallback
+    html += '<pre class="ad-pre">' + esc(JSON.stringify(d, null, 2)) + '</pre>';
+    return html;
+  }
+
+
+  if (!log) return '<p>Không có dữ liệu.</p>';
+  const d = log.detail || {};
+  const type = log.type;
+
+  // === EVENT RIÊNG (nhật ký chi tiết) ===
+  if (log._isEvent || log._event || (d.action && d.timestamp && d.actor)) {
+    const ev = log._event || {};
+    const act = d.action || log.action || ev.action || type;
+    const actor = d.actor || log.actor || ev.actor || 'player';
+    const actorLabel = ({
+      player: 'Người chơi', robot: 'Robot', nyc: 'NYC', fairy: 'Tiên',
+      helper: 'Giúp việc', system: 'Hệ thống', offline: 'Offline'
+    })[actor] || actor;
+    const title = (log.summary && log.summary.title) ? log.summary.title : (act || 'Chi tiết');
+    const msg = (log.summary && log.summary.text) ? log.summary.text : (d.summaryText || '');
+    const timeText = d.timeText || (typeof Game !== 'undefined' && Game.formatLogClock
+      ? Game.formatLogClock(d.timestamp || log.timestamp) : '');
+
+    const kv = [];
+    kv.push(['Thời gian', timeText || '—']);
+    kv.push(['Người làm', actorLabel]);
+    if (d.mode) kv.push(['Chế độ', d.mode + (d.eventSource ? ' · ' + d.eventSource : '')]);
+    if (d.name || (d.target && d.target.name)) kv.push(['Đối tượng', d.name || d.target.name]);
+    if (d.quantity != null) kv.push(['Số lượng', '×' + d.quantity]);
+    if (d.plotLabel || d.cellId != null) kv.push(['Ô đất', d.plotLabel || ('#' + (Number(d.cellId) + 1))]);
+    if (d.gardenIndex != null) kv.push(['Vườn', '#' + (Number(d.gardenIndex) + 1)]);
+    if (d.cost != null) kv.push(['Chi phí', '−' + Number(d.cost).toLocaleString() + '🪙']);
+    if (d.coins != null) kv.push(['Xu', (Number(d.coins) >= 0 ? '+' : '') + Number(d.coins).toLocaleString() + '🪙']);
+    if (d.sp != null) kv.push(['SP', '+' + Number(d.sp).toLocaleString()]);
+    if (d.xp != null) kv.push(['XP', '+' + Number(d.xp).toLocaleString()]);
+    if (d.plantedClock) kv.push(['Trồng lúc', d.plantedClock]);
+    if (d.readyClock) kv.push(['Chín lúc', d.readyClock]);
 
     let html = '';
-    html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);margin-bottom:12px">';
-    html += '<div style="font-size:0.72rem;font-weight:800;color:#86efac;text-transform:uppercase;margin-bottom:4px">Thời gian</div>';
-    html += '<div style="font-size:1.05rem;font-weight:800;color:#f8fafc">' + esc(timeStr) + '</div></div>';
+    html += '<div class="ad-hero">';
+    html += '<div class="ad-hero-icon">' + (title.match(/^[^\w\s]/) || ['📋'])[0] + '</div>';
+    html += '<div><div class="ad-hero-title">' + title + '</div>';
+    if (msg) html += '<div class="ad-hero-sub">' + msg + '</div>';
+    html += '</div></div>';
 
-    const isAgg = !!(log.aggregated || ev.aggregated || log.action === 'day_summary' || ev.action === 'day_summary' || String(log.id || '').indexOf('agg_') === 0);
+    html += '<div class="ad-grid">';
+    kv.forEach(([label, value], i) => {
+      const full = (label === 'Đối tượng' || label === 'Chế độ') ? ' full' : '';
+      html += '<div class="ad-kv' + full + '"><div class="ad-kv-label">' + label + '</div><div class="ad-kv-value">' + value + '</div></div>';
+    });
+    html += '</div>';
 
-    if (actor === 'robot' || (isAgg && /robot/i.test(String(log.filter || '')))) {
-      html += head((d.name || 'Robot') + ' — công việc');
-      html += row('Chi phí mua hạt', '-' + num(d.seedCost) + ' xu');
-      html += row('Ghép hạt sao', '×' + num(d.mergeStar));
-      html += row('Ghép huyền thoại', '×' + num(d.mergeMyth));
-      html += row('Số món nấu', num(d.cookCount));
-      if (Array.isArray(d.seedsBought) && d.seedsBought.length) {
-        html += head('Hạt đã mua');
-        d.seedsBought.forEach(it => { html += row(it.name, '×' + num(it.qty)); });
-      }
-      if (Array.isArray(d.cooked) && d.cooked.length) {
-        html += head('Món đã nấu');
-        d.cooked.forEach(it => { html += row(it.name, '×' + num(it.qty)); });
-      }
-    } else if (actor === 'nyc') {
-      html += head((d.name || 'NYC') + ' — công việc');
-      html += row('Số vườn', String(d.gardens || 0));
-      html += row('Lần trồng/thu (mỗi ô = 1)', num(d.plantTimes));
-      html += row('Sản phẩm', '+' + num(d.harvestYield) + ' SP');
-      if (Array.isArray(d.byGarden) && d.byGarden.length) {
-        html += head('Từng vườn');
-        d.byGarden.forEach(g => {
-          const times = g.plantTimes != null ? g.plantTimes : (g.planted || 0);
-          html += row(g.gardenLabel || ('Vườn ' + (Number(g.gardenIndex) + 1)), num(times) + ' lần · +' + num(g.yield) + ' SP');
-        });
-      }
-    } else if (actor === 'fairy') {
-      html += head((d.name || 'Tiên') + ' — chăm sóc');
-      html += row('Số vườn', num(d.gardensWatered));
-      html += row('Lần tưới', num(d.waterActions));
-      html += row('Lần bón', num(d.fertActions));
-      html += row('Hạt mưa', num(d.rainSeeds));
-    } else if (actor === 'helper') {
-      html += head((d.name || 'Giúp việc') + ' — mua sắm');
-      html += row('Tổng chi', '-' + num(d.spent) + ' xu');
-      html += row('Số món', num(d.qty));
-      if (Array.isArray(d.items) && d.items.length) {
-        html += head('Chi tiết món');
-        d.items.forEach(it => { html += row(it.name, '×' + num(it.qty)); });
-      }
-    } else if (actor === 'garden') {
-      html += head('Vườn — hoạt động');
-      html += row('Trồng', num(d.planted));
-      html += row('Ô thu hoạch', num(d.plotsHarvested));
-      html += row('Sản phẩm', '+' + num(d.harvestYield) + ' SP');
-    } else if (actor === 'offline' || log.type === 'offline' || log.mode === 'offline') {
-      html += head('Offline');
-      if (d.durationText) html += row('Thời lượng', d.durationText);
-      if (d.garden && d.garden.product != null) html += row('SP', '+' + num(d.garden.product));
-      if (d.nyc && d.nyc.gardens) html += row('NYC', d.nyc.gardens + ' vườn');
-      if (d.robot) {
-        html += row('Robot mua hạt', num(d.robot.seedsBought));
-        html += row('Robot ghép sao', num(d.robot.starMerged));
-        html += row('Robot HT', num(d.robot.mythicMerged));
-      }
-      if (d.fairy) {
-        html += row('Tiên tưới', num(d.fairy.watered));
-        html += row('Hạt mưa', num(d.fairy.rainSeeds));
-      }
-      if (d.xp) html += row('XP', '+' + num(d.xp));
-    } else {
-      html += head('Thông tin');
-      html += row('Nội dung', log.text || (log.summary && log.summary.text) || '—');
-      html += row('Actor', actor || '—');
-      Object.keys(d).forEach(k => {
-        if (d[k] == null || typeof d[k] === 'object') return;
-        html += row(k, d[k]);
+    if (d.ingredients && typeof d.ingredients === 'object') {
+      html += '<div class="ad-block"><div class="ad-label">Nguyên liệu</div><ul class="ad-list">';
+      Object.keys(d.ingredients).forEach(k => {
+        html += '<li><strong>' + k + '</strong><span>×' + d.ingredients[k] + '</span></li>';
       });
+      html += '</ul></div>';
     }
 
-    body.innerHTML = html;
-    body.style.cssText = 'display:block!important;visibility:visible!important;opacity:1!important;color:#f8fafc!important;min-height:80px!important;';
-  } catch (err) {
-    console.error('[log] openActivityDetail error', err);
-    const body = document.getElementById('activity-detail-body');
-    if (body) body.innerHTML = '<p style="color:#fca5a5">Lỗi hiển thị chi tiết: ' + String(err && err.message || err) + '</p>';
-    document.getElementById('modal-activity-detail')?.classList.add('show');
+    if (d.result && typeof d.result === 'object') {
+      const r = d.result;
+      const rows = [];
+      if (r.currency != null) rows.push(['Tiền', r.currency]);
+      if (r.xp != null) rows.push(['XP', '+' + r.xp]);
+      if (r.sp != null) rows.push(['SP', '+' + r.sp]);
+      if (rows.length) {
+        html += '<div class="ad-block"><div class="ad-label">Kết quả</div><ul class="ad-list">';
+        rows.forEach(([k, v]) => { html += '<li><strong>' + k + '</strong><span>' + v + '</span></li>'; });
+        html += '</ul></div>';
+      }
+    }
+
+    if (act === 'offline_end' || act === 'offline' || type === 'offline') {
+      html += '<div class="ad-block"><div class="ad-label">⚡ Phiên offline</div><ul class="ad-list">';
+      if (d.startedClock || d.endedClock) {
+        html += '<li><strong>Khung giờ</strong><span>' + (d.startedClock || '—') + ' → ' + (d.endedClock || '—') + '</span></li>';
+      }
+      if (d.durationText) html += '<li><strong>Thời lượng</strong><span>' + d.durationText + '</span></li>';
+      if (d.garden) html += '<li><strong>Vườn</strong><span>+' + (d.garden.product || 0) + ' SP · ' + (d.garden.harvested || 0) + ' ô</span></li>';
+      if (d.robot) {
+        const rj = (d.robot.seedsBought||0)+(d.robot.cooked||0)+(d.robot.starMerged||0)+(d.robot.mythicMerged||0);
+        if (rj) html += '<li><strong>Robot</strong><span>' + rj + ' việc</span></li>';
+      }
+      if (d.nyc && d.nyc.gardens) html += '<li><strong>NYC</strong><span>' + d.nyc.gardens + ' vườn</span></li>';
+      if (d.fairy && d.fairy.watered) html += '<li><strong>Tiên</strong><span>' + d.fairy.watered + ' ô</span></li>';
+      if (d.xp) html += '<li><strong>XP</strong><span>+' + Number(d.xp).toLocaleString() + '</span></li>';
+      html += '</ul></div>';
+      if (Array.isArray(d.timeline) && d.timeline.length) {
+        html += '<div class="ad-block"><div class="ad-label">Timeline</div><ul class="ad-list">';
+        d.timeline.slice(0, 100).forEach(te => {
+          const tclock = (typeof Game !== 'undefined' && Game.formatLogClock && te.timestamp)
+            ? Game.formatLogClock(te.timestamp) : '';
+          const ttxt = te.summaryText || te.text || te.action || te.type || '';
+          html += '<li><strong>' + (tclock || '·') + '</strong><span>' + ttxt + '</span></li>';
+        });
+        html += '</ul></div>';
+      }
+    }
+    return html;
   }
+
+  let html = '';
+
+  if (type === 'offline') {
+    html += '<div class="ad-block"><div class="ad-label">⚡ Offline</div>';
+    if (d.startedClock || d.endedClock) {
+      html += '<div class="ad-value" style="font-size:0.9rem">Offline từ: <strong>' + (d.startedClock || '—') +
+        '</strong> · Online lại: <strong>' + (d.endedClock || '—') + '</strong></div>';
+    }
+    html += '<div class="ad-value" style="margin-top:6px">Thời gian: <strong>' +
+      (d.durationText || log.summary?.duration || '—') + '</strong>';
+    if (d.durationSeconds) html += ' <span style="opacity:.7">(' + d.durationSeconds + 's)</span>';
+    html += '</div></div>';
+    if (d.garden) {
+      html += '<div class="ad-block"><div class="ad-label">🌱 Vườn</div><ul class="ad-list">';
+      html += '<li>Thu hoạch: ' + (d.garden.harvested || 0) + ' ô</li>';
+      html += '<li>Sản phẩm: +' + (d.garden.product || 0) + ' SP</li>';
+      html += '<li>Trồng lại: ' + (d.garden.replanted || 0) + ' ô</li>';
+      html += '</ul></div>';
+    }
+    if (d.nyc && (d.nyc.gardens || d.nyc.cells)) {
+      html += '<div class="ad-block"><div class="ad-label">❤️ NYC</div><ul class="ad-list">';
+      html += '<li>Số vườn xử lý: ' + (d.nyc.gardens || 0) + '</li>';
+      html += '<li>Số ô xử lý: ' + (d.nyc.cells || 0) + '</li>';
+      html += '</ul></div>';
+    }
+    if (d.robot) {
+      html += '<div class="ad-block"><div class="ad-label">🤖 Robot</div><ul class="ad-list">';
+      html += '<li>Mua hạt: ' + (d.robot.seedsBought || 0) + '</li>';
+      html += '<li>Nấu: ' + (d.robot.cooked || 0) + '</li>';
+      html += '<li>Ghép ⭐: ' + (d.robot.starMerged || 0) + '</li>';
+      html += '<li>Ghép ✨: ' + (d.robot.mythicMerged || 0) + '</li>';
+      html += '</ul></div>';
+    }
+    if (d.fairy) {
+      html += '<div class="ad-block"><div class="ad-label">🧚 Tiên</div><ul class="ad-list">';
+      html += '<li>Tưới: ' + (d.fairy.watered || 0) + ' ô</li>';
+      html += '<li>Nhặt hạt mưa: ' + (d.fairy.rainSeeds || 0) + '</li>';
+      html += '</ul></div>';
+    }
+    if (d.xp) html += '<div class="ad-block"><div class="ad-label">⭐ XP</div><div class="ad-value">+' + Number(d.xp).toLocaleString() + ' XP</div></div>';
+    if (d.rainHits) html += '<div class="ad-block"><div class="ad-label">🌧️ Mưa</div><div class="ad-value">' + d.rainHits + ' trận</div></div>';
+    return (html || '<p>Không có chi tiết offline.</p>') + formatLogEventsHtml(d);
+  }
+
+  if (type === 'garden') {
+    html += '<ul class="ad-list">';
+    html += '<li>Trồng: ' + (d.planted || 0) + ' ô (' + (d.plantActions || 0) + ' lượt)</li>';
+    html += '<li>Thu hoạch: ' + (d.harvestYield || 0) + ' SP · ' + (d.plotsHarvested || 0) + ' ô (' + (d.harvestCycles || 0) + ' lần)</li>';
+    html += '<li>Trồng lại: ' + (d.replanted || 0) + ' ô</li>';
+    html += '</ul>';
+    return html + formatLogEventsHtml(d);
+  }
+
+  if (type === 'nyc') {
+    html += '<ul class="ad-list">';
+    html += '<li>Số vườn: ' + (d.gardens || 0) + '</li>';
+    html += '<li>Số ô: ' + (d.plots || 0) + '</li>';
+    html += '<li>Thu: ' + (d.harvestYield || 0) + ' SP</li>';
+    html += '</ul>';
+    if (d.byGarden && typeof d.byGarden === 'object') {
+      html += '<div class="ad-label" style="margin-top:10px">Chi tiết từng vườn</div><ul class="ad-list">';
+      Object.keys(d.byGarden).forEach(name => {
+        const g = d.byGarden[name] || {};
+        html += '<li><strong>' + name + '</strong>: ' + (g.plots || 0) + ' ô · +' + (g.yield || 0) + ' SP</li>';
+      });
+      html += '</ul>';
+    }
+    return html + formatLogEventsHtml(d);
+  }
+
+  if (type === 'robot') {
+    html += '<ul class="ad-list">';
+    html += '<li>Tổng hạt mua: ' + (d.seedTotal || 0) + '</li>';
+    if (d.seedsBought) {
+      Object.keys(d.seedsBought).forEach(nm => {
+        html += '<li>Hạt ' + nm + ': ×' + d.seedsBought[nm] + '</li>';
+      });
+    }
+    if (d.seedCost) html += '<li>Chi phí: −' + Number(d.seedCost).toLocaleString() + '🪙</li>';
+    html += '<li>Nấu: ' + (d.cookCount || 0) + ' món</li>';
+    if (d.cooked) {
+      Object.keys(d.cooked).forEach(nm => {
+        html += '<li>Món ' + nm + ': ×' + d.cooked[nm] + '</li>';
+      });
+    }
+    html += '<li>Ghép ⭐: ' + (d.starMerged || 0) + '</li>';
+    html += '<li>Ghép ✨: ' + (d.mythicMerged || 0) + '</li>';
+    html += '</ul>';
+    return html + formatLogEventsHtml(d);
+  }
+
+  if (type === 'fairy') {
+    html += '<ul class="ad-list">';
+    html += '<li>Vườn tưới: ' + (d.gardensWatered || 0) + '</li>';
+    html += '<li>Tưới ô: ' + (d.watered || 0) + '</li>';
+    html += '<li>Bón: ' + (d.fertActions || 0) + ' lần</li>';
+    html += '<li>Nhặt hạt mưa: ' + (d.rainSeeds || 0) + '</li>';
+    html += '</ul>';
+    return html + formatLogEventsHtml(d);
+  }
+
+  if (type === 'helper') {
+    html += '<ul class="ad-list">';
+    html += '<li>Phân mua: ' + (d.fertBought || 0) + '</li>';
+    html += '<li>Chi tiêu: −' + Number(d.spent || 0).toLocaleString() + '🪙</li>';
+    html += '</ul>';
+    return html + formatLogEventsHtml(d);
+  }
+
+  if (type === 'level') {
+    html += '<ul class="ad-list">';
+    (d.steps || []).forEach(s => { html += '<li>' + s + '</li>'; });
+    html += '</ul>';
+    return html + formatLogEventsHtml(d);
+  }
+
+  if (type === 'rain') {
+    return '<ul class="ad-list"><li>Số trận: ' + (d.rainCount || 0) + '</li><li>Hạt nhặt: ' + (d.rainSeeds || 0) + '</li></ul>' + formatLogEventsHtml(d);
+  }
+
+  if (type === 'reward') {
+    return '<ul class="ad-list"><li>Xu: +' + Number(d.coins || 0).toLocaleString() + '🪙</li><li>Streak: ' + (d.streak || 0) + '🔥</li></ul>' + formatLogEventsHtml(d);
+  }
+
+  // generic
+  return '<pre class="ad-pre">' + JSON.stringify(d, null, 2) + '</pre>';
 }
 
-
-
-function closeActivityDetail() {
+function openActivityDetail(logId) {
+  const log = (typeof Game !== 'undefined' && Game.getActivityLogById)
+    ? Game.getActivityLogById(logId)
+    : null;
   const modal = document.getElementById('modal-activity-detail');
-  if (!modal) return;
-  modal.classList.remove('show');
-  modal.style.display = '';
-  modal.style.zIndex = '';
+  const title = document.getElementById('activity-detail-title');
+  const body = document.getElementById('activity-detail-body');
+  if (!modal || !body) return;
+  if (!log) {
+    if (title) title.textContent = 'Chi tiết';
+    body.innerHTML = '<p>Không tìm thấy log.</p>';
+    modal.classList.add('show');
+    return;
+  }
+  const t = (log.summary && log.summary.title) ? log.summary.title
+    : (log.text || log.title || 'Chi tiết');
+  if (title) title.textContent = t;
+  body.innerHTML = formatActivityDetailHtml(log);
+  modal.classList.add('show');
 }
 
-document.getElementById('btn-close-activity-detail')?.addEventListener('click', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  closeActivityDetail();
+
+document.getElementById('btn-close-activity-detail')?.addEventListener('click', () => {
+  document.getElementById('modal-activity-detail')?.classList.remove('show');
 });
 document.getElementById('modal-activity-detail')?.addEventListener('click', (e) => {
-  if (e.target.id === 'modal-activity-detail') closeActivityDetail();
-});
-// Esc để đóng
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    const m = document.getElementById('modal-activity-detail');
-    if (m && m.classList.contains('show')) closeActivityDetail();
-  }
+  if (e.target.id === 'modal-activity-detail') e.currentTarget.classList.remove('show');
 });
 
 let _lastOfflineLogId = null;
@@ -5098,33 +5323,17 @@ function showOfflineReturnModal(report, logEntry) {
   if (durEl) durEl.innerHTML = 'Bạn đã offline <strong>' + dur + '</strong>';
 
   const items = [];
-  const sp = Number(report.totalYieldAmount || 0) || 0;
-  const plotsH = Number(report.uniquePlotsHarvested || report.totalHarvest || 0) || 0;
-  if (sp) items.push({ icon: '🌱', text: '+' + Number(sp).toLocaleString('vi-VN') + ' SP' + (plotsH ? (' · ' + plotsH + ' ô') : '') });
-  if (report.xpGained) items.push({ icon: '⭐', text: '+' + Number(report.xpGained).toLocaleString('vi-VN') + ' XP' });
-  // Robot: không cộng số hạt thành "việc" (tránh 139992 việc)
-  const rSeed = Number(report.robotSeedsBought || 0) || 0;
-  const rStar = Number(report.robotStar || 0) || 0;
-  const rMyth = Number(report.robotMyth || 0) || 0;
-  const rCook = Number(report.robotCooked || 0) || 0;
-  const rParts = [];
-  if (rSeed) rParts.push('mua ' + rSeed.toLocaleString('vi-VN') + ' hạt');
-  if (rStar) rParts.push('ghép sao ×' + rStar.toLocaleString('vi-VN'));
-  if (rMyth) rParts.push('huyền thoại ×' + rMyth.toLocaleString('vi-VN'));
-  if (rCook) rParts.push('nấu ' + rCook.toLocaleString('vi-VN'));
-  if (rParts.length) items.push({ icon: '🤖', text: rParts.join(' · ') });
-  if (report.nycGardens) {
-    const nycP = Number(report.nycPlots || report.totalPlant || 0) || 0;
-    items.push({ icon: '❤️', text: report.nycGardens + ' vườn NYC' + (nycP ? (' · ' + nycP.toLocaleString('vi-VN') + ' lần') : '') });
+  const sp = report.totalYieldAmount || report.totalHarvest || 0;
+  if (sp) items.push({ icon: '🌱', text: '+' + sp + ' SP' });
+  if (report.xpGained) items.push({ icon: '⭐', text: '+' + Number(report.xpGained).toLocaleString() + ' XP' });
+  const robotJobs = (report.robotSeedsBought || 0) + (report.robotStar || 0) + (report.robotMyth || 0) + (report.robotCooked || 0);
+  if (robotJobs) items.push({ icon: '🤖', text: robotJobs + ' việc' });
+  if (report.nycGardens) items.push({ icon: '❤️', text: report.nycGardens + ' vườn NYC' });
+  if (report.rainWatered || report.fairyCycles) {
+    items.push({ icon: '🧚', text: (report.rainWatered || report.fairyCycles || 0) + ' ô tiên' });
   }
-  // Tiên: chu kỳ chăm / ô tưới — tách rõ
-  const fairyCycles = Number(report.fairyCycles || 0) || 0;
-  const rainWatered = Number(report.rainWatered || 0) || 0;
-  if (fairyCycles) items.push({ icon: '🧚', text: 'Chăm ' + fairyCycles.toLocaleString('vi-VN') + ' chu kỳ' });
-  else if (rainWatered) items.push({ icon: '🧚', text: 'Tưới ' + rainWatered.toLocaleString('vi-VN') + ' ô' });
-  if (report.fairyRainSeeds) items.push({ icon: '🌱', text: 'Nhặt ' + Number(report.fairyRainSeeds).toLocaleString('vi-VN') + ' hạt mưa' });
+  if (report.fairyRainSeeds) items.push({ icon: '🌱', text: 'Nhặt ' + report.fairyRainSeeds + ' hạt mưa' });
   if (report.rainHits) items.push({ icon: '🌧️', text: report.rainHits + ' trận mưa' });
-  if (report.helperBuys) items.push({ icon: '🧹', text: 'Giúp việc mua ' + Number(report.helperBuys).toLocaleString('vi-VN') + ' món' });
 
   statsEl.innerHTML = items.length
     ? items.map(it => '<li><span>' + it.icon + '</span> ' + it.text + '</li>').join('')
@@ -5165,7 +5374,6 @@ function renderActivityPage() {
   }
   if (!Array.isArray(lines)) lines = [];
 
-  window._lastActivityLines = lines;
   actList.className = 'activity-list activity-timeline activity-log-pro';
 
   if (!lines.length) {
@@ -5221,27 +5429,13 @@ function renderActivityPage() {
   });
 
   actList.innerHTML = html;
-  // Map id → log đầy đủ để PC/mobile mở detail chắc chắn
-  window._activityLogMap = window._activityLogMap || {};
-  lines.forEach(a => {
-    if (a && a.id) window._activityLogMap[a.id] = a;
-  });
-  // Event delegation — ổn định hơn forEach onclick
-  if (!actList._logClickBound) {
-    actList._logClickBound = true;
-    actList.addEventListener('click', (e) => {
-      const el = e.target.closest('.activity-clickable');
-      if (!el || !actList.contains(el)) return;
-      e.preventDefault();
-      e.stopPropagation();
+  actList.querySelectorAll('.activity-clickable').forEach(el => {
+    el.onclick = () => {
       const id = el.getAttribute('data-id');
-      if (!id) return;
-      const cached = window._activityLogMap && window._activityLogMap[id];
-      openActivityDetail(id, cached);
-    });
-  }
+      if (id && typeof openActivityDetail === 'function') openActivityDetail(id);
+    };
+  });
 }
-
 
 function scheduleActivityMidnightPrune() {
   // Không hẹn 0h00 nữa — prune rolling do interval bên dưới
@@ -5381,14 +5575,7 @@ function renderLevelPage() {
 
 
 function closeModals() {
-  document.querySelectorAll('.modal').forEach(m => {
-    m.classList.remove('show');
-    // Xóa inline display nếu có (modal log detail)
-    if (m.id === 'modal-activity-detail') {
-      m.style.display = '';
-      m.style.zIndex = '';
-    }
-  });
+  document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
 }
 
 document.querySelectorAll('.modal-close').forEach(btn => {
@@ -5411,22 +5598,15 @@ function applyTheme(mode) {
   const isDark = mode === 'dark';
   if (isDark) {
     root.setAttribute('data-theme', 'dark');
-    root.classList.add('dark');
-    if (document.body) document.body.classList.add('dark');
+    document.body.classList.add('dark');
     const ic = document.getElementById('theme-icon');
     if (ic) ic.className = 'fa-solid fa-sun';
   } else {
     root.removeAttribute('data-theme');
-    root.classList.remove('dark');
-    if (document.body) document.body.classList.remove('dark');
+    document.body.classList.remove('dark');
     const ic = document.getElementById('theme-icon');
     if (ic) ic.className = 'fa-solid fa-moon';
   }
-  // Theme không được để overlay chặn click
-  try {
-    document.getElementById('nav-backdrop')?.classList.remove('show');
-    document.body?.classList.remove('nav-more-visible');
-  } catch (_) {}
   try { localStorage.setItem('vx-theme', mode); } catch (_) {}
 }
 (function initTheme() {
