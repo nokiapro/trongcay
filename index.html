@@ -2,25 +2,7 @@
 <html lang="vi">
 <head>
 <script>
-(function () {
-  try {
-    var m = localStorage.getItem('vx-theme');
-    if (m === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      document.documentElement.classList.add('dark');
-    }
-  } catch (e) {}
-  document.addEventListener('DOMContentLoaded', function () {
-    try {
-      if (localStorage.getItem('vx-theme') === 'dark') {
-        document.body.classList.add('dark');
-      } else {
-        document.body.classList.remove('dark');
-        document.documentElement.classList.remove('dark');
-      }
-    } catch (e) {}
-  });
-})();
+(function(){try{var m=localStorage.getItem('vx-theme');if(m==='dark'){document.documentElement.setAttribute('data-theme','dark');document.documentElement.classList.add('dark');}}catch(e){}})();
 </script>
 
   <meta charset="UTF-8" />
@@ -37,7 +19,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/style.css?v=1.9.204" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.205" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -51,13 +33,13 @@
     <div class="orb orb3"></div>
   </div>
   
-    <div id="auth-loading" class="auth-loading" style="display:none" aria-hidden="true">
+    <div id="auth-loading" class="auth-loading">
     <div class="auth-loading-card">
       <i class="fa-solid fa-spinner fa-spin"></i>
       <p>Đang khôi phục phiên đăng nhập...</p>
     </div>
   </div>
-  <div id="login-screen" class="login-screen" style="display:flex">
+  <div id="login-screen" class="login-screen" style="display:none">
     <div class="login-card">
       <div class="login-logo"><i class="fa-duotone fa-seedling"></i></div>
       <h1>Vườn Xanh</h1>
@@ -937,25 +919,25 @@
     </div>
   </div>
 
-  <div id="modal-activity-detail" class="modal" style="z-index:10060">
-    <div class="modal-content modal-activity-content" id="modal-activity-detail-box" style="border-radius:22px;max-width:560px;width:94%;max-height:88vh;overflow:auto;padding:18px 20px 22px;display:block;box-sizing:border-box">
-      <div class="activity-detail-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
-        <h2 id="activity-detail-title" style="margin:0;font-size:1.05rem;color:#f8fafc;flex:1">Chi tiết</h2>
-        <button type="button" class="btn btn-secondary" id="btn-close-activity-detail" style="flex-shrink:0">Đóng</button>
+  <div id="modal-activity-detail" class="modal">
+    <div class="modal-content modal-activity-content">
+      <div class="activity-detail-head">
+        <h2 id="activity-detail-title"><i class="fa-solid fa-clock-rotate-left"></i> Chi tiết</h2>
+        <button type="button" class="btn btn-secondary modal-close" id="btn-close-activity-detail">Đóng</button>
       </div>
-      <div id="activity-detail-body" class="activity-detail-body" style="display:block;min-height:80px;color:#f8fafc"></div>
+      <div id="activity-detail-body" class="activity-detail-body"></div>
     </div>
   </div>
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.204"></script>
-  <script src="js/themes.js?v=1.9.204"></script>
-  <script src="js/data.js?v=1.9.204"></script>
-  <script src="js/fa-icons.js?v=1.9.204"></script>
-  <script src="js/game.js?v=1.9.204"></script>
-  <script src="js/features.js?v=1.9.204"></script>
-  <script src="js/app.js?v=1.9.204"></script>
+  <script src="js/firebase-config.js?v=1.9.205"></script>
+  <script src="js/themes.js?v=1.9.205"></script>
+  <script src="js/data.js?v=1.9.205"></script>
+  <script src="js/fa-icons.js?v=1.9.205"></script>
+  <script src="js/game.js?v=1.9.205"></script>
+  <script src="js/features.js?v=1.9.205"></script>
+  <script src="js/app.js?v=1.9.205"></script>
   <script>
   (function () {
     if (!('serviceWorker' in navigator)) return;
