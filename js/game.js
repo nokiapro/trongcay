@@ -2470,22 +2470,30 @@ const Game = {
       }
     } catch (_) {}
 
-    // Lấy mốc rời SỚM NHẤT có thể (tránh lastSeen bị heartbeat/ghi đè gần đây làm mất cửa sổ offline)
+    // Mốc rời: ưu tiên awayMark (khi đóng tab) → lastSeen → lastCatch
+    // KHÔNG lấy Math.min mọi timestamp (dễ kéo offline dài bất thường)
     let leaveAt = 0;
-    const candidates = [lastSeen, awayMark, lastCatch, Number(currentPlayer.timersSyncedAt) || 0, Number(currentPlayer.updatedAt) || 0]
-      .filter(v => Number(v) > 0);
-    if (candidates.length) leaveAt = Math.min.apply(null, candidates);
-    if (!leaveAt) leaveAt = now;
+    if (awayMark > 0) leaveAt = awayMark;
+    else if (lastSeen > 0) leaveAt = lastSeen;
+    else if (lastCatch > 0) leaveAt = lastCatch;
+    else leaveAt = now;
 
-    let from = Math.max(lastCatch, leaveAt);
-    // Nếu awayMark cũ hơn lastCatch rõ rệt (user thoát web lâu) → ưu tiên awayMark để bù đủ
-    if (awayMark > 0 && awayMark < lastCatch && (lastCatch - awayMark) > 60000) {
+    let from = leaveAt;
+    // Đã bù một phần trước đó → chỉ bù phần sau lastCatch
+    if (lastCatch > 0 && lastCatch > from && lastCatch < now) {
+      from = lastCatch;
+    }
+    // awayMark rõ ràng trước lastCatch (>1 phút) → user offline thật, dùng awayMark
+    if (awayMark > 0 && lastCatch > 0 && awayMark < lastCatch && (lastCatch - awayMark) > 60000) {
       from = awayMark;
     }
-    if (fromLog && fromLog < from) {
+    if (fromLog && fromLog > 0 && fromLog < from) {
       from = Math.max(0, fromLog - 1000);
     }
     from = Math.min(now, Math.max(0, from));
+    // Chặn offline ảo quá dài (tối đa 48h) — tránh log "làm cả núi" do timestamp lệch
+    const MAX_OFFLINE_MS = 48 * 60 * 60 * 1000;
+    if (now - from > MAX_OFFLINE_MS) from = now - MAX_OFFLINE_MS;
 
     
     
@@ -3073,7 +3081,11 @@ const Game = {
                 firstReadyAt = endMs;
               }
               if (!canReplant) plotCycles = Math.min(plotCycles, 1);
-              plotCycles = Math.max(0, Math.min(600, plotCycles));
+              // Giới hạn theo thời gian offline thật (không cho hàng trăm vòng khi off ngắn)
+              const gapMs = Math.max(0, endMs - from);
+              const safeGrow = Math.max(1000, growMs || 1000); // tối thiểu 1s/vòng
+              const maxByTime = 1 + Math.floor(gapMs / safeGrow);
+              plotCycles = Math.max(0, Math.min(plotCycles, maxByTime, 120));
 
               // Không có vòng chín thật sự → giữ nguyên plantedAt, bỏ qua ô này
               if (plotCycles < 1) continue;
@@ -3237,26 +3249,31 @@ const Game = {
 
     
     if (this.isHelperActive()) {
+      // Giúp việc: cooldown 12s — chỉ bù đúng số lần trong cửa sổ offline
       const prev = currentPlayer.lastHelperBuy || 0;
+      const HELPER_CD = 12000;
       let buys = 0;
-      // Phân chia thời gian: mỗi ~30 phút offline cho 1 đợt mua tối đa, không gộp ẩu cả cửa sổ dài
-      // Offline 1h → tối đa ~2-3 đợt; offline dài mới tăng dần, trần 24 đợt
-      const helperTries = Math.max(1, Math.min(24, Math.floor(offlineGap / (30 * 60 * 1000)) + 1));
       let helperItems = 0;
-      for (let k = 0; k < helperTries; k++) {
-        currentPlayer.lastHelperBuy = 0;
-        const n = this.tickHelperBuy(now) || 0;
+      let tBuy = Math.max((prev > 0 ? prev + HELPER_CD : from), from);
+      const maxBuys = Math.min(300, Math.max(0, Math.floor(offlineGap / HELPER_CD) + 1));
+      let guard = 0;
+      while (tBuy <= now && buys < maxBuys && guard++ < maxBuys + 2) {
+        currentPlayer.lastHelperBuy = Math.max(0, tBuy - HELPER_CD);
+        const n = this.tickHelperBuy(tBuy) || 0;
         if (n > 0) {
           buys++;
           helperItems += n;
           changed = true;
-        } else break;
+          tBuy += HELPER_CD;
+        } else {
+          break;
+        }
       }
       if (!buys) currentPlayer.lastHelperBuy = prev;
       else {
         helperBuys = buys;
         helperItemsBought = helperItems;
-        notes.push('Giúp việc mua ' + helperItems + ' đồ (' + buys + ' đợt · theo ' + helperTries + ' khung giờ)');
+        notes.push('Giúp việc mua ' + helperItems + ' đồ (' + buys + ' đợt)');
       }
     }
 
@@ -3267,7 +3284,10 @@ const Game = {
     if (this.isRobotActive && this.isRobotActive()) {
       try {
         const fairyMap = (typeof offlineFairySeedMap === 'object' && offlineFairySeedMap) ? offlineFairySeedMap : {};
-        if (Object.keys(fairyMap).length) {
+        // Off rất ngắn (<2 phút): không cho robot mua/ghép bulk (tránh log "làm cả núi")
+        if (offlineGap < 2 * 60 * 1000) {
+          // bỏ qua robot offline
+        } else if (Object.keys(fairyMap).length) {
           // silent: không ghi log riêng — tóm tắt offline sẽ ghi 1 dòng
           const rr = await this.robotAfterRainCollect(fairyMap, { silent: true });
           if (rr && rr.ok) {
@@ -3337,11 +3357,6 @@ const Game = {
     const _helperItems = helperItemsBought || 0;
     const _ro = (typeof robotOffline === 'object' && robotOffline) ? robotOffline : {};
     lines.push('BÙ OFFLINE — vắng ' + offlineText + ' (từ ' + new Date(from).toLocaleString('vi-VN') + ' → ' + new Date(now).toLocaleString('vi-VN') + ')');
-    // Phân chia thời gian: ghi rõ không gộp cả 24h một cục, chỉ tính đúng cửa sổ vắng thực tế
-    if (offlineMs >= 3600 * 1000) {
-      const hours = Math.max(1, Math.round(offlineMs / 3600000));
-      lines.push('Phân khung giờ: tính theo đúng ' + hours + ' giờ vắng (không gộp 24h / không tính giờ đã qua ngoài cửa sổ này)');
-    }
     lines.push(
       'Tóm tắt: Mưa ' + rainHits + ' trận' +
       ' · Tiên nhặt ' + Number(_rainSeeds).toLocaleString() + ' hạt' +
@@ -3512,11 +3527,7 @@ const Game = {
           totalYieldAmount,
           uniquePlotsHarvested: harvestedPlotKeys.size,
           harvestByPlant,
-          harvestByGarden,
-          nycGardens: nycEnabledGardens,
-          nycPlots: plotsOnNycGardens,
           helperBuys,
-          helperItemsBought: helperItemsBought || 0,
           fairyActive,
           nycActive,
           helperActive,
@@ -3524,22 +3535,10 @@ const Game = {
           robotCooked: 0,
           robotStar: (robotOffline && (robotOffline.starDid || robotOffline.starOk)) || 0,
           robotMyth: (robotOffline && (robotOffline.mythDid || robotOffline.mythOk)) || 0,
-          robotCost: (robotOffline && robotOffline.cost) || 0,
           xpGained: 0
         });
-        // Đồng bộ dayStats online cho Tiên/Robot (offline)
-        try {
-          if (rainCollectSeeds > 0) this.trackDayStat('fairy_rain_seed', { qty: rainCollectSeeds });
-          if (rainHits > 0) this.trackDayStat('rain', { count: rainHits });
-          if (robotOffline) {
-            if (robotOffline.starDid || robotOffline.mythDid) {
-              this.trackDayStat('robot_merge', {
-                star: robotOffline.starDid || 0,
-                myth: robotOffline.mythDid || 0
-              });
-            }
-          }
-        } catch (_) {}
+        // Không đổ số offline vào sessionStats online (tránh log online bị phình)
+        // Offline đã nằm trong logOfflineReport riêng.
       } catch (logErr) {
         console.warn('logOfflineReport', logErr);
       }
@@ -5656,6 +5655,84 @@ const Game = {
     return ds;
   },
 
+  /** Stats rỗng cho 1 phiên log (online) */
+  _emptySessionStats(sessionId, dayKey, startedAt) {
+    return {
+      sessionId: sessionId,
+      dayKey: dayKey,
+      startedAt: startedAt || ((typeof nowMs === 'function') ? nowMs() : Date.now()),
+      gardens: {},
+      fairy: { gardensWatered: 0, waterActions: 0, rainSeeds: 0, fertActions: 0, _gSet: {} },
+      nyc: { gardens: 0, plots: 0, harvestYield: 0, byGarden: {}, _gSet: {} },
+      helper: { fertBought: 0, spent: 0, items: {} },
+      robot: { seedsBought: {}, seedCost: 0, cooked: {}, cookCount: 0, mergeStar: 0, mergeMyth: 0 },
+      rainCount: 0,
+      rainSeeds: 0,
+      levelUps: [],
+      _events: {}
+    };
+  },
+
+  /**
+   * Phiên log online hiện tại.
+   * Mỗi lần offline xong / sang ngày mới → phiên mới, số đếm về 0.
+   * Không gộp cả 24h vào một khối.
+   */
+  ensureLogSession(kind) {
+    if (!currentPlayer) return null;
+    const k = kind || 'online';
+    const dayKey = this._dayKey();
+    const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
+    let s = currentPlayer.logSession;
+    const needNew = !s || s.kind !== k || (k === 'online' && s.dayKey !== dayKey);
+    if (needNew) {
+      // Chốt log tổng hợp phiên cũ trước khi sang phiên mới
+      if (s && s.kind === 'online' && currentPlayer.sessionStats) {
+        try { this.syncAggregatedDayLogs('session_end'); } catch (_) {}
+      }
+      const id = 'sess_' + now.toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+      currentPlayer.logSession = { id: id, kind: k, dayKey: dayKey, startedAt: now };
+      if (k === 'online') {
+        currentPlayer.sessionStats = this._emptySessionStats(id, dayKey, now);
+      }
+    }
+    if (k === 'online') {
+      if (!currentPlayer.sessionStats || currentPlayer.sessionStats.sessionId !== currentPlayer.logSession.id) {
+        currentPlayer.sessionStats = this._emptySessionStats(currentPlayer.logSession.id, dayKey, currentPlayer.logSession.startedAt || now);
+      }
+    }
+    return currentPlayer.logSession;
+  },
+
+  /** Bắt đầu phiên online mới (sau offline) — số NYC/Robot/Tiên/Giúp việc đếm lại từ 0 */
+  startFreshOnlineSession() {
+    if (!currentPlayer) return;
+    const dayKey = this._dayKey();
+    const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
+    try { this.syncAggregatedDayLogs('session_end'); } catch (_) {}
+    const id = 'sess_' + now.toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+    currentPlayer.logSession = { id: id, kind: 'online', dayKey: dayKey, startedAt: now };
+    currentPlayer.sessionStats = this._emptySessionStats(id, dayKey, now);
+  },
+
+  ensureSessionStats() {
+    this.ensureLogSession('online');
+    return currentPlayer.sessionStats || null;
+  },
+
+  _gardenSessionStat(gi) {
+    const ss = this.ensureSessionStats();
+    if (!ss) return null;
+    const key = String(gi == null ? (currentPlayer.activeGarden || 0) : gi);
+    if (!ss.gardens[key]) {
+      ss.gardens[key] = {
+        plantedQty: 0, plantActions: 0, replanted: 0,
+        harvestYield: 0, plotsHarvested: 0, harvestCycles: 0
+      };
+    }
+    return ss.gardens[key];
+  },
+
   _gardenStat(gi) {
     const ds = this.ensureDayStats();
     if (!ds) return null;
@@ -5885,6 +5962,8 @@ const Game = {
     if (!currentPlayer) return;
     const ds = this.ensureDayStats();
     if (!ds) return;
+    // Phiên online hiện tại — không gộp với offline / phiên trước
+    const ss = this.ensureSessionStats();
     const d = data || {};
     const gi = d.gardenIndex != null ? d.gardenIndex : (currentPlayer.activeGarden || 0);
 
@@ -6024,12 +6103,138 @@ const Game = {
         break;
     }
 
+    // Nhân bản vào sessionStats (phiên online hiện tại)
+    try { this._mirrorSessionStat(kind, d, gi); } catch (_) {}
+
     try { this._pushDayEvent(kind, d, gi); } catch (_) {}
 
-    // Auto-push individual game event khi có đủ dữ liệu chi tiết
+    // Auto-push / cập nhật log tổng hợp PHIÊN
     try {
       this._autoPushFromTrack(kind, d, gi);
     } catch (_) {}
+  },
+
+  /** Ghi vào sessionStats — cùng logic dayStats nhưng theo phiên */
+  _mirrorSessionStat(kind, d, gi) {
+    const ss = this.ensureSessionStats();
+    if (!ss) return;
+    d = d || {};
+    const k = String(kind);
+    switch (k) {
+      case 'plant': {
+        const g = this._gardenSessionStat(gi);
+        if (!g) break;
+        const n = Math.max(0, Number(d.plots) || Number(d.qty) || 1);
+        g.plantedQty += n;
+        g.plantActions += Math.max(1, Number(d.actions) || 1);
+        if (d.replant) g.replanted += n;
+        break;
+      }
+      case 'replant': {
+        const g = this._gardenSessionStat(gi);
+        if (!g) break;
+        const n = Math.max(0, Number(d.plots) || Number(d.qty) || 1);
+        g.replanted += n;
+        g.plantedQty += n;
+        g.plantActions += Math.max(1, Number(d.actions) || 1);
+        break;
+      }
+      case 'harvest': {
+        const g = this._gardenSessionStat(gi);
+        if (!g) break;
+        g.harvestYield += Math.max(0, Number(d.yield) || Number(d.qty) || 0);
+        g.plotsHarvested += Math.max(0, Number(d.plots) || 1);
+        g.harvestCycles += Math.max(1, Number(d.cycles) || 1);
+        break;
+      }
+      case 'fairy_water': {
+        ss.fairy.waterActions += Math.max(0, Number(d.actions) || Number(d.plots) || 1);
+        ss.fairy._gSet = ss.fairy._gSet || {};
+        if (d.gardenIndex != null) {
+          ss.fairy._gSet[String(d.gardenIndex)] = 1;
+          ss.fairy.gardensWatered = Object.keys(ss.fairy._gSet).length;
+        }
+        break;
+      }
+      case 'fairy_fert': {
+        ss.fairy.fertActions += Math.max(0, Number(d.actions) || Number(d.plots) || 1);
+        break;
+      }
+      case 'fairy_rain_seed': {
+        const q = Math.max(0, Number(d.qty) || 1);
+        ss.fairy.rainSeeds += q;
+        ss.rainSeeds = (ss.rainSeeds || 0) + q;
+        break;
+      }
+      case 'nyc_plant': {
+        const plots = Math.max(0, Number(d.plots) || 1);
+        ss.nyc.plots += plots;
+        ss.nyc._gSet = ss.nyc._gSet || {};
+        const gk = String(d.gardenIndex != null ? d.gardenIndex : gi);
+        ss.nyc._gSet[gk] = 1;
+        ss.nyc.gardens = Object.keys(ss.nyc._gSet).length;
+        if (!ss.nyc.byGarden[gk]) ss.nyc.byGarden[gk] = { plots: 0, yield: 0 };
+        ss.nyc.byGarden[gk].plots = (ss.nyc.byGarden[gk].plots || 0) + plots;
+        break;
+      }
+      case 'nyc_harvest': {
+        const y = Math.max(0, Number(d.yield) || Number(d.qty) || 0);
+        const plots = Math.max(0, Number(d.plots) || 1);
+        ss.nyc.harvestYield += y;
+        ss.nyc.plots += plots;
+        ss.nyc._gSet = ss.nyc._gSet || {};
+        const gk = String(d.gardenIndex != null ? d.gardenIndex : gi);
+        ss.nyc._gSet[gk] = 1;
+        ss.nyc.gardens = Object.keys(ss.nyc._gSet).length;
+        if (!ss.nyc.byGarden[gk]) ss.nyc.byGarden[gk] = { plots: 0, yield: 0 };
+        ss.nyc.byGarden[gk].yield = (ss.nyc.byGarden[gk].yield || 0) + y;
+        ss.nyc.byGarden[gk].plots = (ss.nyc.byGarden[gk].plots || 0) + plots;
+        break;
+      }
+      case 'helper_buy': {
+        ss.helper.fertBought += Math.max(0, Number(d.qty) || 1);
+        ss.helper.spent += Math.max(0, Number(d.cost) || 0);
+        if (!ss.helper.items) ss.helper.items = {};
+        if (d.items && typeof d.items === 'object') {
+          Object.keys(d.items).forEach(nm => {
+            ss.helper.items[nm] = (ss.helper.items[nm] || 0) + (Number(d.items[nm]) || 0);
+          });
+        } else if (d.name) {
+          ss.helper.items[d.name] = (ss.helper.items[d.name] || 0) + (Number(d.qty) || 1);
+        } else if (Array.isArray(d.lines)) {
+          d.lines.forEach(ln => {
+            const s = String(ln || '');
+            if (s) ss.helper.items[s] = (ss.helper.items[s] || 0) + 1;
+          });
+        }
+        break;
+      }
+      case 'robot_seed': {
+        const nm = d.name || d.seedName || 'hạt';
+        const q = Math.max(0, Number(d.qty) || 1);
+        ss.robot.seedsBought[nm] = (ss.robot.seedsBought[nm] || 0) + q;
+        ss.robot.seedCost += Math.max(0, Number(d.cost) || 0);
+        break;
+      }
+      case 'robot_cook': {
+        const nm = d.name || 'món';
+        const q = Math.max(0, Number(d.qty) || 1);
+        ss.robot.cooked[nm] = (ss.robot.cooked[nm] || 0) + q;
+        ss.robot.cookCount += q;
+        break;
+      }
+      case 'robot_merge': {
+        ss.robot.mergeStar += Math.max(0, Number(d.star) || 0);
+        ss.robot.mergeMyth += Math.max(0, Number(d.myth) || 0);
+        break;
+      }
+      case 'rain': {
+        ss.rainCount += Math.max(0, Number(d.count) || 1);
+        break;
+      }
+      default:
+        break;
+    }
   },
 
   /** Sau trackDayStat → cập nhật log TỔNG HỢP theo actor (1 dòng/ngày/actor) */
@@ -6082,17 +6287,23 @@ const Game = {
    */
   syncAggregatedDayLogs(triggerKind) {
     if (!currentPlayer) return;
-    const ds = this.ensureDayStats();
-    if (!ds) return;
-    const dayKey = ds.dayKey || this._dayKey();
+    // Chỉ tổng hợp theo PHIÊN online hiện tại — không gộp 24h / offline
+    const sess = this.ensureLogSession('online');
+    const ss = this.ensureSessionStats();
+    if (!sess || !ss) return;
+    const dayKey = sess.dayKey || this._dayKey();
+    const sessionId = sess.id;
     const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
     const list = this.ensureGameEvents();
+    // Nguồn số liệu = sessionStats (không phải dayStats cả ngày)
+    const ds = ss;
 
     const upsert = (actor, payload) => {
       if (!payload || !payload.summaryText) return;
-      const id = 'agg_' + dayKey.replace(/\W+/g, '_') + '_' + actor;
+      // ID theo phiên — offline xong / ngày mới = log mới, không đè phiên cũ
+      const id = 'agg_' + String(sessionId).replace(/\W+/g, '_') + '_' + actor;
       const existing = list.find(e => e && e.id === id);
-      const firstAt = (existing && existing.firstAt) ? existing.firstAt : now;
+      const firstAt = (existing && existing.firstAt) ? existing.firstAt : (ss.startedAt || sess.startedAt || now);
       const lastAt = now;
       const detail = Object.assign({}, payload.detail || {}, {
         firstAt: firstAt,
@@ -6393,32 +6604,6 @@ const Game = {
       report.events.forEach(e => timeline.push(e));
     }
 
-    // Giữ full-detail lines (log chi tiết người chơi yêu cầu)
-    const detailLines = Array.isArray(report.lines)
-      ? report.lines.map(x => String(x || '').trim()).filter(Boolean).slice(0, 80)
-      : [];
-    let harvestByPlant = null;
-    if (report.harvestByPlant && typeof report.harvestByPlant === 'object') {
-      harvestByPlant = {};
-      Object.keys(report.harvestByPlant).slice(0, 40).forEach(k => {
-        const s = report.harvestByPlant[k] || {};
-        harvestByPlant[k] = { cycles: s.cycles || 0, amount: s.amount || 0 };
-      });
-    }
-    let harvestByGarden = null;
-    if (report.harvestByGarden && typeof report.harvestByGarden === 'object') {
-      harvestByGarden = {};
-      Object.keys(report.harvestByGarden).slice(0, 30).forEach(gi => {
-        const g = report.harvestByGarden[gi] || {};
-        harvestByGarden[gi] = {
-          cycles: g.cycles || 0,
-          amount: g.amount || 0,
-          planted: g.planted || 0,
-          plots: (g.plots && typeof g.plots.size === 'number') ? g.plots.size : (Array.isArray(g.plots) ? g.plots.length : (g.plotCount || 0))
-        };
-      });
-    }
-
     const entry = {
       id: this._logId(),
       type: 'offline',
@@ -6437,9 +6622,6 @@ const Game = {
         duration,
         text: sumParts.join(' · ')
       },
-      // Text tóm tắt nhanh trên list
-      message: detailLines[0] || ('Offline ' + duration),
-      result: detailLines.length > 1 ? detailLines.slice(1, 3).join(' · ') : sumParts.join(' · '),
       detail: {
         durationSeconds,
         durationText: duration,
@@ -6455,10 +6637,6 @@ const Game = {
         xp,
         rainHits: report.rainHits || 0,
         helperBuys: report.helperBuys || 0,
-        helperItemsBought: report.helperItemsBought || 0,
-        lines: detailLines,
-        harvestByPlant,
-        harvestByGarden,
         timeline: timeline.slice(0, 200),
         eventSource: timeline.length ? 'offline_simulation' : 'offline_calculation'
       }
@@ -6477,13 +6655,19 @@ const Game = {
       eventSource: entry.detail.eventSource,
       offlineSessionId: sessionId,
       timestamp: now,
-      summaryText: 'Offline kết thúc · ' + duration,
+      firstAt: startedAt,
+      lastAt: now,
+      timeText: this.formatLogClock(startedAt, false) + ' – ' + this.formatLogClock(now, false),
+      summaryText: 'Offline · ' + duration,
       detail: entry.detail,
       result: {
         sp: garden.product || 0,
         xp: xp || 0
       }
     });
+
+    // Chốt phiên online cũ + bắt đầu phiên online MỚI (số đếm về 0)
+    try { this.startFreshOnlineSession(); } catch (_) {}
 
     // Đưa các timeline event (nếu có timestamp thật) vào gameEvents
     timeline.forEach(te => {
@@ -6592,16 +6776,8 @@ const Game = {
       if (list.some(x => x.id === l.id || x.id === l.id + '_end')) return;
       const dur = (l.summary && l.summary.duration) || (l.detail && l.detail.durationText) || '';
       const sumText = (l.summary && l.summary.text) || '';
-      const detailLines = (l.detail && Array.isArray(l.detail.lines)) ? l.detail.lines : [];
-      // Ưu tiên dòng đầu báo cáo chi tiết (BÙ OFFLINE ...) cho list
-      const text = (detailLines[0] && String(detailLines[0]).trim())
-        || ('Offline' + (dur ? (' · ' + dur) : (sumText ? (' · ' + sumText) : '')));
-      let resultLine = '';
-      if (detailLines.length > 1) {
-        resultLine = detailLines.slice(1, 3).map(x => String(x || '').trim()).filter(Boolean).join(' · ');
-      } else if (sumText && sumText !== dur) {
-        resultLine = sumText;
-      }
+      const text = 'Offline' + (dur ? (' · ' + dur) : (sumText ? (' · ' + sumText) : ''));
+      const resultLine = sumText && sumText !== dur ? sumText : '';
       list.push({
         id: l.id,
         type: 'offline',
@@ -6631,114 +6807,33 @@ const Game = {
   getActivityLogById(id) {
     if (!id) return null;
     const events = this.ensureGameEvents();
-    const logs = this.ensureActivityLogs();
     const ev = events.find(e => e && e.id === id);
-
-    // Offline: gộp detail từ activityLogs (có lines full-detail) vào event offline_end
-    let offlineLog = null;
-    if (ev && (ev.action === 'offline_end' || ev.action === 'offline' || ev.category === 'offline')) {
-      const baseId = String(id).replace(/_end$/, '');
-      offlineLog = logs.find(l => l && l.type === 'offline' && (l.id === baseId || l.id === id || (l.id + '_end') === id)) || null;
-      if (!offlineLog) {
-        offlineLog = logs.find(l => l && l.type === 'offline' && l.offlineSessionId && l.offlineSessionId === ev.offlineSessionId) || null;
-      }
-    }
-
     if (ev) {
       const text = ev.summaryText || ev.text || this.formatEventSummaryText(ev) || '';
-      let detail = Object.assign({}, ev.detail || {}, this._buildEventDetail(ev) || {});
-      if (offlineLog && offlineLog.detail) {
-        const od = offlineLog.detail;
-        detail = Object.assign({}, detail, od);
-        // Ưu tiên lines đầy đủ từ activityLogs
-        if (Array.isArray(od.lines) && od.lines.length) detail.lines = od.lines.slice();
-        if (od.harvestByPlant) detail.harvestByPlant = od.harvestByPlant;
-        if (od.harvestByGarden) detail.harvestByGarden = od.harvestByGarden;
-        if (od.garden) detail.garden = od.garden;
-        if (od.nyc) detail.nyc = od.nyc;
-        if (od.robot) detail.robot = od.robot;
-        if (od.fairy) detail.fairy = od.fairy;
-      }
-      // Không có lines → dựng báo cáo tối thiểu từ số liệu có sẵn
-      if (!Array.isArray(detail.lines) || !detail.lines.length) {
-        detail.lines = this._buildOfflineDetailLines(detail, text);
-      }
+      // Giữ nguyên detail đầy đủ (aggregated)
+      const detail = Object.assign({}, ev.detail || {}, this._buildEventDetail(ev) || {});
       return {
         id: ev.id,
-        type: 'offline',
-        action: ev.action || 'offline_end',
-        actor: 'offline',
-        mode: 'offline',
-        filter: 'offline',
-        aggregated: false,
+        type: ev.category || ev.action,
+        action: ev.action,
+        actor: ev.actor,
+        mode: ev.mode,
+        filter: ev.filter,
+        aggregated: !!ev.aggregated || ev.action === 'day_summary',
         timestamp: ev.timestamp,
-        firstAt: (offlineLog && offlineLog.firstAt) || detail.startedAt || detail.firstAt || ev.timestamp,
-        lastAt: detail.endedAt || detail.lastAt || ev.timestamp,
+        firstAt: ev.firstAt || detail.firstAt || ev.timestamp,
+        lastAt: ev.lastAt || detail.lastAt || ev.timestamp,
         summary: {
-          title: 'Offline',
-          duration: detail.durationText || '',
+          title: this._eventDetailTitle(ev),
           text: text
         },
         detail: detail,
-        offline: offlineLog && offlineLog.offline ? offlineLog.offline : {
-          startedAt: detail.startedAt,
-          endedAt: detail.endedAt,
-          durationSeconds: detail.durationSeconds,
-          durationMs: detail.offlineMs
-        },
         _event: ev,
-        _isEvent: true,
-        _isOfflineSummary: true
+        _isEvent: true
       };
     }
-
-    const fromLogs = logs.find(l => l && l.id === id) || null;
-    if (fromLogs && fromLogs.type === 'offline' && fromLogs.detail) {
-      if (!Array.isArray(fromLogs.detail.lines) || !fromLogs.detail.lines.length) {
-        fromLogs.detail.lines = this._buildOfflineDetailLines(fromLogs.detail, (fromLogs.summary && fromLogs.summary.text) || '');
-      }
-    }
-    return fromLogs;
-  },
-
-  /** Dựng lines chi tiết offline khi thiếu report.lines (log cũ / mất dữ liệu) */
-  _buildOfflineDetailLines(d, fallbackText) {
-    const lines = [];
-    if (!d || typeof d !== 'object') return lines;
-    const dur = d.durationText || '';
-    const from = d.startedClock || '';
-    const to = d.endedClock || '';
-    if (dur || from || to) {
-      lines.push('BÙ OFFLINE — vắng ' + (dur || '—') + (from || to ? (' (từ ' + (from || '—') + ' → ' + (to || '—') + ')') : ''));
-    } else if (fallbackText) {
-      lines.push(String(fallbackText));
-    }
-    const g = d.garden || {};
-    const parts = [];
-    if (d.rainHits) parts.push('Mưa ' + d.rainHits + ' trận');
-    if (d.fairy && d.fairy.rainSeeds) parts.push('Tiên nhặt ' + d.fairy.rainSeeds + ' hạt');
-    if (g.harvested) parts.push('NYC thu ' + g.harvested + ' ô');
-    if (g.replanted) parts.push('trồng lại ' + g.replanted + ' lượt');
-    if (g.product) parts.push('tổng ' + g.product + ' sản phẩm');
-    if (d.helperBuys) parts.push('Giúp việc ' + d.helperBuys + ' đợt');
-    if (parts.length) lines.push('Tóm tắt: ' + parts.join(' · '));
-    if (d.robot) {
-      const r = d.robot;
-      const rp = [];
-      if (r.seedsBought) rp.push('mua +' + r.seedsBought + ' hạt');
-      if (r.starMerged) rp.push('ghép sao ×' + r.starMerged);
-      if (r.mythicMerged) rp.push('ghép HT ×' + r.mythicMerged);
-      if (rp.length) lines.push('Người máy: ' + rp.join(' · '));
-    }
-    if (d.harvestByPlant && typeof d.harvestByPlant === 'object') {
-      const plantParts = Object.keys(d.harvestByPlant).map(nm => {
-        const s = d.harvestByPlant[nm] || {};
-        return nm + ' ×' + (s.cycles || 0) + ' lần (' + (s.amount || 0) + ' sp)';
-      });
-      if (plantParts.length) lines.push('Chi tiết thu offline: ' + plantParts.join(' · '));
-    }
-    if (!lines.length && fallbackText) lines.push(String(fallbackText));
-    return lines;
+    const logs = this.ensureActivityLogs();
+    return logs.find(l => l && l.id === id) || null;
   },
 
   _eventDetailTitle(ev) {
