@@ -11145,3 +11145,33 @@ html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-l
   margin-top: 10px !important;
   padding-top: 4px !important;
 }
+
+
+/* MODAL LOG DETAIL — PC FIX v193b */
+#modal-activity-detail.modal {
+  z-index: 10060 !important;
+}
+#modal-activity-detail.modal.show {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+#modal-activity-detail .modal-content,
+#modal-activity-detail .modal-activity-content,
+#modal-activity-detail-box {
+  border-radius: 22px !important;
+  max-width: min(560px, 94vw) !important;
+  width: 94% !important;
+  max-height: 88vh !important;
+  overflow: auto !important;
+  display: block !important;
+  padding: 18px 20px 22px !important;
+  box-sizing: border-box !important;
+}
+#modal-activity-detail #activity-detail-body {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 80px !important;
+  color: #f8fafc !important;
+}

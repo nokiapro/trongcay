@@ -5271,160 +5271,174 @@ function formatActivityDetailHtml(log) {
   return '<pre class="ad-pre">' + JSON.stringify(d, null, 2) + '</pre>';
 }
 
-function openActivityDetail(logId) {
-  const modal = document.getElementById('modal-activity-detail');
-  const title = document.getElementById('activity-detail-title');
-  const body = document.getElementById('activity-detail-body');
-  if (!modal || !body) {
-    console.warn('modal-activity-detail missing');
-    return;
-  }
-
-  let log = null;
+function openActivityDetail(logId, cachedLog) {
   try {
-    if (typeof Game !== 'undefined' && Game.getActivityLogById) {
-      log = Game.getActivityLogById(logId);
+    const modal = document.getElementById('modal-activity-detail');
+    const titleEl = document.getElementById('activity-detail-title');
+    const body = document.getElementById('activity-detail-body');
+    const box = document.getElementById('modal-activity-detail-box') || (modal && modal.querySelector('.modal-content'));
+    if (!modal || !body) {
+      console.warn('[log] modal missing', !!modal, !!body);
+      return;
     }
-  } catch (e) {
-    console.warn('getActivityLogById', e);
-  }
 
-  // Fallback: tìm trong list đang hiển thị
-  if (!log && Array.isArray(window._lastActivityLines)) {
-    log = window._lastActivityLines.find(x => x && x.id === logId) || null;
-  }
+    // Ưu tiên log đã cache từ list (đầy đủ detail)
+    let log = cachedLog || null;
+    if (!log && window._activityLogMap && logId && window._activityLogMap[logId]) {
+      log = window._activityLogMap[logId];
+    }
+    if (!log && typeof Game !== 'undefined' && Game.getActivityLogById) {
+      try { log = Game.getActivityLogById(logId); } catch (e) { console.warn(e); }
+    }
+    if (!log && Array.isArray(window._lastActivityLines)) {
+      log = window._lastActivityLines.find(x => x && x.id === logId) || null;
+    }
 
-  modal.classList.add('show');
+    modal.classList.add('show');
+    modal.style.display = 'flex';
+    modal.style.zIndex = '10060';
+    if (box) {
+      box.style.borderRadius = '22px';
+      box.style.maxWidth = '560px';
+      box.style.width = '94%';
+      box.style.maxHeight = '88vh';
+      box.style.overflow = 'auto';
+      box.style.display = 'block';
+      box.style.padding = '18px 20px 22px';
+    }
 
-  const esc = (s) => String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const num = (n) => Number(n || 0).toLocaleString('vi-VN');
+    const esc = (s) => String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const num = (n) => Number(n || 0).toLocaleString('vi-VN');
+    const row = (k, v) =>
+      '<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 12px;margin:0 0 6px;border-radius:10px;background:rgba(248,250,252,0.1)">'
+      + '<span style="color:#cbd5e1;font-weight:600">' + esc(k) + '</span>'
+      + '<span style="color:#f8fafc;font-weight:800;text-align:right">' + esc(v) + '</span></div>';
+    const head = (t) =>
+      '<div style="margin:14px 0 8px;font-size:0.75rem;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:#94a3b8">' + esc(t) + '</div>';
 
-  if (!log) {
-    if (title) title.textContent = 'Chi tiết';
-    body.innerHTML = '<p style="color:#f8fafc;padding:12px 0">Không tìm thấy dữ liệu log.</p>';
-    return;
-  }
+    if (!log) {
+      if (titleEl) titleEl.textContent = 'Chi tiết';
+      body.innerHTML = '<p style="color:#f8fafc;padding:8px 0">Không tìm thấy dữ liệu log (id: ' + esc(logId) + ').</p>';
+      return;
+    }
 
-  const ev = log._event || {};
-  const d = Object.assign({}, ev.detail || {}, log.detail || {});
-  const actor = d.actor || log.actor || ev.actor || '';
-  const t = (log.summary && log.summary.title) ? log.summary.title
-    : (log.text || log.title || 'Chi tiết');
-  if (title) title.textContent = t;
+    const ev = log._event || {};
+    const d = Object.assign({}, ev.detail || {}, log.detail || {});
+    let actor = d.actor || log.actor || ev.actor || log.filter || '';
+    // Suy actor từ title nếu thiếu
+    if (!actor || actor === 'player' || actor === 'system') {
+      const blob = [log.text, log.title, (log.summary && log.summary.title), d.name, ev.summaryText].join(' ');
+      if (/robot|người máy|phạm văn/i.test(blob) && /làm việc|mua|ghép|nấu/i.test(blob)) actor = 'robot';
+      else if (/nyc|người yêu/i.test(blob)) actor = 'nyc';
+      else if (/tiên|chăm sóc/i.test(blob)) actor = 'fairy';
+      else if (/giúp việc|mua đồ/i.test(blob)) actor = 'helper';
+      else if (/offline/i.test(blob)) actor = 'offline';
+      else if (/vườn|bạn đã/i.test(blob)) actor = 'garden';
+    }
 
-  // Dựng HTML chi tiết ngay tại đây (không phụ thuộc formatActivityDetailHtml)
-  let html = '';
-  const firstAt = d.firstAt || log.firstAt || ev.firstAt;
-  const lastAt = d.lastAt || log.lastAt || log.timestamp || ev.timestamp;
-  let timeStr = '—';
-  try {
-    if (typeof Game !== 'undefined' && Game.formatLogClock) {
-      if (firstAt && lastAt && Math.abs(lastAt - firstAt) >= 1000) {
-        timeStr = Game.formatLogClock(firstAt, true) + ' → ' + Game.formatLogClock(lastAt, true);
-      } else {
-        timeStr = Game.formatLogClock(lastAt || firstAt, true) || '—';
+    const titleText = (log.summary && log.summary.title) || log.text || log.title || d.name || 'Chi tiết';
+    if (titleEl) titleEl.textContent = titleText;
+
+    const firstAt = d.firstAt || log.firstAt || ev.firstAt;
+    const lastAt = d.lastAt || log.lastAt || log.timestamp || ev.timestamp;
+    let timeStr = '—';
+    try {
+      if (typeof Game !== 'undefined' && Game.formatLogClock) {
+        if (firstAt && lastAt && Math.abs(lastAt - firstAt) >= 1000) {
+          timeStr = Game.formatLogClock(firstAt, true) + ' → ' + Game.formatLogClock(lastAt, true);
+        } else {
+          timeStr = Game.formatLogClock(lastAt || firstAt, true) || '—';
+        }
       }
-    }
-  } catch (_) {}
+    } catch (_) {}
 
-  html += '<div class="ad-hero"><div class="ad-hero-label">Thời gian</div><div class="ad-hero-value">' + esc(timeStr) + '</div></div>';
+    let html = '';
+    html += '<div style="padding:12px 14px;border-radius:12px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);margin-bottom:12px">';
+    html += '<div style="font-size:0.72rem;font-weight:800;color:#86efac;text-transform:uppercase;margin-bottom:4px">Thời gian</div>';
+    html += '<div style="font-size:1.05rem;font-weight:800;color:#f8fafc">' + esc(timeStr) + '</div></div>';
 
-  const isAgg = !!(log.aggregated || ev.aggregated || log.action === 'day_summary' || ev.action === 'day_summary');
+    const isAgg = !!(log.aggregated || ev.aggregated || log.action === 'day_summary' || ev.action === 'day_summary' || String(log.id || '').indexOf('agg_') === 0);
 
-  if (isAgg && actor === 'robot') {
-    html += '<div class="ad-block"><div class="ad-label">' + esc(d.name || 'Robot') + ' đã làm gì</div><ul class="ad-list ad-list-rich">';
-    html += '<li><span class="ad-li-k">Chi phí mua hạt</span><span class="ad-li-v">-' + esc(num(d.seedCost)) + ' xu</span></li>';
-    html += '<li><span class="ad-li-k">Ghép hạt sao</span><span class="ad-li-v">×' + esc(num(d.mergeStar)) + '</span></li>';
-    html += '<li><span class="ad-li-k">Ghép huyền thoại</span><span class="ad-li-v">×' + esc(num(d.mergeMyth)) + '</span></li>';
-    html += '<li><span class="ad-li-k">Số món nấu</span><span class="ad-li-v">' + esc(num(d.cookCount)) + '</span></li>';
-    html += '</ul></div>';
-    if (Array.isArray(d.seedsBought) && d.seedsBought.length) {
-      html += '<div class="ad-block"><div class="ad-label">Hạt đã mua</div><ul class="ad-list ad-list-rich">';
-      d.seedsBought.forEach(it => {
-        html += '<li><span class="ad-li-k">' + esc(it.name) + '</span><span class="ad-li-v">×' + esc(num(it.qty)) + '</span></li>';
-      });
-      html += '</ul></div>';
-    }
-    if (Array.isArray(d.cooked) && d.cooked.length) {
-      html += '<div class="ad-block"><div class="ad-label">Món đã nấu</div><ul class="ad-list ad-list-rich">';
-      d.cooked.forEach(it => {
-        html += '<li><span class="ad-li-k">' + esc(it.name) + '</span><span class="ad-li-v">×' + esc(num(it.qty)) + '</span></li>';
-      });
-      html += '</ul></div>';
-    }
-  } else if (isAgg && actor === 'nyc') {
-    html += '<div class="ad-block"><div class="ad-label">' + esc(d.name || 'NYC') + ' đã làm gì</div><ul class="ad-list ad-list-rich">';
-    html += '<li><span class="ad-li-k">Số vườn</span><span class="ad-li-v">' + esc(d.gardens || 0) + '</span></li>';
-    html += '<li><span class="ad-li-k">Lần trồng/thu (mỗi ô = 1)</span><span class="ad-li-v">' + esc(num(d.plantTimes)) + '</span></li>';
-    html += '<li><span class="ad-li-k">Sản phẩm</span><span class="ad-li-v">+' + esc(num(d.harvestYield)) + ' SP</span></li>';
-    html += '</ul></div>';
-    if (Array.isArray(d.byGarden) && d.byGarden.length) {
-      html += '<div class="ad-block"><div class="ad-label">Từng vườn</div><ul class="ad-list ad-list-rich">';
-      d.byGarden.forEach(g => {
-        html += '<li class="ad-li-stack"><strong>' + esc(g.gardenLabel || ('Vườn ' + (Number(g.gardenIndex) + 1))) + '</strong>';
-        html += '<div class="ad-li-sub">• Lần: <b>' + esc(num(g.plantTimes != null ? g.plantTimes : g.planted)) + '</b></div>';
-        if (g.yield) html += '<div class="ad-li-sub">• SP: <b>+' + esc(num(g.yield)) + '</b></div>';
-        html += '</li>';
-      });
-      html += '</ul></div>';
-    }
-  } else if (isAgg && actor === 'fairy') {
-    html += '<div class="ad-block"><div class="ad-label">' + esc(d.name || 'Tiên') + ' đã chăm sóc</div><ul class="ad-list ad-list-rich">';
-    html += '<li><span class="ad-li-k">Số vườn</span><span class="ad-li-v">' + esc(num(d.gardensWatered)) + '</span></li>';
-    html += '<li><span class="ad-li-k">Lần tưới</span><span class="ad-li-v">' + esc(num(d.waterActions)) + '</span></li>';
-    html += '<li><span class="ad-li-k">Lần bón</span><span class="ad-li-v">' + esc(num(d.fertActions)) + '</span></li>';
-    html += '<li><span class="ad-li-k">Hạt mưa</span><span class="ad-li-v">' + esc(num(d.rainSeeds)) + '</span></li>';
-    html += '</ul></div>';
-  } else if (isAgg && actor === 'helper') {
-    html += '<div class="ad-block"><div class="ad-label">' + esc(d.name || 'Giúp việc') + ' đã mua</div><ul class="ad-list ad-list-rich">';
-    html += '<li><span class="ad-li-k">Tổng chi</span><span class="ad-li-v">-' + esc(num(d.spent)) + ' xu</span></li>';
-    html += '<li><span class="ad-li-k">Số món</span><span class="ad-li-v">' + esc(num(d.qty)) + '</span></li>';
-    html += '</ul></div>';
-    if (Array.isArray(d.items) && d.items.length) {
-      html += '<div class="ad-block"><div class="ad-label">Chi tiết món</div><ul class="ad-list ad-list-rich">';
-      d.items.forEach(it => {
-        html += '<li><span class="ad-li-k">' + esc(it.name) + '</span><span class="ad-li-v">×' + esc(num(it.qty)) + '</span></li>';
-      });
-      html += '</ul></div>';
-    }
-  } else if (isAgg && actor === 'garden') {
-    html += '<div class="ad-block"><div class="ad-label">Bạn đã làm vườn</div><ul class="ad-list ad-list-rich">';
-    html += '<li><span class="ad-li-k">Trồng</span><span class="ad-li-v">' + esc(num(d.planted)) + '</span></li>';
-    html += '<li><span class="ad-li-k">Thu hoạch</span><span class="ad-li-v">' + esc(num(d.plotsHarvested)) + ' ô</span></li>';
-    html += '<li><span class="ad-li-k">Sản phẩm</span><span class="ad-li-v">+' + esc(num(d.harvestYield)) + ' SP</span></li>';
-    html += '</ul></div>';
-  } else if (log.type === 'offline' || actor === 'offline' || log.mode === 'offline') {
-    try {
-      html = (typeof formatActivityDetailHtml === 'function') ? formatActivityDetailHtml(log) : '';
-    } catch (_) { html = ''; }
-    if (!html) {
-      html += '<div class="ad-block"><div class="ad-label">Offline</div><ul class="ad-list ad-list-rich">';
-      if (d.durationText) html += '<li><span class="ad-li-k">Thời lượng</span><span class="ad-li-v">' + esc(d.durationText) + '</span></li>';
-      if (d.garden && d.garden.product) html += '<li><span class="ad-li-k">SP</span><span class="ad-li-v">+' + esc(num(d.garden.product)) + '</span></li>';
-      html += '</ul></div>';
-    }
-  } else {
-    // generic / fallback formatActivityDetailHtml
-    try {
-      const extra = (typeof formatActivityDetailHtml === 'function') ? formatActivityDetailHtml(log) : '';
-      if (extra && String(extra).trim()) html = extra;
-    } catch (e) {
-      console.warn(e);
-    }
-    if (!html || html.indexOf('ad-') < 0) {
-      html += '<div class="ad-block"><div class="ad-label">Thông tin</div><ul class="ad-list ad-list-rich">';
-      html += '<li><span class="ad-li-k">Nội dung</span><span class="ad-li-v">' + esc(log.text || (log.summary && log.summary.text) || '—') + '</span></li>';
+    if (actor === 'robot' || (isAgg && /robot/i.test(String(log.filter || '')))) {
+      html += head((d.name || 'Robot') + ' — công việc');
+      html += row('Chi phí mua hạt', '-' + num(d.seedCost) + ' xu');
+      html += row('Ghép hạt sao', '×' + num(d.mergeStar));
+      html += row('Ghép huyền thoại', '×' + num(d.mergeMyth));
+      html += row('Số món nấu', num(d.cookCount));
+      if (Array.isArray(d.seedsBought) && d.seedsBought.length) {
+        html += head('Hạt đã mua');
+        d.seedsBought.forEach(it => { html += row(it.name, '×' + num(it.qty)); });
+      }
+      if (Array.isArray(d.cooked) && d.cooked.length) {
+        html += head('Món đã nấu');
+        d.cooked.forEach(it => { html += row(it.name, '×' + num(it.qty)); });
+      }
+    } else if (actor === 'nyc') {
+      html += head((d.name || 'NYC') + ' — công việc');
+      html += row('Số vườn', String(d.gardens || 0));
+      html += row('Lần trồng/thu (mỗi ô = 1)', num(d.plantTimes));
+      html += row('Sản phẩm', '+' + num(d.harvestYield) + ' SP');
+      if (Array.isArray(d.byGarden) && d.byGarden.length) {
+        html += head('Từng vườn');
+        d.byGarden.forEach(g => {
+          const times = g.plantTimes != null ? g.plantTimes : (g.planted || 0);
+          html += row(g.gardenLabel || ('Vườn ' + (Number(g.gardenIndex) + 1)), num(times) + ' lần · +' + num(g.yield) + ' SP');
+        });
+      }
+    } else if (actor === 'fairy') {
+      html += head((d.name || 'Tiên') + ' — chăm sóc');
+      html += row('Số vườn', num(d.gardensWatered));
+      html += row('Lần tưới', num(d.waterActions));
+      html += row('Lần bón', num(d.fertActions));
+      html += row('Hạt mưa', num(d.rainSeeds));
+    } else if (actor === 'helper') {
+      html += head((d.name || 'Giúp việc') + ' — mua sắm');
+      html += row('Tổng chi', '-' + num(d.spent) + ' xu');
+      html += row('Số món', num(d.qty));
+      if (Array.isArray(d.items) && d.items.length) {
+        html += head('Chi tiết món');
+        d.items.forEach(it => { html += row(it.name, '×' + num(it.qty)); });
+      }
+    } else if (actor === 'garden') {
+      html += head('Vườn — hoạt động');
+      html += row('Trồng', num(d.planted));
+      html += row('Ô thu hoạch', num(d.plotsHarvested));
+      html += row('Sản phẩm', '+' + num(d.harvestYield) + ' SP');
+    } else if (actor === 'offline' || log.type === 'offline' || log.mode === 'offline') {
+      html += head('Offline');
+      if (d.durationText) html += row('Thời lượng', d.durationText);
+      if (d.garden && d.garden.product != null) html += row('SP', '+' + num(d.garden.product));
+      if (d.nyc && d.nyc.gardens) html += row('NYC', d.nyc.gardens + ' vườn');
+      if (d.robot) {
+        html += row('Robot mua hạt', num(d.robot.seedsBought));
+        html += row('Robot ghép sao', num(d.robot.starMerged));
+        html += row('Robot HT', num(d.robot.mythicMerged));
+      }
+      if (d.fairy) {
+        html += row('Tiên tưới', num(d.fairy.watered));
+        html += row('Hạt mưa', num(d.fairy.rainSeeds));
+      }
+      if (d.xp) html += row('XP', '+' + num(d.xp));
+    } else {
+      html += head('Thông tin');
+      html += row('Nội dung', log.text || (log.summary && log.summary.text) || '—');
+      html += row('Actor', actor || '—');
       Object.keys(d).forEach(k => {
-        if (typeof d[k] === 'object' || d[k] == null) return;
-        html += '<li><span class="ad-li-k">' + esc(k) + '</span><span class="ad-li-v">' + esc(d[k]) + '</span></li>';
+        if (d[k] == null || typeof d[k] === 'object') return;
+        html += row(k, d[k]);
       });
-      html += '</ul></div>';
     }
-  }
 
-  body.innerHTML = html;
-  body.setAttribute('style', 'display:block!important;visibility:visible!important;opacity:1!important;color:#f8fafc!important;min-height:120px!important;');
+    body.innerHTML = html;
+    body.style.cssText = 'display:block!important;visibility:visible!important;opacity:1!important;color:#f8fafc!important;min-height:80px!important;';
+    console.log('[log] detail opened', logId, actor, isAgg, html.length);
+  } catch (err) {
+    console.error('[log] openActivityDetail error', err);
+    const body = document.getElementById('activity-detail-body');
+    if (body) body.innerHTML = '<p style="color:#fca5a5">Lỗi hiển thị chi tiết: ' + String(err && err.message || err) + '</p>';
+    document.getElementById('modal-activity-detail')?.classList.add('show');
+  }
 }
 
 
@@ -5582,13 +5596,27 @@ function renderActivityPage() {
   });
 
   actList.innerHTML = html;
-  actList.querySelectorAll('.activity-clickable').forEach(el => {
-    el.onclick = () => {
-      const id = el.getAttribute('data-id');
-      if (id && typeof openActivityDetail === 'function') openActivityDetail(id);
-    };
+  // Map id → log đầy đủ để PC/mobile mở detail chắc chắn
+  window._activityLogMap = window._activityLogMap || {};
+  lines.forEach(a => {
+    if (a && a.id) window._activityLogMap[a.id] = a;
   });
+  // Event delegation — ổn định hơn forEach onclick
+  if (!actList._logClickBound) {
+    actList._logClickBound = true;
+    actList.addEventListener('click', (e) => {
+      const el = e.target.closest('.activity-clickable');
+      if (!el || !actList.contains(el)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const id = el.getAttribute('data-id');
+      if (!id) return;
+      const cached = window._activityLogMap && window._activityLogMap[id];
+      openActivityDetail(id, cached);
+    });
+  }
 }
+
 
 function scheduleActivityMidnightPrune() {
   // Không hẹn 0h00 nữa — prune rolling do interval bên dưới
