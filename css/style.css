@@ -11211,3 +11211,26 @@ html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-l
   min-height: 80px !important;
   color: #f8fafc !important;
 }
+
+
+/* UNBLOCK CLICKS: modal chỉ hiện khi .show */
+.modal {
+  display: none !important;
+  pointer-events: none;
+}
+.modal.show {
+  display: flex !important;
+  pointer-events: auto !important;
+}
+#modal-activity-detail.modal.show {
+  display: flex !important;
+  pointer-events: auto !important;
+  z-index: 10060 !important;
+}
+/* auth-loading không chặn sau khi ẩn */
+#auth-loading[aria-hidden="true"],
+#auth-loading[style*="display: none"],
+#auth-loading[style*="display:none"] {
+  pointer-events: none !important;
+  display: none !important;
+}

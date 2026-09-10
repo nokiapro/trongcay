@@ -154,8 +154,52 @@ function hideRainEffect() {
 
 function hideAuthLoading() {
   const el = document.getElementById('auth-loading');
-  if (el) el.style.display = 'none';
+  if (el) {
+    el.style.display = 'none';
+    el.style.pointerEvents = 'none';
+    el.setAttribute('aria-hidden', 'true');
+  }
 }
+
+/* Safety: không để auth-loading / modal chặn click vĩnh viễn */
+(function setupUiUnlockSafety() {
+  function unlockOverlays() {
+    try {
+      const al = document.getElementById('auth-loading');
+      if (al && al.style.display !== 'none') {
+        // Nếu đã có app hoặc login hiện → ẩn loading
+        const appEl = document.getElementById('app-screen');
+        const loginEl = document.getElementById('login-screen');
+        const appOn = appEl && appEl.style.display !== 'none' && appEl.style.display !== '';
+        const loginOn = loginEl && loginEl.style.display !== 'none' && loginEl.style.display !== '';
+        // Sau 12s luôn ẩn loading nếu vẫn treo
+        al.style.display = 'none';
+        al.style.pointerEvents = 'none';
+      }
+      document.querySelectorAll('.modal').forEach(m => {
+        if (!m.classList.contains('show')) {
+          m.style.display = '';
+        }
+      });
+    } catch (_) {}
+  }
+  setTimeout(unlockOverlays, 12000);
+  // Lúc DOM ready cũng dọn modal không có class show nhưng còn inline flex
+  function bootClean() {
+    try {
+      document.querySelectorAll('.modal').forEach(m => {
+        if (!m.classList.contains('show')) {
+          m.style.display = '';
+          m.style.zIndex = '';
+        }
+      });
+    } catch (_) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootClean);
+  else bootClean();
+})();
+
+
 function showAuthLoading() {
   const el = document.getElementById('auth-loading');
   if (el) el.style.display = 'flex';
@@ -169,6 +213,19 @@ function showLogin() {
 
 function showApp() {
   hideAuthLoading();
+  // Gỡ overlay kẹt (modal log, nav sheet, loading)
+  try {
+    if (typeof closeModals === 'function') closeModals();
+    if (typeof closeActivityDetail === 'function') closeActivityDetail();
+    document.querySelectorAll('.modal.show').forEach(m => {
+      m.classList.remove('show');
+      m.style.display = '';
+    });
+    document.body.classList.remove('nav-more-visible');
+    document.getElementById('nav-backdrop')?.classList.remove('show');
+    const al = document.getElementById('auth-loading');
+    if (al) { al.style.display = 'none'; al.style.pointerEvents = 'none'; }
+  } catch (_) {}
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'block';
   updateCoins();
@@ -876,6 +933,7 @@ auth.onAuthStateChanged(async (user) => {
       if (typeof Features !== 'undefined') {
         const gate = await Features.checkAccessGates();
         if (gate.blocked) {
+          hideAuthLoading();
           showAccessGate(gate);
           return;
         }
@@ -955,6 +1013,8 @@ auth.onAuthStateChanged(async (user) => {
 });
 
 function showAccessGate(gate) {
+  try { hideAuthLoading(); } catch (_) {}
+
   const el = document.getElementById('access-gate');
   if (!el) return;
   document.getElementById('app-screen').style.display = 'none';
@@ -5294,16 +5354,16 @@ function openActivityDetail(logId, cachedLog) {
       log = window._lastActivityLines.find(x => x && x.id === logId) || null;
     }
 
+    // Chỉ dùng class .show — không gán inline display (tránh kẹt overlay không đóng được)
+    modal.style.display = '';
+    modal.style.zIndex = '';
     modal.classList.add('show');
-    modal.style.display = 'flex';
-    modal.style.zIndex = '10060';
     if (box) {
       box.style.borderRadius = '22px';
       box.style.maxWidth = '560px';
       box.style.width = '94%';
       box.style.maxHeight = '88vh';
       box.style.overflow = 'auto';
-      box.style.display = 'block';
       box.style.padding = '18px 20px 22px';
     }
 
