@@ -11169,3 +11169,14 @@ html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-l
 #auth-loading {
   /* Cho phép tắt bằng inline style */
 }
+
+
+/* Auth ready → loading không bao giờ chặn click */
+body.auth-ready #auth-loading,
+#auth-loading.auth-loading-done {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  z-index: -1 !important;
+}
