@@ -3512,7 +3512,11 @@ const Game = {
           totalYieldAmount,
           uniquePlotsHarvested: harvestedPlotKeys.size,
           harvestByPlant,
+          harvestByGarden,
+          nycGardens: nycEnabledGardens,
+          nycPlots: plotsOnNycGardens,
           helperBuys,
+          helperItemsBought: helperItemsBought || 0,
           fairyActive,
           nycActive,
           helperActive,
@@ -3520,6 +3524,7 @@ const Game = {
           robotCooked: 0,
           robotStar: (robotOffline && (robotOffline.starDid || robotOffline.starOk)) || 0,
           robotMyth: (robotOffline && (robotOffline.mythDid || robotOffline.mythOk)) || 0,
+          robotCost: (robotOffline && robotOffline.cost) || 0,
           xpGained: 0
         });
         // Đồng bộ dayStats online cho Tiên/Robot (offline)
@@ -6388,6 +6393,32 @@ const Game = {
       report.events.forEach(e => timeline.push(e));
     }
 
+    // Giữ full-detail lines (log chi tiết người chơi yêu cầu)
+    const detailLines = Array.isArray(report.lines)
+      ? report.lines.map(x => String(x || '').trim()).filter(Boolean).slice(0, 80)
+      : [];
+    let harvestByPlant = null;
+    if (report.harvestByPlant && typeof report.harvestByPlant === 'object') {
+      harvestByPlant = {};
+      Object.keys(report.harvestByPlant).slice(0, 40).forEach(k => {
+        const s = report.harvestByPlant[k] || {};
+        harvestByPlant[k] = { cycles: s.cycles || 0, amount: s.amount || 0 };
+      });
+    }
+    let harvestByGarden = null;
+    if (report.harvestByGarden && typeof report.harvestByGarden === 'object') {
+      harvestByGarden = {};
+      Object.keys(report.harvestByGarden).slice(0, 30).forEach(gi => {
+        const g = report.harvestByGarden[gi] || {};
+        harvestByGarden[gi] = {
+          cycles: g.cycles || 0,
+          amount: g.amount || 0,
+          planted: g.planted || 0,
+          plots: (g.plots && typeof g.plots.size === 'number') ? g.plots.size : (Array.isArray(g.plots) ? g.plots.length : (g.plotCount || 0))
+        };
+      });
+    }
+
     const entry = {
       id: this._logId(),
       type: 'offline',
@@ -6406,6 +6437,9 @@ const Game = {
         duration,
         text: sumParts.join(' · ')
       },
+      // Text tóm tắt nhanh trên list
+      message: detailLines[0] || ('Offline ' + duration),
+      result: detailLines.length > 1 ? detailLines.slice(1, 3).join(' · ') : sumParts.join(' · '),
       detail: {
         durationSeconds,
         durationText: duration,
@@ -6421,6 +6455,10 @@ const Game = {
         xp,
         rainHits: report.rainHits || 0,
         helperBuys: report.helperBuys || 0,
+        helperItemsBought: report.helperItemsBought || 0,
+        lines: detailLines,
+        harvestByPlant,
+        harvestByGarden,
         timeline: timeline.slice(0, 200),
         eventSource: timeline.length ? 'offline_simulation' : 'offline_calculation'
       }
@@ -6554,8 +6592,16 @@ const Game = {
       if (list.some(x => x.id === l.id || x.id === l.id + '_end')) return;
       const dur = (l.summary && l.summary.duration) || (l.detail && l.detail.durationText) || '';
       const sumText = (l.summary && l.summary.text) || '';
-      const text = 'Offline' + (dur ? (' · ' + dur) : (sumText ? (' · ' + sumText) : ''));
-      const resultLine = sumText && sumText !== dur ? sumText : '';
+      const detailLines = (l.detail && Array.isArray(l.detail.lines)) ? l.detail.lines : [];
+      // Ưu tiên dòng đầu báo cáo chi tiết (BÙ OFFLINE ...) cho list
+      const text = (detailLines[0] && String(detailLines[0]).trim())
+        || ('Offline' + (dur ? (' · ' + dur) : (sumText ? (' · ' + sumText) : '')));
+      let resultLine = '';
+      if (detailLines.length > 1) {
+        resultLine = detailLines.slice(1, 3).map(x => String(x || '').trim()).filter(Boolean).join(' · ');
+      } else if (sumText && sumText !== dur) {
+        resultLine = sumText;
+      }
       list.push({
         id: l.id,
         type: 'offline',
