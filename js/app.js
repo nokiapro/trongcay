@@ -4900,14 +4900,14 @@ function formatLogEventsHtml(d) {
 }
 
 function formatActivityDetailHtml(log) {
-  // Modal CHI TIẾT đầy đủ — list ngoài ngắn, trong này liệt kê đã làm gì
+  // Modal CHI TIẾT đầy đủ — list ngoài ngắn, ấn vào xem chi tiết (giống v1.9.190)
+  const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const num = (n) => Number(n || 0).toLocaleString('vi-VN');
   if (log && (log.aggregated || (log._event && log._event.aggregated) || log.action === 'day_summary' || (log._event && log._event.action === 'day_summary'))) {
     const ev = log._event || log;
     const d = Object.assign({}, (ev.detail || {}), (log.detail || {}));
     // actor từ nhiều nguồn
     const actor = d.actor || ev.actor || log.actor || '';
-    const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const num = (n) => Number(n || 0).toLocaleString('vi-VN');
     let html = '';
 
     // Khung giờ
@@ -5157,15 +5157,15 @@ function formatActivityDetailHtml(log) {
   if (type === 'offline') {
     html += '<div class="ad-block"><div class="ad-label">⚡ Offline</div>';
     if (d.startedClock || d.endedClock) {
-      html += '<div class="ad-value" style="font-size:0.9rem">Offline từ: <strong>' + (d.startedClock || '—') +
-        '</strong> · Online lại: <strong>' + (d.endedClock || '—') + '</strong></div>';
+      html += '<div class="ad-value" style="font-size:0.9rem">Offline từ: <strong>' + esc(d.startedClock || '—') +
+        '</strong> · Online lại: <strong>' + esc(d.endedClock || '—') + '</strong></div>';
     }
     html += '<div class="ad-value" style="margin-top:6px">Thời gian: <strong>' +
-      (d.durationText || log.summary?.duration || '—') + '</strong>';
+      esc(d.durationText || (log.summary && log.summary.duration) || '—') + '</strong>';
     if (d.durationSeconds) html += ' <span style="opacity:.7">(' + d.durationSeconds + 's)</span>';
     html += '</div></div>';
 
-    // Log chi tiết đầy đủ (lines từ simulateOfflineCare)
+    // Báo cáo chi tiết đầy đủ (BÙ OFFLINE / từng vườn...) — giống log-full-detail
     if (Array.isArray(d.lines) && d.lines.length) {
       html += '<div class="ad-block"><div class="ad-label">📋 Báo cáo chi tiết</div><ul class="ad-list ad-list-rich offline-detail-lines">';
       d.lines.forEach(function(ln) {
@@ -5177,10 +5177,10 @@ function formatActivityDetailHtml(log) {
     }
 
     if (d.garden) {
-      html += '<div class="ad-block"><div class="ad-label">🌱 Vườn</div><ul class="ad-list">';
-      html += '<li>Thu hoạch: ' + (d.garden.harvested || 0) + ' ô</li>';
-      html += '<li>Sản phẩm: +' + (d.garden.product || 0) + ' SP</li>';
-      html += '<li>Trồng lại: ' + (d.garden.replanted || 0) + ' ô</li>';
+      html += '<div class="ad-block"><div class="ad-label">🌱 Vườn</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Thu hoạch</span><span class="ad-li-v">' + esc(num(d.garden.harvested || 0)) + ' ô</span></li>';
+      html += '<li><span class="ad-li-k">Sản phẩm</span><span class="ad-li-v">+' + esc(num(d.garden.product || 0)) + ' SP</span></li>';
+      html += '<li><span class="ad-li-k">Trồng lại</span><span class="ad-li-v">' + esc(num(d.garden.replanted || 0)) + ' ô</span></li>';
       html += '</ul></div>';
     }
     if (d.harvestByPlant && typeof d.harvestByPlant === 'object') {
@@ -5189,39 +5189,39 @@ function formatActivityDetailHtml(log) {
         html += '<div class="ad-block"><div class="ad-label">Chi tiết thu theo cây</div><ul class="ad-list ad-list-rich">';
         plantKeys.forEach(function(nm) {
           const s = d.harvestByPlant[nm] || {};
-          html += '<li><span class="ad-li-k">' + esc(nm) + '</span><span class="ad-li-v">×' + (s.cycles || 0) + ' lần · ' + (s.amount || 0) + ' SP</span></li>';
+          html += '<li><span class="ad-li-k">' + esc(nm) + '</span><span class="ad-li-v">×' + esc(num(s.cycles || 0)) + ' lần · ' + esc(num(s.amount || 0)) + ' SP</span></li>';
         });
         html += '</ul></div>';
       }
     }
     if (d.nyc && (d.nyc.gardens || d.nyc.cells)) {
-      html += '<div class="ad-block"><div class="ad-label">❤️ NYC</div><ul class="ad-list">';
-      html += '<li>Số vườn xử lý: ' + (d.nyc.gardens || 0) + '</li>';
-      html += '<li>Số ô xử lý: ' + (d.nyc.cells || 0) + '</li>';
+      html += '<div class="ad-block"><div class="ad-label">❤️ NYC</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Số vườn xử lý</span><span class="ad-li-v">' + esc(num(d.nyc.gardens || 0)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Số ô xử lý</span><span class="ad-li-v">' + esc(num(d.nyc.cells || 0)) + '</span></li>';
       html += '</ul></div>';
     }
     if (d.robot) {
-      html += '<div class="ad-block"><div class="ad-label">🤖 Robot</div><ul class="ad-list">';
-      html += '<li>Mua hạt: ' + (d.robot.seedsBought || 0) + '</li>';
-      html += '<li>Nấu: ' + (d.robot.cooked || 0) + '</li>';
-      html += '<li>Ghép ⭐: ' + (d.robot.starMerged || 0) + '</li>';
-      html += '<li>Ghép ✨: ' + (d.robot.mythicMerged || 0) + '</li>';
+      html += '<div class="ad-block"><div class="ad-label">🤖 Robot</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Mua hạt</span><span class="ad-li-v">' + esc(num(d.robot.seedsBought || 0)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Nấu</span><span class="ad-li-v">' + esc(num(d.robot.cooked || 0)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Ghép sao</span><span class="ad-li-v">×' + esc(num(d.robot.starMerged || 0)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Ghép huyền thoại</span><span class="ad-li-v">×' + esc(num(d.robot.mythicMerged || 0)) + '</span></li>';
       html += '</ul></div>';
     }
     if (d.fairy) {
-      html += '<div class="ad-block"><div class="ad-label">🧚 Tiên</div><ul class="ad-list">';
-      html += '<li>Tưới: ' + (d.fairy.watered || 0) + ' ô</li>';
-      html += '<li>Nhặt hạt mưa: ' + (d.fairy.rainSeeds || 0) + '</li>';
+      html += '<div class="ad-block"><div class="ad-label">🧚 Tiên</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Tưới</span><span class="ad-li-v">' + esc(num(d.fairy.watered || 0)) + ' ô</span></li>';
+      html += '<li><span class="ad-li-k">Nhặt hạt mưa</span><span class="ad-li-v">' + esc(num(d.fairy.rainSeeds || 0)) + ' hạt</span></li>';
       html += '</ul></div>';
     }
     if (d.helperBuys || d.helperItemsBought) {
-      html += '<div class="ad-block"><div class="ad-label">🧑‍💼 Giúp việc</div><ul class="ad-list">';
-      html += '<li>Số đợt mua: ' + (d.helperBuys || 0) + '</li>';
-      if (d.helperItemsBought) html += '<li>Số đồ: ' + d.helperItemsBought + '</li>';
+      html += '<div class="ad-block"><div class="ad-label">Giúp việc</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Số đợt mua</span><span class="ad-li-v">' + esc(num(d.helperBuys || 0)) + '</span></li>';
+      if (d.helperItemsBought) html += '<li><span class="ad-li-k">Số đồ</span><span class="ad-li-v">' + esc(num(d.helperItemsBought)) + '</span></li>';
       html += '</ul></div>';
     }
-    if (d.xp) html += '<div class="ad-block"><div class="ad-label">⭐ XP</div><div class="ad-value">+' + Number(d.xp).toLocaleString() + ' XP</div></div>';
-    if (d.rainHits) html += '<div class="ad-block"><div class="ad-label">🌧️ Mưa</div><div class="ad-value">' + d.rainHits + ' trận</div></div>';
+    if (d.xp) html += '<div class="ad-block"><div class="ad-label">XP</div><div class="ad-value">+' + esc(num(d.xp)) + ' XP</div></div>';
+    if (d.rainHits) html += '<div class="ad-block"><div class="ad-label">Mưa</div><div class="ad-value">' + esc(num(d.rainHits)) + ' trận</div></div>';
     return (html || '<p>Không có chi tiết offline.</p>') + formatLogEventsHtml(d);
   }
 
