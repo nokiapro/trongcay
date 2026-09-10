@@ -157,118 +157,45 @@ function hideAuthLoading() {
   if (el) {
     el.style.display = 'none';
     el.style.pointerEvents = 'none';
-    el.style.visibility = 'hidden';
-    el.style.zIndex = '-1';
     el.setAttribute('aria-hidden', 'true');
-    el.classList.add('auth-loading-done');
   }
-  try { document.body.classList.add('auth-ready'); } catch (_) {}
 }
-
-/* Safety cuối: chỉ khi auth/UI treo rất lâu mới can thiệp */
-(function setupUiUnlockSafety() {
-  function unlockOverlays() {
-    try {
-      const al = document.getElementById('auth-loading');
-      const appEl = document.getElementById('app-screen');
-      const loginEl = document.getElementById('login-screen');
-      const appOn = appEl && appEl.style.display && appEl.style.display !== 'none';
-      const loginOn = loginEl && loginEl.style.display && loginEl.style.display !== 'none';
-      // Auth bình thường đã showApp/showLogin → chỉ dọn loading nếu còn
-      if (appOn || loginOn) {
-        if (al) {
-          al.style.display = 'none';
-          al.style.pointerEvents = 'none';
-          al.setAttribute('aria-hidden', 'true');
-        }
-      } else if (al && al.style.display !== 'none' && al.getAttribute('aria-hidden') !== 'true') {
-        // Treo >20s thật sự: mở login
-        if (typeof showLogin === 'function') showLogin();
-        else {
-          if (al) {
-            al.style.display = 'none';
-            al.style.pointerEvents = 'none';
-            al.setAttribute('aria-hidden', 'true');
-          }
-          if (loginEl) loginEl.style.display = 'flex';
-          if (appEl) appEl.style.display = 'none';
-        }
-      }
-      document.querySelectorAll('.modal').forEach(m => {
-        if (!m.classList.contains('show')) {
-          m.style.display = '';
-          m.style.zIndex = '';
-        }
-      });
-      document.getElementById('nav-backdrop')?.classList.remove('show');
-      document.body?.classList.remove('nav-more-visible');
-      const sheet = document.getElementById('nav-more-sheet');
-      if (sheet && !sheet.classList.contains('open')) {
-        sheet.hidden = true;
-      }
-    } catch (_) {}
-  }
-  // Chỉ 1 lần sau 20s — không cắt ngang khôi phục phiên bình thường
-  setTimeout(unlockOverlays, 8000);
-  // Lúc DOM ready cũng dọn modal không có class show nhưng còn inline flex
-  function bootClean() {
-    try {
-      document.querySelectorAll('.modal').forEach(m => {
-        if (!m.classList.contains('show')) {
-          m.style.display = '';
-          m.style.zIndex = '';
-        }
-      });
-    } catch (_) {}
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootClean);
-  else bootClean();
-})();
-
 
 function showAuthLoading() {
   const el = document.getElementById('auth-loading');
   if (el) {
     el.style.display = 'flex';
     el.style.pointerEvents = 'auto';
-    el.style.visibility = 'visible';
-    el.style.zIndex = '99998';
     el.removeAttribute('aria-hidden');
-    el.classList.remove('auth-loading-done');
   }
-  try { document.body.classList.remove('auth-ready'); } catch (_) {}
 }
 
 function showLogin() {
   hideAuthLoading();
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app-screen').style.display = 'none';
+  const login = document.getElementById('login-screen');
+  const appEl = document.getElementById('app-screen');
+  if (login) login.style.display = 'flex';
+  if (appEl) appEl.style.display = 'none';
 }
 
 function showApp() {
   hideAuthLoading();
-  // Gỡ overlay kẹt (modal log, nav sheet, loading)
   try {
-    if (typeof closeModals === 'function') closeModals();
-    if (typeof closeActivityDetail === 'function') closeActivityDetail();
     document.querySelectorAll('.modal.show').forEach(m => {
       m.classList.remove('show');
       m.style.display = '';
     });
-    document.body.classList.remove('nav-more-visible');
     document.getElementById('nav-backdrop')?.classList.remove('show');
-    const al = document.getElementById('auth-loading');
-    if (al) { al.style.display = 'none'; al.style.pointerEvents = 'none'; }
+    document.body.classList.remove('nav-more-visible');
   } catch (_) {}
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app-screen').style.display = 'block';
-  updateCoins();
-  updateUserUI();
-  updateFairyBadge();
-  listenServerAnnounce();
-  let page = 'garden';
-  try { page = sessionStorage.getItem('vx_page') || 'garden'; } catch (_) {}
-  goToPage(page);
+  const login = document.getElementById('login-screen');
+  const appEl = document.getElementById('app-screen');
+  if (login) login.style.display = 'none';
+  if (appEl) appEl.style.display = 'block';
+  try {
+    if (typeof renderAgentGardenToggles === 'function') renderAgentGardenToggles();
+    if (typeof updateCoins === 'function') updateCoins();
+  } catch (_) {}
 }
 
 function updateFairyBadge() {
@@ -954,9 +881,6 @@ auth.onAuthStateChanged(async (user) => {
     try {
       await initGlobalData();
       await loadPlayer(user.uid, user.email);
-      // Hiện app NGAY — không chờ gate/offline (tránh màn hình đứng không bấm được)
-      hideAuthLoading();
-      showApp();
       try {
         if (typeof Game !== 'undefined' && Game.processLoginStreak) {
           const sr = Game.processLoginStreak();
@@ -967,23 +891,23 @@ auth.onAuthStateChanged(async (user) => {
         }
       } catch (e) { console.warn('processLoginStreak', e); }
       try { if (typeof scheduleActivityMidnightPrune === 'function') scheduleActivityMidnightPrune(); } catch (_) {}
-      // Gate có timeout 4s — không treo vô hạn
       if (typeof Features !== 'undefined' && Features.checkAccessGates) {
         try {
           const gate = await Promise.race([
             Features.checkAccessGates(),
-            new Promise((resolve) => setTimeout(() => resolve({ blocked: false, timeout: true }), 4000))
+            new Promise((resolve) => setTimeout(() => resolve({ blocked: false }), 3000))
           ]);
           if (gate && gate.blocked) {
+            hideAuthLoading();
             showAccessGate(gate);
             return;
           }
         } catch (ge) { console.warn('checkAccessGates', ge); }
       }
       if (typeof Features !== 'undefined') Features.ensureQuests();
-      if (typeof listenPlayerTimers === 'function') listenPlayerTimers(); 
-      
-      // Offline / sync để sau — UI đã bấm được
+      if (typeof listenPlayerTimers === 'function') listenPlayerTimers();
+      // Vào game trước, offline chạy nền sau
+      showApp();
       setTimeout(async () => {
         try {
           if (typeof syncPlayerOnEnter === 'function') {
@@ -1038,7 +962,6 @@ auth.onAuthStateChanged(async (user) => {
         } catch (e) { console.warn('robotMergeAllBag', e); }
         if (typeof forceBackgroundCare === 'function') forceBackgroundCare('login');
       }, 1500);
-      showApp();
       if (typeof loadPlayerMailbox === 'function') loadPlayerMailbox().catch(() => {});
     } catch (e) {
       console.error(e);
