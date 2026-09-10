@@ -11064,3 +11064,35 @@ html[data-theme="dark"] .offline-detail-lines > li {
 html[data-theme="dark"] .offline-detail-lines .ad-li-sub {
   color: #f8fafc;
 }
+
+
+/* Offline full log ngay trên list — không cần ấn detail */
+.activity-list.activity-log-pro .al-row.al-offline-expanded {
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: start;
+  cursor: default;
+}
+.activity-list.activity-log-pro .al-offline-full {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.activity-list.activity-log-pro .al-offline-line {
+  font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--text-main, #0f172a);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.activity-list.activity-log-pro .al-offline-line:first-child {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #b45309;
+}
+html[data-theme="dark"] .activity-list.activity-log-pro .al-offline-line {
+  color: #f8fafc;
+}
+html[data-theme="dark"] .activity-list.activity-log-pro .al-offline-line:first-child {
+  color: #fbbf24;
+}

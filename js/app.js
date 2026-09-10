@@ -5448,7 +5448,7 @@ function renderActivityPage() {
     const msg = a.text || a.title || 'Hành động';
     const result = a.resultLine || '';
     const isOff = (a.filter === 'offline' || a.type === 'offline' || a.mode === 'offline');
-    // Tách khoảng giờ thành 2 dòng cho dễ đọc: 08:20\n– 15:42
+    // Tách khoảng giờ thành 2 dòng cho dễ đọc
     let timeHtml = esc(timeStr);
     if (timeStr.indexOf('–') >= 0 || timeStr.indexOf('-') >= 0) {
       const parts = timeStr.split(/\s*[–-]\s*/);
@@ -5457,6 +5457,7 @@ function renderActivityPage() {
           + '<span class="al-time-range">– ' + esc(parts[1].trim()) + '</span>';
       }
     }
+    // List: chỉ tóm tắt. Ấn vào mới xem log chi tiết đầy đủ trong modal
     html += '<li class="al-row activity-clickable' + (isOff ? ' al-offline' : '') + (a.aggregated ? ' al-agg' : '') + '" data-id="' + esc(a.id || '') + '">'
       + '<div class="al-time-col"><span class="al-time">' + timeHtml + '</span></div>'
       + '<div class="al-main">'
