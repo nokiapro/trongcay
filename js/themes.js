@@ -608,7 +608,7 @@ function updateThemeParticles(theme) {
     container = document.createElement("div");
     container.id = "theme-particle-layer";
     container.setAttribute("aria-hidden", "true");
-    container.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:5;overflow:hidden;";
+    container.style.cssText = "position:fixed;inset:0;pointer-events:none!important;z-index:1;overflow:hidden;";
     document.body.appendChild(container);
   }
 

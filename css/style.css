@@ -11234,3 +11234,15 @@ html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-l
   pointer-events: none !important;
   display: none !important;
 }
+
+
+/* AUTH LOADING UNBLOCK — không bao giờ chặn click vĩnh viễn */
+#auth-loading[aria-hidden="true"] {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  z-index: -1 !important;
+}
+#auth-loading {
+  /* Cho phép tắt bằng inline style */
+}

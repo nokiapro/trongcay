@@ -166,24 +166,39 @@ function hideAuthLoading() {
   function unlockOverlays() {
     try {
       const al = document.getElementById('auth-loading');
-      if (al && al.style.display !== 'none') {
-        // Nếu đã có app hoặc login hiện → ẩn loading
-        const appEl = document.getElementById('app-screen');
-        const loginEl = document.getElementById('login-screen');
-        const appOn = appEl && appEl.style.display !== 'none' && appEl.style.display !== '';
-        const loginOn = loginEl && loginEl.style.display !== 'none' && loginEl.style.display !== '';
-        // Sau 12s luôn ẩn loading nếu vẫn treo
+      if (al) {
         al.style.display = 'none';
         al.style.pointerEvents = 'none';
+        al.setAttribute('aria-hidden', 'true');
+      }
+      const appEl = document.getElementById('app-screen');
+      const loginEl = document.getElementById('login-screen');
+      const appOn = appEl && appEl.style.display && appEl.style.display !== 'none';
+      const loginOn = loginEl && loginEl.style.display && loginEl.style.display !== 'none';
+      // Quan trọng: nếu auth treo → phải hiện login, không để màn hình trống
+      if (!appOn && !loginOn) {
+        if (typeof showLogin === 'function') showLogin();
+        else if (loginEl) {
+          loginEl.style.display = 'flex';
+          if (appEl) appEl.style.display = 'none';
+        }
       }
       document.querySelectorAll('.modal').forEach(m => {
         if (!m.classList.contains('show')) {
           m.style.display = '';
+          m.style.zIndex = '';
         }
       });
+      document.getElementById('nav-backdrop')?.classList.remove('show');
+      document.body?.classList.remove('nav-more-visible');
+      const sheet = document.getElementById('nav-more-sheet');
+      if (sheet && !sheet.classList.contains('open')) {
+        sheet.hidden = true;
+      }
     } catch (_) {}
   }
-  setTimeout(unlockOverlays, 12000);
+  setTimeout(unlockOverlays, 3500);
+  setTimeout(unlockOverlays, 9000);
   // Lúc DOM ready cũng dọn modal không có class show nhưng còn inline flex
   function bootClean() {
     try {
@@ -5864,15 +5879,22 @@ function applyTheme(mode) {
   const isDark = mode === 'dark';
   if (isDark) {
     root.setAttribute('data-theme', 'dark');
-    document.body.classList.add('dark');
+    root.classList.add('dark');
+    if (document.body) document.body.classList.add('dark');
     const ic = document.getElementById('theme-icon');
     if (ic) ic.className = 'fa-solid fa-sun';
   } else {
     root.removeAttribute('data-theme');
-    document.body.classList.remove('dark');
+    root.classList.remove('dark');
+    if (document.body) document.body.classList.remove('dark');
     const ic = document.getElementById('theme-icon');
     if (ic) ic.className = 'fa-solid fa-moon';
   }
+  // Theme không được để overlay chặn click
+  try {
+    document.getElementById('nav-backdrop')?.classList.remove('show');
+    document.body?.classList.remove('nav-more-visible');
+  } catch (_) {}
   try { localStorage.setItem('vx-theme', mode); } catch (_) {}
 }
 (function initTheme() {
