@@ -5049,6 +5049,91 @@ function formatActivityDetailHtml(log) {
   if (!log) return '<p>Không có dữ liệu.</p>';
   const d = log.detail || {};
   const type = log.type;
+  const act0 = (d && d.action) || log.action || (log._event && log._event.action) || type;
+  const isOfflineLog = (
+    type === 'offline' ||
+    act0 === 'offline' ||
+    act0 === 'offline_end' ||
+    log.mode === 'offline' ||
+    log.filter === 'offline' ||
+    log._isOfflineSummary ||
+    (log.actor === 'offline')
+  );
+
+  // === OFFLINE FULL DETAIL (ưu tiên trước event generic) ===
+  if (isOfflineLog) {
+    let html = '';
+    html += '<div class="ad-block"><div class="ad-label">⚡ Offline</div>';
+    if (d.startedClock || d.endedClock) {
+      html += '<div class="ad-value" style="font-size:0.9rem">Offline từ: <strong>' + esc(d.startedClock || '—') +
+        '</strong> · Online lại: <strong>' + esc(d.endedClock || '—') + '</strong></div>';
+    }
+    html += '<div class="ad-value" style="margin-top:6px">Thời gian: <strong>' +
+      esc(d.durationText || (log.summary && log.summary.duration) || '—') + '</strong>';
+    if (d.durationSeconds) html += ' <span style="opacity:.7">(' + d.durationSeconds + 's)</span>';
+    html += '</div></div>';
+
+    const lines = Array.isArray(d.lines) ? d.lines : [];
+    if (lines.length) {
+      html += '<div class="ad-block"><div class="ad-label">📋 Báo cáo chi tiết</div><ul class="ad-list ad-list-rich offline-detail-lines">';
+      lines.forEach(function(ln) {
+        const t = String(ln || '').trim();
+        if (!t) return;
+        html += '<li class="ad-li-stack"><span class="ad-li-sub">' + esc(t) + '</span></li>';
+      });
+      html += '</ul></div>';
+    } else {
+      html += '<p class="ad-empty-line">Chưa có báo cáo chi tiết cho phiên offline này (log cũ trước khi cập nhật).</p>';
+    }
+
+    if (d.garden) {
+      html += '<div class="ad-block"><div class="ad-label">🌱 Vườn</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Thu hoạch</span><span class="ad-li-v">' + esc(num(d.garden.harvested || 0)) + ' ô</span></li>';
+      html += '<li><span class="ad-li-k">Sản phẩm</span><span class="ad-li-v">+' + esc(num(d.garden.product || 0)) + ' SP</span></li>';
+      html += '<li><span class="ad-li-k">Trồng lại</span><span class="ad-li-v">' + esc(num(d.garden.replanted || 0)) + ' ô</span></li>';
+      html += '</ul></div>';
+    }
+    if (d.harvestByPlant && typeof d.harvestByPlant === 'object') {
+      const plantKeys = Object.keys(d.harvestByPlant);
+      if (plantKeys.length) {
+        html += '<div class="ad-block"><div class="ad-label">Chi tiết thu theo cây</div><ul class="ad-list ad-list-rich">';
+        plantKeys.forEach(function(nm) {
+          const s = d.harvestByPlant[nm] || {};
+          html += '<li><span class="ad-li-k">' + esc(nm) + '</span><span class="ad-li-v">×' + esc(num(s.cycles || 0)) + ' lần · ' + esc(num(s.amount || 0)) + ' SP</span></li>';
+        });
+        html += '</ul></div>';
+      }
+    }
+    if (d.nyc && (d.nyc.gardens || d.nyc.cells)) {
+      html += '<div class="ad-block"><div class="ad-label">❤️ NYC</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Số vườn xử lý</span><span class="ad-li-v">' + esc(num(d.nyc.gardens || 0)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Số ô xử lý</span><span class="ad-li-v">' + esc(num(d.nyc.cells || 0)) + '</span></li>';
+      html += '</ul></div>';
+    }
+    if (d.robot) {
+      html += '<div class="ad-block"><div class="ad-label">🤖 Robot</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Mua hạt</span><span class="ad-li-v">' + esc(num(d.robot.seedsBought || 0)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Nấu</span><span class="ad-li-v">' + esc(num(d.robot.cooked || 0)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Ghép sao</span><span class="ad-li-v">×' + esc(num(d.robot.starMerged || 0)) + '</span></li>';
+      html += '<li><span class="ad-li-k">Ghép huyền thoại</span><span class="ad-li-v">×' + esc(num(d.robot.mythicMerged || 0)) + '</span></li>';
+      html += '</ul></div>';
+    }
+    if (d.fairy) {
+      html += '<div class="ad-block"><div class="ad-label">🧚 Tiên</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Tưới</span><span class="ad-li-v">' + esc(num(d.fairy.watered || 0)) + ' ô</span></li>';
+      html += '<li><span class="ad-li-k">Nhặt hạt mưa</span><span class="ad-li-v">' + esc(num(d.fairy.rainSeeds || 0)) + ' hạt</span></li>';
+      html += '</ul></div>';
+    }
+    if (d.helperBuys || d.helperItemsBought) {
+      html += '<div class="ad-block"><div class="ad-label">Giúp việc</div><ul class="ad-list ad-list-rich">';
+      html += '<li><span class="ad-li-k">Số đợt mua</span><span class="ad-li-v">' + esc(num(d.helperBuys || 0)) + '</span></li>';
+      if (d.helperItemsBought) html += '<li><span class="ad-li-k">Số đồ</span><span class="ad-li-v">' + esc(num(d.helperItemsBought)) + '</span></li>';
+      html += '</ul></div>';
+    }
+    if (d.rainHits) html += '<div class="ad-block"><div class="ad-label">Mưa</div><div class="ad-value">' + esc(num(d.rainHits)) + ' trận</div></div>';
+    if (d.xp) html += '<div class="ad-block"><div class="ad-label">XP</div><div class="ad-value">+' + esc(num(d.xp)) + ' XP</div></div>';
+    return html || '<p>Không có chi tiết offline.</p>';
+  }
 
   // === EVENT RIÊNG (nhật ký chi tiết) ===
   if (log._isEvent || log._event || (d.action && d.timestamp && d.actor)) {

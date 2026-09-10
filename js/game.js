@@ -6631,33 +6631,114 @@ const Game = {
   getActivityLogById(id) {
     if (!id) return null;
     const events = this.ensureGameEvents();
+    const logs = this.ensureActivityLogs();
     const ev = events.find(e => e && e.id === id);
+
+    // Offline: gộp detail từ activityLogs (có lines full-detail) vào event offline_end
+    let offlineLog = null;
+    if (ev && (ev.action === 'offline_end' || ev.action === 'offline' || ev.category === 'offline')) {
+      const baseId = String(id).replace(/_end$/, '');
+      offlineLog = logs.find(l => l && l.type === 'offline' && (l.id === baseId || l.id === id || (l.id + '_end') === id)) || null;
+      if (!offlineLog) {
+        offlineLog = logs.find(l => l && l.type === 'offline' && l.offlineSessionId && l.offlineSessionId === ev.offlineSessionId) || null;
+      }
+    }
+
     if (ev) {
       const text = ev.summaryText || ev.text || this.formatEventSummaryText(ev) || '';
-      // Giữ nguyên detail đầy đủ (aggregated)
-      const detail = Object.assign({}, ev.detail || {}, this._buildEventDetail(ev) || {});
+      let detail = Object.assign({}, ev.detail || {}, this._buildEventDetail(ev) || {});
+      if (offlineLog && offlineLog.detail) {
+        const od = offlineLog.detail;
+        detail = Object.assign({}, detail, od);
+        // Ưu tiên lines đầy đủ từ activityLogs
+        if (Array.isArray(od.lines) && od.lines.length) detail.lines = od.lines.slice();
+        if (od.harvestByPlant) detail.harvestByPlant = od.harvestByPlant;
+        if (od.harvestByGarden) detail.harvestByGarden = od.harvestByGarden;
+        if (od.garden) detail.garden = od.garden;
+        if (od.nyc) detail.nyc = od.nyc;
+        if (od.robot) detail.robot = od.robot;
+        if (od.fairy) detail.fairy = od.fairy;
+      }
+      // Không có lines → dựng báo cáo tối thiểu từ số liệu có sẵn
+      if (!Array.isArray(detail.lines) || !detail.lines.length) {
+        detail.lines = this._buildOfflineDetailLines(detail, text);
+      }
       return {
         id: ev.id,
-        type: ev.category || ev.action,
-        action: ev.action,
-        actor: ev.actor,
-        mode: ev.mode,
-        filter: ev.filter,
-        aggregated: !!ev.aggregated || ev.action === 'day_summary',
+        type: 'offline',
+        action: ev.action || 'offline_end',
+        actor: 'offline',
+        mode: 'offline',
+        filter: 'offline',
+        aggregated: false,
         timestamp: ev.timestamp,
-        firstAt: ev.firstAt || detail.firstAt || ev.timestamp,
-        lastAt: ev.lastAt || detail.lastAt || ev.timestamp,
+        firstAt: (offlineLog && offlineLog.firstAt) || detail.startedAt || detail.firstAt || ev.timestamp,
+        lastAt: detail.endedAt || detail.lastAt || ev.timestamp,
         summary: {
-          title: this._eventDetailTitle(ev),
+          title: 'Offline',
+          duration: detail.durationText || '',
           text: text
         },
         detail: detail,
+        offline: offlineLog && offlineLog.offline ? offlineLog.offline : {
+          startedAt: detail.startedAt,
+          endedAt: detail.endedAt,
+          durationSeconds: detail.durationSeconds,
+          durationMs: detail.offlineMs
+        },
         _event: ev,
-        _isEvent: true
+        _isEvent: true,
+        _isOfflineSummary: true
       };
     }
-    const logs = this.ensureActivityLogs();
-    return logs.find(l => l && l.id === id) || null;
+
+    const fromLogs = logs.find(l => l && l.id === id) || null;
+    if (fromLogs && fromLogs.type === 'offline' && fromLogs.detail) {
+      if (!Array.isArray(fromLogs.detail.lines) || !fromLogs.detail.lines.length) {
+        fromLogs.detail.lines = this._buildOfflineDetailLines(fromLogs.detail, (fromLogs.summary && fromLogs.summary.text) || '');
+      }
+    }
+    return fromLogs;
+  },
+
+  /** Dựng lines chi tiết offline khi thiếu report.lines (log cũ / mất dữ liệu) */
+  _buildOfflineDetailLines(d, fallbackText) {
+    const lines = [];
+    if (!d || typeof d !== 'object') return lines;
+    const dur = d.durationText || '';
+    const from = d.startedClock || '';
+    const to = d.endedClock || '';
+    if (dur || from || to) {
+      lines.push('BÙ OFFLINE — vắng ' + (dur || '—') + (from || to ? (' (từ ' + (from || '—') + ' → ' + (to || '—') + ')') : ''));
+    } else if (fallbackText) {
+      lines.push(String(fallbackText));
+    }
+    const g = d.garden || {};
+    const parts = [];
+    if (d.rainHits) parts.push('Mưa ' + d.rainHits + ' trận');
+    if (d.fairy && d.fairy.rainSeeds) parts.push('Tiên nhặt ' + d.fairy.rainSeeds + ' hạt');
+    if (g.harvested) parts.push('NYC thu ' + g.harvested + ' ô');
+    if (g.replanted) parts.push('trồng lại ' + g.replanted + ' lượt');
+    if (g.product) parts.push('tổng ' + g.product + ' sản phẩm');
+    if (d.helperBuys) parts.push('Giúp việc ' + d.helperBuys + ' đợt');
+    if (parts.length) lines.push('Tóm tắt: ' + parts.join(' · '));
+    if (d.robot) {
+      const r = d.robot;
+      const rp = [];
+      if (r.seedsBought) rp.push('mua +' + r.seedsBought + ' hạt');
+      if (r.starMerged) rp.push('ghép sao ×' + r.starMerged);
+      if (r.mythicMerged) rp.push('ghép HT ×' + r.mythicMerged);
+      if (rp.length) lines.push('Người máy: ' + rp.join(' · '));
+    }
+    if (d.harvestByPlant && typeof d.harvestByPlant === 'object') {
+      const plantParts = Object.keys(d.harvestByPlant).map(nm => {
+        const s = d.harvestByPlant[nm] || {};
+        return nm + ' ×' + (s.cycles || 0) + ' lần (' + (s.amount || 0) + ' sp)';
+      });
+      if (plantParts.length) lines.push('Chi tiết thu offline: ' + plantParts.join(' · '));
+    }
+    if (!lines.length && fallbackText) lines.push(String(fallbackText));
+    return lines;
   },
 
   _eventDetailTitle(ev) {
