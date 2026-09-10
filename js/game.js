@@ -3531,6 +3531,8 @@ const Game = {
           fairyActive,
           nycActive,
           helperActive,
+          nycGardens: typeof nycEnabledGardens !== 'undefined' ? nycEnabledGardens : 0,
+          nycPlots: totalPlant || 0,
           robotSeedsBought: (robotOffline && robotOffline.seedsBought) || 0,
           robotCooked: 0,
           robotStar: (robotOffline && (robotOffline.starDid || robotOffline.starOk)) || 0,
@@ -3635,6 +3637,13 @@ const Game = {
     }
     currentPlayer.stats = currentPlayer.stats || {};
     currentPlayer.stats.planted = (currentPlayer.stats.planted || 0) + 1;
+    // Quest trồng: tính cả trồng auto (NYC)
+    try {
+      if (typeof Features !== 'undefined' && Features.trackQuest) Features.trackQuest('plant', 1);
+    } catch (_) {}
+    try {
+      this.trackDayStat('nyc_plant', { plots: 1, gardenIndex: gi });
+    } catch (_) {}
     return true;
   },
 
