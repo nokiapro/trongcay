@@ -2913,7 +2913,6 @@ html[data-theme="dark"] .login-screen {
 }
 
 html[data-theme="dark"] .login-card,
-html[data-theme="dark"] .modal-content,
 html[data-theme="dark"] input,
 html[data-theme="dark"] .profile-field input,
 html[data-theme="dark"] .chat-input-row input,
@@ -2924,7 +2923,10 @@ html[data-theme="dark"] .friends-add input {
   border-radius: 999px;
 }
 html[data-theme="dark"] .modal-content {
-  border-radius: 22px;
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+  border-radius: 22px !important;
 }
 html[data-theme="dark"] .chat-panel {
   background: var(--card);
@@ -11093,4 +11095,53 @@ html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-h
 }
 html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-li-k {
   color: #64748b !important;
+}
+
+
+/* Vườn tab đang chọn: số 99/99 trắng rõ */
+.agent-garden-tab.active,
+.agent-garden-tab.active small {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+.agent-garden-tab.active small {
+  opacity: 0.95 !important;
+}
+
+/* Modal nhật ký: không bo pill, body luôn hiện */
+#modal-activity-detail .modal-content,
+#modal-activity-detail .modal-activity-content {
+  border-radius: 22px !important;
+  max-width: min(560px, 94vw) !important;
+  width: 94% !important;
+  max-height: 88vh !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 18px 20px 22px !important;
+  display: block !important;
+}
+#modal-activity-detail .activity-detail-head {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+#modal-activity-detail .activity-detail-head h2 {
+  color: #f8fafc !important;
+  font-size: 1.05rem !important;
+  margin: 0 !important;
+}
+#modal-activity-detail #activity-detail-body,
+#modal-activity-detail .activity-detail-body {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 120px !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  color: #f8fafc !important;
+  margin-top: 10px !important;
+  padding-top: 4px !important;
 }
