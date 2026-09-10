@@ -8271,8 +8271,12 @@ html[data-theme="dark"] .profile-badge {
 }
 .agent-garden-tab.active {
   background: linear-gradient(135deg, var(--primary), var(--primary-light, #34d399));
-  color: #fff;
+  color: #fff !important;
   border-color: transparent;
+}
+.agent-garden-tab.active small {
+  color: #fff !important;
+  opacity: 0.95;
 }
 .agent-garden-tab.off {
   opacity: 0.55;
@@ -11000,3 +11004,97 @@ html[data-theme="dark"] .activity-detail-grid .ad-v { color: #e2e8f0; }
 html[data-theme="dark"] .ad-hero-value,
 html[data-theme="dark"] .ad-li-v,
 html[data-theme="dark"] .ad-li-sub { color: #e2e8f0; }
+
+
+/* FIX: vườn tắt + log xám → trắng dễ đọc */
+.agent-garden-tab.off {
+  opacity: 1 !important;
+  color: #f8fafc !important;
+  border-color: rgba(248, 250, 252, 0.35) !important;
+  background: rgba(248, 250, 252, 0.08) !important;
+}
+.agent-garden-tab.off small {
+  opacity: 0.9 !important;
+  color: #e2e8f0 !important;
+}
+html[data-theme="dark"] .agent-garden-tab {
+  color: #f1f5f9;
+}
+html[data-theme="dark"] .agent-garden-tab:not(.active):not(.off) {
+  color: #f8fafc;
+}
+
+/* Log list: chữ sáng */
+.activity-list.activity-log-pro .al-msg {
+  color: #f8fafc !important;
+}
+.activity-list.activity-log-pro .al-time,
+.activity-list.activity-log-pro .al-time-range {
+  color: #e2e8f0 !important;
+}
+.activity-list.activity-log-pro .al-result {
+  color: #86efac !important;
+}
+.activity-list.activity-log-pro .activity-day-pill {
+  color: #f1f5f9 !important;
+  background: rgba(248, 250, 252, 0.12) !important;
+}
+html:not([data-theme="dark"]) .activity-list.activity-log-pro .al-msg {
+  color: #0f172a !important;
+}
+html:not([data-theme="dark"]) .activity-list.activity-log-pro .al-time,
+html:not([data-theme="dark"]) .activity-list.activity-log-pro .al-time-range {
+  color: #475569 !important;
+}
+
+/* Modal chi tiết PC: luôn hiện body */
+#modal-activity-detail.modal.show {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  z-index: 10050 !important;
+}
+#modal-activity-detail .modal-activity-content {
+  max-width: min(520px, 94vw) !important;
+  width: 94% !important;
+  max-height: 85vh !important;
+  overflow: auto !important;
+  display: block !important;
+  padding: 16px 18px 20px !important;
+}
+#modal-activity-detail .activity-detail-body {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 80px;
+  margin-top: 12px;
+  color: #f8fafc !important;
+}
+#modal-activity-detail .activity-detail-body .ad-li-k,
+#modal-activity-detail .activity-detail-body .ad-label,
+#modal-activity-detail .activity-detail-body .ad-hero-label,
+#modal-activity-detail .activity-detail-body .ad-note {
+  color: #cbd5e1 !important;
+}
+#modal-activity-detail .activity-detail-body .ad-li-v,
+#modal-activity-detail .activity-detail-body .ad-hero-value,
+#modal-activity-detail .activity-detail-body .ad-li-sub,
+#modal-activity-detail .activity-detail-body strong {
+  color: #f8fafc !important;
+}
+#modal-activity-detail .ad-list-rich > li {
+  background: rgba(248, 250, 252, 0.08) !important;
+}
+#modal-activity-detail .ad-hero {
+  background: rgba(34, 197, 94, 0.15) !important;
+}
+html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body {
+  color: #0f172a !important;
+}
+html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-li-v,
+html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-hero-value {
+  color: #0f172a !important;
+}
+html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-li-k {
+  color: #64748b !important;
+}
