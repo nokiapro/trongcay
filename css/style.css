@@ -3097,61 +3097,81 @@ html[data-theme="dark"] .chat-bubble .chat-time-tip::after {
 
 
 
+/* ========== SCROLLBAR ĐẸP (PC + Mobile WebKit) ========== */
 * {
-  scrollbar-width: thin;
-  scrollbar-color: var(--primary-light) transparent;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(34, 197, 94, 0.55) transparent;
 }
 
-
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 *::-webkit-scrollbar-track {
   background: transparent;
   border-radius: 999px;
+  margin: 6px 0;
 }
 *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--primary-light), var(--primary));
+  background: linear-gradient(180deg, rgba(74, 222, 128, 0.85), rgba(34, 197, 94, 0.7));
   border-radius: 999px;
-  border: 2px solid transparent;
+  border: 1.5px solid transparent;
   background-clip: padding-box;
-  min-height: 40px;
+  min-height: 36px;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.12);
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+  background: linear-gradient(180deg, #4ade80, #22c55e);
   background-clip: padding-box;
-  border: 2px solid transparent;
+  border: 1.5px solid transparent;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.35);
+}
+*::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #22c55e, #16a34a);
+  background-clip: padding-box;
 }
 *::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-
+/* Track nhẹ cho panel / modal / list */
 .seed-list::-webkit-scrollbar-track,
 .friends-list::-webkit-scrollbar-track,
 .chat-messages::-webkit-scrollbar-track,
 .shop-grid::-webkit-scrollbar-track,
 .rank-list::-webkit-scrollbar-track,
 .inv-panel::-webkit-scrollbar-track,
-.modal-content::-webkit-scrollbar-track {
-  background: color-mix(in srgb, var(--primary) 8%, transparent);
+.modal-content::-webkit-scrollbar-track,
+.activity-list::-webkit-scrollbar-track,
+#modal-activity-detail-box::-webkit-scrollbar-track {
+  background: rgba(34, 197, 94, 0.06);
   border-radius: 999px;
-  margin: 4px 0;
+  margin: 4px 2px;
 }
 
-html[data-theme="dark"] * {
-  scrollbar-color: #3d6b54 #121a16;
+/* Dark mode */
+html[data-theme="dark"] *,
+body.dark * {
+  scrollbar-color: rgba(82, 183, 136, 0.55) transparent;
 }
-html[data-theme="dark"] *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #3d6b54, #2a4a38);
+html[data-theme="dark"] *::-webkit-scrollbar-thumb,
+body.dark *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(82, 183, 136, 0.9), rgba(45, 106, 79, 0.75));
   background-clip: padding-box;
-  border: 2px solid transparent;
+  border: 1.5px solid transparent;
+  box-shadow: 0 0 0 1px rgba(82, 183, 136, 0.15);
 }
-html[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #52b788, #3d6b54);
+html[data-theme="dark"] *::-webkit-scrollbar-thumb:hover,
+body.dark *::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #6bcf9a, #3d6b54);
   background-clip: padding-box;
-  border: 2px solid transparent;
+  border: 1.5px solid transparent;
+  box-shadow: 0 0 10px rgba(82, 183, 136, 0.4);
+}
+html[data-theme="dark"] *::-webkit-scrollbar-thumb:active,
+body.dark *::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #52b788, #2d6a4f);
+  background-clip: padding-box;
 }
 html[data-theme="dark"] .seed-list::-webkit-scrollbar-track,
 html[data-theme="dark"] .friends-list::-webkit-scrollbar-track,
@@ -3159,9 +3179,25 @@ html[data-theme="dark"] .chat-messages::-webkit-scrollbar-track,
 html[data-theme="dark"] .shop-grid::-webkit-scrollbar-track,
 html[data-theme="dark"] .rank-list::-webkit-scrollbar-track,
 html[data-theme="dark"] .inv-panel::-webkit-scrollbar-track,
-html[data-theme="dark"] .modal-content::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.04);
+html[data-theme="dark"] .modal-content::-webkit-scrollbar-track,
+html[data-theme="dark"] .activity-list::-webkit-scrollbar-track,
+html[data-theme="dark"] #modal-activity-detail-box::-webkit-scrollbar-track,
+body.dark .modal-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
 }
+
+/* Mobile: scrollbar mảnh hơn, vẫn đủ chạm */
+@media (max-width: 768px) {
+  *::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  *::-webkit-scrollbar-thumb {
+    min-height: 28px;
+    border-width: 1px;
+  }
+}
+
 
 
 
