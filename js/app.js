@@ -161,25 +161,32 @@ function hideAuthLoading() {
   }
 }
 
-/* Safety: không để auth-loading / modal chặn click vĩnh viễn */
+/* Safety cuối: chỉ khi auth/UI treo rất lâu mới can thiệp */
 (function setupUiUnlockSafety() {
   function unlockOverlays() {
     try {
       const al = document.getElementById('auth-loading');
-      if (al) {
-        al.style.display = 'none';
-        al.style.pointerEvents = 'none';
-        al.setAttribute('aria-hidden', 'true');
-      }
       const appEl = document.getElementById('app-screen');
       const loginEl = document.getElementById('login-screen');
       const appOn = appEl && appEl.style.display && appEl.style.display !== 'none';
       const loginOn = loginEl && loginEl.style.display && loginEl.style.display !== 'none';
-      // Quan trọng: nếu auth treo → phải hiện login, không để màn hình trống
-      if (!appOn && !loginOn) {
+      // Auth bình thường đã showApp/showLogin → chỉ dọn loading nếu còn
+      if (appOn || loginOn) {
+        if (al) {
+          al.style.display = 'none';
+          al.style.pointerEvents = 'none';
+          al.setAttribute('aria-hidden', 'true');
+        }
+      } else if (al && al.style.display !== 'none' && al.getAttribute('aria-hidden') !== 'true') {
+        // Treo >20s thật sự: mở login
         if (typeof showLogin === 'function') showLogin();
-        else if (loginEl) {
-          loginEl.style.display = 'flex';
+        else {
+          if (al) {
+            al.style.display = 'none';
+            al.style.pointerEvents = 'none';
+            al.setAttribute('aria-hidden', 'true');
+          }
+          if (loginEl) loginEl.style.display = 'flex';
           if (appEl) appEl.style.display = 'none';
         }
       }
@@ -197,8 +204,8 @@ function hideAuthLoading() {
       }
     } catch (_) {}
   }
-  setTimeout(unlockOverlays, 3500);
-  setTimeout(unlockOverlays, 9000);
+  // Chỉ 1 lần sau 20s — không cắt ngang khôi phục phiên bình thường
+  setTimeout(unlockOverlays, 20000);
   // Lúc DOM ready cũng dọn modal không có class show nhưng còn inline flex
   function bootClean() {
     try {
