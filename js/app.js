@@ -1193,7 +1193,13 @@ function goToPage(page) {
   if (page === 'bank') renderBank();
   if (page === 'stats') renderStats();
   if (page === 'level') renderLevelPage();
-  if (page === 'activity') renderActivityPage();
+  if (page === 'activity') {
+    if (typeof closeActivityDetail === 'function') closeActivityDetail();
+    renderActivityPage();
+  } else if (typeof closeActivityDetail === 'function') {
+    // Rời trang activity → đóng panel chi tiết
+    try { closeActivityDetail(); } catch (_) {}
+  }
   if (page === 'rank') renderRank();
   if (page === 'friends') renderFriends();
   if (page === 'profile') renderProfile();
@@ -5329,24 +5335,33 @@ function formatActivityDetailHtml(log) {
 }
 
 function closeActivityDetail() {
-  const modal = document.getElementById('modal-activity-detail');
-  if (!modal) return;
-  modal.classList.remove('show');
-  modal.style.display = '';
-  modal.style.pointerEvents = '';
-  modal.style.zIndex = '';
+  // Quay lại danh sách nhật ký (giống nút back chat)
+  const listPanel = document.getElementById('activity-list-panel');
+  const listHeader = document.getElementById('activity-list-header');
+  const detailPanel = document.getElementById('activity-detail-panel');
+  if (detailPanel) detailPanel.classList.add('hidden');
+  if (listPanel) listPanel.classList.remove('hidden');
+  if (listHeader) listHeader.classList.remove('hidden');
   window.__vxOpeningActivityDetail = false;
-  if (window.__vxActivityDetailIgnoreTimer) {
-    clearTimeout(window.__vxActivityDetailIgnoreTimer);
-    window.__vxActivityDetailIgnoreTimer = null;
-  }
+  document.body.classList.remove('activity-detail-open');
 }
 
 function openActivityDetail(logId, cachedLog) {
-  const modal = document.getElementById('modal-activity-detail');
+  // Chi tiết log = trang/panel trong page-activity (không dùng modal)
+  const listPanel = document.getElementById('activity-list-panel');
+  const listHeader = document.getElementById('activity-list-header');
+  const detailPanel = document.getElementById('activity-detail-panel');
   const title = document.getElementById('activity-detail-title');
   const body = document.getElementById('activity-detail-body');
-  if (!modal || !body) return;
+  if (!detailPanel || !body) return;
+
+  // Đảm bảo đang ở trang activity
+  if (typeof goToPage === 'function') {
+    const actPage = document.getElementById('page-activity');
+    if (!actPage || !actPage.classList.contains('active')) {
+      goToPage('activity');
+    }
+  }
 
   let log = cachedLog || null;
   if (!log && window._activityLogMap && logId && window._activityLogMap[logId]) {
@@ -5359,14 +5374,13 @@ function openActivityDetail(logId, cachedLog) {
     log = window._lastActivityLines.find(x => x && x.id === logId) || null;
   }
 
-  // Fill content TRƯỚC khi hiện modal
   if (!log) {
-    if (title) title.textContent = 'Chi tiết';
+    if (title) title.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Chi tiết';
     body.innerHTML = '<p class="ad-empty-line">Không tìm thấy log (id: ' + String(logId || '') + ').</p>';
   } else {
     const t = (log.summary && log.summary.title) ? log.summary.title
       : (log.text || log.title || 'Chi tiết');
-    if (title) title.textContent = t;
+    if (title) title.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> ' + String(t).replace(/</g, '&lt;');
     let html = '';
     try {
       html = formatActivityDetailHtml(log) || '';
@@ -5391,36 +5405,18 @@ function openActivityDetail(logId, cachedLog) {
     }
     body.innerHTML = html;
   }
-  body.style.display = 'block';
-  body.style.visibility = 'visible';
-  body.style.opacity = '1';
-  body.style.minHeight = '80px';
 
-  // PC fix: hiện modal NGAY + chặn pointer-events tạm thời
-  // để click/mouseup còn lại trên desktop không đụng backdrop và đóng modal
-  window.__vxOpeningActivityDetail = true;
-  if (window.__vxActivityDetailIgnoreTimer) {
-    clearTimeout(window.__vxActivityDetailIgnoreTimer);
-  }
-  modal.style.pointerEvents = 'none';
-  modal.style.zIndex = '10060';
-  modal.classList.add('show');
-  // Cho phép tương tác sau khi event click hiện tại đã kết thúc hẳn
-  window.__vxActivityDetailIgnoreTimer = setTimeout(() => {
-    modal.style.pointerEvents = 'auto';
-    window.__vxOpeningActivityDetail = false;
-    window.__vxActivityDetailIgnoreTimer = null;
-  }, 400);
+  if (listPanel) listPanel.classList.add('hidden');
+  if (listHeader) listHeader.classList.add('hidden');
+  detailPanel.classList.remove('hidden');
+  document.body.classList.add('activity-detail-open');
+  try { detailPanel.scrollTop = 0; body.scrollTop = 0; } catch (_) {}
 }
 
-document.getElementById('btn-close-activity-detail')?.addEventListener('click', (e) => {
+document.getElementById('btn-activity-detail-back')?.addEventListener('click', (e) => {
   e.preventDefault();
   e.stopPropagation();
   closeActivityDetail();
-});
-document.getElementById('modal-activity-detail')?.addEventListener('click', (e) => {
-  if (window.__vxOpeningActivityDetail) return;
-  if (e.target.id === 'modal-activity-detail') closeActivityDetail();
 });
 
 let _lastOfflineLogId = null;
@@ -5572,17 +5568,8 @@ function renderActivityPage() {
   window._activityLogMap = {};
   lines.forEach(a => { if (a && a.id) window._activityLogMap[a.id] = a; });
   actList.querySelectorAll('.activity-clickable').forEach(el => {
-    // PC: chặn bubble từ pointerdown/up/click để event không lan lên document/backdrop
-    const stop = (ev) => {
-      if (!ev) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
-    };
-    el.onpointerdown = stop;
-    el.onpointerup = stop;
     el.onclick = (ev) => {
-      stop(ev);
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
       const id = el.getAttribute('data-id');
       const cached = (window._activityLogMap && id) ? window._activityLogMap[id] : null;
       if (id && typeof openActivityDetail === 'function') openActivityDetail(id, cached);
@@ -5728,35 +5715,18 @@ function renderLevelPage() {
 
 
 function closeModals() {
-  if (window.__vxOpeningActivityDetail) return;
   document.querySelectorAll('.modal').forEach(m => {
     m.classList.remove('show');
-    if (m.id === 'modal-activity-detail') {
-      m.style.display = '';
-      m.style.pointerEvents = '';
-    }
   });
 }
 
 document.querySelectorAll('.modal-close').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    if (btn.id === 'btn-close-activity-detail') {
-      e.preventDefault();
-      e.stopPropagation();
-      closeActivityDetail();
-      return;
-    }
-    closeModals();
-  });
+  btn.addEventListener('click', () => closeModals());
 });
 
 document.querySelectorAll('.modal').forEach(modal => {
   modal.addEventListener('click', e => {
-    if (window.__vxOpeningActivityDetail) return;
-    if (e.target === modal) {
-      if (modal.id === 'modal-activity-detail') closeActivityDetail();
-      else closeModals();
-    }
+    if (e.target === modal) closeModals();
   });
 });
 
