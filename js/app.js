@@ -5369,6 +5369,8 @@ function closeActivityDetail() {
 }
 
 function openActivityDetail(logId, cachedLog) {
+  return { ok: false, reason: 'log-disabled' }; // LOG DISABLED
+
   // Luôn chuyển sang trang Nhật ký trước
   window.__vxSkipCloseActivityDetail = true;
   try {
@@ -5653,6 +5655,8 @@ document.getElementById('btn-offline-view-detail')?.addEventListener('click', ()
 
 /* ========== NHẬT KÝ — Timeline chuyên nghiệp (24h, không filter) ========== */
 function renderActivityPage(opts) {
+  return; // LOG DISABLED
+
   if (typeof currentPlayer === 'undefined' || !currentPlayer) return;
   const force = !!(opts && opts.force);
 
