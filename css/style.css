@@ -11290,3 +11290,39 @@ html:not([data-theme="dark"]) #modal-activity-detail .ad-li-v {
   color: #0f172a !important;
 }
 
+
+
+/* PC: modal log chi tiết luôn hiện khi .show */
+#modal-activity-detail.modal {
+  z-index: 10060 !important;
+}
+#modal-activity-detail.modal.show {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+#modal-activity-detail .modal-content,
+#modal-activity-detail .modal-activity-content {
+  display: block !important;
+  max-width: min(520px, 94vw) !important;
+  width: 94% !important;
+  max-height: 88vh !important;
+  overflow: auto !important;
+}
+#modal-activity-detail #activity-detail-body {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 80px !important;
+}
+/* Light: chữ tối; Dark: chữ sáng — không hardcode trắng trong JS */
+html:not([data-theme="dark"]) #modal-activity-detail #activity-detail-body {
+  color: #0f172a !important;
+}
+html[data-theme="dark"] #modal-activity-detail #activity-detail-body,
+body.dark #modal-activity-detail #activity-detail-body {
+  color: #e2e8f0 !important;
+}

@@ -19,7 +19,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/style.css?v=1.9.210" />
+  <link rel="stylesheet" href="css/style.css?v=1.9.212" />
   <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://kit-pro.fontawesome.com/releases/v7.3.1/css/pro.min.css" />
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
@@ -801,7 +801,7 @@
         <button type="button" id="btn-nyc-random-seeds" class="btn btn-secondary btn-sm" title="Chọn ngẫu nhiên các loại hạt khác nhau từ kho"><i class="fa-solid fa-shuffle"></i> Random không trùng</button>
       </div>
       <div id="nyc-plant-list" class="nyc-plant-list" style="margin:8px 0;display:flex;flex-direction:column;gap:6px"></div>
-      <p class="bulk-hint" id="nyc-seed-hint">Có thể thêm nhiều hạt (không trùng loại). Ô trống trồng theo danh sách; chế độ random ưu tiên loại chưa có trên vườn. Hết hạt → dừng.</p>
+      <p class="bulk-hint" id="nyc-seed-hint">Có thể để trống danh sách: NYC sẽ tự random hạt từ kho (ưu tiên loại chưa có trên mọi vườn). Hoặc thêm list / bấm Random.</p>
       <label>Số lượng trồng mỗi lần</label>
       <div class="nyc-mode-row">
         <label class="checkbox-row"><input type="radio" name="nyc-mode" value="all" checked /> Trồng hết ô trống</label>
@@ -932,13 +932,13 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="js/firebase-config.js?v=1.9.210"></script>
-  <script src="js/themes.js?v=1.9.210"></script>
-  <script src="js/data.js?v=1.9.210"></script>
-  <script src="js/fa-icons.js?v=1.9.210"></script>
-  <script src="js/game.js?v=1.9.210"></script>
-  <script src="js/features.js?v=1.9.210"></script>
-  <script src="js/app.js?v=1.9.210"></script>
+  <script src="js/firebase-config.js?v=1.9.212"></script>
+  <script src="js/themes.js?v=1.9.212"></script>
+  <script src="js/data.js?v=1.9.212"></script>
+  <script src="js/fa-icons.js?v=1.9.212"></script>
+  <script src="js/game.js?v=1.9.212"></script>
+  <script src="js/features.js?v=1.9.212"></script>
+  <script src="js/app.js?v=1.9.212"></script>
   <script>
   (function () {
     if (!('serviceWorker' in navigator)) return;

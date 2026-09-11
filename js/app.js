@@ -941,80 +941,61 @@ auth.onAuthStateChanged(async (user) => {
     try {
       await initGlobalData();
       await loadPlayer(user.uid, user.email);
-      // Hiện game NGAY — không chờ gate / offline / robot (tránh đứng 1 phút)
-      showApp();
+      // === Boot kiểu 205: vào game ngay, không await offline ===
       try {
         if (typeof Game !== 'undefined' && Game.processLoginStreak) {
           const sr = Game.processLoginStreak();
-          if (sr && sr.changed) {
-            if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
-            else if (typeof savePlayer === 'function') await savePlayer();
-          }
+          if (sr && sr.changed && typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
         }
       } catch (e) { console.warn('processLoginStreak', e); }
       try { if (typeof scheduleActivityMidnightPrune === 'function') scheduleActivityMidnightPrune(); } catch (_) {}
-      if (typeof Features !== 'undefined' && Features.checkAccessGates) {
-        try {
-          const gate = await Promise.race([
-            Features.checkAccessGates(),
-            new Promise(r => setTimeout(() => r({ blocked: false }), 2500))
-          ]);
-          if (gate && gate.blocked) {
-            showAccessGate(gate);
-            return;
-          }
-        } catch (ge) { console.warn('checkAccessGates', ge); }
-      }
       if (typeof Features !== 'undefined') Features.ensureQuests();
       if (typeof listenPlayerTimers === 'function') listenPlayerTimers();
+      // Vào game trước — gate/offline không được giữ màn loading
+      showApp();
       if (typeof loadPlayerMailbox === 'function') loadPlayerMailbox().catch(() => {});
+      // Gate chạy nền: chỉ khóa nếu Firebase trả blocked
+      if (typeof Features !== 'undefined' && Features.checkAccessGates) {
+        Features.checkAccessGates().then(gate => {
+          if (gate && gate.blocked) showAccessGate(gate);
+        }).catch(ge => console.warn('checkAccessGates', ge));
+      }
 
-      // Đồng bộ / offline / robot: nền, có timeout — KHÔNG chặn UI
-      // Popup offline chỉ hiện KHI tính offline xong (không phải nguyên nhân đơ)
-      setTimeout(async () => {
-        const withTimeout = (p, ms, label) => Promise.race([
-          Promise.resolve().then(() => p),
-          new Promise(r => setTimeout(() => r({ __timeout: true, label }), ms))
-        ]);
-        try {
-          if (typeof syncPlayerOnEnter === 'function') {
-            const syn = await withTimeout(syncPlayerOnEnter(), 4000, 'sync');
-            if (syn && syn.ok && !syn.__timeout && typeof updateCoins === 'function') updateCoins();
-          }
-        } catch (e) { console.warn('syncPlayerOnEnter', e); }
-        try {
-          if (typeof pullRemotePlayerIfNewer === 'function') {
-            await withTimeout(pullRemotePlayerIfNewer(), 4000, 'pull');
-          }
-        } catch (e) { console.warn('pullRemote', e); }
-        try {
-          if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
-            // Offline nặng → timeout 8s để không đơ tab
-            const r = await withTimeout(Game.simulateOfflineCare(), 8000, 'offline');
-            if (r && r.__timeout) {
-              console.warn('[boot] simulateOfflineCare timeout — bỏ qua lần này');
-            } else if (r && !r.skipped && (r.offlineMs || 0) >= ((typeof Game !== "undefined" && Game.OFFLINE_CONFIG && Game.OFFLINE_CONFIG.thresholdMs) || 300000)) {
-              if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(600);
-              else if (typeof savePlayer === 'function') await savePlayer();
-              if (typeof updateCoins === 'function') updateCoins();
-              if (typeof renderGarden === 'function') {
-                const gp = document.getElementById('page-garden');
-                if (gp && gp.classList.contains('active')) renderGarden();
-              }
-              if (typeof renderActivityPage === 'function') renderActivityPage();
-              try {
-                const logs = (currentPlayer && currentPlayer.activityLogs) || [];
-                const lastOff = logs.find(l => l && l.type === 'offline');
-                if (typeof showOfflineReturnModal === 'function') showOfflineReturnModal(r, lastOff);
-              } catch (_) {}
+      // Offline / sync: CHẠY NỀN, không await trên luồng auth (tránh đơ + timeout giả)
+      setTimeout(() => {
+        (async () => {
+          try {
+            if (typeof syncPlayerOnEnter === 'function') {
+              const syn = await syncPlayerOnEnter();
+              if (syn && syn.ok && typeof updateCoins === 'function') updateCoins();
             }
-          }
-        } catch (e) { console.warn('simulateOfflineCare', e); }
-        // Robot: KHÔNG chạy bulk lúc login (dễ đơ). Interval 45s sẽ rà sau.
-        try {
-          if (typeof forceBackgroundCare === 'function') forceBackgroundCare('login');
-        } catch (_) {}
-      }, 1500);
+          } catch (e) { console.warn('syncPlayerOnEnter', e); }
+          try {
+            if (typeof pullRemotePlayerIfNewer === 'function') await pullRemotePlayerIfNewer();
+          } catch (e) { console.warn('pullRemote', e); }
+          try {
+            if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
+              const r = await Game.simulateOfflineCare();
+              if (r && !r.skipped && (r.offlineMs || 0) >= ((Game.OFFLINE_CONFIG && Game.OFFLINE_CONFIG.thresholdMs) || 300000)) {
+                if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(600);
+                if (typeof updateCoins === 'function') updateCoins();
+                if (typeof renderGarden === 'function') {
+                  const gp = document.getElementById('page-garden');
+                  if (gp && gp.classList.contains('active')) renderGarden();
+                }
+                try {
+                  const logs = (currentPlayer && currentPlayer.activityLogs) || [];
+                  const lastOff = logs.find(l => l && l.type === 'offline');
+                  if (typeof showOfflineReturnModal === 'function') showOfflineReturnModal(r, lastOff);
+                } catch (_) {}
+              }
+            }
+          } catch (e) { console.warn('simulateOfflineCare', e); }
+          try {
+            if (typeof forceBackgroundCare === 'function') forceBackgroundCare('login');
+          } catch (_) {}
+        })();
+      }, 2500);
     } catch (e) {
       console.error(e);
       showToast('Lỗi tải dữ liệu: ' + e.message, 'error');
@@ -5347,18 +5328,31 @@ function formatActivityDetailHtml(log) {
   return '<pre class="ad-pre">' + JSON.stringify(d, null, 2) + '</pre>';
 }
 
-function openActivityDetail(logId) {
-  const log = (typeof Game !== 'undefined' && Game.getActivityLogById)
-    ? Game.getActivityLogById(logId)
-    : null;
+function openActivityDetail(logId, cachedLog) {
   const modal = document.getElementById('modal-activity-detail');
   const title = document.getElementById('activity-detail-title');
   const body = document.getElementById('activity-detail-body');
   if (!modal || !body) return;
+
+  let log = cachedLog || null;
+  if (!log && window._activityLogMap && logId && window._activityLogMap[logId]) {
+    log = window._activityLogMap[logId];
+  }
+  if (!log && typeof Game !== 'undefined' && Game.getActivityLogById) {
+    try { log = Game.getActivityLogById(logId); } catch (e) { console.warn(e); }
+  }
+  if (!log && Array.isArray(window._lastActivityLines)) {
+    log = window._lastActivityLines.find(x => x && x.id === logId) || null;
+  }
+
+  // Chỉ dùng class — không gán inline display lên overlay
   modal.classList.add('show');
+  modal.style.zIndex = '10060';
+
   if (!log) {
     if (title) title.textContent = 'Chi tiết';
     body.innerHTML = '<p class="ad-empty-line">Không tìm thấy log.</p>';
+    body.style.cssText = 'display:block;visibility:visible;opacity:1;';
     return;
   }
   const t = (log.summary && log.summary.title) ? log.summary.title
@@ -5372,12 +5366,11 @@ function openActivityDetail(logId) {
     html = '';
   }
   if (!html || !String(html).trim()) {
-    // Fallback: hiện raw detail để PC không bị modal trống
     const d = (log.detail) || (log._event && log._event.detail) || {};
     const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const lines = [];
     lines.push('<div class="ad-block"><div class="ad-label">Thông tin</div><ul class="ad-list ad-list-rich">');
-    lines.push('<li><span class="ad-li-k">Nội dung</span><span class="ad-li-v">' + esc(log.text || log.summary && log.summary.text || '—') + '</span></li>');
+    lines.push('<li><span class="ad-li-k">Nội dung</span><span class="ad-li-v">' + esc((log.text || (log.summary && log.summary.text) || '—')) + '</span></li>');
     if (log.actor) lines.push('<li><span class="ad-li-k">Actor</span><span class="ad-li-v">' + esc(log.actor) + '</span></li>');
     Object.keys(d).forEach(k => {
       const v = d[k];
@@ -5388,10 +5381,11 @@ function openActivityDetail(logId) {
     html = lines.join('');
   }
   body.innerHTML = html;
+  // Không ép màu trắng (PC theme sáng sẽ mất chữ) — CSS lo
   body.style.display = 'block';
   body.style.visibility = 'visible';
   body.style.opacity = '1';
-  body.style.color = '#f8fafc';
+  body.style.minHeight = '80px';
 }
 
 
@@ -5547,10 +5541,15 @@ function renderActivityPage() {
   });
 
   actList.innerHTML = html;
+  window._lastActivityLines = lines;
+  window._activityLogMap = {};
+  lines.forEach(a => { if (a && a.id) window._activityLogMap[a.id] = a; });
   actList.querySelectorAll('.activity-clickable').forEach(el => {
-    el.onclick = () => {
+    el.onclick = (ev) => {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
       const id = el.getAttribute('data-id');
-      if (id && typeof openActivityDetail === 'function') openActivityDetail(id);
+      const cached = (window._activityLogMap && id) ? window._activityLogMap[id] : null;
+      if (id && typeof openActivityDetail === 'function') openActivityDetail(id, cached);
     };
   });
 }

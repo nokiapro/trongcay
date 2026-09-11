@@ -2514,12 +2514,13 @@ const Game = {
     }
 
     const __offlineT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    const __offlineBudgetMs = 6000; // cứng: không chiếm main thread quá 6s
+    const __offlineBudgetMs = 4000; // cứng: không chiếm main thread quá 6s
     const __offlineTimeUp = () => {
       const nowT = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
       return (nowT - __offlineT0) > __offlineBudgetMs;
     };
-    let changed = false;
+        const __offlineYield = () => new Promise(r => setTimeout(r, 0));
+let changed = false;
     const notes = [];
     let totalHarvest = 0; 
     let totalPlant = 0;   
@@ -3091,13 +3092,14 @@ const Game = {
               const gapMs = Math.max(0, endMs - from);
               const safeGrow = Math.max(1000, growMs || 1000); // tối thiểu 1s/vòng
               const maxByTime = 1 + Math.floor(gapMs / safeGrow);
-              plotCycles = Math.max(0, Math.min(plotCycles, Math.max(1, Math.floor(Math.max(0, endMs - from) / Math.max(1000, growMs || 1000)) + 1), 48));
+              plotCycles = Math.max(0, Math.min(plotCycles, Math.max(1, Math.floor(Math.max(0, endMs - from) / Math.max(1000, growMs || 1000)) + 1), 24));
 
               // Không có vòng chín thật sự → giữ nguyên plantedAt, bỏ qua ô này
               if (plotCycles < 1) continue;
 
               for (let c = 0; c < plotCycles; c++) {
                 if (typeof __offlineTimeUp === 'function' && __offlineTimeUp()) break;
+                if (c > 0 && c % 8 === 0 && typeof __offlineYield === 'function') { await __offlineYield(); }
                 const harvestT = Math.min(endMs, firstReadyAt + c * growMs);
                 if (harvestT > endMs + 50) break;
 
@@ -3582,15 +3584,60 @@ const Game = {
   },
 
   
+
+  /** Danh sách hạt auto từ kho — ưu tiên chưa có trên mọi vườn */
+  _nycAutoSeedCandidates(gi) {
+    if (!currentPlayer) return [];
+    const inv = currentPlayer.inventory || {};
+    const bags = [
+      { kind: 'normal', bag: inv.seeds || {} },
+      { kind: 'star', bag: inv.seedsStar || {} },
+      { kind: 'myth', bag: inv.seedsMyth || {} }
+    ];
+    const present = new Set();
+    try {
+      (currentPlayer.gardens || []).forEach(plots => {
+        if (!Array.isArray(plots)) return;
+        plots.forEach(p => { if (p && p.plantId) present.add(String(p.plantId)); });
+      });
+    } catch (_) {}
+    const fresh = [];
+    const used = [];
+    const seen = new Set();
+    bags.forEach(b => {
+      Object.keys(b.bag).forEach(pid => {
+        if ((Number(b.bag[pid]) || 0) < 1) return;
+        const key = pid + '|' + b.kind;
+        if (seen.has(key)) return;
+        seen.add(key);
+        const item = { plantId: pid, seedKind: b.kind };
+        if (present.has(String(pid))) used.push(item);
+        else fresh.push(item);
+      });
+    });
+    const shuf = (arr) => {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+      }
+      return arr;
+    };
+    return shuf(fresh).concat(shuf(used));
+  },
+
   _nycPlantOneAt(plot, cfg, plantTime, gi) {
     if (!plot || plot.plantId || !cfg) return false;
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
     if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
     if (!currentPlayer.inventory.seedsMyth) currentPlayer.inventory.seedsMyth = {};
     const unlimited = this.isUnlimitedResources();
-    const candidates = (cfg.plantList && cfg.plantList.length)
-      ? cfg.plantList
+    let candidates = (cfg.plantList && cfg.plantList.length)
+      ? cfg.plantList.slice()
       : (cfg.plantId ? [{ plantId: cfg.plantId, seedKind: cfg.seedKind || 'normal' }] : []);
+    // NYC auto random: không cấu hình list → lấy random từ kho, không trùng vườn khác
+    if (!candidates.length) {
+      candidates = this._nycAutoSeedCandidates(gi);
+    }
     if (!candidates.length) return false;
 
     // Ưu tiên loại chưa có trên MỌI vườn (kể cả vườn khác), rồi mới loại đã dùng
@@ -3704,7 +3751,8 @@ const Game = {
   
   _nycPlantEmptiesAt(plots, cfg, t, gi) {
     if (!cfg || !plots) return 0;
-    const hasAny = (cfg.plantList && cfg.plantList.length) || cfg.plantId;
+    const hasAny = (cfg.plantList && cfg.plantList.length) || cfg.plantId
+      || (this._nycAutoSeedCandidates && this._nycAutoSeedCandidates(gi).length);
     if (!hasAny) return 0;
     const mode = cfg.mode === 'count' ? 'count' : 'all';
     
