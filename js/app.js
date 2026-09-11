@@ -1194,7 +1194,9 @@ function goToPage(page) {
   if (page === 'stats') renderStats();
   if (page === 'level') renderLevelPage();
   if (page === 'activity') {
-    if (typeof closeActivityDetail === 'function') closeActivityDetail();
+    if (!window.__vxSkipCloseActivityDetail && typeof closeActivityDetail === 'function') {
+      closeActivityDetail();
+    }
     renderActivityPage();
   } else if (typeof closeActivityDetail === 'function') {
     // Rời trang activity → đóng panel chi tiết
@@ -5336,31 +5338,52 @@ function formatActivityDetailHtml(log) {
 
 function closeActivityDetail() {
   // Quay lại danh sách nhật ký (giống nút back chat)
+  const page = document.getElementById('page-activity');
   const listPanel = document.getElementById('activity-list-panel');
   const listHeader = document.getElementById('activity-list-header');
   const detailPanel = document.getElementById('activity-detail-panel');
-  if (detailPanel) detailPanel.classList.add('hidden');
-  if (listPanel) listPanel.classList.remove('hidden');
-  if (listHeader) listHeader.classList.remove('hidden');
+  if (page) page.classList.remove('showing-detail');
+  if (detailPanel) {
+    detailPanel.classList.add('hidden');
+    detailPanel.style.display = '';
+  }
+  if (listPanel) {
+    listPanel.classList.remove('hidden');
+    listPanel.style.display = '';
+  }
+  if (listHeader) {
+    listHeader.classList.remove('hidden');
+    listHeader.style.display = '';
+  }
   window.__vxOpeningActivityDetail = false;
   document.body.classList.remove('activity-detail-open');
 }
 
 function openActivityDetail(logId, cachedLog) {
-  // Chi tiết log = trang/panel trong page-activity (không dùng modal)
+  // Chi tiết log = panel trong page-activity (KHÔNG dùng modal)
+  const page = document.getElementById('page-activity');
   const listPanel = document.getElementById('activity-list-panel');
   const listHeader = document.getElementById('activity-list-header');
   const detailPanel = document.getElementById('activity-detail-panel');
   const title = document.getElementById('activity-detail-title');
   const body = document.getElementById('activity-detail-body');
-  if (!detailPanel || !body) return;
+  if (!detailPanel || !body) {
+    console.warn('[activity] missing detail panel DOM');
+    if (typeof showToast === 'function') showToast('Không mở được chi tiết log', 'error');
+    return;
+  }
 
-  // Đảm bảo đang ở trang activity
-  if (typeof goToPage === 'function') {
-    const actPage = document.getElementById('page-activity');
-    if (!actPage || !actPage.classList.contains('active')) {
-      goToPage('activity');
+  // Đảm bảo đang ở trang activity (không đóng panel ngay sau khi mở)
+  window.__vxSkipCloseActivityDetail = true;
+  try {
+    if (typeof goToPage === 'function') {
+      const actPage = document.getElementById('page-activity');
+      if (!actPage || !actPage.classList.contains('active')) {
+        goToPage('activity');
+      }
     }
+  } finally {
+    window.__vxSkipCloseActivityDetail = false;
   }
 
   let log = cachedLog || null;
@@ -5406,18 +5429,50 @@ function openActivityDetail(logId, cachedLog) {
     body.innerHTML = html;
   }
 
-  if (listPanel) listPanel.classList.add('hidden');
-  if (listHeader) listHeader.classList.add('hidden');
+  // Hiện panel chi tiết — ép bằng class + style inline (PC/mobile đều chắc)
+  if (page) page.classList.add('showing-detail');
+  if (listPanel) {
+    listPanel.classList.add('hidden');
+    listPanel.style.display = 'none';
+  }
+  if (listHeader) {
+    listHeader.classList.add('hidden');
+    listHeader.style.display = 'none';
+  }
   detailPanel.classList.remove('hidden');
+  detailPanel.style.display = 'flex';
+  detailPanel.style.visibility = 'visible';
+  detailPanel.style.opacity = '1';
+  body.style.display = 'block';
+  body.style.visibility = 'visible';
+  body.style.opacity = '1';
   document.body.classList.add('activity-detail-open');
-  try { detailPanel.scrollTop = 0; body.scrollTop = 0; } catch (_) {}
+  try {
+    detailPanel.scrollTop = 0;
+    body.scrollTop = 0;
+    window.scrollTo(0, 0);
+    const main = document.querySelector('main') || document.querySelector('.app-main');
+    if (main) main.scrollTop = 0;
+  } catch (_) {}
 }
 
-document.getElementById('btn-activity-detail-back')?.addEventListener('click', (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  closeActivityDetail();
-});
+// Back button (bind 1 lần, an toàn nếu DOM muộn)
+(function bindActivityDetailBack() {
+  function bind() {
+    const btn = document.getElementById('btn-activity-detail-back');
+    if (!btn || btn.__vxBound) return;
+    btn.__vxBound = true;
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeActivityDetail();
+    });
+  }
+  bind();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind);
+  }
+})();
 
 let _lastOfflineLogId = null;
 function showOfflineReturnModal(report, logEntry) {
@@ -5521,7 +5576,7 @@ function renderActivityPage() {
 
   let html = '';
   let lastDay = '';
-  lines.forEach(a => {
+  lines.forEach((a, aIdx) => {
     const ts = a.timestamp || 0;
     let day = '';
     try {
@@ -5554,7 +5609,7 @@ function renderActivityPage() {
           + '<span class="al-time-range">– ' + esc(parts[1].trim()) + '</span>';
       }
     }
-    html += '<li class="al-row activity-clickable' + (isOff ? ' al-offline' : '') + (a.aggregated ? ' al-agg' : '') + '" data-id="' + esc(a.id || '') + '">'
+    html += '<li class="al-row activity-clickable' + (isOff ? ' al-offline' : '') + (a.aggregated ? ' al-agg' : '') + '" data-id="' + esc(a.id || '') + '" data-idx="' + String(aIdx) + '">'
       + '<div class="al-time-col"><span class="al-time">' + timeHtml + '</span></div>'
       + '<div class="al-main">'
       + '<div class="al-msg">' + esc(msg) + '</div>'
@@ -5567,14 +5622,31 @@ function renderActivityPage() {
   window._lastActivityLines = lines;
   window._activityLogMap = {};
   lines.forEach(a => { if (a && a.id) window._activityLogMap[a.id] = a; });
-  actList.querySelectorAll('.activity-clickable').forEach(el => {
-    el.onclick = (ev) => {
-      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-      const id = el.getAttribute('data-id');
-      const cached = (window._activityLogMap && id) ? window._activityLogMap[id] : null;
-      if (id && typeof openActivityDetail === 'function') openActivityDetail(id, cached);
+  // Event delegation — 1 listener, PC/mobile đều ổn
+  if (!actList.__vxDetailBound) {
+    actList.__vxDetailBound = true;
+    const handler = (ev) => {
+      const row = ev.target && ev.target.closest && ev.target.closest('.activity-clickable');
+      if (!row || !actList.contains(row)) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const id = row.getAttribute('data-id') || '';
+      const idx = parseInt(row.getAttribute('data-idx') || '-1', 10);
+      let cached = (window._activityLogMap && id) ? window._activityLogMap[id] : null;
+      if (!cached && Array.isArray(window._lastActivityLines) && idx >= 0) {
+        cached = window._lastActivityLines[idx] || null;
+      }
+      if (!id && !cached) return;
+      if (typeof openActivityDetail === 'function') openActivityDetail(id || (cached && cached.id) || ('idx-' + idx), cached);
     };
-  });
+    actList.addEventListener('click', handler);
+    // PC đôi khi chỉ nhận pointerup ổn định hơn
+    actList.addEventListener('pointerup', (ev) => {
+      if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+      // tránh double-open: chỉ dùng pointerup làm backup nếu click không fire
+      // (không gọi open ở đây nếu vừa click)
+    });
+  }
 }
 
 function scheduleActivityMidnightPrune() {

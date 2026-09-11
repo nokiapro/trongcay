@@ -11416,3 +11416,64 @@ html[data-theme="dark"] #page-activity .activity-detail-body-page,
 body.dark #page-activity .activity-detail-body-page {
   color: #e2e8f0;
 }
+
+/* ========== Activity detail PAGE — force visible on PC ========== */
+#page-activity.showing-detail #activity-list-header,
+#page-activity.showing-detail #activity-list-panel {
+  display: none !important;
+}
+#page-activity.showing-detail #activity-detail-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  width: 100% !important;
+  max-width: 920px !important;
+  margin: 0 auto !important;
+  padding: 12px 14px 24px !important;
+  box-sizing: border-box !important;
+  background: var(--card, #12241a) !important;
+  border: 1px solid rgba(34, 197, 94, 0.25) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.18) !important;
+  min-height: 280px !important;
+}
+#page-activity.showing-detail #activity-detail-panel.hidden {
+  display: flex !important; /* class showing-detail thắng hidden */
+}
+#page-activity #activity-detail-panel:not(.hidden) {
+  display: flex !important;
+  flex-direction: column !important;
+}
+#page-activity.showing-detail .activity-detail-body-page,
+#page-activity #activity-detail-body {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 100px !important;
+  color: inherit !important;
+}
+#page-activity .activity-detail-top {
+  background: transparent !important;
+}
+html:not([data-theme="dark"]) #page-activity.showing-detail #activity-detail-panel {
+  background: #fff !important;
+  border-color: rgba(22, 163, 74, 0.2) !important;
+}
+html:not([data-theme="dark"]) #page-activity #activity-detail-body {
+  color: #0f172a !important;
+}
+html[data-theme="dark"] #page-activity #activity-detail-body,
+body.dark #page-activity #activity-detail-body {
+  color: #e2e8f0 !important;
+}
+
+/* Hàng log luôn click được */
+#page-activity .activity-clickable,
+#page-activity .al-row.activity-clickable {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  -webkit-user-select: none;
+  user-select: none;
+}
