@@ -306,6 +306,25 @@ function addNycPlantFromSelect() {
     if (typeof showToast === 'function') showToast('Đã có trong danh sách', 'error');
     return;
   }
+  // Không trùng hạt đã gán NYC vườn khác
+  try {
+    const curGi = (typeof window._nycConfigGardenIndex === 'number') ? window._nycConfigGardenIndex : (typeof getSelectedAgentGarden === 'function' ? getSelectedAgentGarden('nyc') : null);
+    if (typeof Game !== 'undefined' && Game._nycSeedsUsedByOtherGardens) {
+      const used = Game._nycSeedsUsedByOtherGardens(curGi);
+      if (used.has(String(plantId))) {
+        if (typeof showToast === 'function') showToast('Hạt này đang dùng ở vườn NYC khác', 'error');
+        return;
+      }
+    } else if (typeof getNycSeedConfiguredGardens === 'function') {
+      const map = getNycSeedConfiguredGardens();
+      const gardens = map[key] || map[plantId + '|normal'] || [];
+      const conflict = gardens.filter(g => curGi == null || g !== curGi);
+      if (conflict.length) {
+        if (typeof showToast === 'function') showToast('Hạt này đang dùng ở vườn NYC khác', 'error');
+        return;
+      }
+    }
+  } catch (_) {}
   window._nycDraftPlantList.push({ plantId, seedKind });
   renderNycPlantListUI();
 }
@@ -361,8 +380,12 @@ function randomFillNycPlantList() {
     if (typeof showToast === 'function') showToast('Kho không còn hạt để random', 'error');
     return;
   }
+  // Chỉ lấy hạt CHƯA dùng ở vườn NYC khác
   const fresh = pool.filter(x => !x.used);
-  const reused = pool.filter(x => x.used);
+  if (!fresh.length) {
+    if (typeof showToast === 'function') showToast('Không còn hạt trống (đã dùng hết ở vườn khác)', 'error');
+    return;
+  }
   const shuf = (arr) => {
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -370,19 +393,19 @@ function randomFillNycPlantList() {
     }
     return arr;
   };
-  shuf(fresh); shuf(reused);
-  const ordered = fresh.concat(reused);
-  let maxN = 12;
+  shuf(fresh);
+  // List dự phòng: vài loại, nhưng lúc trồng chỉ dùng 1 loại đầu cho đến khi hết
+  let maxN = 8;
   try {
     const gardens = currentPlayer.gardens || [];
     let mx = 0;
     gardens.forEach(gg => { if (Array.isArray(gg) && gg.length > mx) mx = gg.length; });
-    if (mx > 0) maxN = Math.min(24, Math.max(3, mx));
+    if (mx > 0) maxN = Math.min(12, Math.max(3, Math.ceil(mx / 2)));
   } catch (_) {}
-  window._nycDraftPlantList = ordered.slice(0, maxN).map(x => ({ plantId: x.plantId, seedKind: x.seedKind }));
+  window._nycDraftPlantList = fresh.slice(0, maxN).map(x => ({ plantId: x.plantId, seedKind: x.seedKind }));
   renderNycPlantListUI();
   if (typeof showToast === 'function') {
-    showToast('Đã random ' + window._nycDraftPlantList.length + ' loại (ưu tiên chưa dùng ở vườn khác)', 'success');
+    showToast('Đã random ' + window._nycDraftPlantList.length + ' loại (không trùng vườn khác). NYC trồng lần lượt từng loại.', 'success');
   }
 }
 

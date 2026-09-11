@@ -3586,9 +3586,12 @@ let changed = false;
   
 
   /** Danh sách hạt auto từ kho — ưu tiên chưa có trên mọi vườn */
-  /** Đưa hạt đang trồng lên đầu plantList của vườn (hết hạt cũ → chọn hạt list tiếp theo) */
+  /**
+   * Đưa đúng 1 loại đang trồng lên đầu plantList vườn + cập nhật plantId.
+   * Chỉ ghi khi thay đổi (tránh spam config).
+   */
   _nycPreferSeedInList(gi, plantId, seedKind) {
-    if (!currentPlayer || plantId == null) return;
+    if (!currentPlayer || plantId == null || typeof gi !== 'number') return;
     try {
       if (!currentPlayer.nycConfig || typeof currentPlayer.nycConfig !== 'object') return;
       const cfg = currentPlayer.nycConfig;
@@ -3596,13 +3599,19 @@ let changed = false;
       const key = String(gi);
       const ov = Object.assign({}, cfg.byGarden[key] || {});
       const kind = seedKind === 'myth' ? 'myth' : (seedKind === 'star' ? 'star' : 'normal');
-      let list = this._normalizeNycPlantList(ov.plantList || cfg.plantList, ov.plantId || cfg.plantId, ov.seedKind || cfg.seedKind);
-      // Nếu đã đứng đầu đúng loại → thôi
+      let list = this._normalizeNycPlantList(
+        ov.plantList || cfg.plantList,
+        ov.plantId || cfg.plantId,
+        ov.seedKind || cfg.seedKind
+      );
+      // Đã đứng đầu đúng loại → không đụng list
       if (list.length && list[0].plantId === plantId && (list[0].seedKind || 'normal') === kind) {
-        ov.plantId = plantId;
-        ov.seedKind = kind;
-        if (!ov.plantList || !ov.plantList.length) ov.plantList = list.slice();
-        cfg.byGarden[key] = ov;
+        if (ov.plantId !== plantId || ov.seedKind !== kind) {
+          ov.plantId = plantId;
+          ov.seedKind = kind;
+          if (!ov.plantList || !ov.plantList.length) ov.plantList = list.slice();
+          cfg.byGarden[key] = ov;
+        }
         return;
       }
       const rest = list.filter(x => !(x && x.plantId === plantId && (x.seedKind || 'normal') === kind));
@@ -3614,92 +3623,150 @@ let changed = false;
     } catch (_) {}
   },
 
-  _nycAutoSeedCandidates(gi) {
+  /** plantId đã cấu hình NYC ở vườn khác (không gồm excludeGi) */
+  _nycSeedsUsedByOtherGardens(excludeGi) {
+    const used = new Set();
+    if (!currentPlayer || !currentPlayer.nycConfig) return used;
+    try {
+      const byG = currentPlayer.nycConfig.byGarden || {};
+      Object.keys(byG).forEach(k => {
+        if (excludeGi != null && String(k) === String(excludeGi)) return;
+        const ov = byG[k];
+        if (!ov) return;
+        if (ov.plantId) used.add(String(ov.plantId));
+        (ov.plantList || []).forEach(it => {
+          const pid = (typeof it === 'string') ? it : (it && it.plantId);
+          if (pid) used.add(String(pid));
+        });
+      });
+      // Cũng tính plantList global nếu có
+      const baseList = currentPlayer.nycConfig.plantList || [];
+      if (excludeGi == null) {
+        baseList.forEach(it => {
+          const pid = (typeof it === 'string') ? it : (it && it.plantId);
+          if (pid) used.add(String(pid));
+        });
+        if (currentPlayer.nycConfig.plantId) used.add(String(currentPlayer.nycConfig.plantId));
+      }
+    } catch (_) {}
+    return used;
+  },
 
-    if (!currentPlayer) return [];
+  /**
+   * Chọn 1 hạt từ kho (như menu dropdown), ưu tiên không trùng vườn khác.
+   * Trả về { plantId, seedKind } hoặc null.
+   */
+  _nycPickNextFromInventory(gi, alreadyInList) {
+    if (!currentPlayer) return null;
     const inv = currentPlayer.inventory || {};
     const bags = [
       { kind: 'normal', bag: inv.seeds || {} },
       { kind: 'star', bag: inv.seedsStar || {} },
       { kind: 'myth', bag: inv.seedsMyth || {} }
     ];
-    const present = new Set();
-    try {
-      (currentPlayer.gardens || []).forEach(plots => {
-        if (!Array.isArray(plots)) return;
-        plots.forEach(p => { if (p && p.plantId) present.add(String(p.plantId)); });
-      });
-    } catch (_) {}
+    const usedOther = this._nycSeedsUsedByOtherGardens(gi);
+    const inList = new Set();
+    (alreadyInList || []).forEach(c => {
+      if (c && c.plantId) inList.add(String(c.plantId) + '|' + (c.seedKind || 'normal'));
+    });
     const fresh = [];
-    const used = [];
-    const seen = new Set();
+    const fallback = [];
     bags.forEach(b => {
       Object.keys(b.bag).forEach(pid => {
         if ((Number(b.bag[pid]) || 0) < 1) return;
         const key = pid + '|' + b.kind;
-        if (seen.has(key)) return;
-        seen.add(key);
+        if (inList.has(key)) return;
         const item = { plantId: pid, seedKind: b.kind };
-        if (present.has(String(pid))) used.push(item);
+        if (usedOther.has(String(pid))) fallback.push(item);
         else fresh.push(item);
       });
     });
-    const shuf = (arr) => {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
-      }
-      return arr;
-    };
-    return shuf(fresh).concat(shuf(used));
+    const pool = fresh.length ? fresh : []; // chỉ lấy không trùng; hết thì không fallback trùng
+    if (!pool.length) return null;
+    pool.sort((a, b) => String(a.plantId).localeCompare(String(b.plantId)) || String(a.seedKind).localeCompare(String(b.seedKind)));
+    return pool[0];
   },
 
+  /**
+   * Trồng đúng 1 loại đang đứng đầu list còn hạt.
+   * Hết loại đầu → bỏ khỏi đầu list, đẩy loại tiếp lên.
+   * List trống → chọn 1 hạt dropdown (không trùng vườn khác) thêm vào list rồi trồng.
+   */
   _nycPlantOneAt(plot, cfg, plantTime, gi) {
     if (!plot || plot.plantId || !cfg) return false;
+    if (!currentPlayer.inventory) currentPlayer.inventory = {};
     if (!currentPlayer.inventory.seeds) currentPlayer.inventory.seeds = {};
     if (!currentPlayer.inventory.seedsStar) currentPlayer.inventory.seedsStar = {};
     if (!currentPlayer.inventory.seedsMyth) currentPlayer.inventory.seedsMyth = {};
     const unlimited = this.isUnlimitedResources();
-    // Chỉ trồng theo plantList (thứ tự cố định). Hết loại → loại tiếp trong list.
-    // KHÔNG random từ cả kho (tránh mỗi ô một loại → Firebase spam).
+
     let candidates = (cfg.plantList && cfg.plantList.length)
-      ? cfg.plantList.slice()
+      ? cfg.plantList.map(x => ({ plantId: x.plantId, seedKind: x.seedKind || 'normal' }))
       : (cfg.plantId ? [{ plantId: cfg.plantId, seedKind: cfg.seedKind || 'normal' }] : []);
-    if (!candidates.length) return false; // chưa cấu hình list → không tự random
 
-    // Giữ đúng thứ tự list (không shuffle)
-    const ordered = candidates.slice();
-
-    let used = null;
-    for (let ci = 0; ci < ordered.length; ci++) {
-      const c = ordered[ci];
-      if (!c || !c.plantId) continue;
+    const bagOf = (kind) => {
+      if (kind === 'myth') return currentPlayer.inventory.seedsMyth;
+      if (kind === 'star') return currentPlayer.inventory.seedsStar;
+      return currentPlayer.inventory.seeds;
+    };
+    const hasStock = (c) => {
+      if (!c || !c.plantId) return false;
+      if (unlimited) return true;
       const kind = c.seedKind === 'myth' ? 'myth' : (c.seedKind === 'star' ? 'star' : 'normal');
-      const bag = kind === 'myth'
-        ? currentPlayer.inventory.seedsMyth
-        : (kind === 'star' ? currentPlayer.inventory.seedsStar : currentPlayer.inventory.seeds);
-      if (!unlimited) {
-        if ((bag[c.plantId] || 0) < 1) continue; // hết loại này → thử hạt tiếp trong list
-        bag[c.plantId]--;
-        if (bag[c.plantId] <= 0) delete bag[c.plantId];
-      }
-      used = { plantId: c.plantId, kind, seedKind: kind };
-      // Đưa loại đang dùng lên đầu list NYC (ổn định cho các ô sau)
-      try {
-        if (typeof gi === 'number' && this._nycPreferSeedInList) {
-          this._nycPreferSeedInList(gi, c.plantId, kind);
-        }
-      } catch (_) {}
-      break;
+      return (bagOf(kind)[c.plantId] || 0) >= 1;
+    };
+
+    // Bỏ các loại đứng đầu đã hết hạt → chỉ giữ 1 loại đang trồng còn stock
+    let dropped = false;
+    while (candidates.length && !hasStock(candidates[0])) {
+      candidates.shift();
+      dropped = true;
     }
-    if (!used) return false; // hết tất cả hạt trong list → dừng, không random kho
-    const plantId = used.plantId;
-    const kind = used.kind;
+
+    // List trống → chọn 1 hạt từ kho (dropdown), không trùng vườn khác
+    if (!candidates.length) {
+      const extra = this._nycPickNextFromInventory(gi, cfg.plantList || []);
+      if (!extra) return false;
+      candidates = [{ plantId: extra.plantId, seedKind: extra.seedKind || 'normal' }];
+      dropped = true;
+    }
+
+    // Chỉ trồng đúng candidates[0]
+    const chosen = candidates[0];
+    const kind = chosen.seedKind === 'myth' ? 'myth' : (chosen.seedKind === 'star' ? 'star' : 'normal');
+    const bag = bagOf(kind);
+    if (!unlimited) {
+      if ((bag[chosen.plantId] || 0) < 1) return false;
+      bag[chosen.plantId]--;
+      if (bag[chosen.plantId] <= 0) delete bag[chosen.plantId];
+    }
+
+    // Cập nhật list/config chỉ khi đổi loại hoặc vừa drop
+    try {
+      cfg.plantList = candidates.slice();
+      cfg.plantId = chosen.plantId;
+      cfg.seedKind = kind;
+      if (typeof gi === 'number' && (dropped || true)) {
+        // Luôn sync đầu list = loại đang trồng (hàm tự no-op nếu đã đúng)
+        this._nycPreferSeedInList(gi, chosen.plantId, kind);
+        // Ghi lại toàn bộ list còn lại vào byGarden
+        const root = currentPlayer.nycConfig;
+        if (root && root.byGarden) {
+          const key = String(gi);
+          const ov = Object.assign({}, root.byGarden[key] || {});
+          ov.plantList = candidates.slice();
+          ov.plantId = chosen.plantId;
+          ov.seedKind = kind;
+          root.byGarden[key] = ov;
+        }
+      }
+    } catch (_) {}
+
+    const plantId = chosen.plantId;
     plot.plantId = plantId;
     plot.plantedAt = plantTime;
     plot.seedStar = kind === 'star' || kind === 'myth';
     plot.seedMyth = kind === 'myth';
-    // Lưu growTime gốc lên ô — offline không phụ thuộc currentPlants có load đủ cây custom
     const plDef = this.getPlant(plantId);
     plot.baseGrowTime = (plDef && Number(plDef.growTime) > 0)
       ? Number(plDef.growTime)
@@ -3709,7 +3776,7 @@ let changed = false;
     plot.lastWatered = null;
     plot.fertilizerId = null;
     plot.fertilizedAt = null;
-    
+
     if (typeof gi === 'number' && this.isFairyActiveAt(plantTime) && this.isFairyGardenEnabled(gi)) {
       plot.waterCount = 3;
       plot.watered = true;
@@ -3727,17 +3794,12 @@ let changed = false;
     }
     currentPlayer.stats = currentPlayer.stats || {};
     currentPlayer.stats.planted = (currentPlayer.stats.planted || 0) + 1;
-    // Quest trồng: tính cả trồng auto (NYC)
     try {
       if (typeof Features !== 'undefined' && Features.trackQuest) Features.trackQuest('plant', 1);
-    } catch (_) {}
-    try {
-      this.trackDayStat('nyc_plant', { plots: 1, gardenIndex: gi });
     } catch (_) {}
     return true;
   },
 
-  
   _nycPlantEmptiesAt(plots, cfg, t, gi) {
     if (!cfg || !plots) return 0;
     const hasAny = (cfg.plantList && cfg.plantList.length) || cfg.plantId;
