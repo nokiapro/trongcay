@@ -5337,12 +5337,30 @@ function formatActivityDetailHtml(log) {
 }
 
 function closeActivityDetail() {
+  window.__vxActivityDetailOpen = false;
+  window.__vxOpeningActivityDetail = false;
   const page = document.getElementById('page-activity');
+  const listPanel = document.getElementById('activity-list-panel');
+  const listHeader = document.getElementById('activity-list-header');
+  const detailPanel = document.getElementById('activity-detail-panel');
   if (page) page.classList.remove('showing-detail');
   document.body.classList.remove('activity-detail-open');
-  window.__vxOpeningActivityDetail = false;
-  window.__vxActivityDetailOpen = false;
-  // Khôi phục danh sách
+  if (detailPanel) {
+    detailPanel.classList.add('hidden');
+    detailPanel.setAttribute('hidden', '');
+    detailPanel.style.cssText = '';
+  }
+  if (listPanel) {
+    listPanel.classList.remove('hidden');
+    listPanel.removeAttribute('hidden');
+    listPanel.style.cssText = '';
+  }
+  if (listHeader) {
+    listHeader.classList.remove('hidden');
+    listHeader.removeAttribute('hidden');
+    listHeader.style.cssText = '';
+  }
+  // Làm mới list sau khi đóng chi tiết (flag đã false)
   if (typeof renderActivityPage === 'function') {
     try { renderActivityPage(); } catch (e) { console.warn(e); }
   }
@@ -5352,16 +5370,36 @@ function openActivityDetail(logId, cachedLog) {
   const page = document.getElementById('page-activity');
   const listPanel = document.getElementById('activity-list-panel');
   const listHeader = document.getElementById('activity-list-header');
-  if (!listPanel) {
-    console.warn('[activity] no listPanel');
+  let detailPanel = document.getElementById('activity-detail-panel');
+  let title = document.getElementById('activity-detail-title');
+  let body = document.getElementById('activity-detail-body');
+
+  // Nếu panel bị mất (DOM cũ) → tạo lại
+  if (!detailPanel && page) {
+    detailPanel = document.createElement('div');
+    detailPanel.id = 'activity-detail-panel';
+    detailPanel.className = 'activity-detail-panel';
+    detailPanel.innerHTML =
+      '<div class="activity-detail-top">'
+      + '<button type="button" id="btn-activity-detail-back" class="btn btn-secondary btn-sm">'
+      + '<i class="fa-solid fa-arrow-left"></i> Quay lại</button>'
+      + '<h2 id="activity-detail-title"><i class="fa-solid fa-clock-rotate-left"></i> Chi tiết</h2></div>'
+      + '<div id="activity-detail-body" class="activity-detail-body activity-detail-body-page"></div>';
+    page.appendChild(detailPanel);
+    title = document.getElementById('activity-detail-title');
+    body = document.getElementById('activity-detail-body');
+  }
+  if (!detailPanel || !body) {
+    if (typeof showToast === 'function') showToast('Không tìm thấy panel chi tiết log', 'error');
+    console.warn('[activity] detail panel missing');
     return;
   }
 
-  // Về trang activity nếu chưa
+  // Về trang activity nếu cần (không đóng detail)
   window.__vxSkipCloseActivityDetail = true;
   try {
-    if (typeof goToPage === 'function') {
-      if (!page || !page.classList.contains('active')) goToPage('activity');
+    if (typeof goToPage === 'function' && (!page || !page.classList.contains('active'))) {
+      goToPage('activity');
     }
   } finally {
     window.__vxSkipCloseActivityDetail = false;
@@ -5377,26 +5415,24 @@ function openActivityDetail(logId, cachedLog) {
   if (!log && Array.isArray(window._lastActivityLines)) {
     log = window._lastActivityLines.find(x => x && (x.id === logId || String(x.id) === String(logId))) || null;
   }
-  // idx-N fallback
   if (!log && typeof logId === 'string' && logId.indexOf('idx-') === 0) {
     const i = parseInt(logId.slice(4), 10);
     if (Array.isArray(window._lastActivityLines) && !isNaN(i)) log = window._lastActivityLines[i] || null;
   }
 
-  let titleText = 'Chi tiết';
-  let bodyHtml = '';
   if (!log) {
-    bodyHtml = '<p class="ad-empty-line">Không tìm thấy log (id: ' + String(logId || '') + ').</p>';
+    if (title) title.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Chi tiết';
+    body.innerHTML = '<p class="ad-empty-line">Không tìm thấy log (id: ' + String(logId || '') + ').</p>';
   } else {
-    titleText = (log.summary && log.summary.title) ? log.summary.title
+    const t = (log.summary && log.summary.title) ? log.summary.title
       : (log.text || log.title || 'Chi tiết');
-    try {
-      bodyHtml = formatActivityDetailHtml(log) || '';
-    } catch (err) {
+    if (title) title.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> ' + String(t).replace(/</g, '&lt;');
+    let html = '';
+    try { html = formatActivityDetailHtml(log) || ''; } catch (err) {
       console.warn('formatActivityDetailHtml', err);
-      bodyHtml = '';
+      html = '';
     }
-    if (!bodyHtml || !String(bodyHtml).trim()) {
+    if (!html || !String(html).trim()) {
       const d = Object.assign({}, (log.detail || {}), (log._event && log._event.detail) || {});
       const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       const lines = [];
@@ -5409,36 +5445,35 @@ function openActivityDetail(logId, cachedLog) {
         lines.push('<li><span class="ad-li-k">' + esc(k) + '</span><span class="ad-li-v">' + esc(v) + '</span></li>');
       });
       lines.push('</ul></div>');
-      bodyHtml = lines.join('');
+      html = lines.join('');
     }
+    body.innerHTML = html;
   }
 
-  const escTitle = String(titleText).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-  // THAY TOÀN BỘ nội dung panel list → trang chi tiết (không ẩn/hiện 2 panel)
-  if (listHeader) {
-    listHeader.innerHTML =
-      '<div class="activity-detail-top" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;justify-content:flex-start;text-align:left">'
-      + '<button type="button" id="btn-activity-detail-back" class="btn btn-secondary btn-sm">'
-      + '<i class="fa-solid fa-arrow-left"></i> Quay lại</button>'
-      + '<h1 style="margin:0;font-size:1.15rem;display:flex;align-items:center;gap:8px">'
-      + '<i class="fa-solid fa-clock-rotate-left"></i> ' + escTitle + '</h1></div>';
-  }
-  listPanel.innerHTML =
-    '<div id="activity-detail-inline" class="activity-detail-inline">'
-    + '<div class="activity-detail-body activity-detail-body-page">' + bodyHtml + '</div></div>';
-
+  // Hiện detail / ẩn list — KHÔNG đụng innerHTML của list
+  window.__vxActivityDetailOpen = true;
   if (page) page.classList.add('showing-detail');
   document.body.classList.add('activity-detail-open');
-  window.__vxActivityDetailOpen = true;
-
-  const backBtn = document.getElementById('btn-activity-detail-back');
-  if (backBtn) {
-    backBtn.onclick = function (e) {
-      if (e) { e.preventDefault(); e.stopPropagation(); }
-      closeActivityDetail();
-    };
+  if (listPanel) {
+    listPanel.classList.add('hidden');
+    listPanel.setAttribute('hidden', '');
+    listPanel.style.display = 'none';
   }
+  if (listHeader) {
+    listHeader.classList.add('hidden');
+    listHeader.setAttribute('hidden', '');
+    listHeader.style.display = 'none';
+  }
+  detailPanel.classList.remove('hidden');
+  detailPanel.removeAttribute('hidden');
+  detailPanel.style.display = 'flex';
+  detailPanel.style.flexDirection = 'column';
+  detailPanel.style.visibility = 'visible';
+  detailPanel.style.opacity = '1';
+  detailPanel.style.minHeight = '280px';
+  body.style.display = 'block';
+  body.style.visibility = 'visible';
+  body.style.opacity = '1';
 
   try {
     window.scrollTo(0, 0);
@@ -5447,15 +5482,26 @@ function openActivityDetail(logId, cachedLog) {
   } catch (_) {}
 }
 
-
-/* Click nhật ký — document capture, luôn hoạt động trên PC */
+/* Click nhật ký + nút Quay lại — document capture */
 (function bindActivityLogClicksOnce() {
   if (window.__vxActivityLogClickBound) return;
   window.__vxActivityLogClickBound = true;
   document.addEventListener('click', function (ev) {
-    const row = ev.target && ev.target.closest && ev.target.closest('#activity-list .activity-clickable, .activity-list .activity-clickable');
+    const t = ev.target;
+    if (!t || !t.closest) return;
+
+    // Nút Quay lại (chi tiết log)
+    const back = t.closest('#btn-activity-detail-back');
+    if (back) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (typeof closeActivityDetail === 'function') closeActivityDetail();
+      return;
+    }
+
+    // Dòng log trong list
+    const row = t.closest('#activity-list .activity-clickable, .activity-list .activity-clickable, li.activity-clickable, .al-row.activity-clickable');
     if (!row) return;
-    // đang xem chi tiết thì bỏ qua
     if (window.__vxActivityDetailOpen) return;
     const id = row.getAttribute('data-id') || '';
     const idx = parseInt(row.getAttribute('data-idx') || '-1', 10);
@@ -5549,39 +5595,65 @@ document.getElementById('btn-offline-view-detail')?.addEventListener('click', ()
 });
 
 /* ========== NHẬT KÝ — Timeline chuyên nghiệp (24h, không filter) ========== */
-function renderActivityPage() {
+function renderActivityPage(opts) {
   if (typeof currentPlayer === 'undefined' || !currentPlayer) return;
+  const force = !!(opts && opts.force);
 
-  // Khôi phục DOM list nếu đang ở chế độ chi tiết (innerHTML đã bị thay)
+  // Đang xem chi tiết: KHÔNG rebuild UI
+  if (window.__vxActivityDetailOpen && !force) {
+    try {
+      let lines = [];
+      try {
+        lines = (typeof Game !== 'undefined' && Game.buildDayLogLines) ? (Game.buildDayLogLines() || []) : [];
+      } catch (_) {}
+      if (Array.isArray(lines)) {
+        window._lastActivityLines = lines;
+        window._activityLogMap = {};
+        lines.forEach(a => { if (a && a.id) window._activityLogMap[a.id] = a; });
+      }
+    } catch (_) {}
+    return;
+  }
+
+  // Hiện lại list, ẩn detail (không đụng structure tĩnh của header)
   let listPanel = document.getElementById('activity-list-panel');
   let listHeader = document.getElementById('activity-list-header');
   let actList = document.getElementById('activity-list');
-  if (listHeader) {
-    listHeader.innerHTML =
-      '<h1><i class="fa-solid fa-clock-rotate-left"></i> NHẬT KÝ HÀNH ĐỘNG</h1>'
-      + '<p class="page-sub" style="margin:4px 0 0;font-size:0.9rem;color:#64748b">Mỗi hành động một dòng · HH:mm:ss · Log 24 giờ · Offline có thời lượng</p>';
-    listHeader.style.display = '';
-    listHeader.classList.remove('hidden');
-  }
-  if (listPanel) {
-    listPanel.style.display = '';
-    listPanel.classList.remove('hidden');
-    if (!actList) {
-      listPanel.innerHTML = '<ul id="activity-list" class="activity-list"></ul>';
+  const detailPanel = document.getElementById('activity-detail-panel');
+  const page = document.getElementById('page-activity');
+
+  if (force || !window.__vxActivityDetailOpen) {
+    if (page) page.classList.remove('showing-detail');
+    document.body.classList.remove('activity-detail-open');
+    window.__vxActivityDetailOpen = false;
+    if (detailPanel) {
+      detailPanel.classList.add('hidden');
+      detailPanel.setAttribute('hidden', '');
+      detailPanel.style.display = 'none';
+    }
+    if (listHeader) {
+      listHeader.classList.remove('hidden');
+      listHeader.removeAttribute('hidden');
+      listHeader.style.display = '';
+      // Chỉ restore header nếu bị thay nội dung (bản cũ)
+      if (!listHeader.querySelector('h1') || listHeader.querySelector('#btn-activity-detail-back')) {
+        listHeader.innerHTML =
+          '<h1><i class="fa-solid fa-clock-rotate-left"></i> NHẬT KÝ HÀNH ĐỘNG</h1>'
+          + '<p class="page-sub" style="margin:4px 0 0;font-size:0.9rem;color:#64748b">Mỗi hành động một dòng · HH:mm:ss · Log 24 giờ · Offline có thời lượng</p>';
+      }
+    }
+    if (listPanel) {
+      listPanel.classList.remove('hidden');
+      listPanel.removeAttribute('hidden');
+      listPanel.style.display = '';
+      if (!document.getElementById('activity-list')) {
+        listPanel.innerHTML = '<ul id="activity-list" class="activity-list"></ul>';
+      }
       actList = document.getElementById('activity-list');
     }
   }
-  // Ẩn panel detail cũ (nếu còn trong HTML)
-  const detailPanel = document.getElementById('activity-detail-panel');
-  if (detailPanel) {
-    detailPanel.classList.add('hidden');
-    detailPanel.style.display = 'none';
-  }
-  const page = document.getElementById('page-activity');
-  if (page) page.classList.remove('showing-detail');
-  document.body.classList.remove('activity-detail-open');
-  window.__vxActivityDetailOpen = false;
 
+  if (!actList) actList = document.getElementById('activity-list');
   if (!actList) return;
 
   try {

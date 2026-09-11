@@ -11477,3 +11477,20 @@ body.dark #page-activity #activity-detail-body {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* activity detail: attribute hidden + class */
+#page-activity.showing-detail #activity-list-header[hidden],
+#page-activity.showing-detail #activity-list-panel[hidden] {
+  display: none !important;
+}
+#page-activity.showing-detail #activity-detail-panel,
+#page-activity.showing-detail #activity-detail-panel[hidden] {
+  display: flex !important;
+  flex-direction: column !important;
+}
+#activity-detail-panel[hidden] {
+  display: none !important;
+}
+#page-activity:not(.showing-detail) #activity-detail-panel {
+  display: none !important;
+}
