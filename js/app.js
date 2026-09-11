@@ -1193,14 +1193,14 @@ function goToPage(page) {
   if (page === 'bank') renderBank();
   if (page === 'stats') renderStats();
   if (page === 'level') renderLevelPage();
-  if (page === 'activity') {
-    if (!window.__vxSkipCloseActivityDetail && typeof closeActivityDetail === 'function') {
-      closeActivityDetail();
-    }
-    renderActivityPage();
-  } else if (typeof closeActivityDetail === 'function') {
-    // Rời trang activity → đóng panel chi tiết
+  if (window.__vxActivityDetailOpen && page !== 'activity') {
     try { closeActivityDetail(); } catch (_) {}
+  }
+  if (page === 'activity') {
+    if (!window.__vxSkipCloseActivityDetail && window.__vxActivityDetailOpen) {
+      try { closeActivityDetail(); } catch (_) {}
+    }
+    try { renderActivityPage(); } catch (e) { console.warn('renderActivityPage', e); }
   }
   if (page === 'rank') renderRank();
   if (page === 'friends') renderFriends();
@@ -5337,6 +5337,7 @@ function formatActivityDetailHtml(log) {
 }
 
 function closeActivityDetail() {
+  // Chỉ đóng panel — KHÔNG gọi renderActivityPage (tránh treo / vòng lặp khi goToPage)
   window.__vxActivityDetailOpen = false;
   window.__vxOpeningActivityDetail = false;
   const page = document.getElementById('page-activity');
@@ -5348,33 +5349,41 @@ function closeActivityDetail() {
   if (detailPanel) {
     detailPanel.classList.add('hidden');
     detailPanel.setAttribute('hidden', '');
-    detailPanel.style.cssText = '';
+    detailPanel.style.display = 'none';
   }
   if (listPanel) {
     listPanel.classList.remove('hidden');
     listPanel.removeAttribute('hidden');
-    listPanel.style.cssText = '';
+    listPanel.style.display = '';
   }
   if (listHeader) {
     listHeader.classList.remove('hidden');
     listHeader.removeAttribute('hidden');
-    listHeader.style.cssText = '';
-  }
-  // Làm mới list sau khi đóng chi tiết (flag đã false)
-  if (typeof renderActivityPage === 'function') {
-    try { renderActivityPage(); } catch (e) { console.warn(e); }
+    listHeader.style.display = '';
   }
 }
 
 function openActivityDetail(logId, cachedLog) {
+  // Luôn chuyển sang trang Nhật ký trước
+  window.__vxSkipCloseActivityDetail = true;
+  try {
+    if (typeof goToPage === 'function') goToPage('activity');
+  } catch (e) { console.warn(e); }
+  window.__vxSkipCloseActivityDetail = false;
+
   const page = document.getElementById('page-activity');
+  if (page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    page.classList.add('active');
+    page.style.display = 'block';
+  }
+
   const listPanel = document.getElementById('activity-list-panel');
   const listHeader = document.getElementById('activity-list-header');
   let detailPanel = document.getElementById('activity-detail-panel');
   let title = document.getElementById('activity-detail-title');
   let body = document.getElementById('activity-detail-body');
 
-  // Nếu panel bị mất (DOM cũ) → tạo lại
   if (!detailPanel && page) {
     detailPanel = document.createElement('div');
     detailPanel.id = 'activity-detail-panel';
@@ -5390,19 +5399,9 @@ function openActivityDetail(logId, cachedLog) {
     body = document.getElementById('activity-detail-body');
   }
   if (!detailPanel || !body) {
-    if (typeof showToast === 'function') showToast('Không tìm thấy panel chi tiết log', 'error');
-    console.warn('[activity] detail panel missing');
-    return;
-  }
-
-  // Về trang activity nếu cần (không đóng detail)
-  window.__vxSkipCloseActivityDetail = true;
-  try {
-    if (typeof goToPage === 'function' && (!page || !page.classList.contains('active'))) {
-      goToPage('activity');
-    }
-  } finally {
-    window.__vxSkipCloseActivityDetail = false;
+    console.warn('[activity] detail panel missing', { detailPanel: !!detailPanel, body: !!body, page: !!page });
+    if (typeof showToast === 'function') showToast('Lỗi: không có panel chi tiết log', 'error');
+    return { ok: false, reason: 'no-panel' };
   }
 
   let log = cachedLog || null;
@@ -5413,7 +5412,12 @@ function openActivityDetail(logId, cachedLog) {
     try { log = Game.getActivityLogById(logId); } catch (e) { console.warn(e); }
   }
   if (!log && Array.isArray(window._lastActivityLines)) {
-    log = window._lastActivityLines.find(x => x && (x.id === logId || String(x.id) === String(logId))) || null;
+    if (logId) {
+      log = window._lastActivityLines.find(x => x && (x.id === logId || String(x.id) === String(logId))) || null;
+    }
+    if (!log && window._lastActivityLines.length) {
+      log = window._lastActivityLines[0];
+    }
   }
   if (!log && typeof logId === 'string' && logId.indexOf('idx-') === 0) {
     const i = parseInt(logId.slice(4), 10);
@@ -5422,7 +5426,7 @@ function openActivityDetail(logId, cachedLog) {
 
   if (!log) {
     if (title) title.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Chi tiết';
-    body.innerHTML = '<p class="ad-empty-line">Không tìm thấy log (id: ' + String(logId || '') + ').</p>';
+    body.innerHTML = '<p class="ad-empty-line">Không tìm thấy log (id: ' + String(logId || '') + '). Hãy vào Nhật ký trước rồi bấm lại.</p>';
   } else {
     const t = (log.summary && log.summary.title) ? log.summary.title
       : (log.text || log.title || 'Chi tiết');
@@ -5450,36 +5454,58 @@ function openActivityDetail(logId, cachedLog) {
     body.innerHTML = html;
   }
 
-  // Hiện detail / ẩn list — KHÔNG đụng innerHTML của list
+  // Ép hiện panel — setProperty important thắng mọi CSS
   window.__vxActivityDetailOpen = true;
-  if (page) page.classList.add('showing-detail');
+  if (page) {
+    page.classList.add('showing-detail', 'active');
+    page.style.setProperty('display', 'block', 'important');
+  }
   document.body.classList.add('activity-detail-open');
   if (listPanel) {
     listPanel.classList.add('hidden');
     listPanel.setAttribute('hidden', '');
-    listPanel.style.display = 'none';
+    listPanel.style.setProperty('display', 'none', 'important');
   }
   if (listHeader) {
     listHeader.classList.add('hidden');
     listHeader.setAttribute('hidden', '');
-    listHeader.style.display = 'none';
+    listHeader.style.setProperty('display', 'none', 'important');
   }
   detailPanel.classList.remove('hidden');
   detailPanel.removeAttribute('hidden');
-  detailPanel.style.display = 'flex';
-  detailPanel.style.flexDirection = 'column';
-  detailPanel.style.visibility = 'visible';
-  detailPanel.style.opacity = '1';
-  detailPanel.style.minHeight = '280px';
-  body.style.display = 'block';
-  body.style.visibility = 'visible';
-  body.style.opacity = '1';
+  detailPanel.style.setProperty('display', 'flex', 'important');
+  detailPanel.style.setProperty('flex-direction', 'column', 'important');
+  detailPanel.style.setProperty('visibility', 'visible', 'important');
+  detailPanel.style.setProperty('opacity', '1', 'important');
+  detailPanel.style.setProperty('min-height', '280px', 'important');
+  detailPanel.style.setProperty('width', '100%', 'important');
+  detailPanel.style.setProperty('max-width', '920px', 'important');
+  detailPanel.style.setProperty('margin', '0 auto', 'important');
+  detailPanel.style.setProperty('padding', '12px 14px 24px', 'important');
+  detailPanel.style.setProperty('box-sizing', 'border-box', 'important');
+  detailPanel.style.setProperty('position', 'relative', 'important');
+  detailPanel.style.setProperty('z-index', '50', 'important');
+  body.style.setProperty('display', 'block', 'important');
+  body.style.setProperty('visibility', 'visible', 'important');
+  body.style.setProperty('opacity', '1', 'important');
 
   try {
     window.scrollTo(0, 0);
     const main = document.querySelector('.main');
     if (main) main.scrollTop = 0;
   } catch (_) {}
+
+  const info = {
+    ok: true,
+    hasLog: !!log,
+    logId: logId || (log && log.id) || null,
+    pageActive: !!(page && page.classList.contains('active')),
+    showingDetail: !!(page && page.classList.contains('showing-detail')),
+    panelDisplay: detailPanel.style.display,
+    bodyLen: (body.innerHTML || '').length
+  };
+  console.log('[activity] openActivityDetail', info);
+  return info;
 }
 
 /* Click nhật ký + nút Quay lại — document capture */
@@ -5496,6 +5522,10 @@ function openActivityDetail(logId, cachedLog) {
       ev.preventDefault();
       ev.stopPropagation();
       if (typeof closeActivityDetail === 'function') closeActivityDetail();
+      // Làm mới list sau khi back (an toàn, không đệ quy)
+      try {
+        if (typeof renderActivityPage === 'function') renderActivityPage();
+      } catch (e) { console.warn(e); }
       return;
     }
 
