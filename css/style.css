@@ -11326,3 +11326,36 @@ html[data-theme="dark"] #modal-activity-detail #activity-detail-body,
 body.dark #modal-activity-detail #activity-detail-body {
   color: #e2e8f0 !important;
 }
+
+
+/* === PC LOG DETAIL FIX v213 === */
+#modal-activity-detail.modal.show {
+  display: flex !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10060 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  background: rgba(15, 40, 30, 0.55) !important;
+}
+#modal-activity-detail.modal.show .modal-content,
+#modal-activity-detail.modal.show .modal-activity-content {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  max-width: min(520px, 94vw) !important;
+  width: 94% !important;
+  max-height: 88vh !important;
+  overflow: auto !important;
+  margin: auto !important;
+}
+#modal-activity-detail.modal.show #activity-detail-body {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 80px !important;
+  color: inherit !important;
+}

@@ -5328,6 +5328,15 @@ function formatActivityDetailHtml(log) {
   return '<pre class="ad-pre">' + JSON.stringify(d, null, 2) + '</pre>';
 }
 
+function closeActivityDetail() {
+  const modal = document.getElementById('modal-activity-detail');
+  if (!modal) return;
+  modal.classList.remove('show');
+  modal.style.display = '';
+  modal.style.pointerEvents = '';
+  window.__vxOpeningActivityDetail = false;
+}
+
 function openActivityDetail(logId, cachedLog) {
   const modal = document.getElementById('modal-activity-detail');
   const title = document.getElementById('activity-detail-title');
@@ -5345,55 +5354,60 @@ function openActivityDetail(logId, cachedLog) {
     log = window._lastActivityLines.find(x => x && x.id === logId) || null;
   }
 
-  // Chỉ dùng class — không gán inline display lên overlay
-  modal.classList.add('show');
-  modal.style.zIndex = '10060';
-
+  // Fill content TRƯỚC, show SAU (tránh click PC đóng ngay backdrop)
   if (!log) {
     if (title) title.textContent = 'Chi tiết';
-    body.innerHTML = '<p class="ad-empty-line">Không tìm thấy log.</p>';
-    body.style.cssText = 'display:block;visibility:visible;opacity:1;';
-    return;
+    body.innerHTML = '<p class="ad-empty-line">Không tìm thấy log (id: ' + String(logId || '') + ').</p>';
+  } else {
+    const t = (log.summary && log.summary.title) ? log.summary.title
+      : (log.text || log.title || 'Chi tiết');
+    if (title) title.textContent = t;
+    let html = '';
+    try {
+      html = formatActivityDetailHtml(log) || '';
+    } catch (err) {
+      console.warn('formatActivityDetailHtml', err);
+      html = '';
+    }
+    if (!html || !String(html).trim()) {
+      const d = Object.assign({}, (log.detail || {}), (log._event && log._event.detail) || {});
+      const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const lines = [];
+      lines.push('<div class="ad-block"><div class="ad-label">Thông tin</div><ul class="ad-list ad-list-rich">');
+      lines.push('<li><span class="ad-li-k">Nội dung</span><span class="ad-li-v">' + esc((log.text || (log.summary && log.summary.text) || '—')) + '</span></li>');
+      if (log.actor) lines.push('<li><span class="ad-li-k">Actor</span><span class="ad-li-v">' + esc(log.actor) + '</span></li>');
+      Object.keys(d).forEach(k => {
+        const v = d[k];
+        if (v == null || typeof v === 'object') return;
+        lines.push('<li><span class="ad-li-k">' + esc(k) + '</span><span class="ad-li-v">' + esc(v) + '</span></li>');
+      });
+      lines.push('</ul></div>');
+      html = lines.join('');
+    }
+    body.innerHTML = html;
   }
-  const t = (log.summary && log.summary.title) ? log.summary.title
-    : (log.text || log.title || 'Chi tiết');
-  if (title) title.textContent = t;
-  let html = '';
-  try {
-    html = formatActivityDetailHtml(log) || '';
-  } catch (err) {
-    console.warn('formatActivityDetailHtml', err);
-    html = '';
-  }
-  if (!html || !String(html).trim()) {
-    const d = (log.detail) || (log._event && log._event.detail) || {};
-    const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    const lines = [];
-    lines.push('<div class="ad-block"><div class="ad-label">Thông tin</div><ul class="ad-list ad-list-rich">');
-    lines.push('<li><span class="ad-li-k">Nội dung</span><span class="ad-li-v">' + esc((log.text || (log.summary && log.summary.text) || '—')) + '</span></li>');
-    if (log.actor) lines.push('<li><span class="ad-li-k">Actor</span><span class="ad-li-v">' + esc(log.actor) + '</span></li>');
-    Object.keys(d).forEach(k => {
-      const v = d[k];
-      if (v == null || typeof v === 'object') return;
-      lines.push('<li><span class="ad-li-k">' + esc(k) + '</span><span class="ad-li-v">' + esc(v) + '</span></li>');
-    });
-    lines.push('</ul></div>');
-    html = lines.join('');
-  }
-  body.innerHTML = html;
-  // Không ép màu trắng (PC theme sáng sẽ mất chữ) — CSS lo
   body.style.display = 'block';
   body.style.visibility = 'visible';
   body.style.opacity = '1';
   body.style.minHeight = '80px';
+
+  // PC: trì hoãn 1 tick để click mở không đụng backdrop vừa hiện
+  window.__vxOpeningActivityDetail = true;
+  setTimeout(() => {
+    modal.classList.add('show');
+    modal.style.zIndex = '10060';
+    setTimeout(() => { window.__vxOpeningActivityDetail = false; }, 200);
+  }, 30);
 }
 
-
-document.getElementById('btn-close-activity-detail')?.addEventListener('click', () => {
-  document.getElementById('modal-activity-detail')?.classList.remove('show');
+document.getElementById('btn-close-activity-detail')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  closeActivityDetail();
 });
 document.getElementById('modal-activity-detail')?.addEventListener('click', (e) => {
-  if (e.target.id === 'modal-activity-detail') e.currentTarget.classList.remove('show');
+  if (window.__vxOpeningActivityDetail) return;
+  if (e.target.id === 'modal-activity-detail') closeActivityDetail();
 });
 
 let _lastOfflineLogId = null;
@@ -5545,6 +5559,7 @@ function renderActivityPage() {
   window._activityLogMap = {};
   lines.forEach(a => { if (a && a.id) window._activityLogMap[a.id] = a; });
   actList.querySelectorAll('.activity-clickable').forEach(el => {
+    el.onpointerdown = (ev) => { if (ev) ev.stopPropagation(); };
     el.onclick = (ev) => {
       if (ev) { ev.preventDefault(); ev.stopPropagation(); }
       const id = el.getAttribute('data-id');
@@ -5692,16 +5707,35 @@ function renderLevelPage() {
 
 
 function closeModals() {
-  document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
+  if (window.__vxOpeningActivityDetail) return;
+  document.querySelectorAll('.modal').forEach(m => {
+    m.classList.remove('show');
+    if (m.id === 'modal-activity-detail') {
+      m.style.display = '';
+      m.style.pointerEvents = '';
+    }
+  });
 }
 
 document.querySelectorAll('.modal-close').forEach(btn => {
-  btn.addEventListener('click', closeModals);
+  btn.addEventListener('click', (e) => {
+    if (btn.id === 'btn-close-activity-detail') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeActivityDetail();
+      return;
+    }
+    closeModals();
+  });
 });
 
 document.querySelectorAll('.modal').forEach(modal => {
   modal.addEventListener('click', e => {
-    if (e.target === modal) closeModals();
+    if (window.__vxOpeningActivityDetail) return;
+    if (e.target === modal) {
+      if (modal.id === 'modal-activity-detail') closeActivityDetail();
+      else closeModals();
+    }
   });
 });
 
