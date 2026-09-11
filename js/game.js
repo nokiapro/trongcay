@@ -5747,6 +5747,79 @@ let changed = false;
     return new Date().toDateString();
   },
 
+  /** Nhật ký agent: NYC / Tiên / Robot / Giúp việc (online + offline) */
+  ensureAgentLogs() {
+    if (!currentPlayer) return [];
+    if (!Array.isArray(currentPlayer.agentLogs)) currentPlayer.agentLogs = [];
+    return currentPlayer.agentLogs;
+  },
+
+  /**
+   * Ghi 1 dòng log agent. Không ghi hành động người chơi thường.
+   * @param {{actor:string, mode?:string, title?:string, text?:string, lines?:string[], detail?:object, at?:number, id?:string}} entry
+   */
+  pushAgentLog(entry) {
+    if (!currentPlayer || !entry) return null;
+    try {
+      const logs = this.ensureAgentLogs();
+      const now = (entry.at != null) ? Number(entry.at) : ((typeof nowMs === 'function') ? nowMs() : Date.now());
+      const actor = String(entry.actor || 'system');
+      const mode = entry.mode === 'offline' ? 'offline' : 'online';
+      const text = String(entry.text || entry.title || '').trim();
+      if (!text && !(entry.lines && entry.lines.length)) return null;
+      // Chống spam: cùng text trong 8 giây
+      const recent = logs[0];
+      if (recent && recent.text === text && recent.actor === actor && Math.abs((recent.at || 0) - now) < 8000) {
+        return recent;
+      }
+      const id = entry.id || ('ag_' + now.toString(36) + '_' + Math.random().toString(36).slice(2, 7));
+      const item = {
+        id: id,
+        at: now,
+        timestamp: now,
+        actor: actor,
+        mode: mode,
+        category: actor,
+        filter: actor,
+        title: entry.title || this._agentTitle(actor, mode),
+        text: text || (entry.lines && entry.lines[0]) || '',
+        summary: {
+          title: entry.title || this._agentTitle(actor, mode),
+          text: text || ''
+        },
+        lines: Array.isArray(entry.lines) ? entry.lines.slice(0, 80) : (text ? [text] : []),
+        detail: entry.detail || {},
+        type: entry.type || actor
+      };
+      logs.unshift(item);
+      // Giữ 80 dòng gần nhất + chỉ 48h
+      const KEEP_MS = 48 * 3600 * 1000;
+      currentPlayer.agentLogs = logs.filter(x => x && (now - (x.at || 0)) < KEEP_MS).slice(0, 80);
+      return item;
+    } catch (e) {
+      console.warn('pushAgentLog', e);
+      return null;
+    }
+  },
+
+  _agentTitle(actor, mode) {
+    const names = { nyc: 'NYC', fairy: 'Tiên', robot: 'Robot', helper: 'Giúp việc', offline: 'Offline', system: 'Hệ thống' };
+    const a = names[actor] || actor;
+    return mode === 'offline' ? (a + ' · Offline') : a;
+  },
+
+  _inferAgentActor(type, text) {
+    const t = String(type || '');
+    const s = String(text || '');
+    if (t.indexOf('robot') === 0 || /robot|người máy/i.test(s)) return 'robot';
+    if (t.indexOf('fairy') === 0 || /tiên|🧚/i.test(s)) return 'fairy';
+    if (t.indexOf('nyc') === 0 || /\bnyc\b/i.test(s)) return 'nyc';
+    if (t.indexOf('helper') === 0 || /giúp việc|🧹/i.test(s)) return 'helper';
+    if (t === 'harvest_offline' || t === 'offline' || /offline|vắng mặt/i.test(s)) return 'offline';
+    if (t === 'fairy_rain' || t === 'rain') return 'fairy';
+    return null; // không phải agent → bỏ
+  },
+
   ensureActivityLogs() {
     if (!currentPlayer) return [];
     if (!Array.isArray(currentPlayer.activityLogs)) currentPlayer.activityLogs = [];
@@ -6727,7 +6800,6 @@ let changed = false;
    * Tạo 1 log Offline duy nhất + timeline events nếu engine có.
    */
   addOfflineLog(report) {
-    return null; // LOG DISABLED
 
     if (!currentPlayer || !report) return null;
     const logs = this.ensureActivityLogs();
@@ -6815,6 +6887,69 @@ let changed = false;
     logs.unshift(entry);
     if (logs.length > 120) currentPlayer.activityLogs = logs.slice(0, 120);
 
+    // Nhật ký agent offline chi tiết
+    try {
+      const lines = Array.isArray(report.lines) ? report.lines.slice() : [];
+      const sumParts = [];
+      if (entry.summary && entry.summary.text) sumParts.push(entry.summary.text);
+      this.pushAgentLog({
+        actor: 'offline',
+        mode: 'offline',
+        type: 'offline',
+        title: 'Offline · Tổng kết',
+        text: (entry.summary && entry.summary.text) ? entry.summary.text : ('Offline ' + (entry.summary && entry.summary.duration ? entry.summary.duration : '')),
+        lines: lines.length ? lines : [(entry.summary && entry.summary.text) || 'Offline'],
+        detail: entry.detail || {},
+        at: entry.timestamp || ((typeof nowMs === 'function') ? nowMs() : Date.now()),
+        id: entry.id
+      });
+      // Tách log theo actor nếu có số liệu
+      const d = entry.detail || {};
+      if (d.nyc && (d.nyc.gardens || d.nyc.cells)) {
+        this.pushAgentLog({
+          actor: 'nyc', mode: 'offline', type: 'nyc_offline',
+          title: 'NYC · Offline',
+          text: 'NYC offline: ' + (d.nyc.gardens || 0) + ' vườn · ' + (d.nyc.cells || 0) + ' ô trồng lại',
+          lines: lines.filter(l => /nyc|vườn|thu hoạch|trồng/i.test(String(l))).slice(0, 40),
+          detail: { nyc: d.nyc, garden: d.garden },
+          at: entry.timestamp
+        });
+      }
+      if (d.fairy && (d.fairy.watered || d.fairy.rainSeeds)) {
+        this.pushAgentLog({
+          actor: 'fairy', mode: 'offline', type: 'fairy_offline',
+          title: 'Tiên · Offline',
+          text: 'Tiên offline: tưới ' + (d.fairy.watered || 0) + ' · hạt mưa ' + (d.fairy.rainSeeds || 0),
+          lines: lines.filter(l => /tiên|mưa|tưới|bón/i.test(String(l))).slice(0, 40),
+          detail: { fairy: d.fairy },
+          at: entry.timestamp
+        });
+      }
+      if (d.robot && ((d.robot.seedsBought || 0) + (d.robot.cooked || 0) + (d.robot.starMerged || 0) + (d.robot.mythicMerged || 0)) > 0) {
+        this.pushAgentLog({
+          actor: 'robot', mode: 'offline', type: 'robot_offline',
+          title: 'Robot · Offline',
+          text: 'Robot offline: mua hạt ' + (d.robot.seedsBought || 0) + ' · nấu ' + (d.robot.cooked || 0) + ' · ghép ⭐' + (d.robot.starMerged || 0) + ' · ✨' + (d.robot.mythicMerged || 0),
+          lines: lines.filter(l => /robot|người máy|nấu|ghép|mua hạt/i.test(String(l))).slice(0, 40),
+          detail: { robot: d.robot },
+          at: entry.timestamp
+        });
+      }
+      if (d.helperBuys || (report && report.helperBuys)) {
+        const hb = d.helperBuys || report.helperBuys || 0;
+        this.pushAgentLog({
+          actor: 'helper', mode: 'offline', type: 'helper_offline',
+          title: 'Giúp việc · Offline',
+          text: 'Giúp việc offline: mua ' + hb + ' món',
+          lines: lines.filter(l => /giúp việc|mua/i.test(String(l))).slice(0, 20),
+          detail: { helperBuys: hb },
+          at: entry.timestamp
+        });
+      }
+    } catch (e) { console.warn('offline agent log', e); }
+
+
+
     // Ghi event offline_end vào gameEvents
     this.pushGameEvent({
       id: entry.id + '_end',
@@ -6864,7 +6999,37 @@ let changed = false;
 
   /** Danh sách log — ưu tiên log TỔNG HỢP (1 dòng/actor/ngày) + offline + lên cấp */
   getActivityLogList() {
-    return []; // LOG DISABLED
+    // Trả về nhật ký agent (NYC/Tiên/Robot/Giúp việc/Offline)
+    try {
+      const logs = this.ensureAgentLogs();
+      const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
+      const KEEP = 48 * 3600 * 1000;
+      return (logs || []).filter(x => x && (now - (x.at || x.timestamp || 0)) < KEEP).map(x => {
+        const at = x.at || x.timestamp || now;
+        const clock = this.formatLogClock ? this.formatLogClock(at, true) : '';
+        return {
+          id: x.id,
+          at: at,
+          timestamp: at,
+          actor: x.actor,
+          mode: x.mode,
+          type: x.type || x.actor,
+          category: x.actor,
+          filter: x.actor,
+          text: x.text,
+          title: x.title || (x.summary && x.summary.title) || x.actor,
+          summary: x.summary || { title: x.title, text: x.text },
+          lines: x.lines || [x.text],
+          detail: x.detail || {},
+          timeText: clock,
+          summaryText: x.text
+        };
+      });
+    } catch (e) {
+      console.warn(getActivityLogList, e);
+      return [];
+    }
+
 
     this.ensureGameEvents();
     // Đồng bộ tổng hợp từ dayStats trước khi vẽ
@@ -7074,7 +7239,37 @@ let changed = false;
   },
 
   buildDayLogLines() {
-    return []; // LOG DISABLED
+    // Trả về nhật ký agent (NYC/Tiên/Robot/Giúp việc/Offline)
+    try {
+      const logs = this.ensureAgentLogs();
+      const now = (typeof nowMs === 'function') ? nowMs() : Date.now();
+      const KEEP = 48 * 3600 * 1000;
+      return (logs || []).filter(x => x && (now - (x.at || x.timestamp || 0)) < KEEP).map(x => {
+        const at = x.at || x.timestamp || now;
+        const clock = this.formatLogClock ? this.formatLogClock(at, true) : '';
+        return {
+          id: x.id,
+          at: at,
+          timestamp: at,
+          actor: x.actor,
+          mode: x.mode,
+          type: x.type || x.actor,
+          category: x.actor,
+          filter: x.actor,
+          text: x.text,
+          title: x.title || (x.summary && x.summary.title) || x.actor,
+          summary: x.summary || { title: x.title, text: x.text },
+          lines: x.lines || [x.text],
+          detail: x.detail || {},
+          timeText: clock,
+          summaryText: x.text
+        };
+      });
+    } catch (e) {
+      console.warn(buildDayLogLines, e);
+      return [];
+    }
+
 
     return this.getActivityLogList();
   },
@@ -7083,7 +7278,35 @@ let changed = false;
    * addActivity — MỌI chuỗi / object đều thành 1 event có giờ.
    */
   addActivity(textOrEvent, meta) {
-    return; // LOG DISABLED
+    // Chỉ ghi log NYC / Tiên / Robot / Giúp việc / Offline
+    try {
+      let type = (meta && meta.type) || 'system';
+      let text = '';
+      let detail = {};
+      let at = (meta && meta.at) || ((typeof nowMs === 'function') ? nowMs() : Date.now());
+      if (textOrEvent && typeof textOrEvent === 'object' && !Array.isArray(textOrEvent)) {
+        type = textOrEvent.type || textOrEvent.action || type;
+        text = textOrEvent.summary || textOrEvent.text || textOrEvent.summaryText || '';
+        detail = textOrEvent.detail || textOrEvent;
+        if (textOrEvent.timestamp) at = textOrEvent.timestamp;
+      } else if (typeof textOrEvent === 'string') {
+        text = textOrEvent.trim();
+      }
+      const actor = this._inferAgentActor(type, text);
+      if (!actor) return; // bỏ log người chơi thường
+      this.pushAgentLog({
+        actor: actor,
+        mode: (actor === 'offline' || type === 'harvest_offline' || type === 'offline') ? 'offline' : 'online',
+        type: type,
+        title: this._agentTitle(actor, (actor === 'offline') ? 'offline' : 'online'),
+        text: text,
+        lines: text ? [text] : [],
+        detail: detail,
+        at: at
+      });
+      return;
+    } catch (e) { console.warn('addActivity agent', e); return; }
+
 
     try {
       if (textOrEvent && typeof textOrEvent === 'object' && !Array.isArray(textOrEvent)) {
@@ -7142,7 +7365,6 @@ let changed = false;
   },
 
   logOfflineReport(report) {
-    return null; // LOG DISABLED
 
     if (!report || !currentPlayer) return null;
     try {

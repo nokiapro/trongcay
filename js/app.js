@@ -5005,6 +5005,39 @@ function formatLogEventsHtml(d) {
 }
 
 function formatActivityDetailHtml(log) {
+  // Agent log: hiện danh sách dòng chi tiết
+  if (log && Array.isArray(log.lines) && log.lines.length) {
+    const esc = (s) => String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const actor = log.actor || log.type || '';
+    const mode = log.mode === 'offline' ? 'Offline' : 'Online';
+    const icons = { nyc: '❤️', fairy: '🧚', robot: '🤖', helper: '🧹', offline: '⚡' };
+    let html = '<div class="ad-block"><div class="ad-label">' +
+      (icons[actor] || '📋') + ' ' + esc(log.title || actor) +
+      ' · <span style="opacity:.8">' + mode + '</span></div>';
+    if (log.text) html += '<div class="ad-value" style="margin-bottom:8px">' + esc(log.text).replace(/&lt;img[^&]*&gt;/g, '🪙') + '</div>';
+    html += '<ul class="ad-list ad-list-rich">';
+    log.lines.forEach(ln => {
+      const s = String(ln || '').trim();
+      if (!s) return;
+      html += '<li><span class="ad-li-v" style="flex:1">' + esc(s) + '</span></li>';
+    });
+    html += '</ul></div>';
+    // Nếu có detail object thêm section
+    const d = log.detail || {};
+    if (d.garden || d.nyc || d.robot || d.fairy) {
+      html += '<div class="ad-block"><div class="ad-label">Tóm tắt số liệu</div><ul class="ad-list">';
+      if (d.garden) {
+        html += '<li>Vườn: thu ' + (d.garden.harvested || 0) + ' ô · +' + (d.garden.product || 0) + ' SP · trồng ' + (d.garden.replanted || 0) + '</li>';
+      }
+      if (d.nyc) html += '<li>NYC: ' + (d.nyc.gardens || 0) + ' vườn · ' + (d.nyc.cells || 0) + ' ô</li>';
+      if (d.fairy) html += '<li>Tiên: tưới ' + (d.fairy.watered || 0) + ' · hạt mưa ' + (d.fairy.rainSeeds || 0) + '</li>';
+      if (d.robot) html += '<li>Robot: hạt ' + (d.robot.seedsBought || 0) + ' · nấu ' + (d.robot.cooked || 0) + ' · ghép ⭐' + (d.robot.starMerged || 0) + ' · ✨' + (d.robot.mythicMerged || 0) + '</li>';
+      if (d.helperBuys) html += '<li>Giúp việc: mua ' + d.helperBuys + ' món</li>';
+      html += '</ul></div>';
+    }
+    return html;
+  }
   // Modal CHI TIẾT đầy đủ — list ngoài ngắn, trong này liệt kê đã làm gì
   if (log && (log.aggregated || (log._event && log._event.aggregated) || log.action === 'day_summary' || (log._event && log._event.action === 'day_summary'))) {
     const ev = log._event || log;
@@ -5409,7 +5442,6 @@ function closeActivityDetail() {
 }
 
 function openActivityDetail(logId, cachedLog) {
-  return { ok: false, reason: 'log-disabled' }; // LOG DISABLED
 
   // Luôn chuyển sang trang Nhật ký trước
   window.__vxSkipCloseActivityDetail = true;
@@ -5695,7 +5727,6 @@ document.getElementById('btn-offline-view-detail')?.addEventListener('click', ()
 
 /* ========== NHẬT KÝ — Timeline chuyên nghiệp (24h, không filter) ========== */
 function renderActivityPage(opts) {
-  return; // LOG DISABLED
 
   if (typeof currentPlayer === 'undefined' || !currentPlayer) return;
   const force = !!(opts && opts.force);
@@ -5739,8 +5770,8 @@ function renderActivityPage(opts) {
       // Chỉ restore header nếu bị thay nội dung (bản cũ)
       if (!listHeader.querySelector('h1') || listHeader.querySelector('#btn-activity-detail-back')) {
         listHeader.innerHTML =
-          '<h1><i class="fa-solid fa-clock-rotate-left"></i> NHẬT KÝ HÀNH ĐỘNG</h1>'
-          + '<p class="page-sub" style="margin:4px 0 0;font-size:0.9rem;color:#64748b">Mỗi hành động một dòng · HH:mm:ss · Log 24 giờ · Offline có thời lượng</p>';
+          '<h1><i class="fa-solid fa-clock-rotate-left"></i> NHẬT KÝ AGENT</h1>'
+          + '<p class="page-sub" style="margin:4px 0 0;font-size:0.9rem;color:#64748b">NYC · Tiên · Robot · Giúp việc · Online & Offline · 48 giờ</p>';
       }
     }
     if (listPanel) {
@@ -5772,7 +5803,7 @@ function renderActivityPage(opts) {
   actList.className = 'activity-list activity-timeline activity-log-pro';
 
   if (!lines.length) {
-    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i>Chưa có hoạt động trong 24 giờ qua.</li>';
+    actList.innerHTML = '<li class="activity-empty"><i class="fa-solid fa-inbox"></i>Chưa có nhật ký agent. NYC/Tiên/Robot/Giúp việc sẽ ghi khi làm việc (online hoặc sau offline).</li>';
     return;
   }
 
