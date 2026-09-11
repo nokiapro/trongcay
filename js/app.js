@@ -5337,7 +5337,6 @@ function formatActivityDetailHtml(log) {
 }
 
 function closeActivityDetail() {
-  // Chỉ đóng panel — KHÔNG gọi renderActivityPage (tránh treo / vòng lặp khi goToPage)
   window.__vxActivityDetailOpen = false;
   window.__vxOpeningActivityDetail = false;
   const page = document.getElementById('page-activity');
@@ -5349,17 +5348,23 @@ function closeActivityDetail() {
   if (detailPanel) {
     detailPanel.classList.add('hidden');
     detailPanel.setAttribute('hidden', '');
-    detailPanel.style.display = 'none';
+    detailPanel.style.cssText = 'display:none;';
+    // Đưa panel về lại page-activity nếu đang gắn ở body
+    try {
+      if (page && detailPanel.parentElement === document.body) {
+        page.appendChild(detailPanel);
+      }
+    } catch (_) {}
   }
   if (listPanel) {
     listPanel.classList.remove('hidden');
     listPanel.removeAttribute('hidden');
-    listPanel.style.display = '';
+    listPanel.style.cssText = '';
   }
   if (listHeader) {
     listHeader.classList.remove('hidden');
     listHeader.removeAttribute('hidden');
-    listHeader.style.display = '';
+    listHeader.style.cssText = '';
   }
 }
 
@@ -5454,7 +5459,7 @@ function openActivityDetail(logId, cachedLog) {
     body.innerHTML = html;
   }
 
-  // Ép hiện panel — setProperty important thắng mọi CSS
+  // Ép hiện panel dạng overlay FIXED — không bị CSS cha/layout nuốt
   window.__vxActivityDetailOpen = true;
   if (page) {
     page.classList.add('showing-detail', 'active');
@@ -5471,28 +5476,50 @@ function openActivityDetail(logId, cachedLog) {
     listHeader.setAttribute('hidden', '');
     listHeader.style.setProperty('display', 'none', 'important');
   }
+
+  // Move panel to body so no parent overflow/transform can clip it
+  try {
+    if (detailPanel.parentElement !== document.body) {
+      document.body.appendChild(detailPanel);
+    }
+  } catch (_) {}
+
   detailPanel.classList.remove('hidden');
   detailPanel.removeAttribute('hidden');
-  detailPanel.style.setProperty('display', 'flex', 'important');
-  detailPanel.style.setProperty('flex-direction', 'column', 'important');
-  detailPanel.style.setProperty('visibility', 'visible', 'important');
-  detailPanel.style.setProperty('opacity', '1', 'important');
-  detailPanel.style.setProperty('min-height', '280px', 'important');
-  detailPanel.style.setProperty('width', '100%', 'important');
-  detailPanel.style.setProperty('max-width', '920px', 'important');
-  detailPanel.style.setProperty('margin', '0 auto', 'important');
-  detailPanel.style.setProperty('padding', '12px 14px 24px', 'important');
-  detailPanel.style.setProperty('box-sizing', 'border-box', 'important');
-  detailPanel.style.setProperty('position', 'relative', 'important');
-  detailPanel.style.setProperty('z-index', '50', 'important');
-  body.style.setProperty('display', 'block', 'important');
-  body.style.setProperty('visibility', 'visible', 'important');
-  body.style.setProperty('opacity', '1', 'important');
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || document.body.classList.contains('dark');
+  const bg = isDark ? '#0f1f17' : '#ffffff';
+  const fg = isDark ? '#e2e8f0' : '#0f172a';
+  detailPanel.style.cssText = [
+    'display:flex',
+    'flex-direction:column',
+    'position:fixed',
+    'left:0',
+    'right:0',
+    'top:0',
+    'bottom:0',
+    'z-index:2147483000',
+    'visibility:visible',
+    'opacity:1',
+    'pointer-events:auto',
+    'overflow:auto',
+    'width:100%',
+    'max-width:100%',
+    'height:100%',
+    'min-height:100%',
+    'margin:0',
+    'padding:16px 16px 96px',
+    'box-sizing:border-box',
+    'background:' + bg,
+    'color:' + fg,
+    'gap:12px'
+  ].map(function (s) { return s; }).join(';') + ';';
+
+  body.style.cssText = 'display:block;visibility:visible;opacity:1;color:inherit;min-height:120px;padding:8px 4px 24px;';
+  if (title) title.style.cssText = 'margin:0;font-size:1.15rem;color:inherit;';
 
   try {
     window.scrollTo(0, 0);
-    const main = document.querySelector('.main');
-    if (main) main.scrollTop = 0;
+    detailPanel.scrollTop = 0;
   } catch (_) {}
 
   const info = {
