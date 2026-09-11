@@ -1,3 +1,15 @@
+/** Icon xu custom (XuanKen) */
+function xuIcon(size) {
+  const s = size || 14;
+  return '<img class="icon-xu" src="icons/xu-coin.png" width="' + s + '" height="' + s + '" alt="xu" style="width:' + s + 'px;height:' + s + 'px;vertical-align:-3px;display:inline-block;object-fit:contain" />';
+}
+function xuText(n) {
+  const v = (n == null ? 0 : n);
+  return (typeof v === 'number' ? v.toLocaleString() : String(v)) + ' ' + xuIcon(14);
+}
+window.xuIcon = xuIcon;
+window.xuText = xuText;
+
 
 let selectedPlotId = null;
 
@@ -14,7 +26,12 @@ function showToast(msg, type = '') {
   const toast = document.getElementById('toast');
   if (!toast) return;
   const text = (msg == null || msg === '') ? 'Có lỗi xảy ra' : String(msg);
-  toast.textContent = text;
+  // Cho phép hiện icon xu (img.icon-xu); còn lại text thuần
+  if (/icon-xu|<img\s/i.test(text)) {
+    toast.innerHTML = text;
+  } else {
+    toast.textContent = text;
+  }
   toast.className = 'toast show ' + (type || '');
   toast.title = 'Bấm để đóng';
   toast.style.cursor = 'pointer';
@@ -1302,7 +1319,7 @@ async function renderRank() {
     const labels = { planted: 'đã trồng', harvested: 'thu hoạch', coins: 'xu', collection: 'sưu tầm' };
     list.innerHTML = rows.map((r, i) => {
       const cls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
-      const val = rankKey === 'coins' ? (r.coins || 0).toLocaleString() + '🪙' : (r[rankKey] || 0).toLocaleString();
+      const val = rankKey === 'coins' ? (r.coins || 0).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />' : (r[rankKey] || 0).toLocaleString();
       const av = r.avatar ? `<img class="rank-av" src="${r.avatar}" alt="" onerror="this.style.display=\'none\'" />` : `<span class="rank-av-fb"><i class="fa-solid fa-user"></i></span>`;
       return `<div class="rank-item ${cls}">
         <div class="rank-pos">${i + 1}</div>
@@ -2690,7 +2707,7 @@ function openEmptyPlotModal(plotId) {
     html += '<div class="plot-upgrade-row"><select id="empty-upgrade-select">';
     higher.forEach(x => {
       const cost = Features.getPlotUpgradeCost(curMult, x.mult);
-      html += '<option value="' + x.mult + '">x' + x.mult + ' — ' + Number(cost).toLocaleString() + '🪙</option>';
+      html += '<option value="' + x.mult + '">x' + x.mult + ' — ' + Number(cost).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></option>';
     });
     html += '</select><button type="button" class="btn btn-warning btn-sm" id="btn-empty-upgrade"><i class="fa-solid fa-arrow-up"></i> Nâng cấp</button></div></div>';
   }
@@ -2815,7 +2832,7 @@ function openPlotModal(plotId) {
       </div>
       <p><strong>Tưới nước:</strong> <span data-role="plot-water" class="${waterDisp.active ? '' : 'plot-boost-off'}">${waterDisp.text}</span></p>
       <p><strong>Phân bón:</strong> <span data-role="plot-fert" class="${fertDisp.active ? '' : 'plot-boost-off'}">${fertText}</span></p>
-      <p><strong>Sản lượng gốc:</strong> ${plant.yield} · Giá bán: ${plant.sellPrice}🪙</p>
+      <p><strong>Sản lượng gốc:</strong> ${plant.yield} · Giá bán: ${plant.sellPrice}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></p>
       ${plant.desc ? `<p class="plot-detail-desc">${plant.desc}</p>` : ''}
     </div>
   `;
@@ -2835,7 +2852,7 @@ function openPlotModal(plotId) {
     upgradeHtml += '<div class="plot-upgrade-row"><select id="plot-upgrade-select">';
     higher.forEach(x => {
       const cost = Features.getPlotUpgradeCost(curMult, x.mult);
-      upgradeHtml += '<option value="' + x.mult + '">x' + x.mult + ' — ' + Number(cost).toLocaleString() + '🪙</option>';
+      upgradeHtml += '<option value="' + x.mult + '">x' + x.mult + ' — ' + Number(cost).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></option>';
     });
     upgradeHtml += '</select><button type="button" class="btn btn-warning btn-sm" id="btn-upgrade-plot"><i class="fa-solid fa-arrow-up"></i> Nâng cấp</button></div></div>';
   }
@@ -3496,7 +3513,7 @@ function renderShop() {
           <div class="shop-name">Mua thêm ô đất · Vườn ${gIdx}</div>
           <span class="shop-type">Tối đa ${maxP} ô / vườn · Đủ ${maxP} ô mở vườn mới</span>
           <div class="shop-meta"><span>Vườn ${gIdx}: <strong>${have}/${maxP}</strong> ô · Tổng ${gCount} vườn</span></div>
-          <div class="shop-price">${price.toLocaleString()} 🪙 / ô</div>
+          <div class="shop-price">${price.toLocaleString()} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> / ô</div>
           <div class="buy-qty">
             <input type="number" id="plot-qty-input" class="qty-input" min="1" max="20" value="1" />
             <button class="btn btn-warning" id="btn-buy-plot"><i class="fa-solid fa-cart-plus"></i> Mua ô</button>
@@ -3508,7 +3525,7 @@ function renderShop() {
           <span class="shop-type">Mọi vườn · chỉ ô dưới x50</span>
           <div class="shop-desc">Nâng vĩnh viễn hệ số tốc độ mọi ô đất (mọi vườn) lên x50. Ô đã ≥ x50 bỏ qua.</div>
           <div class="shop-meta"><span>${upgradeAllCount ? (upgradeAllCount + ' ô cần nâng') : 'Đã đủ x50'}</span></div>
-          <div class="shop-price">${upgradeAllCount ? (upgradeAllNeed.toLocaleString() + ' 🪙') : '—'}</div>
+          <div class="shop-price">${upgradeAllCount ? (upgradeAllNeed.toLocaleString() + ' <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />') : '—'}</div>
           <button class="btn btn-warning" id="btn-upgrade-all-x50" ${upgradeAllCount ? '' : 'disabled'}>
             <i class="fa-solid fa-bolt"></i> Nâng hết → x50
           </button>
@@ -3523,7 +3540,7 @@ function renderShop() {
     });
     document.getElementById('btn-upgrade-all-x50')?.addEventListener('click', async () => {
       if (!upgradeAllCount) return;
-      if (!confirm('Nâng ' + upgradeAllCount + ' ô (mọi vườn) → x50 vĩnh viễn?\nChi phí: ' + upgradeAllNeed.toLocaleString() + ' 🪙')) return;
+      if (!confirm('Nâng ' + upgradeAllCount + ' ô (mọi vườn) → x50 vĩnh viễn?\nChi phí: ' + upgradeAllNeed.toLocaleString() + '  xu')) return;
       const res = await Features.upgradeAllPlotsTo(50);
       showToast(res.msg, res.ok ? 'success' : 'error');
       updateCoins();
@@ -3556,7 +3573,7 @@ function renderShop() {
         <div class="shop-name">${pack.name}</div>
         <span class="shop-type">Tăng tốc tạm · x${pack.mult}</span>
         <div class="shop-desc">Áp dụng ${pack.days} ngày cho 1 ô. Cùng mức sẽ cộng dồn thời gian.</div>
-        <div class="shop-price">${pack.price.toLocaleString()} 🪙</div>
+        <div class="shop-price">${pack.price.toLocaleString()} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></div>
         <select class="boost-plot-sel" data-id="${pack.id}" data-pill-prefix="Ô:" data-pill-block="1">${plotOpts || '<option value="">Chưa có ô</option>'}</select>
         <button class="btn btn-warning btn-buy-temp-boost" data-id="${pack.id}"><i class="fa-solid fa-cart-plus"></i> Mua & áp dụng</button>
       `;
@@ -3592,7 +3609,7 @@ function renderShop() {
         <div class="shop-desc">${item.desc}</div>
         <div class="shop-meta"><span>Tỉ lệ <strong>${item.rate}%</strong></span></div>
         <div class="shop-owned">Bạn có: <strong>${have}</strong></div>
-        <div class="shop-price">${item.price.toLocaleString()} 🪙</div>
+        <div class="shop-price">${item.price.toLocaleString()} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></div>
         <button class="btn btn-primary btn-buy-protect" data-id="${item.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>
       `;
       grid.appendChild(card);
@@ -3649,7 +3666,7 @@ function renderShop() {
         <div class="shop-name">${pack.name}</div>
         <span class="shop-type">Buff vườn</span>
         <div class="shop-desc">Tự chăm ${pack.days} ngày (cộng dồn nếu còn hạn).</div>
-        <div class="shop-price">${pack.price.toLocaleString()} 🪙</div>
+        <div class="shop-price">${pack.price.toLocaleString()} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></div>
         <button class="btn btn-primary btn-buy-fairy" data-id="${pack.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>
       `;
       grid.appendChild(card);
@@ -3690,7 +3707,7 @@ function renderShop() {
         <div class="shop-name">${pack.name}</div>
         <span class="shop-type">Buff vườn</span>
         <div class="shop-desc">Cây chín → thu ngay + trồng lại · ${pack.days} ngày (cộng dồn).</div>
-        <div class="shop-price">${pack.price.toLocaleString()} 🪙</div>
+        <div class="shop-price">${pack.price.toLocaleString()} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></div>
         <button class="btn btn-primary btn-buy-nyc" data-id="${pack.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>
       `;
       grid.appendChild(card);
@@ -3731,7 +3748,7 @@ function renderShop() {
         <div class="shop-name">${pack.name}</div>
         <span class="shop-type">Buff mua sắm</span>
         <div class="shop-desc">Tự mua vật phẩm theo mốc kho trong ${pack.days} ngày (cộng dồn).</div>
-        <div class="shop-price">${pack.price.toLocaleString()} 🪙</div>
+        <div class="shop-price">${pack.price.toLocaleString()} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></div>
         <button class="btn btn-primary btn-buy-helper" data-id="${pack.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>
       `;
       grid.appendChild(card);
@@ -3767,7 +3784,7 @@ function renderShop() {
           <span>📦 +${Math.round(fert.yieldBonus * 100)}%</span>
         </div>
         <div class="shop-owned">Bạn có: <strong>${have}</strong></div>
-        <div class="shop-price">${fert.price.toLocaleString()} 🪙</div>
+        <div class="shop-price">${fert.price.toLocaleString()} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></div>
         <button class="btn btn-primary btn-buy-fert" data-id="${fert.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>
       `;
       grid.appendChild(card);
@@ -3825,7 +3842,7 @@ function renderShop() {
         <div class="shop-name">${it.name}</div>
         <span class="shop-type">${it.rarity || 'common'}</span>
         <div class="shop-owned">${on ? shopOwnedLabel('equipped') : (have ? shopOwnedLabel('owned') : shopOwnedLabel('none'))}</div>
-        <div class="shop-price">${(it.price||0).toLocaleString()} 🪙</div>
+        <div class="shop-price">${(it.price||0).toLocaleString()} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></div>
         ${have ? `<button class="btn ${on?'btn-secondary':'btn-primary'} btn-equip-cp" data-id="${it.id}">${on?'Đang gắn':'Gắn'}</button>`
                : `<button class="btn btn-primary btn-buy-cp" data-id="${it.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>`}`;
       grid.appendChild(card);
@@ -3915,7 +3932,7 @@ function renderShop() {
           <span class="shop-type">${(fa.split(" ")[0] || "fa-solid").replace("fa-","")}</span>
           <div class="shop-meta"><span style="font-size:0.7rem;opacity:0.75">${fa}</span></div>
           <div class="shop-owned">${on ? shopOwnedLabel('equipped') : (have ? shopOwnedLabel('owned') : shopOwnedLabel('none'))}</div>
-          <div class="shop-price">${price.toLocaleString()} 🪙</div>
+          <div class="shop-price">${price.toLocaleString()} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></div>
           ${have
             ? `<button class="btn ${on ? 'btn-secondary' : 'btn-primary'} btn-equip-badge" data-id="${id}">${on ? 'Đang gắn' : 'Gắn'}</button>`
             : `<button class="btn btn-primary btn-buy-badge" data-id="${id}" data-slug="${slug}"><i class="fa-solid fa-cart-plus"></i> Mua</button>`}`;
@@ -3978,7 +3995,7 @@ function renderShop() {
         <span class="shop-type">Khung · ${rarityLabel}</span>
         <div class="shop-meta"><span>${fr.desc || ''}</span></div>
         <div class="shop-owned">${on ? shopOwnedLabel('equipped') : (have ? shopOwnedLabel('owned') : shopOwnedLabel('none'))}</div>
-        <div class="shop-price">${(fr.price || 0).toLocaleString()} 🪙</div>
+        <div class="shop-price">${(fr.price || 0).toLocaleString()} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></div>
         ${have
           ? `<button class="btn ${on ? 'btn-secondary' : 'btn-primary'} btn-equip-frame" data-id="${fr.id}">${on ? 'Đang gắn' : 'Gắn khung'}</button>`
           : `<button class="btn btn-primary btn-buy-frame" data-id="${fr.id}"><i class="fa-solid fa-cart-plus"></i> Mua</button>`}
@@ -4023,7 +4040,7 @@ function renderShop() {
         <span class="shop-type">Pet · ${pet.species === 'cat' ? 'Mèo' : pet.species === 'dog' ? 'Chó' : 'Khác'}</span>
         <div class="shop-meta"><span>Nhặt xu ~${((pet.coinChance || 0) * 100).toFixed(1)}%/tick</span></div>
         <div class="shop-owned">${have ? shopOwnedLabel('owned') : shopOwnedLabel('none')}</div>
-        <div class="shop-price">${pet.price.toLocaleString()} 🪙</div>
+        <div class="shop-price">${pet.price.toLocaleString()} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></div>
         <p class="bulk-hint" style="font-size:0.78rem;margin:6px 0">${pet.desc || ''}</p>
         <button class="btn ${have ? 'btn-secondary' : 'btn-primary'} btn-buy-pet" data-id="${pet.id}" ${have ? 'disabled' : ''}>
           <i class="fa-solid fa-${have ? 'check' : 'cart-plus'}"></i> ${have ? 'Đã có' : 'Mua'}
@@ -4092,7 +4109,7 @@ function renderShop() {
         <span><i class="fa-solid fa-coins"></i> ${plant.sellPrice}</span>
       </div>
       <div class="shop-owned">Bạn có: <strong>${have.toLocaleString()}</strong> hạt</div>
-      <div class="shop-price">${plant.seedPrice} 🪙 / hạt</div>
+      <div class="shop-price">${plant.seedPrice} <img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> / hạt</div>
       <div class="buy-qty">
         <input type="number" class="qty-input" min="1" value="1" data-id="${plant.id}" ${!available ? 'disabled' : ''} placeholder="Số lượng" inputmode="numeric" />
         <button class="btn btn-primary btn-buy" data-id="${plant.id}" ${!available ? 'disabled' : ''}><i class="fa-solid fa-cart-plus"></i> ${available ? 'Mua' : 'Khóa'}</button>
@@ -4199,7 +4216,7 @@ function renderInventory() {
       const tag = kind === 'myth' ? ' ✨' : (kind === 'star' ? ' ⭐' : '');
       const nameStr = plant.name + tag;
       const nameLong = nameStr.length > 12 ? ' text-long' : (nameStr.length > 8 ? ' text-mid' : '');
-      const qtyStr = 'x' + qty.toLocaleString() + ' · ' + unit + '🪙/hạt';
+      const qtyStr = 'x' + qty.toLocaleString() + ' · ' + unit + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />/hạt';
       const qtyLong = qtyStr.length > 18 ? ' text-long' : (qtyStr.length > 14 ? ' text-mid' : '');
       const btnCls = kind === 'myth' ? 'btn-warning' : (kind === 'star' ? 'btn-warning' : 'btn-primary');
       return `
@@ -4296,7 +4313,7 @@ function renderInventory() {
         <div class="inv-item">
           <div class="icon">${fert.icon}</div>
           <div class="name">${fert.name}</div>
-          <div class="qty">x${ferts[id]} · −${Math.round((fert.timeReduce || 0) * 100)}% TG · ${unit}🪙/cái</div>
+          <div class="qty">x${ferts[id]} · −${Math.round((fert.timeReduce || 0) * 100)}% TG · ${unit}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />/cái</div>
           <div class="actions">
             <button class="btn btn-success btn-sell-fert" data-id="${id}" data-qty="1">Bán 1</button>
             <button class="btn btn-primary btn-sell-fert" data-id="${id}" data-qty="all">Bán hết</button>
@@ -4363,7 +4380,7 @@ function renderInventory() {
         <div class="inv-item">
           <div class="icon">${plant.icon}</div>
           <div class="name">${plant.name}</div>
-          <div class="qty">x${qty.toLocaleString()} · ${unit}🪙/cái</div>
+          <div class="qty">x${qty.toLocaleString()} · ${unit}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />/cái</div>
           <div class="actions">
             <button class="btn btn-success btn-sell-hv" data-id="${id}" data-kind="${kind}" data-qty="1">Bán 1</button>
             <button class="btn btn-primary btn-sell-hv" data-id="${id}" data-kind="${kind}" data-qty="all">Bán hết</button>
@@ -4955,7 +4972,7 @@ function formatLogEventsHtml(d) {
   const label = (ev) => {
     const a = String(ev.action || '');
     const n = ev.name ? String(ev.name) : '';
-    const costStr = (ev.cost != null && Number(ev.cost) > 0) ? (' · −' + Number(ev.cost).toLocaleString() + '🪙') : '';
+    const costStr = (ev.cost != null && Number(ev.cost) > 0) ? (' · −' + Number(ev.cost).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />') : '';
     if (a === 'plant') return 'Trồng ' + (n ? n + ' · ' : '') + (ev.plots || ev.qty || 1) + ' ô';
     if (a === 'water') return 'Tưới ' + (ev.plots || 1) + ' ô' + (ev.plotId != null ? ' (#' + (Number(ev.plotId) + 1) + ')' : '');
     if (a === 'fert') return 'Bón ' + (n || 'phân') + ' · ' + (ev.plots || 1) + ' ô';
@@ -4972,7 +4989,7 @@ function formatLogEventsHtml(d) {
     if (a === 'robot_merge') return 'Robot ghép ⭐×' + (ev.star || 0) + ' · ✨×' + (ev.myth || 0);
     if (a === 'rain') return 'Mưa ×' + (ev.count || 1) + ' trận';
     if (a === 'levelup') return 'Lên cấp → Lv ' + (ev.level || '');
-    if (a === 'daily') return 'Thưởng ngày +' + Number(ev.coins || 0).toLocaleString() + '🪙' + (ev.streak ? ' · streak ' + ev.streak : '');
+    if (a === 'daily') return 'Thưởng ngày +' + Number(ev.coins || 0).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />' + (ev.streak ? ' · streak ' + ev.streak : '');
     if (a === 'xp') return 'Nhận +' + (ev.xp || 0) + ' XP';
     return a + (n ? ' · ' + n : '') + (ev.qty != null ? ' ×' + ev.qty : '') + (ev.plots != null ? ' · ' + ev.plots + ' ô' : '') + costStr;
   };
@@ -5160,8 +5177,8 @@ function formatActivityDetailHtml(log) {
     if (d.quantity != null) kv.push(['Số lượng', '×' + d.quantity]);
     if (d.plotLabel || d.cellId != null) kv.push(['Ô đất', d.plotLabel || ('#' + (Number(d.cellId) + 1))]);
     if (d.gardenIndex != null) kv.push(['Vườn', '#' + (Number(d.gardenIndex) + 1)]);
-    if (d.cost != null) kv.push(['Chi phí', '−' + Number(d.cost).toLocaleString() + '🪙']);
-    if (d.coins != null) kv.push(['Xu', (Number(d.coins) >= 0 ? '+' : '') + Number(d.coins).toLocaleString() + '🪙']);
+    if (d.cost != null) kv.push(['Chi phí', '−' + Number(d.cost).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />']);
+    if (d.coins != null) kv.push(['Xu', (Number(d.coins) >= 0 ? '+' : '') + Number(d.coins).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />']);
     if (d.sp != null) kv.push(['SP', '+' + Number(d.sp).toLocaleString()]);
     if (d.xp != null) kv.push(['XP', '+' + Number(d.xp).toLocaleString()]);
     if (d.plantedClock) kv.push(['Trồng lúc', d.plantedClock]);
@@ -5309,7 +5326,7 @@ function formatActivityDetailHtml(log) {
         html += '<li>Hạt ' + nm + ': ×' + d.seedsBought[nm] + '</li>';
       });
     }
-    if (d.seedCost) html += '<li>Chi phí: −' + Number(d.seedCost).toLocaleString() + '🪙</li>';
+    if (d.seedCost) html += '<li>Chi phí: −' + Number(d.seedCost).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></li>';
     html += '<li>Nấu: ' + (d.cookCount || 0) + ' món</li>';
     if (d.cooked) {
       Object.keys(d.cooked).forEach(nm => {
@@ -5335,7 +5352,7 @@ function formatActivityDetailHtml(log) {
   if (type === 'helper') {
     html += '<ul class="ad-list">';
     html += '<li>Phân mua: ' + (d.fertBought || 0) + '</li>';
-    html += '<li>Chi tiêu: −' + Number(d.spent || 0).toLocaleString() + '🪙</li>';
+    html += '<li>Chi tiêu: −' + Number(d.spent || 0).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></li>';
     html += '</ul>';
     return html + formatLogEventsHtml(d);
   }
@@ -5352,7 +5369,7 @@ function formatActivityDetailHtml(log) {
   }
 
   if (type === 'reward') {
-    return '<ul class="ad-list"><li>Xu: +' + Number(d.coins || 0).toLocaleString() + '🪙</li><li>Streak: ' + (d.streak || 0) + '🔥</li></ul>' + formatLogEventsHtml(d);
+    return '<ul class="ad-list"><li>Xu: +' + Number(d.coins || 0).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></li><li>Streak: ' + (d.streak || 0) + '🔥</li></ul>' + formatLogEventsHtml(d);
   }
 
   // generic
@@ -6438,10 +6455,10 @@ function renderQuests() {
       const done = (st.progress || 0) >= q.target;
       let btn = '';
       if (st.claimed) btn = '<button class="btn btn-secondary btn-sm" disabled>Đã nhận</button>';
-      else if (done) btn = `<button class="btn btn-success btn-sm btn-claim-q" data-scope="${scope}" data-id="${q.id}">Nhận +${q.reward}🪙</button>`;
+      else if (done) btn = `<button class="btn btn-success btn-sm btn-claim-q" data-scope="${scope}" data-id="${q.id}">Nhận +${q.reward}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></button>`;
       else btn = `<button class="btn btn-secondary btn-sm" disabled>${st.progress || 0}/${q.target}</button>`;
       return `<div class="quest-card">
-        <div><div class="q-title">${q.title}</div><small>+${q.reward}🪙 · ${q.xp} XP</small></div>
+        <div><div class="q-title">${q.title}</div><small>+${q.reward}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> · ${q.xp} XP</small></div>
         <div class="q-prog"><i style="width:${pct}%"></i></div>
         ${btn}
       </div>`;
@@ -6512,9 +6529,9 @@ async function renderMarket() {
           : L.kind === 'harvestBought' ? 'Nông sản (chợ)'
           : 'Nông sản'
         } · x${L.qty}</span></div>
-        <div class="shop-price">${(L.priceEach || 0).toLocaleString()}🪙 / cái</div>
+        <div class="shop-price">${(L.priceEach || 0).toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> / cái</div>
         <div class="bulk-hint">Người bán: ${L.sellerName || '—'}</div>
-        <div class="shop-price">Tổng: ${((L.qty || 0) * (L.priceEach || 0)).toLocaleString()}🪙</div>
+        <div class="shop-price">Tổng: ${((L.qty || 0) * (L.priceEach || 0)).toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></div>
         ${mine
           ? `<button class="btn btn-secondary btn-sm btn-mkt-cancel" data-id="${L.id}">Gỡ tin</button>`
           : `<button class="btn btn-primary btn-sm btn-mkt-buy" data-id="${L.id}">Mua</button>`}
@@ -6626,7 +6643,7 @@ function renderBank() {
     return `<div class="bank-item" data-dep-id="${d.id}">
       <div class="bank-item-main">
         <div class="bank-item-head">
-          <span class="bank-principal">${d.amount.toLocaleString()}🪙</span>
+          <span class="bank-principal">${d.amount.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></span>
           <span class="bank-term-tag">${term ? term.label : d.termId} · ${Math.round((d.rate || 0) * 100)}%</span>
         </div>
         <div class="bank-stats">
@@ -6643,7 +6660,7 @@ function renderBank() {
             <span class="bank-stat-val" data-role="bank-total">${formatBankInterest(totalNow)}</span>
           </div>
         </div>
-        <div class="bank-timer plot-timer" data-role="bank-remain">${matured ? '<i class="fa-solid fa-circle-check"></i> Đáo hạn — nhận ' + fullPayout.toLocaleString() + '🪙' : '<i class="fa-regular fa-clock"></i> ' + Game.formatTime(remain)}</div>
+        <div class="bank-timer plot-timer" data-role="bank-remain">${matured ? '<i class="fa-solid fa-circle-check"></i> Đáo hạn — nhận ' + fullPayout.toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />' : '<i class="fa-regular fa-clock"></i> ' + Game.formatTime(remain)}</div>
       </div>
       <div class="bank-item-actions">
         ${!matured ? `<button class="btn btn-primary btn-sm btn-bank-topup" data-id="${d.id}"><i class="fa-solid fa-plus"></i> Gửi thêm</button>` : ''}
@@ -6707,7 +6724,7 @@ function softUpdateBank() {
     if (matured) {
       if (intEl) intEl.textContent = '+' + formatBankInterest(d.amount * (d.rate || 0));
       if (totEl) totEl.textContent = fullPayout.toLocaleString();
-      if (remEl) remEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Đáo hạn — nhận ' + fullPayout.toLocaleString() + '🪙';
+      if (remEl) remEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Đáo hạn — nhận ' + fullPayout.toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />';
     } else {
       if (intEl) intEl.textContent = '+' + formatBankInterest(interest);
       if (psEl) psEl.textContent = '+' + formatBankInterest(perSec);
@@ -6859,9 +6876,9 @@ function renderKitchen() {
         <div class="kitchen-name">${r.name}</div>
         <div class="kitchen-ings">${ings}</div>
         <div class="kitchen-meta kitchen-prices">
-          Thường <strong>${priceN(r).toLocaleString()}🪙</strong>
-          · ⭐ <strong>${priceS(r).toLocaleString()}🪙</strong>
-          · ✨ <strong>${priceM(r).toLocaleString()}🪙</strong>
+          Thường <strong>${priceN(r).toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></strong>
+          · ⭐ <strong>${priceS(r).toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></strong>
+          · ✨ <strong>${priceM(r).toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></strong>
           · +${r.xp || 1} XP
         </div>
         <div class="kitchen-actions kitchen-actions-tier">
@@ -6922,7 +6939,7 @@ function renderKitchen() {
         return `<div class="kitchen-card">
           <div class="kitchen-icon">${r.icon || '🍽️'}${row.label}</div>
           <div class="kitchen-name">${r.name} ${row.label}</div>
-          <div class="qty">x${row.qty} · ${unit.toLocaleString()}🪙/món</div>
+          <div class="qty">x${row.qty} · ${unit.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />/món</div>
           <div class="kitchen-actions">
             <button class="btn btn-success btn-sm btn-sell-dish" data-id="${row.id}" data-tier="${row.tier}" data-qty="1">Bán 1</button>
             <button class="btn btn-primary btn-sm btn-sell-dish" data-id="${row.id}" data-tier="${row.tier}" data-qty="all">Bán hết</button>
@@ -6983,7 +7000,7 @@ setInterval(async () => {
   if (!currentPlayer || typeof Game === 'undefined') return;
   const drop = Game.tryPetCoinDrop();
   if (drop) {
-    showToast(`${drop.pet.icon} ${drop.pet.name} nhặt được ${drop.coins}🪙!`, 'success');
+    showToast(`${drop.pet.icon} ${drop.pet.name} nhặt được ${drop.coins}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />!`, 'success');
     updateCoins();
     try { await savePlayer(); } catch (_) {}
   }
@@ -7282,14 +7299,14 @@ function fillHelperItemSelect() {
       if (!pl || !pl.id) return;
       const o = document.createElement('option');
       o.value = pl.id;
-      o.textContent = `${pl.icon || ''} ${pl.name}`.trim() + ` (${(pl.seedPrice || 0).toLocaleString()}🪙)`;
+      o.textContent = `${pl.icon || ''} ${pl.name}`.trim() + ` (${(pl.seedPrice || 0).toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`;
       sel.appendChild(o);
     });
   } else if (kind === 'fert') {
     (Game.getFertilizers() || []).forEach(f => {
       const o = document.createElement('option');
       o.value = f.id;
-      o.textContent = `${f.icon || ''} ${f.name}`.trim() + ` (${(f.price || 0).toLocaleString()}🪙)`;
+      o.textContent = `${f.icon || ''} ${f.name}`.trim() + ` (${(f.price || 0).toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`;
       sel.appendChild(o);
     });
   } else if (kind === 'protect') {
@@ -7297,7 +7314,7 @@ function fillHelperItemSelect() {
     list.forEach(pr => {
       const o = document.createElement('option');
       o.value = pr.id;
-      o.textContent = `${pr.icon || ''} ${pr.name}`.trim() + ` (${(pr.price || 0).toLocaleString()}🪙)`;
+      o.textContent = `${pr.icon || ''} ${pr.name}`.trim() + ` (${(pr.price || 0).toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`;
       sel.appendChild(o);
     });
   }

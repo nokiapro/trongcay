@@ -43,7 +43,7 @@ const Features = {
     if (!(tgt > cur)) return { ok: false, msg: 'Chọn mức cao hơn hiện tại!' };
     const cost = this.getPlotUpgradeCost(cur, tgt);
     if (cost == null) return { ok: false, msg: 'Mức không hợp lệ!' };
-    if ((currentPlayer.coins || 0) < cost) return { ok: false, msg: 'Không đủ xu! Cần ' + cost.toLocaleString() + '🪙' };
+    if ((currentPlayer.coins || 0) < cost) return { ok: false, msg: 'Không đủ xu! Cần ' + cost.toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />' };
     currentPlayer.coins -= cost;
     plot.specialMultPermanent = tgt;
     
@@ -56,7 +56,7 @@ const Features = {
     currentPlayer.stats = currentPlayer.stats || {};
     currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + cost;
     if (typeof Game !== 'undefined' && Game.addActivity) {
-      Game.addActivity('Nâng ô #' + (plotId + 1) + ' → x' + tgt + ' (-' + cost + '🪙)');
+      Game.addActivity('Nâng ô #' + (plotId + 1) + ' → x' + tgt + ' (-' + cost + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)');
     }
     await savePlayer();
     if (typeof updateCoins === 'function') updateCoins();
@@ -101,7 +101,7 @@ const Features = {
     if ((currentPlayer.coins || 0) < totalCost) {
       return {
         ok: false,
-        msg: 'Không đủ xu! Cần ' + totalCost.toLocaleString() + '🪙 để nâng ' + jobs.length + ' ô → x' + tgt,
+        msg: 'Không đủ xu! Cần ' + totalCost.toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> để nâng ' + jobs.length + ' ô → x' + tgt,
         need: totalCost,
         count: jobs.length
       };
@@ -127,13 +127,13 @@ const Features = {
     }
 
     if (typeof Game !== 'undefined' && Game.addActivity) {
-      Game.addActivity('Nâng ' + jobs.length + ' ô (mọi vườn) → x' + tgt + ' vĩnh viễn (-' + totalCost.toLocaleString() + '🪙)');
+      Game.addActivity('Nâng ' + jobs.length + ' ô (mọi vườn) → x' + tgt + ' vĩnh viễn (-' + totalCost.toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)');
     }
     await savePlayer();
     if (typeof updateCoins === 'function') updateCoins();
     return {
       ok: true,
-      msg: 'Đã nâng ' + jobs.length + ' ô → x' + tgt + ' vĩnh viễn (-' + totalCost.toLocaleString() + '🪙)!',
+      msg: 'Đã nâng ' + jobs.length + ' ô → x' + tgt + ' vĩnh viễn (-' + totalCost.toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)!',
       upgraded: jobs.length,
       cost: totalCost
     };
@@ -188,7 +188,7 @@ const Features = {
     currentPlayer.stats = currentPlayer.stats || {};
     currentPlayer.stats.spent = (currentPlayer.stats.spent || 0) + pack.price;
     if (typeof Game !== 'undefined' && Game.addActivity) {
-      Game.addActivity('Boost ô #' + (plotId + 1) + ' ' + pack.name + ' (-' + pack.price + '🪙)');
+      Game.addActivity('Boost ô #' + (plotId + 1) + ' ' + pack.name + ' (-' + pack.price + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)');
     }
     await savePlayer();
     if (typeof updateCoins === 'function') updateCoins();
@@ -288,11 +288,11 @@ const Features = {
     currentPlayer.coins = (currentPlayer.coins || 0) + def.reward;
     if (typeof Game !== 'undefined' && Game.addXp) Game.addXp(def.xp || 0);
     if (typeof Game !== 'undefined' && Game.addActivity) {
-      Game.addActivity(`Nhiệm vụ ${scope === 'weekly' ? 'tuần' : 'ngày'}: ${def.title} +${def.reward}🪙`);
+      Game.addActivity(`Nhiệm vụ ${scope === 'weekly' ? 'tuần' : 'ngày'}: ${def.title} +${def.reward}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />`);
     }
     await savePlayer();
     if (typeof updateCoins === 'function') updateCoins();
-    return { ok: true, msg: `Nhận ${def.reward}🪙 + ${def.xp || 0} XP!` };
+    return { ok: true, msg: `Nhận ${def.reward}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> + ${def.xp || 0} XP!` };
   },
 
   
@@ -329,11 +329,11 @@ const Features = {
       matureAt: Date.now() + term.days * 24 * 60 * 60 * 1000
     });
     if (typeof Game !== 'undefined' && Game.addActivity) {
-      Game.addActivity(`Gửi ngân hàng ${amount}🪙 · ${term.label}`);
+      Game.addActivity(`Gửi ngân hàng ${amount}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> · ${term.label}`);
     }
     await savePlayer();
     if (typeof updateCoins === 'function') updateCoins();
-    return { ok: true, msg: `Đã gửi ${amount}🪙 (${term.label}, lãi ${Math.round(term.rate * 100)}%)` };
+    return { ok: true, msg: `Đã gửi ${amount}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> (${term.label}, lãi ${Math.round(term.rate * 100)}%)` };
   },
 
   
@@ -352,11 +352,11 @@ const Features = {
     d.lastTopUpAt = Date.now();
     d.topUpTotal = (d.topUpTotal || 0) + amount;
     if (typeof Game !== 'undefined' && Game.addActivity) {
-      Game.addActivity(`Nạp thêm ngân hàng +${amount}🪙 → gốc ${d.amount}🪙`);
+      Game.addActivity(`Nạp thêm ngân hàng +${amount}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> → gốc ${d.amount}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />`);
     }
     await savePlayer();
     if (typeof updateCoins === 'function') updateCoins();
-    return { ok: true, msg: `Đã nạp thêm ${amount}🪙. Gốc hiện tại: ${d.amount.toLocaleString()}🪙` };
+    return { ok: true, msg: `Đã nạp thêm ${amount}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />. Gốc hiện tại: ${d.amount.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />` };
   },
 
   /** Tính lãi hiện tại của sổ (pro-rate nếu chưa đáo hạn) */
@@ -400,11 +400,11 @@ const Features = {
       d.lastInterestWithdrawAt = now;
       d.interestWithdrawnTotal = (d.interestWithdrawnTotal || 0) + interestPay;
       if (typeof Game !== 'undefined' && Game.addActivity) {
-        Game.addActivity(`Rút lãi ngân hàng +${interestPay}🪙 (gốc ${principal.toLocaleString()}🪙 tiếp tục gửi)`);
+        Game.addActivity(`Rút lãi ngân hàng +${interestPay}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> (gốc ${principal.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> tiếp tục gửi)`);
       }
       await savePlayer();
       if (typeof updateCoins === 'function') updateCoins();
-      return { ok: true, msg: `Đã rút lãi +${interestPay.toLocaleString()}🪙. Gốc ${principal.toLocaleString()}🪙 tiếp tục sinh lãi!` };
+      return { ok: true, msg: `Đã rút lãi +${interestPay.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />. Gốc ${principal.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> tiếp tục sinh lãi!` };
     }
 
     // mode === 'all': rút cả gốc + lãi, đóng sổ
@@ -412,11 +412,11 @@ const Features = {
     currentPlayer.bank.deposits.splice(idx, 1);
     currentPlayer.coins = (currentPlayer.coins || 0) + payout;
     if (typeof Game !== 'undefined' && Game.addActivity) {
-      Game.addActivity(`Rút ngân hàng +${payout.toLocaleString()}🪙 (gốc ${principal.toLocaleString()} + lãi ${interestPay.toLocaleString()})`);
+      Game.addActivity(`Rút ngân hàng +${payout.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> (gốc ${principal.toLocaleString()} + lãi ${interestPay.toLocaleString()})`);
     }
     await savePlayer();
     if (typeof updateCoins === 'function') updateCoins();
-    return { ok: true, msg: `Đã rút +${payout.toLocaleString()}🪙 (gốc ${principal.toLocaleString()} + lãi ${interestPay.toLocaleString()})!` };
+    return { ok: true, msg: `Đã rút +${payout.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> (gốc ${principal.toLocaleString()} + lãi ${interestPay.toLocaleString()})!` };
   },
 
   
@@ -439,7 +439,7 @@ const Features = {
     const nycDays = Math.max(0, parseInt(g.nycDays, 10) || 0);
     const parts = [];
     currentPlayer.coins = (currentPlayer.coins || 0) + coins;
-    if (coins) parts.push('+' + coins + '🪙');
+    if (coins) parts.push('+' + coins + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />');
     if (plotsAdd > 0) {
       if (!Array.isArray(currentPlayer.plots)) currentPlayer.plots = Object.values(currentPlayer.plots || {});
       for (let i = 0; i < plotsAdd; i++) {
@@ -587,7 +587,7 @@ const Features = {
     }
 
     const buyerName = currentPlayer.displayName || (currentPlayer.email || '').split('@')[0] || 'Người mua';
-    const payNote = `Chợ: bán ${L.qty} ${L.itemName || L.itemId} +${cost}🪙 (từ ${buyerName})`;
+    const payNote = `Chợ: bán ${L.qty} ${L.itemName || L.itemId} +${cost}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> (từ ${buyerName})`;
     try {
       const creditId = db.ref('marketCredits/' + L.sellerUid).push().key;
       await db.ref('marketCredits/' + L.sellerUid + '/' + creditId).set({
@@ -621,7 +621,7 @@ const Features = {
     }
     this.trackQuest('market', 1);
     if (typeof Game !== 'undefined' && Game.addActivity) {
-      Game.addActivity(`Chợ: mua ${L.qty} ${L.itemName} -${cost}🪙`);
+      Game.addActivity(`Chợ: mua ${L.qty} ${L.itemName} -${cost}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />`);
     }
     await savePlayer();
     if (typeof updateCoins === 'function') updateCoins();
@@ -656,7 +656,7 @@ const Features = {
           currentPlayer.coins = (Number(currentPlayer.coins) || 0) + amount;
           total += amount;
         }
-        const note = c.note || `Chợ: bán hàng +${amount}🪙`;
+        const note = c.note || `Chợ: bán hàng +${amount}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />`;
         const time = c.at ? new Date(c.at).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN');
         const exists = currentPlayer.activity.some(a => a && a.text === note);
         if (!exists) {
