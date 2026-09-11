@@ -2513,6 +2513,12 @@ const Game = {
       return { ok: true, changed: false, notes: [], offlineMs: offlineGap, skipped: true };
     }
 
+    const __offlineT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    const __offlineBudgetMs = 6000; // cứng: không chiếm main thread quá 6s
+    const __offlineTimeUp = () => {
+      const nowT = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+      return (nowT - __offlineT0) > __offlineBudgetMs;
+    };
     let changed = false;
     const notes = [];
     let totalHarvest = 0; 
@@ -2610,7 +2616,7 @@ const Game = {
       }
     }
     let rainGuard = 0;
-    while (rainT <= now && rainGuard++ < 2000) {
+    while (rainT <= now && rainGuard++ < 200) {
       events.push({ t: rainT, type: 'rain' });
       rainT += rainStep;
     }
@@ -3085,12 +3091,13 @@ const Game = {
               const gapMs = Math.max(0, endMs - from);
               const safeGrow = Math.max(1000, growMs || 1000); // tối thiểu 1s/vòng
               const maxByTime = 1 + Math.floor(gapMs / safeGrow);
-              plotCycles = Math.max(0, Math.min(plotCycles, maxByTime, 120));
+              plotCycles = Math.max(0, Math.min(plotCycles, Math.max(1, Math.floor(Math.max(0, endMs - from) / Math.max(1000, growMs || 1000)) + 1), 48));
 
               // Không có vòng chín thật sự → giữ nguyên plantedAt, bỏ qua ô này
               if (plotCycles < 1) continue;
 
               for (let c = 0; c < plotCycles; c++) {
+                if (typeof __offlineTimeUp === 'function' && __offlineTimeUp()) break;
                 const harvestT = Math.min(endMs, firstReadyAt + c * growMs);
                 if (harvestT > endMs + 50) break;
 
@@ -3586,9 +3593,56 @@ const Game = {
       : (cfg.plantId ? [{ plantId: cfg.plantId, seedKind: cfg.seedKind || 'normal' }] : []);
     if (!candidates.length) return false;
 
+    // Ưu tiên loại chưa có trên MỌI vườn (kể cả vườn khác), rồi mới loại đã dùng
+    let ordered = candidates.slice();
+    try {
+      const present = new Set();
+      const gardens = currentPlayer.gardens || [];
+      for (let gix = 0; gix < gardens.length; gix++) {
+        const plots = gardens[gix];
+        if (!Array.isArray(plots)) continue;
+        plots.forEach(p => {
+          if (p && p.plantId) present.add(String(p.plantId));
+        });
+      }
+      // Cũng tránh loại đã cấu hình plantList của vườn NYC khác
+      try {
+        const base = this.getNycConfig && this.getNycConfig();
+        const byG = (base && base.byGarden) || {};
+        Object.keys(byG).forEach(k => {
+          if (typeof gi === 'number' && String(k) === String(gi)) return;
+          const ov = byG[k];
+          if (!ov) return;
+          const list = this._normalizeNycPlantList
+            ? this._normalizeNycPlantList(ov.plantList, ov.plantId, ov.seedKind)
+            : [];
+          list.forEach(it => { if (it && it.plantId) present.add(String(it.plantId)); });
+          if (ov.plantId) present.add(String(ov.plantId));
+        });
+      } catch (_) {}
+      const notOn = [];
+      const onGarden = [];
+      ordered.forEach(c => {
+        if (!c || !c.plantId) return;
+        if (present.has(String(c.plantId))) onGarden.push(c);
+        else notOn.push(c);
+      });
+      const shuf = (arr) => {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+        }
+        return arr;
+      };
+      ordered = shuf(notOn).concat(shuf(onGarden));
+      if (!ordered.length) ordered = candidates.slice();
+    } catch (_) {
+      ordered = candidates.slice();
+    }
+
     let used = null;
-    for (let ci = 0; ci < candidates.length; ci++) {
-      const c = candidates[ci];
+    for (let ci = 0; ci < ordered.length; ci++) {
+      const c = ordered[ci];
       if (!c || !c.plantId) continue;
       const kind = c.seedKind === 'myth' ? 'myth' : (c.seedKind === 'star' ? 'star' : 'normal');
       const bag = kind === 'myth'
@@ -4823,7 +4877,7 @@ const Game = {
     let guard = 0;
     const YIELD_EVERY_BLOCKS = 1;
 
-    while (timesLeft > 0 && guard++ < 500000) {
+    while (timesLeft > 0 && guard++ < 5000) {
       let have = unlimited ? Number.MAX_SAFE_INTEGER : (seeds[plantId] || 0);
       if (!unlimited && have < 2) break;
       let ph = 0;
@@ -4843,7 +4897,7 @@ const Game = {
       if (B < 1) break;
 
       
-      if (B > 200000) B = 200000;
+      if (B > 20000) B = 20000;
 
       const k = this._binomialSample(B, p); 
       const f = B - k;
@@ -4934,7 +4988,7 @@ const Game = {
     let did = 0;
     let guard = 0;
 
-    while (timesLeft > 0 && guard++ < 500000) {
+    while (timesLeft > 0 && guard++ < 5000) {
       let have = unlimited ? Number.MAX_SAFE_INTEGER : (stars[plantId] || 0);
       if (!unlimited && have < 2) break;
       let ph = 0;
@@ -4949,7 +5003,7 @@ const Game = {
       if (protect && !unlimited) maxBySeed = Math.min(maxBySeed, ph);
       let B = Math.min(timesLeft, maxBySeed);
       if (B < 1) break;
-      if (B > 200000) B = 200000;
+      if (B > 20000) B = 20000;
 
       const k = this._binomialSample(B, p);
       const f = B - k;

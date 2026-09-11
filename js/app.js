@@ -310,6 +310,83 @@ function addNycPlantFromSelect() {
   renderNycPlantListUI();
 }
 
+/** Random các loại hạt KHÁC NHAU từ kho vào danh sách trồng NYC */
+function randomFillNycPlantList() {
+  if (!currentPlayer || typeof Game === 'undefined') {
+    if (typeof showToast === 'function') showToast('Chưa đăng nhập', 'error');
+    return;
+  }
+  const inv = currentPlayer.inventory || {};
+  const bags = [
+    { kind: 'normal', bag: inv.seeds || {} },
+    { kind: 'star', bag: inv.seedsStar || {} },
+    { kind: 'myth', bag: inv.seedsMyth || {} }
+  ];
+  // Hạt đã có trên bất kỳ vườn nào / đã cấu hình vườn khác → tránh khi random
+  const usedElsewhere = new Set();
+  try {
+    (currentPlayer.gardens || []).forEach(plots => {
+      if (!Array.isArray(plots)) return;
+      plots.forEach(p => { if (p && p.plantId) usedElsewhere.add(String(p.plantId)); });
+    });
+    const base = (typeof Game !== 'undefined' && Game.getNycConfig) ? Game.getNycConfig() : null;
+    const byG = (base && base.byGarden) || {};
+    // Tab vườn đang cấu hình (nếu có)
+    const curGi = (typeof window._nycConfigGardenIndex === 'number') ? window._nycConfigGardenIndex : null;
+    Object.keys(byG).forEach(k => {
+      if (curGi != null && String(k) === String(curGi)) return;
+      const ov = byG[k];
+      if (!ov) return;
+      if (ov.plantId) usedElsewhere.add(String(ov.plantId));
+      (ov.plantList || []).forEach(it => {
+        const pid = (typeof it === 'string') ? it : (it && it.plantId);
+        if (pid) usedElsewhere.add(String(pid));
+      });
+    });
+  } catch (_) {}
+
+  const pool = [];
+  const seen = new Set();
+  bags.forEach(b => {
+    Object.keys(b.bag).forEach(pid => {
+      if ((Number(b.bag[pid]) || 0) < 1) return;
+      const key = pid + '|' + b.kind;
+      if (seen.has(key)) return;
+      seen.add(key);
+      // Ưu tiên đưa vào pool loại chưa dùng ở vườn khác
+      pool.push({ plantId: pid, seedKind: b.kind, used: usedElsewhere.has(String(pid)) });
+    });
+  });
+  if (!pool.length) {
+    if (typeof showToast === 'function') showToast('Kho không còn hạt để random', 'error');
+    return;
+  }
+  const fresh = pool.filter(x => !x.used);
+  const reused = pool.filter(x => x.used);
+  const shuf = (arr) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  };
+  shuf(fresh); shuf(reused);
+  const ordered = fresh.concat(reused);
+  let maxN = 12;
+  try {
+    const gardens = currentPlayer.gardens || [];
+    let mx = 0;
+    gardens.forEach(gg => { if (Array.isArray(gg) && gg.length > mx) mx = gg.length; });
+    if (mx > 0) maxN = Math.min(24, Math.max(3, mx));
+  } catch (_) {}
+  window._nycDraftPlantList = ordered.slice(0, maxN).map(x => ({ plantId: x.plantId, seedKind: x.seedKind }));
+  renderNycPlantListUI();
+  if (typeof showToast === 'function') {
+    showToast('Đã random ' + window._nycDraftPlantList.length + ' loại (ưu tiên chưa dùng ở vườn khác)', 'success');
+  }
+}
+
+
 /** Map key "plantId|kind" → [chỉ số vườn 0-based] đã cài hạt đó trong NYC */
 function getNycSeedConfiguredGardens() {
   const map = {};
@@ -450,6 +527,7 @@ function bindNycConfigUI() {
     });
   });
   document.getElementById('btn-nyc-add-seed')?.addEventListener('click', () => addNycPlantFromSelect());
+  document.getElementById('btn-nyc-random-seeds')?.addEventListener('click', () => randomFillNycPlantList());
   document.getElementById('btn-save-nyc-config')?.addEventListener('click', async () => {
     let plantList = Array.isArray(window._nycDraftPlantList) ? window._nycDraftPlantList.slice() : [];
     if (!plantList.length) {
@@ -863,6 +941,8 @@ auth.onAuthStateChanged(async (user) => {
     try {
       await initGlobalData();
       await loadPlayer(user.uid, user.email);
+      // Hiện game NGAY — không chờ gate / offline / robot (tránh đứng 1 phút)
+      showApp();
       try {
         if (typeof Game !== 'undefined' && Game.processLoginStreak) {
           const sr = Game.processLoginStreak();
@@ -873,39 +953,47 @@ auth.onAuthStateChanged(async (user) => {
         }
       } catch (e) { console.warn('processLoginStreak', e); }
       try { if (typeof scheduleActivityMidnightPrune === 'function') scheduleActivityMidnightPrune(); } catch (_) {}
-      if (typeof Features !== 'undefined') {
-        const gate = await Features.checkAccessGates();
-        if (gate.blocked) {
-          showAccessGate(gate);
-          return;
-        }
+      if (typeof Features !== 'undefined' && Features.checkAccessGates) {
+        try {
+          const gate = await Promise.race([
+            Features.checkAccessGates(),
+            new Promise(r => setTimeout(() => r({ blocked: false }), 2500))
+          ]);
+          if (gate && gate.blocked) {
+            showAccessGate(gate);
+            return;
+          }
+        } catch (ge) { console.warn('checkAccessGates', ge); }
       }
       if (typeof Features !== 'undefined') Features.ensureQuests();
-      if (typeof listenPlayerTimers === 'function') listenPlayerTimers(); 
-      
+      if (typeof listenPlayerTimers === 'function') listenPlayerTimers();
+      if (typeof loadPlayerMailbox === 'function') loadPlayerMailbox().catch(() => {});
+
+      // Đồng bộ / offline / robot: nền, có timeout — KHÔNG chặn UI
+      // Popup offline chỉ hiện KHI tính offline xong (không phải nguyên nhân đơ)
       setTimeout(async () => {
+        const withTimeout = (p, ms, label) => Promise.race([
+          Promise.resolve().then(() => p),
+          new Promise(r => setTimeout(() => r({ __timeout: true, label }), ms))
+        ]);
         try {
           if (typeof syncPlayerOnEnter === 'function') {
-            const syn = await syncPlayerOnEnter();
-            if (syn && syn.ok && typeof updateCoins === 'function') updateCoins();
-            if (typeof renderGarden === 'function') {
-              const gp = document.getElementById('page-garden');
-              if (gp && gp.classList.contains('active')) renderGarden();
-            }
+            const syn = await withTimeout(syncPlayerOnEnter(), 4000, 'sync');
+            if (syn && syn.ok && !syn.__timeout && typeof updateCoins === 'function') updateCoins();
           }
+        } catch (e) { console.warn('syncPlayerOnEnter', e); }
+        try {
           if (typeof pullRemotePlayerIfNewer === 'function') {
-            const pulled = await pullRemotePlayerIfNewer();
-            if (pulled) {
-              if (typeof updateCoins === 'function') updateCoins();
-              if (typeof renderGarden === 'function') {
-                const gp = document.getElementById('page-garden');
-                if (gp && gp.classList.contains('active')) renderGarden();
-              }
-            }
+            await withTimeout(pullRemotePlayerIfNewer(), 4000, 'pull');
           }
+        } catch (e) { console.warn('pullRemote', e); }
+        try {
           if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
-            const r = await Game.simulateOfflineCare();
-            if (r && !r.skipped && (r.offlineMs || 0) >= ((typeof Game !== "undefined" && Game.OFFLINE_CONFIG && Game.OFFLINE_CONFIG.thresholdMs) || 300000)) {
+            // Offline nặng → timeout 8s để không đơ tab
+            const r = await withTimeout(Game.simulateOfflineCare(), 8000, 'offline');
+            if (r && r.__timeout) {
+              console.warn('[boot] simulateOfflineCare timeout — bỏ qua lần này');
+            } else if (r && !r.skipped && (r.offlineMs || 0) >= ((typeof Game !== "undefined" && Game.OFFLINE_CONFIG && Game.OFFLINE_CONFIG.thresholdMs) || 300000)) {
               if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(600);
               else if (typeof savePlayer === 'function') await savePlayer();
               if (typeof updateCoins === 'function') updateCoins();
@@ -914,7 +1002,6 @@ auth.onAuthStateChanged(async (user) => {
                 if (gp && gp.classList.contains('active')) renderGarden();
               }
               if (typeof renderActivityPage === 'function') renderActivityPage();
-              // Popup thông báo offline
               try {
                 const logs = (currentPlayer && currentPlayer.activityLogs) || [];
                 const lastOff = logs.find(l => l && l.type === 'offline');
@@ -923,22 +1010,11 @@ auth.onAuthStateChanged(async (user) => {
             }
           }
         } catch (e) { console.warn('simulateOfflineCare', e); }
-        // Người máy: rà kho ghép hết hạt chưa ghép (bùa 100%) khi vào game
+        // Robot: KHÔNG chạy bulk lúc login (dễ đơ). Interval 45s sẽ rà sau.
         try {
-          if (typeof Game !== 'undefined' && Game.isRobotActive && Game.isRobotActive() && Game.robotMergeAllBag) {
-            const mr = await Game.robotMergeAllBag({ silent: false });
-            if (mr && mr.ok && (mr.starOk || mr.mythOk || mr.protectBought)) {
-              if (typeof updateCoins === 'function') updateCoins();
-              if (typeof scheduleSavePlayer === 'function') scheduleSavePlayer(400);
-              else if (typeof savePlayer === 'function') await savePlayer();
-              // không toast robot log
-            }
-          }
-        } catch (e) { console.warn('robotMergeAllBag', e); }
-        if (typeof forceBackgroundCare === 'function') forceBackgroundCare('login');
-      }, 500);
-      showApp();
-      if (typeof loadPlayerMailbox === 'function') loadPlayerMailbox().catch(() => {});
+          if (typeof forceBackgroundCare === 'function') forceBackgroundCare('login');
+        } catch (_) {}
+      }, 1500);
     } catch (e) {
       console.error(e);
       showToast('Lỗi tải dữ liệu: ' + e.message, 'error');

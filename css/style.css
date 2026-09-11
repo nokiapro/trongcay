@@ -11098,3 +11098,195 @@ html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-h
 html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body .ad-li-k {
   color: #64748b !important;
 }
+
+
+/* ========== SCROLLBAR (PC + Mobile) ========== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 197, 94, 0.55) transparent;
+}
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+  margin: 4px 0;
+}
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(74, 222, 128, 0.9), rgba(22, 163, 74, 0.75));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  min-height: 36px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #4ade80, #16a34a);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+*::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #22c55e, #15803d);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner { background: transparent; }
+
+.seed-list::-webkit-scrollbar-track,
+.friends-list::-webkit-scrollbar-track,
+.chat-messages::-webkit-scrollbar-track,
+.shop-grid::-webkit-scrollbar-track,
+.rank-list::-webkit-scrollbar-track,
+.inv-panel::-webkit-scrollbar-track,
+.modal-content::-webkit-scrollbar-track,
+.activity-list::-webkit-scrollbar-track {
+  background: rgba(34, 197, 94, 0.06);
+  border-radius: 999px;
+}
+
+html[data-theme="dark"] *::-webkit-scrollbar-thumb,
+body.dark *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(74, 222, 128, 0.7), rgba(34, 197, 94, 0.55));
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+@media (max-width: 768px) {
+  *::-webkit-scrollbar { width: 4px; height: 4px; }
+  *::-webkit-scrollbar-thumb { min-height: 24px; border-width: 1px; }
+}
+
+/* ========== MODAL CHI TIẾT LOG ========== */
+#modal-activity-detail .modal-content,
+#modal-activity-detail .modal-activity-content {
+  border-radius: 20px !important;
+  max-width: min(520px, 94vw) !important;
+  width: 94% !important;
+  max-height: 88vh !important;
+  overflow: auto !important;
+  padding: 0 !important;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(165deg, #0f1f17 0%, #132a1f 40%, #0f172a 100%) !important;
+}
+#modal-activity-detail .activity-detail-head {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  position: sticky;
+  top: 0;
+  background: inherit;
+  z-index: 2;
+}
+#modal-activity-detail .activity-detail-head h2 {
+  margin: 0 !important;
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  color: #f0fdf4 !important;
+  letter-spacing: 0.01em;
+}
+#modal-activity-detail #activity-detail-body,
+#modal-activity-detail .activity-detail-body {
+  display: block !important;
+  padding: 14px 18px 20px !important;
+  color: #e2e8f0 !important;
+  min-height: 80px;
+}
+#modal-activity-detail .ad-block {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.06);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+#modal-activity-detail .ad-label {
+  font-weight: 800;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  color: #86efac !important;
+}
+#modal-activity-detail .ad-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  color: #e2e8f0;
+}
+#modal-activity-detail .ad-list-rich > li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.07);
+  border: none;
+}
+#modal-activity-detail .ad-li-k,
+#modal-activity-detail .ad-list li strong {
+  color: #94a3b8 !important;
+  font-weight: 600;
+}
+#modal-activity-detail .ad-li-v {
+  color: #f8fafc !important;
+  font-weight: 800;
+  text-align: right;
+}
+#modal-activity-detail .ad-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.06));
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+#modal-activity-detail .ad-hero-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #f0fdf4 !important;
+}
+#modal-activity-detail .ad-empty-line {
+  color: #94a3b8;
+  font-style: italic;
+  margin: 0;
+}
+#modal-activity-detail .btn-close-activity-detail,
+#modal-activity-detail #btn-close-activity-detail {
+  border-radius: 10px;
+  font-weight: 700;
+}
+
+html:not([data-theme="dark"]) #modal-activity-detail .modal-content,
+html:not([data-theme="dark"]) #modal-activity-detail .modal-activity-content {
+  background: linear-gradient(165deg, #ffffff 0%, #f0fdf4 50%, #ecfdf5 100%) !important;
+  border-color: rgba(22, 101, 52, 0.12);
+  box-shadow: 0 20px 50px rgba(15, 40, 30, 0.18);
+}
+html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-head h2 {
+  color: #14532d !important;
+}
+html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-body {
+  color: #0f172a !important;
+}
+html:not([data-theme="dark"]) #modal-activity-detail .ad-label {
+  color: #15803d !important;
+}
+html:not([data-theme="dark"]) #modal-activity-detail .ad-block {
+  background: rgba(22, 163, 74, 0.06);
+  border-color: rgba(22, 163, 74, 0.1);
+}
+html:not([data-theme="dark"]) #modal-activity-detail .ad-list-rich > li {
+  background: rgba(15, 23, 42, 0.04);
+}
+html:not([data-theme="dark"]) #modal-activity-detail .ad-li-k {
+  color: #64748b !important;
+}
+html:not([data-theme="dark"]) #modal-activity-detail .ad-li-v {
+  color: #0f172a !important;
+}
+

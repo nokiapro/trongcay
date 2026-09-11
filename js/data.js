@@ -13096,7 +13096,7 @@ const DEFAULT_FERTILIZERS = [
 ];
 
 
-const APP_VERSION = '1.9.206';
+const APP_VERSION = '1.9.210';
 
 const DEFAULT_SETTINGS = {
   plotCount: 12,
@@ -13346,6 +13346,10 @@ async function resetPlayerData(opts) {
 }
 
 async function initGlobalData() {
+  // Cache session: tránh đọc Firebase plants/settings lại nếu vừa load
+  if (window.__vxGlobalDataReady && Array.isArray(currentPlants) && currentPlants.length && currentSettings) {
+    return;
+  }
   const plantsSnap = await db.ref('plants').once('value');
   if (!plantsSnap.exists()) {
     const obj = {};
