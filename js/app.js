@@ -5334,7 +5334,12 @@ function closeActivityDetail() {
   modal.classList.remove('show');
   modal.style.display = '';
   modal.style.pointerEvents = '';
+  modal.style.zIndex = '';
   window.__vxOpeningActivityDetail = false;
+  if (window.__vxActivityDetailIgnoreTimer) {
+    clearTimeout(window.__vxActivityDetailIgnoreTimer);
+    window.__vxActivityDetailIgnoreTimer = null;
+  }
 }
 
 function openActivityDetail(logId, cachedLog) {
@@ -5354,7 +5359,7 @@ function openActivityDetail(logId, cachedLog) {
     log = window._lastActivityLines.find(x => x && x.id === logId) || null;
   }
 
-  // Fill content TRƯỚC, show SAU (tránh click PC đóng ngay backdrop)
+  // Fill content TRƯỚC khi hiện modal
   if (!log) {
     if (title) title.textContent = 'Chi tiết';
     body.innerHTML = '<p class="ad-empty-line">Không tìm thấy log (id: ' + String(logId || '') + ').</p>';
@@ -5391,13 +5396,21 @@ function openActivityDetail(logId, cachedLog) {
   body.style.opacity = '1';
   body.style.minHeight = '80px';
 
-  // PC: trì hoãn 1 tick để click mở không đụng backdrop vừa hiện
+  // PC fix: hiện modal NGAY + chặn pointer-events tạm thời
+  // để click/mouseup còn lại trên desktop không đụng backdrop và đóng modal
   window.__vxOpeningActivityDetail = true;
-  setTimeout(() => {
-    modal.classList.add('show');
-    modal.style.zIndex = '10060';
-    setTimeout(() => { window.__vxOpeningActivityDetail = false; }, 200);
-  }, 30);
+  if (window.__vxActivityDetailIgnoreTimer) {
+    clearTimeout(window.__vxActivityDetailIgnoreTimer);
+  }
+  modal.style.pointerEvents = 'none';
+  modal.style.zIndex = '10060';
+  modal.classList.add('show');
+  // Cho phép tương tác sau khi event click hiện tại đã kết thúc hẳn
+  window.__vxActivityDetailIgnoreTimer = setTimeout(() => {
+    modal.style.pointerEvents = 'auto';
+    window.__vxOpeningActivityDetail = false;
+    window.__vxActivityDetailIgnoreTimer = null;
+  }, 400);
 }
 
 document.getElementById('btn-close-activity-detail')?.addEventListener('click', (e) => {
@@ -5559,9 +5572,17 @@ function renderActivityPage() {
   window._activityLogMap = {};
   lines.forEach(a => { if (a && a.id) window._activityLogMap[a.id] = a; });
   actList.querySelectorAll('.activity-clickable').forEach(el => {
-    el.onpointerdown = (ev) => { if (ev) ev.stopPropagation(); };
+    // PC: chặn bubble từ pointerdown/up/click để event không lan lên document/backdrop
+    const stop = (ev) => {
+      if (!ev) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
+    };
+    el.onpointerdown = stop;
+    el.onpointerup = stop;
     el.onclick = (ev) => {
-      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      stop(ev);
       const id = el.getAttribute('data-id');
       const cached = (window._activityLogMap && id) ? window._activityLogMap[id] : null;
       if (id && typeof openActivityDetail === 'function') openActivityDetail(id, cached);
