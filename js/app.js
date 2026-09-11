@@ -5337,50 +5337,31 @@ function formatActivityDetailHtml(log) {
 }
 
 function closeActivityDetail() {
-  // Quay lại danh sách nhật ký (giống nút back chat)
   const page = document.getElementById('page-activity');
-  const listPanel = document.getElementById('activity-list-panel');
-  const listHeader = document.getElementById('activity-list-header');
-  const detailPanel = document.getElementById('activity-detail-panel');
   if (page) page.classList.remove('showing-detail');
-  if (detailPanel) {
-    detailPanel.classList.add('hidden');
-    detailPanel.style.display = '';
-  }
-  if (listPanel) {
-    listPanel.classList.remove('hidden');
-    listPanel.style.display = '';
-  }
-  if (listHeader) {
-    listHeader.classList.remove('hidden');
-    listHeader.style.display = '';
-  }
-  window.__vxOpeningActivityDetail = false;
   document.body.classList.remove('activity-detail-open');
+  window.__vxOpeningActivityDetail = false;
+  window.__vxActivityDetailOpen = false;
+  // Khôi phục danh sách
+  if (typeof renderActivityPage === 'function') {
+    try { renderActivityPage(); } catch (e) { console.warn(e); }
+  }
 }
 
 function openActivityDetail(logId, cachedLog) {
-  // Chi tiết log = panel trong page-activity (KHÔNG dùng modal)
   const page = document.getElementById('page-activity');
   const listPanel = document.getElementById('activity-list-panel');
   const listHeader = document.getElementById('activity-list-header');
-  const detailPanel = document.getElementById('activity-detail-panel');
-  const title = document.getElementById('activity-detail-title');
-  const body = document.getElementById('activity-detail-body');
-  if (!detailPanel || !body) {
-    console.warn('[activity] missing detail panel DOM');
-    if (typeof showToast === 'function') showToast('Không mở được chi tiết log', 'error');
+  if (!listPanel) {
+    console.warn('[activity] no listPanel');
     return;
   }
 
-  // Đảm bảo đang ở trang activity (không đóng panel ngay sau khi mở)
+  // Về trang activity nếu chưa
   window.__vxSkipCloseActivityDetail = true;
   try {
     if (typeof goToPage === 'function') {
-      const actPage = document.getElementById('page-activity');
-      if (!actPage || !actPage.classList.contains('active')) {
-        goToPage('activity');
-      }
+      if (!page || !page.classList.contains('active')) goToPage('activity');
     }
   } finally {
     window.__vxSkipCloseActivityDetail = false;
@@ -5394,24 +5375,28 @@ function openActivityDetail(logId, cachedLog) {
     try { log = Game.getActivityLogById(logId); } catch (e) { console.warn(e); }
   }
   if (!log && Array.isArray(window._lastActivityLines)) {
-    log = window._lastActivityLines.find(x => x && x.id === logId) || null;
+    log = window._lastActivityLines.find(x => x && (x.id === logId || String(x.id) === String(logId))) || null;
+  }
+  // idx-N fallback
+  if (!log && typeof logId === 'string' && logId.indexOf('idx-') === 0) {
+    const i = parseInt(logId.slice(4), 10);
+    if (Array.isArray(window._lastActivityLines) && !isNaN(i)) log = window._lastActivityLines[i] || null;
   }
 
+  let titleText = 'Chi tiết';
+  let bodyHtml = '';
   if (!log) {
-    if (title) title.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Chi tiết';
-    body.innerHTML = '<p class="ad-empty-line">Không tìm thấy log (id: ' + String(logId || '') + ').</p>';
+    bodyHtml = '<p class="ad-empty-line">Không tìm thấy log (id: ' + String(logId || '') + ').</p>';
   } else {
-    const t = (log.summary && log.summary.title) ? log.summary.title
+    titleText = (log.summary && log.summary.title) ? log.summary.title
       : (log.text || log.title || 'Chi tiết');
-    if (title) title.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> ' + String(t).replace(/</g, '&lt;');
-    let html = '';
     try {
-      html = formatActivityDetailHtml(log) || '';
+      bodyHtml = formatActivityDetailHtml(log) || '';
     } catch (err) {
       console.warn('formatActivityDetailHtml', err);
-      html = '';
+      bodyHtml = '';
     }
-    if (!html || !String(html).trim()) {
+    if (!bodyHtml || !String(bodyHtml).trim()) {
       const d = Object.assign({}, (log.detail || {}), (log._event && log._event.detail) || {});
       const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       const lines = [];
@@ -5424,54 +5409,70 @@ function openActivityDetail(logId, cachedLog) {
         lines.push('<li><span class="ad-li-k">' + esc(k) + '</span><span class="ad-li-v">' + esc(v) + '</span></li>');
       });
       lines.push('</ul></div>');
-      html = lines.join('');
+      bodyHtml = lines.join('');
     }
-    body.innerHTML = html;
   }
 
-  // Hiện panel chi tiết — ép bằng class + style inline (PC/mobile đều chắc)
-  if (page) page.classList.add('showing-detail');
-  if (listPanel) {
-    listPanel.classList.add('hidden');
-    listPanel.style.display = 'none';
-  }
+  const escTitle = String(titleText).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // THAY TOÀN BỘ nội dung panel list → trang chi tiết (không ẩn/hiện 2 panel)
   if (listHeader) {
-    listHeader.classList.add('hidden');
-    listHeader.style.display = 'none';
+    listHeader.innerHTML =
+      '<div class="activity-detail-top" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;justify-content:flex-start;text-align:left">'
+      + '<button type="button" id="btn-activity-detail-back" class="btn btn-secondary btn-sm">'
+      + '<i class="fa-solid fa-arrow-left"></i> Quay lại</button>'
+      + '<h1 style="margin:0;font-size:1.15rem;display:flex;align-items:center;gap:8px">'
+      + '<i class="fa-solid fa-clock-rotate-left"></i> ' + escTitle + '</h1></div>';
   }
-  detailPanel.classList.remove('hidden');
-  detailPanel.style.display = 'flex';
-  detailPanel.style.visibility = 'visible';
-  detailPanel.style.opacity = '1';
-  body.style.display = 'block';
-  body.style.visibility = 'visible';
-  body.style.opacity = '1';
+  listPanel.innerHTML =
+    '<div id="activity-detail-inline" class="activity-detail-inline">'
+    + '<div class="activity-detail-body activity-detail-body-page">' + bodyHtml + '</div></div>';
+
+  if (page) page.classList.add('showing-detail');
   document.body.classList.add('activity-detail-open');
+  window.__vxActivityDetailOpen = true;
+
+  const backBtn = document.getElementById('btn-activity-detail-back');
+  if (backBtn) {
+    backBtn.onclick = function (e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      closeActivityDetail();
+    };
+  }
+
   try {
-    detailPanel.scrollTop = 0;
-    body.scrollTop = 0;
     window.scrollTo(0, 0);
-    const main = document.querySelector('main') || document.querySelector('.app-main');
+    const main = document.querySelector('.main');
     if (main) main.scrollTop = 0;
   } catch (_) {}
 }
 
-// Back button (bind 1 lần, an toàn nếu DOM muộn)
-(function bindActivityDetailBack() {
-  function bind() {
-    const btn = document.getElementById('btn-activity-detail-back');
-    if (!btn || btn.__vxBound) return;
-    btn.__vxBound = true;
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      closeActivityDetail();
-    });
-  }
-  bind();
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bind);
-  }
+
+/* Click nhật ký — document capture, luôn hoạt động trên PC */
+(function bindActivityLogClicksOnce() {
+  if (window.__vxActivityLogClickBound) return;
+  window.__vxActivityLogClickBound = true;
+  document.addEventListener('click', function (ev) {
+    const row = ev.target && ev.target.closest && ev.target.closest('#activity-list .activity-clickable, .activity-list .activity-clickable');
+    if (!row) return;
+    // đang xem chi tiết thì bỏ qua
+    if (window.__vxActivityDetailOpen) return;
+    const id = row.getAttribute('data-id') || '';
+    const idx = parseInt(row.getAttribute('data-idx') || '-1', 10);
+    let cached = (window._activityLogMap && id) ? window._activityLogMap[id] : null;
+    if (!cached && Array.isArray(window._lastActivityLines) && idx >= 0) {
+      cached = window._lastActivityLines[idx] || null;
+    }
+    if (!id && !cached) {
+      console.warn('[activity] click row without id/cache', row);
+      return;
+    }
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (typeof openActivityDetail === 'function') {
+      openActivityDetail(id || (cached && cached.id) || ('idx-' + idx), cached);
+    }
+  }, true);
 })();
 
 let _lastOfflineLogId = null;
@@ -5549,8 +5550,39 @@ document.getElementById('btn-offline-view-detail')?.addEventListener('click', ()
 
 /* ========== NHẬT KÝ — Timeline chuyên nghiệp (24h, không filter) ========== */
 function renderActivityPage() {
-  const actList = document.getElementById('activity-list');
-  if (!actList || typeof currentPlayer === 'undefined' || !currentPlayer) return;
+  if (typeof currentPlayer === 'undefined' || !currentPlayer) return;
+
+  // Khôi phục DOM list nếu đang ở chế độ chi tiết (innerHTML đã bị thay)
+  let listPanel = document.getElementById('activity-list-panel');
+  let listHeader = document.getElementById('activity-list-header');
+  let actList = document.getElementById('activity-list');
+  if (listHeader) {
+    listHeader.innerHTML =
+      '<h1><i class="fa-solid fa-clock-rotate-left"></i> NHẬT KÝ HÀNH ĐỘNG</h1>'
+      + '<p class="page-sub" style="margin:4px 0 0;font-size:0.9rem;color:#64748b">Mỗi hành động một dòng · HH:mm:ss · Log 24 giờ · Offline có thời lượng</p>';
+    listHeader.style.display = '';
+    listHeader.classList.remove('hidden');
+  }
+  if (listPanel) {
+    listPanel.style.display = '';
+    listPanel.classList.remove('hidden');
+    if (!actList) {
+      listPanel.innerHTML = '<ul id="activity-list" class="activity-list"></ul>';
+      actList = document.getElementById('activity-list');
+    }
+  }
+  // Ẩn panel detail cũ (nếu còn trong HTML)
+  const detailPanel = document.getElementById('activity-detail-panel');
+  if (detailPanel) {
+    detailPanel.classList.add('hidden');
+    detailPanel.style.display = 'none';
+  }
+  const page = document.getElementById('page-activity');
+  if (page) page.classList.remove('showing-detail');
+  document.body.classList.remove('activity-detail-open');
+  window.__vxActivityDetailOpen = false;
+
+  if (!actList) return;
 
   try {
     if (typeof pruneCurrentPlayerActivity === 'function') pruneCurrentPlayerActivity();
@@ -5622,31 +5654,7 @@ function renderActivityPage() {
   window._lastActivityLines = lines;
   window._activityLogMap = {};
   lines.forEach(a => { if (a && a.id) window._activityLogMap[a.id] = a; });
-  // Event delegation — 1 listener, PC/mobile đều ổn
-  if (!actList.__vxDetailBound) {
-    actList.__vxDetailBound = true;
-    const handler = (ev) => {
-      const row = ev.target && ev.target.closest && ev.target.closest('.activity-clickable');
-      if (!row || !actList.contains(row)) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      const id = row.getAttribute('data-id') || '';
-      const idx = parseInt(row.getAttribute('data-idx') || '-1', 10);
-      let cached = (window._activityLogMap && id) ? window._activityLogMap[id] : null;
-      if (!cached && Array.isArray(window._lastActivityLines) && idx >= 0) {
-        cached = window._lastActivityLines[idx] || null;
-      }
-      if (!id && !cached) return;
-      if (typeof openActivityDetail === 'function') openActivityDetail(id || (cached && cached.id) || ('idx-' + idx), cached);
-    };
-    actList.addEventListener('click', handler);
-    // PC đôi khi chỉ nhận pointerup ổn định hơn
-    actList.addEventListener('pointerup', (ev) => {
-      if (ev.pointerType === 'mouse' && ev.button !== 0) return;
-      // tránh double-open: chỉ dùng pointerup làm backup nếu click không fire
-      // (không gọi open ở đây nếu vừa click)
-    });
-  }
+  // Gắn data attributes; click bắt ở document (bind 1 lần bên dưới)
 }
 
 function scheduleActivityMidnightPrune() {
