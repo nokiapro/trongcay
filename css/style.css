@@ -11364,9 +11364,12 @@ body.dark #modal-activity-detail #activity-detail-body {
 #activity-detail-panel.activity-detail-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 4px 2px 24px;
-  min-height: 40vh;
+  gap: 10px;
+  padding: 4px 0 12px;
+  min-height: 0;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 #activity-detail-panel.hidden,
 #activity-list-panel.hidden,
@@ -11422,49 +11425,56 @@ body.dark #page-activity .activity-detail-body-page {
   color: #e2e8f0;
 }
 
-/* ========== Activity detail PAGE — force visible on PC ========== */
-#page-activity.showing-detail #activity-list-header,
-#page-activity.showing-detail #activity-list-panel {
-  display: none !important;
+/* ========== Activity detail — chỉ trong khung activity-list-panel ========== */
+#page-activity.showing-detail #activity-list-header {
+  display: block !important; /* giữ header trang */
 }
-#page-activity.showing-detail #activity-detail-panel {
+#page-activity.showing-detail #activity-list-panel {
+  display: block !important; /* giữ khung list */
+}
+#page-activity.showing-detail #activity-list {
+  display: none !important; /* ẩn danh sách khi xem chi tiết */
+}
+#page-activity.showing-detail #activity-detail-panel,
+#page-activity.showing-detail #activity-detail-panel:not(.hidden) {
   display: flex !important;
   flex-direction: column !important;
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;
+  position: relative !important;
   width: 100% !important;
-  max-width: 920px !important;
-  margin: 0 auto !important;
-  padding: 12px 14px 24px !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 4px 0 12px !important;
   box-sizing: border-box !important;
-  background: var(--card, #12241a) !important;
-  border: 1px solid rgba(34, 197, 94, 0.25) !important;
-  border-radius: 1rem !important;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.18) !important;
-  min-height: 280px !important;
-}
-#page-activity.showing-detail #activity-detail-panel.hidden {
-  display: flex !important; /* class showing-detail thắng hidden */
-}
-#page-activity #activity-detail-panel:not(.hidden) {
-  display: flex !important;
-  flex-direction: column !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  min-height: 120px !important;
+  z-index: auto !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  height: auto !important;
 }
 #page-activity.showing-detail .activity-detail-body-page,
-#page-activity #activity-detail-body {
+#page-activity.showing-detail #activity-detail-body {
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
   min-height: 100px !important;
   color: inherit !important;
+  max-width: 100%;
+  margin: 0;
+  width: 100%;
 }
 #page-activity .activity-detail-top {
   background: transparent !important;
-}
-html:not([data-theme="dark"]) #page-activity.showing-detail #activity-detail-panel {
-  background: #fff !important;
-  border-color: rgba(22, 163, 74, 0.2) !important;
+  max-width: 100%;
+  margin: 0 0 10px;
 }
 html:not([data-theme="dark"]) #page-activity #activity-detail-body {
   color: #0f172a !important;
@@ -11483,16 +11493,7 @@ body.dark #page-activity #activity-detail-body {
   user-select: none;
 }
 
-/* activity detail: attribute hidden + class */
-#page-activity.showing-detail #activity-list-header[hidden],
-#page-activity.showing-detail #activity-list-panel[hidden] {
-  display: none !important;
-}
-#page-activity.showing-detail #activity-detail-panel,
-#page-activity.showing-detail #activity-detail-panel[hidden] {
-  display: flex !important;
-  flex-direction: column !important;
-}
+#activity-detail-panel.hidden,
 #activity-detail-panel[hidden] {
   display: none !important;
 }
@@ -11771,8 +11772,8 @@ body.dark #activity-detail-panel .activity-detail-top {
   border-radius: 0 !important;
 }
 #activity-detail-body.activity-detail-body-page {
-  max-width: 560px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   width: 100%;
 }
 

@@ -368,16 +368,16 @@
         </div>
         <div class="activity-section activity-section-log" id="activity-list-panel">
           <ul id="activity-list" class="activity-list"></ul>
-        </div>
-        <!-- Chi tiết log dạng trang (giống chat), không dùng modal -->
-        <div id="activity-detail-panel" class="activity-detail-panel hidden">
-          <div class="activity-detail-top">
-            <button type="button" id="btn-activity-detail-back" class="btn btn-secondary btn-sm" title="Quay lại">
-              <i class="fa-solid fa-arrow-left"></i> Quay lại
-            </button>
-            <h2 id="activity-detail-title"><i class="fa-solid fa-clock-rotate-left"></i> Chi tiết</h2>
+          <!-- Chi tiết log chỉ trong khung activity-list -->
+          <div id="activity-detail-panel" class="activity-detail-panel hidden" hidden>
+            <div class="activity-detail-top">
+              <button type="button" id="btn-activity-detail-back" class="btn btn-secondary btn-sm" title="Quay lại">
+                <i class="fa-solid fa-arrow-left"></i> Quay lại
+              </button>
+              <h2 id="activity-detail-title"><i class="fa-solid fa-clock-rotate-left"></i> Chi tiết</h2>
+            </div>
+            <div id="activity-detail-body" class="activity-detail-body activity-detail-body-page"></div>
           </div>
-          <div id="activity-detail-body" class="activity-detail-body activity-detail-body-page"></div>
         </div>
       </section>
 

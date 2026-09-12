@@ -5482,22 +5482,28 @@ function closeActivityDetail() {
   const listPanel = document.getElementById('activity-list-panel');
   const listHeader = document.getElementById('activity-list-header');
   const detailPanel = document.getElementById('activity-detail-panel');
+  const actList = document.getElementById('activity-list');
   document.body.classList.remove('activity-detail-open');
   if (page) {
     page.classList.remove('showing-detail');
-    // QUAN TRỌNG: gỡ inline display (tránh đè lên trang khác như Nhiệm vụ)
     page.style.removeProperty('display');
     page.style.cssText = (page.style.cssText || '').replace(/display\s*:\s*[^;]+;?/gi, '');
   }
   if (detailPanel) {
     detailPanel.classList.add('hidden');
     detailPanel.setAttribute('hidden', '');
-    detailPanel.style.cssText = 'display:none !important;';
+    detailPanel.style.cssText = '';
+    // Giữ detail trong khung activity-list-panel
     try {
-      if (page && detailPanel.parentElement !== page) {
-        page.appendChild(detailPanel);
+      if (listPanel && detailPanel.parentElement !== listPanel) {
+        listPanel.appendChild(detailPanel);
       }
     } catch (_) {}
+  }
+  if (actList) {
+    actList.classList.remove('hidden');
+    actList.removeAttribute('hidden');
+    actList.style.cssText = '';
   }
   if (listPanel) {
     listPanel.classList.remove('hidden');
@@ -5536,17 +5542,18 @@ function openActivityDetail(logId, cachedLog) {
   let title = document.getElementById('activity-detail-title');
   let body = document.getElementById('activity-detail-body');
 
-  if (!detailPanel && page) {
+  if (!detailPanel && (listPanel || page)) {
     detailPanel = document.createElement('div');
     detailPanel.id = 'activity-detail-panel';
-    detailPanel.className = 'activity-detail-panel';
+    detailPanel.className = 'activity-detail-panel hidden';
+    detailPanel.setAttribute('hidden', '');
     detailPanel.innerHTML =
       '<div class="activity-detail-top">'
       + '<button type="button" id="btn-activity-detail-back" class="btn btn-secondary btn-sm">'
       + '<i class="fa-solid fa-arrow-left"></i> Quay lại</button>'
       + '<h2 id="activity-detail-title"><i class="fa-solid fa-clock-rotate-left"></i> Chi tiết</h2></div>'
       + '<div id="activity-detail-body" class="activity-detail-body activity-detail-body-page"></div>';
-    page.appendChild(detailPanel);
+    (listPanel || page).appendChild(detailPanel);
     title = document.getElementById('activity-detail-title');
     body = document.getElementById('activity-detail-body');
   }
@@ -5606,76 +5613,40 @@ function openActivityDetail(logId, cachedLog) {
     body.innerHTML = html;
   }
 
-  // Ép hiện panel dạng overlay FIXED — không bị CSS cha/layout nuốt
+  // Chi tiết chỉ trong khung activity-list-panel (không overlay full màn)
   window.__vxActivityDetailOpen = true;
-  if (page) {
-    page.classList.add('showing-detail', 'active');
-    // Không set inline display !important — chỉ class active + overlay fixed
-  }
+  if (page) page.classList.add('showing-detail', 'active');
   document.body.classList.add('activity-detail-open');
-  if (listPanel) {
-    listPanel.classList.add('hidden');
-    listPanel.setAttribute('hidden', '');
-    listPanel.style.setProperty('display', 'none', 'important');
-  }
-  if (listHeader) {
-    listHeader.classList.add('hidden');
-    listHeader.setAttribute('hidden', '');
-    listHeader.style.setProperty('display', 'none', 'important');
-  }
 
-  // Move panel to body so no parent overflow/transform can clip it
-  try {
-    if (detailPanel.parentElement !== document.body) {
-      document.body.appendChild(detailPanel);
-    }
-  } catch (_) {}
+  // Giữ header + khung list; chỉ ẩn danh sách ul
+  if (listHeader) {
+    listHeader.classList.remove('hidden');
+    listHeader.removeAttribute('hidden');
+    listHeader.style.cssText = '';
+  }
+  if (listPanel) {
+    listPanel.classList.remove('hidden');
+    listPanel.removeAttribute('hidden');
+    listPanel.style.cssText = '';
+    try {
+      if (detailPanel.parentElement !== listPanel) listPanel.appendChild(detailPanel);
+    } catch (_) {}
+  }
+  const actList = document.getElementById('activity-list');
+  if (actList) {
+    actList.classList.add('hidden');
+    actList.setAttribute('hidden', '');
+    actList.style.setProperty('display', 'none', 'important');
+  }
 
   detailPanel.classList.remove('hidden');
   detailPanel.removeAttribute('hidden');
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || document.body.classList.contains('dark');
-  const bg = isDark ? '#0f1f17' : '#ffffff';
-  const fg = isDark ? '#e2e8f0' : '#0f172a';
   detailPanel.style.cssText = '';
-  const setImp = (el, prop, val) => { try { el.style.setProperty(prop, val, 'important'); } catch (_) {} };
-  setImp(detailPanel, 'display', 'flex');
-  setImp(detailPanel, 'flex-direction', 'column');
-  setImp(detailPanel, 'position', 'fixed');
-  setImp(detailPanel, 'left', '0');
-  setImp(detailPanel, 'right', '0');
-  setImp(detailPanel, 'top', '0');
-  setImp(detailPanel, 'bottom', '0');
-  setImp(detailPanel, 'z-index', '2147483000');
-  setImp(detailPanel, 'visibility', 'visible');
-  setImp(detailPanel, 'opacity', '1');
-  setImp(detailPanel, 'pointer-events', 'auto');
-  setImp(detailPanel, 'overflow', 'auto');
-  setImp(detailPanel, 'width', '100%');
-  setImp(detailPanel, 'max-width', '100%');
-  setImp(detailPanel, 'height', '100%');
-  setImp(detailPanel, 'min-height', '100%');
-  setImp(detailPanel, 'margin', '0');
-  setImp(detailPanel, 'padding', '16px 16px 96px');
-  setImp(detailPanel, 'box-sizing', 'border-box');
-  setImp(detailPanel, 'background', bg);
-  setImp(detailPanel, 'color', fg);
-  setImp(detailPanel, 'gap', '12px');
-
-  setImp(body, 'display', 'block');
-  setImp(body, 'visibility', 'visible');
-  setImp(body, 'opacity', '1');
-  setImp(body, 'color', 'inherit');
-  setImp(body, 'min-height', '120px');
-  setImp(body, 'padding', '8px 4px 24px');
-  if (title) {
-    setImp(title, 'margin', '0');
-    setImp(title, 'font-size', '1.15rem');
-    setImp(title, 'color', 'inherit');
-  }
 
   try {
-    window.scrollTo(0, 0);
     detailPanel.scrollTop = 0;
+    // Cuộn tới khung list thay vì full overlay
+    listPanel && listPanel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   } catch (_) {}
 
   const info = {
@@ -5873,9 +5844,20 @@ function renderActivityPage(opts) {
       listPanel.removeAttribute('hidden');
       listPanel.style.display = '';
       if (!document.getElementById('activity-list')) {
-        listPanel.innerHTML = '<ul id="activity-list" class="activity-list"></ul>';
+        const ul = document.createElement('ul');
+        ul.id = 'activity-list';
+        ul.className = 'activity-list';
+        // Chèn list trước detail panel (nếu có) để không xóa chi tiết
+        const dp = document.getElementById('activity-detail-panel');
+        if (dp && dp.parentElement === listPanel) listPanel.insertBefore(ul, dp);
+        else listPanel.insertBefore(ul, listPanel.firstChild);
       }
       actList = document.getElementById('activity-list');
+      if (actList) {
+        actList.classList.remove('hidden');
+        actList.removeAttribute('hidden');
+        actList.style.cssText = '';
+      }
     }
   }
 
