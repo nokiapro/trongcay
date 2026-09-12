@@ -246,10 +246,10 @@ function renderPlantsTable() {
       <td style="font-size:1.5rem">${p.icon}</td>
       <td><strong>${p.name}</strong></td>
       <td>${TYPE_LABELS[p.type] || p.type}</td>
-      <td>${p.seedPrice}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></td>
+      <td>${p.seedPrice}<i class="fa-solid fa-coins"></i></td>
       <td>${p.growTime}s</td>
       <td>x${p.yield}</td>
-      <td>${p.sellPrice}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></td>
+      <td>${p.sellPrice}<i class="fa-solid fa-coins"></i></td>
       <td class="actions">
         <button class="btn btn-primary btn-edit" data-id="${p.id}">Sửa</button>
         <button class="btn btn-danger btn-delete" data-id="${p.id}">Xóa</button>
@@ -403,7 +403,7 @@ async function renderUsers() {
       <tr style="${banned ? 'opacity:0.65' : ''}${unlim ? ';background:rgba(34,197,94,0.08)' : ''}">
         <td>${u.email || uid}${banned ? ' <span style="color:#e63946">[BAN]</span>' : ''}${unlim ? ' <span style="color:#16a34a;font-weight:700">[∞]</span>' : ''}${hasRobot ? ' <span style="color:#38bdf8;font-weight:700">[🤖]</span>' : ''}</td>
         <td><strong style="color:${u.role === 'admin' ? '#e63946' : '#2d6a4f'}">${u.role || 'user'}</strong></td>
-        <td>${(u.coins || 0).toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /></td>
+        <td>${(u.coins || 0).toLocaleString()}<i class="fa-solid fa-coins"></i></td>
         <td>${(u.stats && u.stats.planted) || 0}</td>
         <td>${(u.stats && u.stats.harvested) || 0}</td>
         <td class="actions">
@@ -438,7 +438,7 @@ async function renderUsers() {
           if (!u) return u;
           u.coins = (u.coins || 0) + amount;
           if (!u.activity) u.activity = [];
-          u.activity.unshift({ text: `Admin cộng ${amount}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />`, time: new Date().toLocaleString('vi-VN') });
+          u.activity.unshift({ text: `Admin cộng ${amount}<i class="fa-solid fa-coins"></i>`, time: new Date().toLocaleString('vi-VN') });
           if (u.activity.length > 30) u.activity = u.activity.slice(0, 30);
           return adminTouchUpdatedAt(u);
         });
@@ -446,7 +446,7 @@ async function renderUsers() {
           showToast('Không ghi được (user đang lưu đồng thời). Thử lại!', 'error');
           return;
         }
-        showToast(`Đã cộng ${amount}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />!`, 'success');
+        showToast(`Đã cộng ${amount}<i class="fa-solid fa-coins"></i>!`, 'success');
         renderUsers();
       } catch (e) {
         showToast('Lỗi cộng tiền: ' + (e.message || e), 'error');
@@ -684,7 +684,7 @@ async function renderGiftCodes() {
     const g = all[code];
     const exp = g.expiresAt ? new Date(g.expiresAt).toLocaleDateString('vi-VN') : '∞';
     const rewards = [];
-    if (g.coins) rewards.push(g.coins + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />');
+    if (g.coins) rewards.push(g.coins + '<i class="fa-solid fa-coins"></i>');
     if (g.plots) rewards.push('+' + g.plots + ' ô');
     if (g.fert) rewards.push('+' + g.fert + ' phân');
     if (g.fairyDays) rewards.push(g.fairyDays + 'd Tiên');

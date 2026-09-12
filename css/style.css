@@ -11501,40 +11501,11 @@ body.dark #page-activity #activity-detail-body {
 }
 
 
-/* Custom xu coin icon (XuanKen) */
-i.fa-coins {
-  background: url('../icons/xu-coin.png') center / contain no-repeat !important;
-  width: 1.15em !important;
-  height: 1.15em !important;
-  display: inline-block !important;
-  vertical-align: -0.15em;
-  color: transparent !important;
-  font-size: inherit !important;
-}
-i.fa-coins::before {
-  content: none !important;
-  display: none !important;
-}
-.coins i.fa-coins {
-  width: 1.35em !important;
-  height: 1.35em !important;
-}
-img.icon-xu {
-  width: 1.15em;
-  height: 1.15em;
-  vertical-align: -0.2em;
-  display: inline-block;
-  object-fit: contain;
-}
+/* xu icon: dùng fa-solid fa-coins (không còn ảnh xu-coin) */
 
-.toast .icon-xu,
-.shop-price .icon-xu,
-.rank-list .icon-xu,
-option .icon-xu {
-  width: 1em !important;
-  height: 1em !important;
-  vertical-align: -0.15em;
-}
+/* Ẩn icon log (không còn dùng emoji/actor icon) */
+.ad-hero-icon:empty,
+.al-actor-ico { display: none !important; }
 
 /* ========== Agent log detail — premium UI ========== */
 .ad-hero {

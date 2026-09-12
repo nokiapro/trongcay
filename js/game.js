@@ -842,7 +842,7 @@ const Game = {
         : `Mưa bắt đầu (${Math.round(durationMs / 1000)}s)`;
       if (autoCollectN > 0) {
         actMsg += ` · nhặt ${autoCollectN} vật phẩm`;
-        if (autoCoins) actMsg += ` (+${autoCoins}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`;
+        if (autoCoins) actMsg += ` (+${autoCoins}<i class="fa-solid fa-coins"></i>)`;
         if (autoSeeds) actMsg += ` (+${autoSeeds} hạt)`;
       }
       this.trackDayStat('rain', { count: 1 });
@@ -886,14 +886,14 @@ const Game = {
     if (kind === 'bug') {
       const coins = 5 + Math.floor(Math.random() * 11); 
       currentPlayer.coins = (currentPlayer.coins || 0) + coins;
-      this.addActivity(`Bắt sâu khi mưa +${coins}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />`);
-      msg = `🐛 +${coins}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />`;
+      this.addActivity(`Bắt sâu khi mưa +${coins}<i class="fa-solid fa-coins"></i>`);
+      msg = `🐛 +${coins}<i class="fa-solid fa-coins"></i>`;
     } else {
       const plants = (this.getPlants() || []).filter(p => p && p.id);
       if (!plants.length) {
         const coins = 8;
         currentPlayer.coins = (currentPlayer.coins || 0) + coins;
-        msg = `✨ +${coins}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />`;
+        msg = `✨ +${coins}<i class="fa-solid fa-coins"></i>`;
       } else {
         const plant = plants[Math.floor(Math.random() * plants.length)];
         if (!currentPlayer.inventory) currentPlayer.inventory = { seeds: {}, harvest: {}, fertilizers: {} };
@@ -966,12 +966,12 @@ const Game = {
     const xp = 3;
     currentPlayer.coins = (currentPlayer.coins || 0) + coins;
     this.addXp(xp);
-    this.addActivity(`Tưới giúp bạn +${coins}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> +${xp} XP`);
+    this.addActivity(`Tưới giúp bạn +${coins}<i class="fa-solid fa-coins"></i> +${xp} XP`);
     const ach = this.checkAchievements();
     await savePlayer();
     this.notifyAchievements(ach);
     if (typeof updateCoins === 'function') updateCoins();
-    return { ok: true, msg: `Đã tưới giúp! +${coins}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> +${xp} XP` };
+    return { ok: true, msg: `Đã tưới giúp! +${coins}<i class="fa-solid fa-coins"></i> +${xp} XP` };
   },
 
   
@@ -1241,7 +1241,7 @@ const Game = {
           const xp = (a.reward && a.reward.xp) || 0;
           if (coins) currentPlayer.coins = (currentPlayer.coins || 0) + coins;
           if (xp) this.addXp(xp);
-          this.addActivity(`🏅 Thành tựu: ${a.name}` + (coins ? ` +${coins}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />` : ''));
+          this.addActivity(`🏅 Thành tựu: ${a.name}` + (coins ? ` +${coins}<i class="fa-solid fa-coins"></i>` : ''));
           unlocked.push(a);
         }
       } catch (_) {}
@@ -1293,7 +1293,7 @@ const Game = {
       currentPlayer.inventory.seeds[plantId] = (currentPlayer.inventory.seeds[plantId] || 0) + qty;
       this.addActivity(this.isUnlimitedResources()
         ? `Mua ${qty} hạt ${plant.name} (unlimited)`
-        : `Mua ${qty} hạt ${plant.name} (-${cost.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+        : `Mua ${qty} hạt ${plant.name} (-${cost.toLocaleString()}<i class="fa-solid fa-coins"></i>)`);
       if (typeof Features !== 'undefined') Features.trackQuest('buySeed', qty);
       await savePlayer();
       return { ok: true, msg: `Đã mua ${qty.toLocaleString()} hạt ${plant.name}!` };
@@ -1329,7 +1329,7 @@ const Game = {
       currentPlayer.inventory.fertilizers[fertId] = (currentPlayer.inventory.fertilizers[fertId] || 0) + qty;
       this.addActivity(this.isUnlimitedResources()
         ? `Mua ${qty} ${fert.name} (unlimited)`
-        : `Mua ${qty} ${fert.name} (-${cost.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+        : `Mua ${qty} ${fert.name} (-${cost.toLocaleString()}<i class="fa-solid fa-coins"></i>)`);
       await savePlayer();
       return { ok: true, msg: `Đã mua ${qty.toLocaleString()} ${fert.name}!` };
     } finally {
@@ -3253,7 +3253,7 @@ let changed = false;
         : `Mưa ${rainHits} trận (buff lớn)`;
       if (rainCollected > 0) {
         rainNote += ` · Tiên nhặt ${rainCollected} vật phẩm`;
-        if (rainCollectCoins) rainNote += ` (+${rainCollectCoins}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`;
+        if (rainCollectCoins) rainNote += ` (+${rainCollectCoins}<i class="fa-solid fa-coins"></i>)`;
         if (rainCollectSeeds) rainNote += ` (+${rainCollectSeeds} hạt)`;
       }
       notes.push(rainNote);
@@ -3392,7 +3392,7 @@ let changed = false;
         if (robotOffline.seedsBought || robotOffline.starOk || robotOffline.mythOk || robotOffline.starDid || robotOffline.mythDid) {
           let rn = 'Người máy (offline)';
           if (robotOffline.seedsBought) rn += ' · mua +' + robotOffline.seedsBought.toLocaleString() + ' hạt';
-          if (robotOffline.cost) rn += ' (-' + Number(robotOffline.cost).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)';
+          if (robotOffline.cost) rn += ' (-' + Number(robotOffline.cost).toLocaleString() + '<i class="fa-solid fa-coins"></i>)';
           if (robotOffline.starDid) rn += ' · +' + robotOffline.starDid.toLocaleString() + ' sao';
           else if (robotOffline.starOk) rn += ' · ghép sao x' + robotOffline.starOk;
           if (robotOffline.mythDid) rn += ' · +' + robotOffline.mythDid.toLocaleString() + ' HT';
@@ -3450,7 +3450,7 @@ let changed = false;
     if (_ro.seedsBought || _ro.starDid || _ro.mythDid || _ro.starOk || _ro.mythOk) {
       let robLine = 'Người máy:';
       if (_ro.seedsBought) robLine += ' mua +' + Number(_ro.seedsBought).toLocaleString() + ' hạt';
-      if (_ro.cost) robLine += ' (-' + Number(_ro.cost).toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)';
+      if (_ro.cost) robLine += ' (-' + Number(_ro.cost).toLocaleString() + '<i class="fa-solid fa-coins"></i>)';
       if (_ro.starDid) robLine += ' · +' + Number(_ro.starDid).toLocaleString() + ' sao';
       else if (_ro.starOk) robLine += ' · ghép sao x' + _ro.starOk;
       if (_ro.mythDid) robLine += ' · +' + Number(_ro.mythDid).toLocaleString() + ' HT';
@@ -3928,7 +3928,7 @@ let changed = false;
     currentPlayer.inventory.protects[protectId] = (currentPlayer.inventory.protects[protectId] || 0) + qty;
     this.addActivity(this.isUnlimitedResources()
       ? `Mua ${qty} ${item.name} (unlimited)`
-      : `Mua ${qty} ${item.name} (-${cost.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+      : `Mua ${qty} ${item.name} (-${cost.toLocaleString()}<i class="fa-solid fa-coins"></i>)`);
     await savePlayer();
     return { ok: true, msg: `Đã mua ${qty} ${item.name}!` };
   },
@@ -3950,7 +3950,7 @@ let changed = false;
       });
       currentPlayer.lastFairyCare = now;
     }
-    this.addActivity(`Mua ${pack.name} (-${pack.price}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+    this.addActivity(`Mua ${pack.name} (-${pack.price}<i class="fa-solid fa-coins"></i>)`);
     await savePlayer();
     return { ok: true, msg: `Đã kích hoạt ${pack.name}! Còn ${this.formatTime(this.fairyRemainingSec())}` };
   },
@@ -3966,7 +3966,7 @@ let changed = false;
     if (!wasActive || !currentPlayer.lastNycCare) {
       await this.runNycCare((typeof nowMs==="function"?nowMs():Date.now()));
     }
-    this.addActivity(`Mua ${pack.name} (-${pack.price}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+    this.addActivity(`Mua ${pack.name} (-${pack.price}<i class="fa-solid fa-coins"></i>)`);
     await savePlayer();
     return { ok: true, msg: `Đã kích hoạt ${pack.name}! Còn ${this.formatTime(this.nycRemainingSec())}` };
   },
@@ -4162,7 +4162,7 @@ let changed = false;
     currentPlayer.helperUntil = base + pack.days * 24 * 60 * 60 * 1000;
     
     this.tickHelperBuy((typeof nowMs==="function"?nowMs():Date.now()));
-    this.addActivity(`Mua ${pack.name} (-${pack.price}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+    this.addActivity(`Mua ${pack.name} (-${pack.price}<i class="fa-solid fa-coins"></i>)`);
     await savePlayer();
     return { ok: true, msg: `Đã kích hoạt ${pack.name}! Còn ${this.formatTime(this.helperRemainingSec())}` };
   },
@@ -4640,7 +4640,7 @@ let changed = false;
       if (seedsBought) act += ' · mua (Tiên) +' + seedsBought.toLocaleString() + ' hạt';
       if (starDid) act += ' · +' + starDid.toLocaleString() + ' hạt sao';
       if (mythDid) act += ' · +' + mythDid.toLocaleString() + ' hạt HT';
-      if (seedsCost) act += ' (-' + seedsCost.toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)';
+      if (seedsCost) act += ' (-' + seedsCost.toLocaleString() + '<i class="fa-solid fa-coins"></i>)';
       this.addActivity(act, { type: 'robot_merge' });
     }
     return {
@@ -4677,7 +4677,7 @@ let changed = false;
       let act = name;
       if (totalBought > 0) {
         act += ' mua (Tiên nhặt) +' + totalBought.toLocaleString() + ' hạt';
-        if (totalCost) act += ' (-' + totalCost.toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)';
+        if (totalCost) act += ' (-' + totalCost.toLocaleString() + '<i class="fa-solid fa-coins"></i>)';
       } else {
         act += ' rà kho';
       }
@@ -5379,9 +5379,9 @@ let changed = false;
     currentPlayer.stats = currentPlayer.stats || {};
     currentPlayer.stats.earned = (currentPlayer.stats.earned || 0) + earn;
     if (typeof Features !== 'undefined' && Features.trackQuest) Features.trackQuest('earn', earn);
-    this.addActivity('Bán ' + qty + ' ' + fert.name + ' (+' + earn + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)');
+    this.addActivity('Bán ' + qty + ' ' + fert.name + ' (+' + earn + '<i class="fa-solid fa-coins"></i>)');
     await savePlayer();
-    return { ok: true, msg: 'Bán ' + qty + ' ' + fert.name + ', nhận ' + earn + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />!' };
+    return { ok: true, msg: 'Bán ' + qty + ' ' + fert.name + ', nhận ' + earn + '<i class="fa-solid fa-coins"></i>!' };
   },
 
   async sellSeed(plantId, qty = 1, kind = 'normal') {
@@ -5435,9 +5435,9 @@ let changed = false;
     if (soldN) parts.push(`${soldN} thường`);
     if (soldS) parts.push(`${soldS} ⭐`);
     if (soldM) parts.push(`${soldM} ✨`);
-    this.addActivity(`Bán hạt ${plant.name} (${parts.join(', ')}) (+${earn}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+    this.addActivity(`Bán hạt ${plant.name} (${parts.join(', ')}) (+${earn}<i class="fa-solid fa-coins"></i>)`);
     await savePlayer();
-    return { ok: true, msg: `Bán ${parts.join(' + ')} ${plant.name}, nhận ${earn}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />!` };
+    return { ok: true, msg: `Bán ${parts.join(' + ')} ${plant.name}, nhận ${earn}<i class="fa-solid fa-coins"></i>!` };
   },
 
   
@@ -5495,9 +5495,9 @@ let changed = false;
     currentPlayer.coins += earn;
     currentPlayer.stats.earned = (currentPlayer.stats.earned || 0) + earn;
     const tag = kind === 'myth' ? '✨' : (kind === 'star' ? '⭐' : (kind === 'bought' ? '🛒' : ''));
-    this.addActivity(`Bán ${qty} ${plant.name}${tag} (+${earn}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+    this.addActivity(`Bán ${qty} ${plant.name}${tag} (+${earn}<i class="fa-solid fa-coins"></i>)`);
     await savePlayer();
-    return { ok: true, msg: `Bán ${qty} ${plant.name}, nhận ${earn}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />!` };
+    return { ok: true, msg: `Bán ${qty} ${plant.name}, nhận ${earn}<i class="fa-solid fa-coins"></i>!` };
   },
 
   async sellAllHarvest(kind = null) {
@@ -5520,10 +5520,10 @@ let changed = false;
     currentPlayer.coins += total;
     currentPlayer.stats.earned = (currentPlayer.stats.earned || 0) + total;
     if (total > 0) {
-      this.addActivity(`Bán tất cả hoa quả (+${total}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+      this.addActivity(`Bán tất cả hoa quả (+${total}<i class="fa-solid fa-coins"></i>)`);
       await savePlayer();
     }
-    return { ok: true, msg: total > 0 ? `Bán hết, nhận ${total}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />!` : 'Kho trống.' };
+    return { ok: true, msg: total > 0 ? `Bán hết, nhận ${total}<i class="fa-solid fa-coins"></i>!` : 'Kho trống.' };
   },
 
   /** Bảng thưởng streak (ngày liên tiếp) */
@@ -5692,7 +5692,7 @@ let changed = false;
         // Vẫn báo đã nhận local, nhưng cảnh báo lưu cloud
         return {
           ok: true,
-          msg: 'Đã nhận ' + reward.toLocaleString() + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> (streak ' + streak + ') — chưa lưu Firebase: ' + (saveRes.msg || 'lỗi mạng'),
+          msg: 'Đã nhận ' + reward.toLocaleString() + '<i class="fa-solid fa-coins"></i> (streak ' + streak + ') — chưa lưu Firebase: ' + (saveRes.msg || 'lỗi mạng'),
           streak,
           coins: reward,
           saveWarn: true
@@ -6160,7 +6160,7 @@ let changed = false;
     }
   },
 
-  /** Dòng kết quả ngắn: +20 SP · −200<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" /> */
+  /** Dòng kết quả ngắn: +20 SP · −200<i class="fa-solid fa-coins"></i> */
   formatEventResultLine(ev) {
     if (!ev) return '';
     const parts = [];
@@ -6595,7 +6595,7 @@ let changed = false;
     // Bỏ emoji / ký hiệu trang trí thường gặp trong log
     t = t.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '');
     t = t.replace(/[⭐✨❤️🤖🌱💧🧪🎁⬆️⚡🧚🧹👤⚙️🪙🌧️🏅]/g, '');
-    t = t.replace(/<img[^>]*class="icon-xu"[^>]*>/gi, '');
+    t = t.replace(/<img[^>]*class="icon-xu"[^>]*>/gi, ''); t = t.replace(/<i[^>]*fa-coins[^>]*><\/i>/gi, '');
     t = t.replace(/\s{2,}/g, ' ').trim();
     return t;
   },
@@ -7496,7 +7496,7 @@ let changed = false;
     if (currentPlayer.gardens.length > unlockedBefore) {
       msg += ` · Mở khóa Vườn ${currentPlayer.gardens.length}!`;
     }
-    this.addActivity(msg + ` (-${cost}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+    this.addActivity(msg + ` (-${cost}<i class="fa-solid fa-coins"></i>)`);
     await savePlayer();
     return { ok: true, msg };
   },
@@ -7516,7 +7516,7 @@ let changed = false;
     if (!currentPlayer.companionId) currentPlayer.companionId = id;
     this.addActivity(this.isUnlimitedResources()
       ? 'Mua thú cưng ' + item.name + ' (unlimited)'
-      : 'Mua thú cưng ' + item.name + ' (-' + price + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)');
+      : 'Mua thú cưng ' + item.name + ' (-' + price + '<i class="fa-solid fa-coins"></i>)');
     return { ok: true, msg: 'Đã mua ' + item.name + '!' };
   },
   equipCompanion(id) {
@@ -7543,7 +7543,7 @@ let changed = false;
       boughtAt: (typeof nowMs === 'function' ? nowMs() : Date.now())
     };
     if (!currentPlayer.avatarBadgeId) currentPlayer.avatarBadgeId = bid;
-    this.addActivity('Mua badge icon ' + item.name + (this.isUnlimitedResources() ? ' (unlimited)' : ' (-' + price + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)'));
+    this.addActivity('Mua badge icon ' + item.name + (this.isUnlimitedResources() ? ' (unlimited)' : ' (-' + price + '<i class="fa-solid fa-coins"></i>)'));
     return { ok: true, msg: 'Đã mua ' + item.name + '!' };
   },
   equipAvatarBadge(id) {
@@ -7569,7 +7569,7 @@ let changed = false;
     if (!currentPlayer.avatarFrameId) currentPlayer.avatarFrameId = frameId;
     this.addActivity(this.isUnlimitedResources()
       ? 'Mua khung avatar ' + frame.name + ' (unlimited)'
-      : 'Mua khung avatar ' + frame.name + ' (-' + price + '<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)');
+      : 'Mua khung avatar ' + frame.name + ' (-' + price + '<i class="fa-solid fa-coins"></i>)');
     return { ok: true, msg: 'Đã mua khung ' + frame.name + '!' };
   },
 
@@ -7597,7 +7597,7 @@ let changed = false;
     currentPlayer.pets[petId] = { id: petId, boughtAt: (typeof nowMs==="function"?nowMs():Date.now()), active: true };
     this.addActivity(this.isUnlimitedResources()
       ? `Nhận pet ${pet.name} (unlimited)`
-      : `Nhận pet ${pet.name} (-${pet.price}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+      : `Nhận pet ${pet.name} (-${pet.price}<i class="fa-solid fa-coins"></i>)`);
     await savePlayer();
     return { ok: true, msg: `Đã mua ${pet.icon} ${pet.name}!` };
   },
@@ -7661,7 +7661,7 @@ let changed = false;
     await savePlayer();
     return {
       ok: true,
-      msg: `Đã nấu ${times}× ${recipe.icon || ''} ${recipe.name}${tag}! +${xpGain} XP · bán ${sellHint.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />/món`,
+      msg: `Đã nấu ${times}× ${recipe.icon || ''} ${recipe.name}${tag}! +${xpGain} XP · bán ${sellHint.toLocaleString()}<i class="fa-solid fa-coins"></i>/món`,
       tier
     };
   },
@@ -7688,9 +7688,9 @@ let changed = false;
     currentPlayer.coins = (currentPlayer.coins || 0) + gain;
     currentPlayer.stats.earned = (currentPlayer.stats.earned || 0) + gain;
     const tag = tier === 'myth' ? '✨' : (tier === 'star' ? '⭐' : '');
-    this.addActivity(`Bán ${qty}× ${recipe.name}${tag} (+${gain}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)`);
+    this.addActivity(`Bán ${qty}× ${recipe.name}${tag} (+${gain}<i class="fa-solid fa-coins"></i>)`);
     await savePlayer();
-    return { ok: true, msg: `Đã bán ${qty}× ${recipe.name}${tag} (+${gain.toLocaleString()}<img class="icon-xu" src="icons/xu-coin.png" width="14" height="14" alt="xu" />)` };
+    return { ok: true, msg: `Đã bán ${qty}× ${recipe.name}${tag} (+${gain.toLocaleString()}<i class="fa-solid fa-coins"></i>)` };
   },
 
   async updateLeaderboard() {
