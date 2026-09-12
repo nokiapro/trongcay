@@ -11381,16 +11381,16 @@ body.dark #modal-activity-detail #activity-detail-body {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 8px 12px;
-  margin: 0 auto 12px;
-  max-width: 560px;
+  padding: 4px 2px 10px;
+  margin: 0 0 8px;
+  max-width: 100%;
   width: 100%;
   box-sizing: border-box;
-  border-bottom: none;
-  border-radius: 12px;
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 0;
+  position: relative;
+  top: auto;
+  z-index: 1;
   background: transparent !important;
 }
 .activity-detail-top h2 {
@@ -11425,15 +11425,25 @@ body.dark #page-activity .activity-detail-body-page {
   color: #e2e8f0;
 }
 
-/* ========== Activity detail — chỉ trong khung activity-list-panel ========== */
+/* ========== Activity detail — CHỈ trong khung activity-section-log ========== */
 #page-activity.showing-detail #activity-list-header {
-  display: block !important; /* giữ header trang */
+  display: block !important;
 }
+#page-activity.showing-detail #activity-list-panel.activity-section-log,
 #page-activity.showing-detail #activity-list-panel {
-  display: block !important; /* giữ khung list */
+  display: block !important;
+  position: relative !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  max-height: min(70vh, 640px) !important;
+  width: 100% !important;
+  max-width: 920px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  box-sizing: border-box !important;
 }
 #page-activity.showing-detail #activity-list {
-  display: none !important; /* ẩn danh sách khi xem chi tiết */
+  display: none !important;
 }
 #page-activity.showing-detail #activity-detail-panel,
 #page-activity.showing-detail #activity-detail-panel:not(.hidden) {
@@ -11443,38 +11453,55 @@ body.dark #page-activity .activity-detail-body-page {
   opacity: 1 !important;
   pointer-events: auto !important;
   position: relative !important;
+  inset: auto !important;
   width: 100% !important;
   max-width: 100% !important;
   margin: 0 !important;
-  padding: 4px 0 12px !important;
+  padding: 0 0 8px !important;
   box-sizing: border-box !important;
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  min-height: 120px !important;
-  z-index: auto !important;
-  left: auto !important;
-  right: auto !important;
-  top: auto !important;
-  bottom: auto !important;
+  min-height: 0 !important;
   height: auto !important;
+  z-index: 1 !important;
+  overflow: visible !important;
+  transform: none !important;
 }
 #page-activity.showing-detail .activity-detail-body-page,
 #page-activity.showing-detail #activity-detail-body {
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
-  min-height: 100px !important;
+  min-height: 0 !important;
   color: inherit !important;
-  max-width: 100%;
-  margin: 0;
-  width: 100%;
+  max-width: 100% !important;
+  margin: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+  padding: 0 2px 8px !important;
 }
+#page-activity.showing-detail .activity-detail-top,
 #page-activity .activity-detail-top {
   background: transparent !important;
-  max-width: 100%;
-  margin: 0 0 10px;
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 0 8px !important;
+  position: relative !important;
+}
+#page-activity.showing-detail .ad-hero,
+#page-activity.showing-detail .ad-summary-card,
+#page-activity.showing-detail .ad-chips,
+#page-activity.showing-detail .ad-timeline-wrap,
+#page-activity.showing-detail .ad-block,
+#page-activity.showing-detail .ad-grid {
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 html:not([data-theme="dark"]) #page-activity #activity-detail-body {
   color: #0f172a !important;
@@ -11601,9 +11628,11 @@ body.dark .ad-summary-card {
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-bottom: 16px;
-  max-width: 560px;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: 100%;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
 }
 .ad-chip {
   display: flex;
@@ -11742,12 +11771,12 @@ body.dark .ad-timeline::before {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 auto 12px;
-  max-width: 560px;
+  margin: 0 0 8px;
+  max-width: 100%;
   width: 100%;
   box-sizing: border-box;
-  padding: 8px 12px;
-  border-bottom: none;
+  padding: 4px 2px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
   background: transparent !important;
 }
 html[data-theme="dark"] #activity-detail-panel .activity-detail-top,
