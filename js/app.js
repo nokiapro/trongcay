@@ -410,18 +410,12 @@ function randomFillNycPlantList() {
     return arr;
   };
   shuf(fresh);
-  // List dự phòng: vài loại, nhưng lúc trồng chỉ dùng 1 loại đầu cho đến khi hết
-  let maxN = 8;
-  try {
-    const gardens = currentPlayer.gardens || [];
-    let mx = 0;
-    gardens.forEach(gg => { if (Array.isArray(gg) && gg.length > mx) mx = gg.length; });
-    if (mx > 0) maxN = Math.min(12, Math.max(3, Math.ceil(mx / 2)));
-  } catch (_) {}
+  // Luôn nhắm 8 loại; NYC trồng theo thứ tự, hết loại đầu thì chuyển loại tiếp + tự bổ sung
+  const maxN = 8;
   window._nycDraftPlantList = fresh.slice(0, maxN).map(x => ({ plantId: x.plantId, seedKind: x.seedKind }));
   renderNycPlantListUI();
   if (typeof showToast === 'function') {
-    showToast('Đã random ' + window._nycDraftPlantList.length + ' loại (không trùng vườn khác). NYC trồng lần lượt từng loại.', 'success');
+    showToast('Đã random ' + window._nycDraftPlantList.length + '/8 loại (không trùng vườn khác). NYC trồng lần lượt, hết thì tự thêm hạt mới.', 'success');
   }
 }
 

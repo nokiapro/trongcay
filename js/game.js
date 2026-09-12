@@ -3733,7 +3733,7 @@ let changed = false;
   },
 
   /**
-   * Chọn 1 hạt từ kho (như menu dropdown), ưu tiên không trùng vườn khác.
+   * Chọn 1 hạt từ kho, random, không trùng vườn khác và không trùng list hiện tại.
    * Trả về { plantId, seedKind } hoặc null.
    */
   _nycPickNextFromInventory(gi, alreadyInList) {
@@ -3750,27 +3750,39 @@ let changed = false;
       if (c && c.plantId) inList.add(String(c.plantId) + '|' + (c.seedKind || 'normal'));
     });
     const fresh = [];
-    const fallback = [];
     bags.forEach(b => {
       Object.keys(b.bag).forEach(pid => {
         if ((Number(b.bag[pid]) || 0) < 1) return;
         const key = pid + '|' + b.kind;
         if (inList.has(key)) return;
-        const item = { plantId: pid, seedKind: b.kind };
-        if (usedOther.has(String(pid))) fallback.push(item);
-        else fresh.push(item);
+        // Không trùng plantId với vườn NYC khác
+        if (usedOther.has(String(pid))) return;
+        fresh.push({ plantId: pid, seedKind: b.kind });
       });
     });
-    const pool = fresh.length ? fresh : []; // chỉ lấy không trùng; hết thì không fallback trùng
-    if (!pool.length) return null;
-    pool.sort((a, b) => String(a.plantId).localeCompare(String(b.plantId)) || String(a.seedKind).localeCompare(String(b.seedKind)));
-    return pool[0];
+    if (!fresh.length) return null;
+    return fresh[Math.floor(Math.random() * fresh.length)];
+  },
+
+  /**
+   * Bổ sung list đến đủ target (mặc định 8) loại hạt khác nhau,
+   * random từ kho, không trùng vườn khác / không trùng list.
+   */
+  _nycFillPlantListToTarget(gi, candidates, target) {
+    const list = Array.isArray(candidates) ? candidates.slice() : [];
+    const maxN = Math.max(1, Math.min(12, parseInt(target, 10) || 8));
+    while (list.length < maxN) {
+      const extra = this._nycPickNextFromInventory(gi, list);
+      if (!extra) break;
+      list.push({ plantId: extra.plantId, seedKind: extra.seedKind || 'normal' });
+    }
+    return list;
   },
 
   /**
    * Trồng đúng 1 loại đang đứng đầu list còn hạt.
    * Hết loại đầu → bỏ khỏi đầu list, đẩy loại tiếp lên.
-   * List trống → chọn 1 hạt dropdown (không trùng vườn khác) thêm vào list rồi trồng.
+   * Luôn cố giữ đủ 8 loại trong list (tự random thêm hạt không trùng vườn khác).
    */
   _nycPlantOneAt(plot, cfg, plantTime, gi) {
     if (!plot || plot.plantId || !cfg) return false;
@@ -3796,22 +3808,22 @@ let changed = false;
       return (bagOf(kind)[c.plantId] || 0) >= 1;
     };
 
-    // Bỏ các loại đứng đầu đã hết hạt → chỉ giữ 1 loại đang trồng còn stock
+    // Bỏ các loại đứng đầu đã hết hạt → chuyển sang loại tiếp theo trong list
     let dropped = false;
     while (candidates.length && !hasStock(candidates[0])) {
       candidates.shift();
       dropped = true;
     }
 
-    // List trống → chọn 1 hạt từ kho (dropdown), không trùng vườn khác
-    if (!candidates.length) {
-      const extra = this._nycPickNextFromInventory(gi, cfg.plantList || []);
-      if (!extra) return false;
-      candidates = [{ plantId: extra.plantId, seedKind: extra.seedKind || 'normal' }];
-      dropped = true;
-    }
+    // Tự bổ sung list đến đủ 8 loại (random, không trùng vườn khác)
+    const beforeFill = candidates.length;
+    candidates = this._nycFillPlantListToTarget(gi, candidates, 8);
+    if (candidates.length > beforeFill) dropped = true;
 
-    // Chỉ trồng đúng candidates[0]
+    // Vẫn trống → không còn hạt phù hợp
+    if (!candidates.length) return false;
+
+    // Chỉ trồng đúng candidates[0] (theo thứ tự list)
     const chosen = candidates[0];
     const kind = chosen.seedKind === 'myth' ? 'myth' : (chosen.seedKind === 'star' ? 'star' : 'normal');
     const bag = bagOf(kind);
