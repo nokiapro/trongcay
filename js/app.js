@@ -5627,17 +5627,7 @@ function openActivityDetail(logId, cachedLog) {
   if (listPanel) {
     listPanel.classList.remove('hidden');
     listPanel.removeAttribute('hidden');
-    // Khóa khung list = 920px, chi tiết không được thoát ra ngoài
     listPanel.style.cssText = '';
-    const setP = (prop, val) => { try { listPanel.style.setProperty(prop, val, 'important'); } catch (_) {} };
-    setP('max-width', '920px');
-    setP('width', '100%');
-    setP('margin-left', 'auto');
-    setP('margin-right', 'auto');
-    setP('box-sizing', 'border-box');
-    setP('overflow-x', 'hidden');
-    setP('position', 'relative');
-    setP('display', 'block');
     try {
       if (detailPanel.parentElement !== listPanel) listPanel.appendChild(detailPanel);
     } catch (_) {}
@@ -5651,34 +5641,9 @@ function openActivityDetail(logId, cachedLog) {
 
   detailPanel.classList.remove('hidden');
   detailPanel.removeAttribute('hidden');
-  // Không fixed/full-screen — chỉ trong khung 920px
-  detailPanel.style.cssText = '';
-  const setD = (prop, val) => { try { detailPanel.style.setProperty(prop, val, 'important'); } catch (_) {} };
-  setD('display', 'flex');
-  setD('flex-direction', 'column');
-  setD('position', 'relative');
-  setD('inset', 'auto');
-  setD('left', 'auto');
-  setD('right', 'auto');
-  setD('top', 'auto');
-  setD('bottom', 'auto');
-  setD('width', '100%');
-  setD('max-width', '100%');
-  setD('height', 'auto');
-  setD('min-height', '0');
-  setD('margin', '0');
-  setD('padding', '0');
-  setD('z-index', '1');
-  setD('background', 'transparent');
-  setD('border', 'none');
-  setD('box-shadow', 'none');
-  setD('overflow', 'hidden');
-  setD('box-sizing', 'border-box');
-  setD('transform', 'none');
+  detailPanel.style.cssText = ''; // để CSS .activity-page-col + showing-detail quyết định khung 920px
 
-  try {
-    detailPanel.scrollTop = 0;
-  } catch (_) {}
+  try { detailPanel.scrollTop = 0; } catch (_) {}
 
   const info = {
     ok: true,

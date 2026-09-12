@@ -11852,85 +11852,127 @@ body:not(.activity-detail-open) #activity-detail-panel {
 }
 
 
-/* ========== VX-DETAIL-FRAME-LOCK: chi tiết log chỉ trong khung 920px ========== */
+
+/* ========== VX-DETAIL-FRAME-LOCK: 1 cột 920px cho cả header + list + detail ========== */
 #page-activity {
   width: 100% !important;
-  max-width: 100% !important;
   box-sizing: border-box !important;
   overflow-x: hidden !important;
+}
+#page-activity .activity-page-col {
+  width: 100% !important;
+  max-width: 920px !important;
+  margin: 0 auto !important;
+  padding: 0 12px !important;
+  box-sizing: border-box !important;
 }
 #page-activity .page-header,
 #page-activity #activity-list-header {
-  max-width: 920px !important;
   width: 100% !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  margin-bottom: 14px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  text-align: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
   box-sizing: border-box !important;
-  padding-left: 14px !important;
-  padding-right: 14px !important;
 }
 #page-activity #activity-list-panel,
-#page-activity .activity-section.activity-section-log,
-#page-activity.showing-detail #activity-list-panel,
-#page-activity.showing-detail #activity-list-panel.activity-section-log {
-  max-width: 920px !important;
+#page-activity .activity-section.activity-section-log {
   width: 100% !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  margin-bottom: 1rem !important;
   box-sizing: border-box !important;
   overflow-x: hidden !important;
   position: relative !important;
 }
+/* List view: khung cao cố định trên desktop */
+@media (min-width: 900px) {
+  #page-activity #activity-list-panel {
+    min-height: 560px;
+  }
+  #page-activity #activity-list {
+    max-height: 560px;
+    overflow-y: auto;
+  }
+}
+/* Detail view: cùng khung, ẩn list, hiện detail */
+#page-activity.showing-detail #activity-list {
+  display: none !important;
+}
+#page-activity.showing-detail #activity-list-panel {
+  display: block !important;
+  min-height: 280px !important;
+  max-height: min(70vh, 640px) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
 #page-activity.showing-detail #activity-detail-panel,
-#page-activity.showing-detail #activity-detail-panel:not([hidden]),
 #page-activity.showing-detail #activity-detail-panel:not(.hidden),
+#page-activity.showing-detail #activity-detail-panel:not([hidden]),
 body.activity-detail-open #page-activity #activity-detail-panel {
+  display: flex !important;
+  flex-direction: column !important;
   position: relative !important;
+  inset: auto !important;
   left: auto !important;
   right: auto !important;
   top: auto !important;
   bottom: auto !important;
-  inset: auto !important;
   width: 100% !important;
   max-width: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
   height: auto !important;
   min-height: 0 !important;
-  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
   z-index: 1 !important;
   transform: none !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   border-radius: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
   box-sizing: border-box !important;
-  overflow: hidden !important;
+  overflow: visible !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 #page-activity.showing-detail #activity-detail-panel.hidden,
 #page-activity.showing-detail #activity-detail-panel[hidden],
 body:not(.activity-detail-open) #activity-detail-panel {
   display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
+#page-activity.showing-detail .activity-detail-top,
 #page-activity.showing-detail #activity-detail-body,
 #page-activity.showing-detail .activity-detail-body-page,
-#page-activity.showing-detail .activity-detail-top,
 #page-activity.showing-detail .ad-hero,
 #page-activity.showing-detail .ad-summary-card,
 #page-activity.showing-detail .ad-chips,
 #page-activity.showing-detail .ad-timeline-wrap,
 #page-activity.showing-detail .ad-block,
-#page-activity.showing-detail .ad-grid,
-#page-activity.showing-detail .ad-timeline,
-#page-activity.showing-detail .ad-list {
-  max-width: 100% !important;
+#page-activity.showing-detail .ad-grid {
   width: 100% !important;
+  max-width: 100% !important;
   box-sizing: border-box !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
 }
-#page-activity.showing-detail #activity-list {
-  display: none !important;
+#page-activity.showing-detail .activity-detail-top {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 2px 0 10px !important;
+  margin-bottom: 8px !important;
+  border-bottom: 1px solid rgba(148,163,184,0.2) !important;
+  position: relative !important;
+  background: transparent !important;
 }
