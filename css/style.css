@@ -11712,3 +11712,43 @@ body.dark .al-mode-tag {
   width: 100%;
   box-sizing: border-box;
 }
+
+
+/* Modal chi tiết log — popup giữa màn hình */
+#modal-activity-detail.modal.show {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10060 !important;
+}
+#modal-activity-detail .modal-activity-content {
+  max-width: min(560px, 94vw) !important;
+  width: 94% !important;
+  max-height: 88vh !important;
+  overflow: auto !important;
+  padding: 0 !important;
+}
+#modal-activity-detail .activity-detail-body {
+  padding: 12px 16px 20px !important;
+}
+#modal-activity-detail .activity-detail-head .modal-close,
+#modal-activity-detail #btn-activity-detail-close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: rgba(148,163,184,0.15);
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+html:not([data-theme="dark"]) #modal-activity-detail .modal-activity-content {
+  background: #fff !important;
+  color: #0f172a !important;
+}
+html:not([data-theme="dark"]) #modal-activity-detail .activity-detail-head h2 {
+  color: #14532d !important;
+}

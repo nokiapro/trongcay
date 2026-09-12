@@ -368,15 +368,6 @@
         </div>
         <div class="activity-section activity-section-log" id="activity-list-panel">
           <ul id="activity-list" class="activity-list"></ul>
-          <div id="activity-detail-panel" class="activity-detail-panel" hidden>
-            <div class="activity-detail-top">
-              <button type="button" id="btn-activity-detail-back" class="btn btn-secondary btn-sm">
-                <i class="fa-solid fa-arrow-left"></i> Quay lại
-              </button>
-              <h2 id="activity-detail-title">Chi tiết</h2>
-            </div>
-            <div id="activity-detail-body" class="activity-detail-body"></div>
-          </div>
         </div>
       </section>
 
@@ -926,6 +917,18 @@
         <button type="button" class="btn btn-primary" id="btn-offline-view-detail"><i class="fa-solid fa-list"></i> Xem chi tiết</button>
         <button type="button" class="btn btn-secondary modal-close" id="btn-offline-return-close">Đóng</button>
       </div>
+    </div>
+  </div>
+
+  <div id="modal-activity-detail" class="modal" role="dialog" aria-modal="true" aria-labelledby="activity-detail-title">
+    <div class="modal-content modal-activity-content">
+      <div class="activity-detail-head">
+        <h2 id="activity-detail-title"><i class="fa-solid fa-clock-rotate-left"></i> Chi tiết</h2>
+        <button type="button" class="modal-close btn-icon" id="btn-activity-detail-close" aria-label="Đóng" title="Đóng">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="activity-detail-body" class="activity-detail-body"></div>
     </div>
   </div>
 
