@@ -11376,18 +11376,23 @@ body.dark #modal-activity-detail #activity-detail-body {
 .activity-detail-top {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
-  padding: 4px 0 8px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 8px 12px;
+  margin: 0 auto 12px;
+  max-width: 560px;
+  width: 100%;
+  box-sizing: border-box;
+  border-bottom: none;
+  border-radius: 12px;
   position: sticky;
   top: 0;
   z-index: 5;
-  background: var(--bg, var(--card, #0f1f17));
+  background: transparent !important;
 }
 .activity-detail-top h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -11407,7 +11412,7 @@ body.dark #modal-activity-detail #activity-detail-body {
   line-height: 1.5;
 }
 html:not([data-theme="dark"]) .activity-detail-top {
-  background: var(--bg, #f8fafc);
+  background: transparent !important;
 }
 html:not([data-theme="dark"]) #page-activity .activity-detail-body-page {
   color: #0f172a;
@@ -11611,6 +11616,7 @@ option .icon-xu {
   font-weight: 600;
   color: inherit;
   margin-bottom: 12px;
+  text-align: center;
 }
 html[data-theme="dark"] .ad-summary-card,
 body.dark .ad-summary-card {
@@ -11619,15 +11625,21 @@ body.dark .ad-summary-card {
 }
 
 .ad-chips {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-bottom: 16px;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .ad-chip {
   display: flex;
   flex-direction: column;
-  min-width: 88px;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-width: 0;
   padding: 10px 12px;
   border-radius: 12px;
   background: #f8fafc;
@@ -11646,11 +11658,15 @@ body.dark .ad-chip {
   text-transform: uppercase;
   letter-spacing: .04em;
   margin-bottom: 2px;
+  text-align: center;
+  width: 100%;
 }
 .ad-chip-v {
   font-size: 1rem;
   font-weight: 800;
   color: #0f172a;
+  text-align: center;
+  width: 100%;
 }
 html[data-theme="dark"] .ad-chip-v,
 body.dark .ad-chip-v { color: #f1f5f9; }
@@ -11753,24 +11769,30 @@ body.dark .ad-timeline::before {
 #activity-detail-panel .activity-detail-top {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(15,23,42,.08);
+  gap: 10px;
+  margin: 0 auto 12px;
+  max-width: 560px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-bottom: none;
+  background: transparent !important;
 }
 html[data-theme="dark"] #activity-detail-panel .activity-detail-top,
 body.dark #activity-detail-panel .activity-detail-top {
-  border-bottom-color: rgba(255,255,255,.1);
+  border-bottom: none;
+  background: transparent !important;
 }
 #activity-detail-panel .activity-detail-top h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   flex: 1;
 }
 #btn-activity-detail-back {
   border-radius: 999px !important;
-  padding: 8px 14px !important;
+  padding: 6px 12px !important;
+  font-size: 0.85rem !important;
   font-weight: 700 !important;
   box-shadow: 0 2px 8px rgba(0,0,0,.08);
 }
