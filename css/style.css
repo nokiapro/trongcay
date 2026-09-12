@@ -11361,106 +11361,6 @@ body.dark #modal-activity-detail #activity-detail-body {
   color: inherit !important;
 }
 
-/* ========== Activity detail PAGE (giống chat, không modal) ========== */
-#activity-detail-panel.activity-detail-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 4px 0 12px;
-  min-height: 0;
-  position: relative;
-  width: 100%;
-  box-sizing: border-box;
-}
-#activity-detail-panel.hidden,
-#activity-list-panel.hidden,
-#activity-list-header.hidden {
-  display: none !important;
-}
-.activity-detail-top {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 4px 2px 10px;
-  margin: 0 0 8px;
-  max-width: 100%;
-  width: 100%;
-  box-sizing: border-box;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 0;
-  position: relative;
-  top: auto;
-  z-index: 1;
-  background: transparent !important;
-}
-.activity-detail-top h2 {
-  margin: 0;
-  font-size: 0.95rem;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-}
-#btn-activity-detail-back {
-  flex-shrink: 0;
-}
-#page-activity .activity-detail-body-page {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  min-height: 120px;
-  padding: 4px 2px 16px;
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-html:not([data-theme="dark"]) .activity-detail-top {
-  background: transparent !important;
-}
-html:not([data-theme="dark"]) #page-activity .activity-detail-body-page {
-  color: #0f172a;
-}
-html[data-theme="dark"] #page-activity .activity-detail-body-page,
-body.dark #page-activity .activity-detail-body-page {
-  color: #e2e8f0;
-}
-
-/* ========== Activity detail visibility (no width fights) ========== */
-#page-activity.showing-detail #activity-list {
-  display: none !important;
-}
-#page-activity.showing-detail #activity-list-panel {
-  display: block !important;
-}
-#page-activity.showing-detail #activity-detail-panel:not(.hidden):not([hidden]) {
-  display: flex !important;
-  flex-direction: column !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-}
-#page-activity:not(.showing-detail) #activity-detail-panel,
-#activity-detail-panel.hidden,
-#activity-detail-panel[hidden],
-body:not(.activity-detail-open) #activity-detail-panel {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-}
-
-/* Hàng log luôn click được */
-#page-activity .activity-clickable,
-#page-activity .al-row.activity-clickable {
-  cursor: pointer !important;
-  pointer-events: auto !important;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.ad-hero-icon:empty,
-.al-actor-ico { display: none !important; }
-
 /* ========== Agent log detail — premium UI ========== */
 .ad-hero {
   display: flex;
@@ -11766,159 +11666,49 @@ body.dark .al-mode-tag {
 .page.active { display: block !important; }
 
 
-/* ========== VX-DETAIL-FRAME-LOCK: đúng 1 cột 920px ========== */
-/* Chỉ .activity-page-col được max-width 920px — con bên trong width 100% */
-#page-activity .activity-page-col {
-  width: 100%;
-  max-width: 920px;
-  margin-left: auto;
-  margin-right: auto;
-  padding-left: 0;
-  padding-right: 0;
-  box-sizing: border-box;
+
+
+/* ========== Activity detail IN-LIST (minimal) ========== */
+#activity-detail-panel[hidden],
+#activity-detail-panel.hidden {
+  display: none !important;
 }
-#page-activity #activity-list-header.page-header {
-  width: 100%;
-  max-width: none;
-  margin-left: 0;
-  margin-right: 0;
-  text-align: center;
-}
-#page-activity #activity-list-panel.activity-section-log,
-#page-activity #activity-list-panel {
-  width: 100% !important;
-  max-width: none !important; /* không 920px nữa — đã nằm trong col */
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  box-sizing: border-box !important;
-  overflow-x: hidden !important;
-}
-#page-activity.showing-detail #activity-list-panel {
-  max-height: min(70vh, 640px);
-  overflow-y: auto;
+#page-activity.showing-detail #activity-list {
+  display: none !important;
 }
 #page-activity.showing-detail #activity-detail-panel {
-  width: 100% !important;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  position: relative !important;
-  left: auto !important;
-  right: auto !important;
-  top: auto !important;
-  bottom: auto !important;
-  inset: auto !important;
-  transform: none !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  box-sizing: border-box !important;
-}
-#page-activity.showing-detail .activity-detail-top,
-#page-activity.showing-detail #activity-detail-body,
-#page-activity.showing-detail .ad-hero,
-#page-activity.showing-detail .ad-summary-card,
-#page-activity.showing-detail .ad-chips,
-#page-activity.showing-detail .ad-timeline-wrap {
-  width: 100% !important;
-  max-width: none !important;
-  box-sizing: border-box !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-
-/* Ghi đè các rule cũ max-width:920px trên section log (tránh lồng 2 lần) */
-#page-activity .activity-section,
-#page-activity .activity-section.activity-section-log {
-  max-width: none !important;
-  width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-
-
-/* ========== VX-FINAL-ALIGN ========== */
-html, body {
-  overflow-x: hidden;
-}
-#page-activity .activity-page-col {
-  max-width: 920px !important;
-  width: 100% !important;
-  margin: 0 auto !important;
-  padding: 0 !important;
-}
-#page-activity #activity-list-panel,
-#page-activity .activity-section,
-#page-activity .activity-section.activity-section-log {
-  max-width: none !important;
-  width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-#page-activity #activity-detail-panel {
-  max-width: none !important;
-  width: 100% !important;
-  margin: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  position: relative !important;
-  transform: none !important;
-}
-
-
-/* ========== VX-HEADER-CENTER: title + card cùng trục giữa ========== */
-#page-activity .activity-page-col {
   display: block !important;
-  width: 100% !important;
-  max-width: 920px !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  padding: 0 !important;
-  box-sizing: border-box !important;
-  text-align: center !important; /* kế thừa căn giữa */
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
-#page-activity #activity-list-header,
-#page-activity #activity-list-header.page-header {
+#page-activity.showing-detail #activity-list-panel {
   display: block !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 0 16px 0 !important;
-  padding: 0 !important;
-  text-align: center !important;
-  float: none !important;
-  position: relative !important;
-  left: auto !important;
-  right: auto !important;
-  transform: none !important;
 }
-#page-activity #activity-list-header h1,
-#page-activity #activity-list-header .page-sub,
-#page-activity #activity-list-header p {
+#page-activity.showing-detail #activity-list-header {
   display: block !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  text-align: center !important;
-  justify-content: center !important;
-  float: none !important;
 }
-#page-activity #activity-list-header h1 {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 10px !important;
+.activity-detail-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid rgba(148,163,184,0.2);
 }
-/* Card full width của cột — cùng trục với title */
-#page-activity #activity-list-panel,
-#page-activity #activity-list-panel.activity-section-log {
-  display: block !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-  text-align: left !important; /* nội dung log/detail vẫn trái */
-  float: none !important;
-  box-sizing: border-box !important;
+.activity-detail-top h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  flex: 1;
+  min-width: 0;
+}
+#activity-detail-body {
+  width: 100%;
+  box-sizing: border-box;
 }

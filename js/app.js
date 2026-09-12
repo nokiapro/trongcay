@@ -5478,44 +5478,35 @@ function formatActivityDetailHtml(log) {
 function closeActivityDetail() {
   window.__vxActivityDetailOpen = false;
   window.__vxOpeningActivityDetail = false;
+  document.body.classList.remove('activity-detail-open');
   const page = document.getElementById('page-activity');
   const listPanel = document.getElementById('activity-list-panel');
-  const listHeader = document.getElementById('activity-list-header');
   const detailPanel = document.getElementById('activity-detail-panel');
   const actList = document.getElementById('activity-list');
-  document.body.classList.remove('activity-detail-open');
-  if (page) {
-    page.classList.remove('showing-detail');
-    page.style.removeProperty('display');
-    page.style.cssText = (page.style.cssText || '').replace(/display\s*:\s*[^;]+;?/gi, '');
-  }
+  if (page) page.classList.remove('showing-detail');
   if (detailPanel) {
+    detailPanel.hidden = true;
     detailPanel.classList.add('hidden');
-    detailPanel.setAttribute('hidden', '');
     detailPanel.style.cssText = '';
-    // Giữ detail trong khung activity-list-panel
-    try {
-      if (listPanel && detailPanel.parentElement !== listPanel) {
-        listPanel.appendChild(detailPanel);
-      }
-    } catch (_) {}
   }
   if (actList) {
+    actList.hidden = false;
     actList.classList.remove('hidden');
-    actList.removeAttribute('hidden');
     actList.style.cssText = '';
   }
   if (listPanel) {
+    listPanel.hidden = false;
     listPanel.classList.remove('hidden');
-    listPanel.removeAttribute('hidden');
     listPanel.style.cssText = '';
   }
+  const listHeader = document.getElementById('activity-list-header');
   if (listHeader) {
+    listHeader.hidden = false;
     listHeader.classList.remove('hidden');
-    listHeader.removeAttribute('hidden');
     listHeader.style.cssText = '';
   }
 }
+
 
 function openActivityDetail(logId, cachedLog) {
 
@@ -5614,49 +5605,43 @@ function openActivityDetail(logId, cachedLog) {
   }
 
   // Chi tiết chỉ trong khung activity-list-panel (không overlay full màn)
+  // Hiện detail trong cùng khung list — không fixed, không đổi width
   window.__vxActivityDetailOpen = true;
   if (page) page.classList.add('showing-detail', 'active');
   document.body.classList.add('activity-detail-open');
 
-  // Giữ header + khung list; chỉ ẩn danh sách ul
   if (listHeader) {
+    listHeader.hidden = false;
     listHeader.classList.remove('hidden');
-    listHeader.removeAttribute('hidden');
     listHeader.style.cssText = '';
   }
   if (listPanel) {
+    listPanel.hidden = false;
     listPanel.classList.remove('hidden');
-    listPanel.removeAttribute('hidden');
     listPanel.style.cssText = '';
-    try {
-      if (detailPanel.parentElement !== listPanel) listPanel.appendChild(detailPanel);
-    } catch (_) {}
+    if (detailPanel.parentElement !== listPanel) listPanel.appendChild(detailPanel);
   }
-  const actList = document.getElementById('activity-list');
-  if (actList) {
-    actList.classList.add('hidden');
-    actList.setAttribute('hidden', '');
-    actList.style.setProperty('display', 'none', 'important');
+  const actListEl = document.getElementById('activity-list');
+  if (actListEl) {
+    actListEl.hidden = true;
+    actListEl.classList.add('hidden');
   }
 
+  detailPanel.hidden = false;
   detailPanel.classList.remove('hidden');
-  detailPanel.removeAttribute('hidden');
-  detailPanel.style.cssText = ''; // để CSS .activity-page-col + showing-detail quyết định khung 920px
+  detailPanel.style.cssText = '';
 
   try { detailPanel.scrollTop = 0; } catch (_) {}
 
   const info = {
     ok: true,
     hasLog: !!log,
-    logId: logId || (log && log.id) || null,
-    pageActive: !!(page && page.classList.contains('active')),
-    showingDetail: !!(page && page.classList.contains('showing-detail')),
-    panelDisplay: detailPanel.style.display,
-    bodyLen: (body.innerHTML || '').length
+    logId: logId || (log && log.id) || null
   };
   console.log('[activity] openActivityDetail', info);
   return info;
 }
+
 
 /* Click nhật ký + nút Quay lại — document capture */
 (function bindActivityLogClicksOnce() {
