@@ -1220,8 +1220,32 @@ function goToPage(page) {
   _goToPageLock = { page, at: now };
 
   syncNavActive(page);
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-' + page)?.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => {
+    p.classList.remove('active');
+    // Gỡ inline display do openActivityDetail / bug cũ (tránh nhật ký đè Nhiệm vụ)
+    try {
+      p.style.removeProperty('display');
+    } catch (_) {}
+  });
+  const target = document.getElementById('page-' + page);
+  if (target) target.classList.add('active');
+  // Rời activity → luôn đóng chi tiết log (panel fixed trên body)
+  if (page !== 'activity') {
+    try {
+      window.__vxActivityDetailOpen = false;
+      document.body.classList.remove('activity-detail-open');
+      const dp = document.getElementById('activity-detail-panel');
+      if (dp) {
+        dp.classList.add('hidden');
+        dp.setAttribute('hidden', '');
+        dp.style.cssText = 'display:none !important;';
+        const ap = document.getElementById('page-activity');
+        if (ap && dp.parentElement !== ap) {
+          try { ap.appendChild(dp); } catch (_) {}
+        }
+      }
+    } catch (_) {}
+  }
   try { sessionStorage.setItem('vx_page', page); } catch (_) {}
   closeNavMore();
   if (page === 'garden') renderGarden();
@@ -5005,37 +5029,86 @@ function formatLogEventsHtml(d) {
 }
 
 function formatActivityDetailHtml(log) {
-  // Agent log: hiện danh sách dòng chi tiết
+  // Agent log — UI đẹp: hero + chips + timeline
   if (log && Array.isArray(log.lines) && log.lines.length) {
     const esc = (s) => String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const actor = log.actor || log.type || '';
-    const mode = log.mode === 'offline' ? 'Offline' : 'Online';
-    const icons = { nyc: '❤️', fairy: '🧚', robot: '🤖', helper: '🧹', offline: '⚡' };
-    let html = '<div class="ad-block"><div class="ad-label">' +
-      (icons[actor] || '📋') + ' ' + esc(log.title || actor) +
-      ' · <span style="opacity:.8">' + mode + '</span></div>';
-    if (log.text) html += '<div class="ad-value" style="margin-bottom:8px">' + esc(log.text).replace(/&lt;img[^&]*&gt;/g, '🪙') + '</div>';
-    html += '<ul class="ad-list ad-list-rich">';
-    log.lines.forEach(ln => {
-      const s = String(ln || '').trim();
-      if (!s) return;
-      html += '<li><span class="ad-li-v" style="flex:1">' + esc(s) + '</span></li>';
-    });
-    html += '</ul></div>';
-    // Nếu có detail object thêm section
-    const d = log.detail || {};
-    if (d.garden || d.nyc || d.robot || d.fairy) {
-      html += '<div class="ad-block"><div class="ad-label">Tóm tắt số liệu</div><ul class="ad-list">';
-      if (d.garden) {
-        html += '<li>Vườn: thu ' + (d.garden.harvested || 0) + ' ô · +' + (d.garden.product || 0) + ' SP · trồng ' + (d.garden.replanted || 0) + '</li>';
-      }
-      if (d.nyc) html += '<li>NYC: ' + (d.nyc.gardens || 0) + ' vườn · ' + (d.nyc.cells || 0) + ' ô</li>';
-      if (d.fairy) html += '<li>Tiên: tưới ' + (d.fairy.watered || 0) + ' · hạt mưa ' + (d.fairy.rainSeeds || 0) + '</li>';
-      if (d.robot) html += '<li>Robot: hạt ' + (d.robot.seedsBought || 0) + ' · nấu ' + (d.robot.cooked || 0) + ' · ghép ⭐' + (d.robot.starMerged || 0) + ' · ✨' + (d.robot.mythicMerged || 0) + '</li>';
-      if (d.helperBuys) html += '<li>Giúp việc: mua ' + d.helperBuys + ' món</li>';
-      html += '</ul></div>';
+    const actor = String(log.actor || log.type || 'system');
+    const isOff = log.mode === 'offline';
+    const meta = {
+      nyc:     { icon: '❤️', name: 'NYC',        grad: 'linear-gradient(135deg,#f43f5e,#fb7185)', soft: 'rgba(244,63,94,.12)' },
+      fairy:   { icon: '🧚', name: 'Tiên',       grad: 'linear-gradient(135deg,#8b5cf6,#c084fc)', soft: 'rgba(139,92,246,.12)' },
+      robot:   { icon: '🤖', name: 'Robot',      grad: 'linear-gradient(135deg,#0ea5e9,#38bdf8)', soft: 'rgba(14,165,233,.12)' },
+      helper:  { icon: '🧹', name: 'Giúp việc',  grad: 'linear-gradient(135deg,#f59e0b,#fbbf24)', soft: 'rgba(245,158,11,.12)' },
+      offline: { icon: '⚡', name: 'Offline',    grad: 'linear-gradient(135deg,#64748b,#94a3b8)', soft: 'rgba(100,116,139,.14)' },
+      system:  { icon: '📋', name: 'Hệ thống',   grad: 'linear-gradient(135deg,#22c55e,#4ade80)', soft: 'rgba(34,197,94,.12)' }
+    };
+    const m = meta[actor] || meta.system;
+    let clock = '';
+    try {
+      const at = log.at || log.timestamp;
+      if (at && typeof Game !== 'undefined' && Game.formatLogClock) clock = Game.formatLogClock(at, true);
+      else if (at) clock = new Date(at).toLocaleString('vi-VN');
+    } catch (_) {}
+
+    let html = '';
+    // Hero
+    html += '<div class="ad-hero" style="--ad-grad:' + m.grad + ';--ad-soft:' + m.soft + '">';
+    html += '<div class="ad-hero-icon">' + m.icon + '</div>';
+    html += '<div class="ad-hero-body">';
+    html += '<div class="ad-hero-title">' + esc(log.title || m.name) + '</div>';
+    html += '<div class="ad-hero-meta">';
+    html += '<span class="ad-badge ad-badge-' + (isOff ? 'off' : 'on') + '">' + (isOff ? 'Offline' : 'Online') + '</span>';
+    if (clock) html += '<span class="ad-hero-time"><i class="fa-regular fa-clock"></i> ' + esc(clock) + '</span>';
+    html += '</div></div></div>';
+
+    // Summary text
+    if (log.text) {
+      const plain = String(log.text).replace(/<[^>]+>/g, '').trim();
+      if (plain) html += '<div class="ad-summary-card">' + esc(plain) + '</div>';
     }
+
+    // Stat chips from detail
+    const d = log.detail || {};
+    const chips = [];
+    if (d.garden) {
+      if (d.garden.harvested) chips.push({ k: 'Thu hoạch', v: d.garden.harvested + ' ô', c: 'green' });
+      if (d.garden.product) chips.push({ k: 'Sản phẩm', v: '+' + d.garden.product + ' SP', c: 'green' });
+      if (d.garden.replanted) chips.push({ k: 'Trồng lại', v: d.garden.replanted + ' ô', c: 'teal' });
+    }
+    if (d.nyc) {
+      if (d.nyc.gardens) chips.push({ k: 'Vườn NYC', v: String(d.nyc.gardens), c: 'rose' });
+      if (d.nyc.cells) chips.push({ k: 'Ô xử lý', v: String(d.nyc.cells), c: 'rose' });
+    }
+    if (d.fairy) {
+      if (d.fairy.watered) chips.push({ k: 'Tưới', v: d.fairy.watered + ' ô', c: 'violet' });
+      if (d.fairy.rainSeeds) chips.push({ k: 'Hạt mưa', v: String(d.fairy.rainSeeds), c: 'violet' });
+    }
+    if (d.robot) {
+      if (d.robot.seedsBought) chips.push({ k: 'Mua hạt', v: String(d.robot.seedsBought), c: 'sky' });
+      if (d.robot.cooked) chips.push({ k: 'Nấu', v: String(d.robot.cooked), c: 'sky' });
+      if (d.robot.starMerged) chips.push({ k: 'Ghép ⭐', v: String(d.robot.starMerged), c: 'amber' });
+      if (d.robot.mythicMerged) chips.push({ k: 'Ghép ✨', v: String(d.robot.mythicMerged), c: 'amber' });
+    }
+    if (d.helperBuys) chips.push({ k: 'Mua đồ', v: String(d.helperBuys) + ' món', c: 'amber' });
+    if (chips.length) {
+      html += '<div class="ad-chips">';
+      chips.forEach(c => {
+        html += '<div class="ad-chip ad-chip-' + c.c + '"><span class="ad-chip-k">' + esc(c.k) + '</span><span class="ad-chip-v">' + esc(c.v) + '</span></div>';
+      });
+      html += '</div>';
+    }
+
+    // Timeline of lines
+    html += '<div class="ad-timeline-wrap">';
+    html += '<div class="ad-section-title"><i class="fa-solid fa-list-ul"></i> Chi tiết thao tác <span class="ad-count">' + log.lines.length + '</span></div>';
+    html += '<ol class="ad-timeline">';
+    log.lines.forEach((ln, i) => {
+      const s = String(ln || '').replace(/<[^>]+>/g, '').trim();
+      if (!s) return;
+      html += '<li class="ad-tl-item"><span class="ad-tl-dot"></span><span class="ad-tl-idx">' + (i + 1) + '</span><span class="ad-tl-text">' + esc(s) + '</span></li>';
+    });
+    html += '</ol></div>';
     return html;
   }
   // Modal CHI TIẾT đầy đủ — list ngoài ngắn, trong này liệt kê đã làm gì
@@ -5416,15 +5489,19 @@ function closeActivityDetail() {
   const listPanel = document.getElementById('activity-list-panel');
   const listHeader = document.getElementById('activity-list-header');
   const detailPanel = document.getElementById('activity-detail-panel');
-  if (page) page.classList.remove('showing-detail');
   document.body.classList.remove('activity-detail-open');
+  if (page) {
+    page.classList.remove('showing-detail');
+    // QUAN TRỌNG: gỡ inline display (tránh đè lên trang khác như Nhiệm vụ)
+    page.style.removeProperty('display');
+    page.style.cssText = (page.style.cssText || '').replace(/display\s*:\s*[^;]+;?/gi, '');
+  }
   if (detailPanel) {
     detailPanel.classList.add('hidden');
     detailPanel.setAttribute('hidden', '');
-    detailPanel.style.cssText = 'display:none;';
-    // Đưa panel về lại page-activity nếu đang gắn ở body
+    detailPanel.style.cssText = 'display:none !important;';
     try {
-      if (page && detailPanel.parentElement === document.body) {
+      if (page && detailPanel.parentElement !== page) {
         page.appendChild(detailPanel);
       }
     } catch (_) {}
@@ -5452,9 +5529,12 @@ function openActivityDetail(logId, cachedLog) {
 
   const page = document.getElementById('page-activity');
   if (page) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => {
+      p.classList.remove('active');
+      try { p.style.removeProperty('display'); } catch (_) {}
+    });
     page.classList.add('active');
-    page.style.display = 'block';
+    // Chỉ dùng class .active — không gắn inline display (tránh dính sang trang khác)
   }
 
   const listPanel = document.getElementById('activity-list-panel');
@@ -5537,7 +5617,7 @@ function openActivityDetail(logId, cachedLog) {
   window.__vxActivityDetailOpen = true;
   if (page) {
     page.classList.add('showing-detail', 'active');
-    page.style.setProperty('display', 'block', 'important');
+    // Không set inline display !important — chỉ class active + overlay fixed
   }
   document.body.classList.add('activity-detail-open');
   if (listPanel) {
@@ -5563,33 +5643,42 @@ function openActivityDetail(logId, cachedLog) {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || document.body.classList.contains('dark');
   const bg = isDark ? '#0f1f17' : '#ffffff';
   const fg = isDark ? '#e2e8f0' : '#0f172a';
-  detailPanel.style.cssText = [
-    'display:flex',
-    'flex-direction:column',
-    'position:fixed',
-    'left:0',
-    'right:0',
-    'top:0',
-    'bottom:0',
-    'z-index:2147483000',
-    'visibility:visible',
-    'opacity:1',
-    'pointer-events:auto',
-    'overflow:auto',
-    'width:100%',
-    'max-width:100%',
-    'height:100%',
-    'min-height:100%',
-    'margin:0',
-    'padding:16px 16px 96px',
-    'box-sizing:border-box',
-    'background:' + bg,
-    'color:' + fg,
-    'gap:12px'
-  ].map(function (s) { return s; }).join(';') + ';';
+  detailPanel.style.cssText = '';
+  const setImp = (el, prop, val) => { try { el.style.setProperty(prop, val, 'important'); } catch (_) {} };
+  setImp(detailPanel, 'display', 'flex');
+  setImp(detailPanel, 'flex-direction', 'column');
+  setImp(detailPanel, 'position', 'fixed');
+  setImp(detailPanel, 'left', '0');
+  setImp(detailPanel, 'right', '0');
+  setImp(detailPanel, 'top', '0');
+  setImp(detailPanel, 'bottom', '0');
+  setImp(detailPanel, 'z-index', '2147483000');
+  setImp(detailPanel, 'visibility', 'visible');
+  setImp(detailPanel, 'opacity', '1');
+  setImp(detailPanel, 'pointer-events', 'auto');
+  setImp(detailPanel, 'overflow', 'auto');
+  setImp(detailPanel, 'width', '100%');
+  setImp(detailPanel, 'max-width', '100%');
+  setImp(detailPanel, 'height', '100%');
+  setImp(detailPanel, 'min-height', '100%');
+  setImp(detailPanel, 'margin', '0');
+  setImp(detailPanel, 'padding', '16px 16px 96px');
+  setImp(detailPanel, 'box-sizing', 'border-box');
+  setImp(detailPanel, 'background', bg);
+  setImp(detailPanel, 'color', fg);
+  setImp(detailPanel, 'gap', '12px');
 
-  body.style.cssText = 'display:block;visibility:visible;opacity:1;color:inherit;min-height:120px;padding:8px 4px 24px;';
-  if (title) title.style.cssText = 'margin:0;font-size:1.15rem;color:inherit;';
+  setImp(body, 'display', 'block');
+  setImp(body, 'visibility', 'visible');
+  setImp(body, 'opacity', '1');
+  setImp(body, 'color', 'inherit');
+  setImp(body, 'min-height', '120px');
+  setImp(body, 'padding', '8px 4px 24px');
+  if (title) {
+    setImp(title, 'margin', '0');
+    setImp(title, 'font-size', '1.15rem');
+    setImp(title, 'color', 'inherit');
+  }
 
   try {
     window.scrollTo(0, 0);
@@ -5613,27 +5702,30 @@ function openActivityDetail(logId, cachedLog) {
 (function bindActivityLogClicksOnce() {
   if (window.__vxActivityLogClickBound) return;
   window.__vxActivityLogClickBound = true;
-  document.addEventListener('click', function (ev) {
+
+  function handleActivityPointer(ev) {
     const t = ev.target;
     if (!t || !t.closest) return;
 
-    // Nút Quay lại (chi tiết log)
     const back = t.closest('#btn-activity-detail-back');
     if (back) {
       ev.preventDefault();
       ev.stopPropagation();
+      if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
       if (typeof closeActivityDetail === 'function') closeActivityDetail();
-      // Làm mới list sau khi back (an toàn, không đệ quy)
       try {
         if (typeof renderActivityPage === 'function') renderActivityPage();
       } catch (e) { console.warn(e); }
       return;
     }
 
-    // Dòng log trong list
     const row = t.closest('#activity-list .activity-clickable, .activity-list .activity-clickable, li.activity-clickable, .al-row.activity-clickable');
     if (!row) return;
     if (window.__vxActivityDetailOpen) return;
+    // Chỉ xử lý click chính / pointer chính (tránh double fire)
+    if (ev.type === 'pointerup' && ev.button != null && ev.button !== 0) return;
+    if (ev.type === 'click' && ev.button != null && ev.button !== 0) return;
+
     const id = row.getAttribute('data-id') || '';
     const idx = parseInt(row.getAttribute('data-idx') || '-1', 10);
     let cached = (window._activityLogMap && id) ? window._activityLogMap[id] : null;
@@ -5644,12 +5736,21 @@ function openActivityDetail(logId, cachedLog) {
       console.warn('[activity] click row without id/cache', row);
       return;
     }
+    // Chống double-open từ pointerup + click
+    const now = Date.now();
+    if (window.__vxLastActivityOpenAt && (now - window.__vxLastActivityOpenAt) < 400) return;
+    window.__vxLastActivityOpenAt = now;
+
     ev.preventDefault();
     ev.stopPropagation();
+    if (ev.stopImmediatePropagation) ev.stopImmediatePropagation();
     if (typeof openActivityDetail === 'function') {
       openActivityDetail(id || (cached && cached.id) || ('idx-' + idx), cached);
     }
-  }, true);
+  }
+
+  document.addEventListener('click', handleActivityPointer, true);
+  document.addEventListener('pointerup', handleActivityPointer, true);
 })();
 
 let _lastOfflineLogId = null;
@@ -5833,10 +5934,12 @@ function renderActivityPage(opts) {
         timeStr = Game.formatLogClock(st, false) + ' – ' + Game.formatLogClock(en, false);
       }
     }
-    const msg = a.text || a.title || 'Hành động';
+    const msg = String(a.text || a.title || 'Hành động').replace(/<[^>]+>/g, '');
     const result = a.resultLine || '';
     const isOff = (a.filter === 'offline' || a.type === 'offline' || a.mode === 'offline');
-    // Tách khoảng giờ thành 2 dòng cho dễ đọc: 08:20\n– 15:42
+    const actor = String(a.actor || a.filter || a.type || '');
+    const actorIcon = ({ nyc: '❤️', fairy: '🧚', robot: '🤖', helper: '🧹', offline: '⚡' })[actor] || '📋';
+    // Tách khoảng giờ thành 2 dòng cho dễ đọc
     let timeHtml = esc(timeStr);
     if (timeStr.indexOf('–') >= 0 || timeStr.indexOf('-') >= 0) {
       const parts = timeStr.split(/\s*[–-]\s*/);
@@ -5845,11 +5948,12 @@ function renderActivityPage(opts) {
           + '<span class="al-time-range">– ' + esc(parts[1].trim()) + '</span>';
       }
     }
-    html += '<li class="al-row activity-clickable' + (isOff ? ' al-offline' : '') + (a.aggregated ? ' al-agg' : '') + '" data-id="' + esc(a.id || '') + '" data-idx="' + String(aIdx) + '">'
+    html += '<li class="al-row activity-clickable' + (isOff ? ' al-offline' : '') + (a.aggregated ? ' al-agg' : '') + '" data-id="' + esc(a.id || '') + '" data-idx="' + String(aIdx) + '" data-actor="' + esc(actor) + '">'
       + '<div class="al-time-col"><span class="al-time">' + timeHtml + '</span></div>'
       + '<div class="al-main">'
-      + '<div class="al-msg">' + esc(msg) + '</div>'
+      + '<div class="al-msg"><span class="al-actor-ico">' + actorIcon + '</span> ' + esc(msg) + '</div>'
       + (result ? ('<div class="al-result">' + esc(result) + '</div>') : '')
+      + (isOff ? '<div class="al-mode-tag">Offline</div>' : '')
       + '</div>'
       + '<span class="al-chevron"><i class="fa-solid fa-chevron-right"></i></span></li>';
   });

@@ -2514,11 +2514,17 @@ const Game = {
     }
 
     const __offlineT0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    const __offlineBudgetMs = 4000; // cứng: không chiếm main thread quá 6s
+    // Budget theo quy mô: nhiều vườn/ô cần thời gian hơn (tránh vườn sau bị bỏ → log sai "chưa chín")
+    const __offlineGardenN = Array.isArray(currentPlayer.gardens) ? currentPlayer.gardens.length : 1;
+    const __offlinePlotN = (currentPlayer.gardens || []).reduce((s, g) => s + (Array.isArray(g) ? g.length : 0), 0);
+    const __offlineBudgetMs = Math.min(25000, Math.max(8000, 4000 + __offlineGardenN * 1200 + Math.min(8000, __offlinePlotN * 4)));
+    let __offlineTimedOut = false;
     const __offlineTimeUp = () => {
       const nowT = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-      return (nowT - __offlineT0) > __offlineBudgetMs;
+      if ((nowT - __offlineT0) > __offlineBudgetMs) { __offlineTimedOut = true; return true; }
+      return false;
     };
+    try { currentPlayer._offlineSimTimedOut = false; } catch (_) {}
         const __offlineYield = () => new Promise(r => setTimeout(r, 0));
 let changed = false;
     const notes = [];
@@ -3092,10 +3098,70 @@ let changed = false;
               const gapMs = Math.max(0, endMs - from);
               const safeGrow = Math.max(1000, growMs || 1000); // tối thiểu 1s/vòng
               const maxByTime = 1 + Math.floor(gapMs / safeGrow);
-              plotCycles = Math.max(0, Math.min(plotCycles, Math.max(1, Math.floor(Math.max(0, endMs - from) / Math.max(1000, growMs || 1000)) + 1), 24));
+              // Giới hạn theo thời gian offline thật (bỏ cap 24 — trước đây làm mất vụ khi off lâu)
+              const maxByOffline = 1 + Math.floor(Math.max(0, endMs - from) / Math.max(1000, growMs || 1000));
+              plotCycles = Math.max(0, Math.min(plotCycles, maxByTime, maxByOffline, 400));
 
               // Không có vòng chín thật sự → giữ nguyên plantedAt, bỏ qua ô này
               if (plotCycles < 1) continue;
+
+              // Fast bulk: nhiều vòng → cộng sản lượng 1 lần (tránh timeout vườn sau)
+              if (plotCycles >= 8 && canReplant && plot.plantId && ((cfg.plantList && cfg.plantList.length) || cfg.plantId)) {
+                try {
+                  const hid = plot.plantId;
+                  const plant = this.getPlant(hid);
+                  let amount1 = (plant && plant.yield) ? plant.yield : 1;
+                  amount1 = this.applySeedYieldBonus(plot, amount1);
+                  if ((plot.waterCount || 0) >= 2) amount1 = Math.ceil(amount1 * 1.1);
+                  // Ước lượng: mỗi vòng thu amount1, trừ 1 hạt khi trồng lại (đã có trong bag qua plant)
+                  const totalAmt = amount1 * plotCycles;
+                  if (!currentPlayer.inventory) currentPlayer.inventory = {};
+                  this.stashHarvestProduct(hid, totalAmt, plot);
+                  currentPlayer.stats = currentPlayer.stats || {};
+                  currentPlayer.stats.harvested = (currentPlayer.stats.harvested || 0) + totalAmt;
+                  const plantName = (plant && plant.name) || String(hid);
+                  const wasStar = !!plot.seedStar;
+                  // Trừ hạt trồng lại (plotCycles lần) nếu không unlimited
+                  if (!(this.isUnlimitedResources && this.isUnlimitedResources())) {
+                    const kind = plot.seedMyth ? 'myth' : (plot.seedStar ? 'star' : 'normal');
+                    const bag = kind === 'myth'
+                      ? (currentPlayer.inventory.seedsMyth = currentPlayer.inventory.seedsMyth || {})
+                      : (kind === 'star'
+                        ? (currentPlayer.inventory.seedsStar = currentPlayer.inventory.seedsStar || {})
+                        : (currentPlayer.inventory.seeds = currentPlayer.inventory.seeds || {}));
+                    // plantList: dùng loại đang trồng
+                    const pid = hid;
+                    const need = plotCycles; // mỗi vòng trồng lại 1
+                    const have = Number(bag[pid]) || 0;
+                    if (have > 0) {
+                      const use = Math.min(have, need);
+                      bag[pid] = have - use;
+                      if (bag[pid] <= 0) delete bag[pid];
+                    }
+                  }
+                  // Ghi nhận plotCycles vụ
+                  for (let bc = 0; bc < plotCycles; bc++) {
+                    recordHarvestStat(
+                      { harvested: 1, planted: 1, amount: amount1, plantName, plantId: hid, seedStar: wasStar },
+                      gi + ':' + i,
+                      growSec
+                    );
+                  }
+                  // Trạng thái cuối: vẫn còn cây vừa trồng
+                  const lastT = Math.min(endMs, firstReadyAt + (plotCycles - 1) * growMs);
+                  plot.plantId = hid;
+                  plot.plantedAt = lastT;
+                  plot.waterCount = 3;
+                  plot.watered = true;
+                  plot.lastWatered = lastT;
+                  plot.seedStar = wasStar;
+                  if (perm >= 2) plot.specialMult = Math.max(Number(plot.specialMult) || 1, perm);
+                  continue; // sang ô tiếp
+                } catch (bulkErr) {
+                  console.warn('bulk offline', bulkErr);
+                  // fallback xuống vòng lặp thường
+                }
+              }
 
               for (let c = 0; c < plotCycles; c++) {
                 if (typeof __offlineTimeUp === 'function' && __offlineTimeUp()) break;
@@ -3365,7 +3431,13 @@ let changed = false;
     const _rainSeeds = rainCollectSeeds || 0;
     const _helperItems = helperItemsBought || 0;
     const _ro = (typeof robotOffline === 'object' && robotOffline) ? robotOffline : {};
-    lines.push('BÙ OFFLINE — vắng ' + offlineText + ' (từ ' + new Date(from).toLocaleString('vi-VN') + ' → ' + new Date(now).toLocaleString('vi-VN') + ')');
+    try { currentPlayer._offlineSimTimedOut = !!__offlineTimedOut; } catch (_) {}
+    if (__offlineTimedOut) {
+      try {
+        notes.push('Sim offline đạt giới hạn thời gian xử lý — một số vườn có thể chưa được tính đủ');
+      } catch (_) {}
+    }
+        lines.push('BÙ OFFLINE — vắng ' + offlineText + ' (từ ' + new Date(from).toLocaleString('vi-VN') + ' → ' + new Date(now).toLocaleString('vi-VN') + ')');
     lines.push(
       'Tóm tắt: Mưa ' + rainHits + ' trận' +
       ' · Tiên nhặt ' + Number(_rainSeeds).toLocaleString() + ' hạt' +
@@ -3461,11 +3533,19 @@ let changed = false;
           } else if (growEff != null && offlineMs > 0 && growEff * 1000 > offlineMs) {
             reason = ' · chưa chín trong lúc vắng (hiệu lực ~' + growEff + 's, ô x' + mult + ')';
           } else if ((d.withPlant || 0) > 0) {
-            // Fallback rõ ràng hơn: vẫn có cây nhưng không đủ thời gian chín (plantedAt mới / mult thấp / offline ngắn)
             const extra = (growEff != null)
               ? (' (hiệu lực ~' + growEff + 's, ô x' + mult + ')')
               : (mult > 1.01 ? (' (ô x' + mult + ')') : '');
-            reason = ' · có cây nhưng chưa tới lúc chín trong thời gian vắng' + extra;
+            // Nếu offline đủ dài để chín mà vẫn 0 vụ → gần như chắc do sim bị cắt (budget) hoặc lỗi cấu hình
+            if (growEff != null && offlineMs > growEff * 1000 * 1.5) {
+              const timed = (typeof __offlineTimedOut !== 'undefined' && __offlineTimedOut)
+                || (currentPlayer && currentPlayer._offlineSimTimedOut);
+              reason = timed
+                ? (' · chưa tính đủ (sim offline quá tải, thử lại / rút ngắn số ô)' + extra)
+                : (' · 0 vụ dù đủ thời gian chín — kiểm tra NYC/hạt vườn này' + extra);
+            } else {
+              reason = ' · có cây nhưng chưa tới lúc chín trong thời gian vắng' + extra;
+            }
           } else {
             reason = ' · 0 vụ trong lúc vắng';
           }
