@@ -11537,49 +11537,75 @@ body.dark .ad-count {
   margin: 0;
   padding: 0 0 8px 0;
   position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 .ad-timeline::before {
   content: '';
   position: absolute;
-  left: 15px;
-  top: 8px;
-  bottom: 8px;
+  left: 11px; /* giữa chấm 24px cột */
+  top: 12px;
+  bottom: 12px;
   width: 2px;
   background: linear-gradient(180deg, rgba(34,197,94,.5), rgba(34,197,94,.05));
   border-radius: 2px;
+  pointer-events: none;
 }
 .ad-tl-item {
-  display: grid;
-  grid-template-columns: 20px 24px minmax(0, 1fr);
-  gap: 8px;
+  display: flex;
+  flex-direction: row;
   align-items: flex-start;
-  padding: 8px 0 8px 0;
+  gap: 10px;
+  padding: 6px 0;
   position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 .ad-tl-dot {
-  width: 10px; height: 10px;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+.ad-tl-dot::after {
+  content: '';
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: #22c55e;
   box-shadow: 0 0 0 3px rgba(34,197,94,.25);
-  margin: 6px auto 0;
-  z-index: 1;
 }
 .ad-tl-idx {
-  font-size: 0.72rem;
+  flex: 0 0 22px;
+  width: 22px;
+  font-size: 0.75rem;
   font-weight: 700;
   color: #94a3b8;
-  margin-top: 4px;
+  line-height: 24px;
   text-align: center;
+  margin: 0;
 }
 .ad-tl-text {
+  flex: 1 1 auto;
+  min-width: 0;
   background: #fff;
   border: 1px solid rgba(15,23,42,.06);
   border-radius: 10px;
-  padding: 9px 12px;
+  padding: 8px 12px;
   font-size: 0.9rem;
   line-height: 1.45;
   box-shadow: 0 1px 3px rgba(0,0,0,.04);
   color: #0f172a;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 html[data-theme="dark"] .ad-tl-text,
 body.dark .ad-tl-text {
@@ -11590,6 +11616,15 @@ body.dark .ad-tl-text {
 html[data-theme="dark"] .ad-timeline::before,
 body.dark .ad-timeline::before {
   background: linear-gradient(180deg, rgba(74,222,128,.45), rgba(74,222,128,.05));
+}
+
+/* Trong modal: timeline full width, không bị cắt */
+#modal-activity-detail .ad-timeline-wrap,
+#modal-activity-detail .ad-timeline,
+#modal-activity-detail .ad-tl-item,
+#modal-activity-detail .ad-tl-text {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Detail panel chrome */
