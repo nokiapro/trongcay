@@ -2470,8 +2470,8 @@ const Game = {
       }
     } catch (_) {}
 
-    // Mốc rời: ưu tiên awayMark (khi đóng tab) → lastSeen → lastCatch
-    // KHÔNG lấy Math.min mọi timestamp (dễ kéo offline dài bất thường)
+    // Mốc rời thật sự của user (không kéo theo log sớm → tránh offline ảo dài):
+    // ưu tiên awayMark (đóng tab / ẩn tab) → lastSeenAt → lastCatchUpAt
     let leaveAt = 0;
     if (awayMark > 0) leaveAt = awayMark;
     else if (lastSeen > 0) leaveAt = lastSeen;
@@ -2479,19 +2479,24 @@ const Game = {
     else leaveAt = now;
 
     let from = leaveAt;
-    // Đã bù một phần trước đó → chỉ bù phần sau lastCatch
+    // Đã bù một phần sau mốc rời → chỉ tính phần chưa bù (sau lastCatch)
     if (lastCatch > 0 && lastCatch > from && lastCatch < now) {
       from = lastCatch;
     }
-    // awayMark rõ ràng trước lastCatch (>1 phút) → user offline thật, dùng awayMark
+    // awayMark trước lastCatch >1 phút: user offline thật giữa chừng catch-up → lấy awayMark
     if (awayMark > 0 && lastCatch > 0 && awayMark < lastCatch && (lastCatch - awayMark) > 60000) {
       from = awayMark;
     }
-    if (fromLog && fromLog > 0 && fromLog < from) {
-      from = Math.max(0, fromLog - 1000);
+    // fromLog CHỈ dùng khi thiếu mốc rời hợp lệ (leaveAt ≈ now hoặc 0).
+    // Không được kéo offline lùi về log cũ khi đã có awayMark/lastSeen.
+    const leaveLooksMissing = !leaveAt || leaveAt >= now - 15000;
+    if (fromLog && fromLog > 0 && fromLog < from && leaveLooksMissing) {
+      // Giới hạn: không kéo quá 6h so với now (tránh timestamp log lỗi)
+      const capped = Math.max(fromLog, now - 6 * 60 * 60 * 1000);
+      from = Math.min(from, Math.max(0, capped - 1000));
     }
     from = Math.min(now, Math.max(0, from));
-    // Chặn offline ảo quá dài (tối đa 48h) — tránh log "làm cả núi" do timestamp lệch
+    // Chặn offline ảo quá dài (tối đa 48h)
     const MAX_OFFLINE_MS = 48 * 60 * 60 * 1000;
     if (now - from > MAX_OFFLINE_MS) from = now - MAX_OFFLINE_MS;
 
@@ -5741,16 +5746,19 @@ let changed = false;
 
   
   formatOfflineDuration(ms) {
-    const s = Math.max(0, Math.floor(Number(ms) / 1000));
-    if (s < 60) return s + ' giây';
-    const days = Math.floor(s / 86400);
-    const hours = Math.floor((s % 86400) / 3600);
-    const mins = Math.floor((s % 3600) / 60);
+    const totalSec = Math.max(0, Math.floor(Number(ms) / 1000));
+    if (totalSec < 60) return totalSec + ' giây';
+    const days = Math.floor(totalSec / 86400);
+    const hours = Math.floor((totalSec % 86400) / 3600);
+    const mins = Math.floor((totalSec % 3600) / 60);
+    const secs = totalSec % 60;
     const parts = [];
     if (days) parts.push(days + ' ngày');
     if (hours) parts.push(hours + ' giờ');
     if (mins) parts.push(mins + ' phút');
-    // dưới 1 giờ: chỉ phút (không ghi 0 giờ)
+    // Dưới 1 giờ: thêm giây cho đúng (vd 12 phút 5 giây)
+    if (!days && !hours && secs > 0) parts.push(secs + ' giây');
+    // Đủ giờ nhưng 0 phút: vẫn hiện "1 giờ" (không cần giây)
     if (!parts.length) return '0 giây';
     return parts.join(' ');
   },

@@ -5676,33 +5676,91 @@ function openActivityDetail(logId, cachedLog) {
 })();
 
 let _lastOfflineLogId = null;
+let _lastOfflineReport = null;
+
 function showOfflineReturnModal(report, logEntry) {
   if (!report) return;
   const ms = Number(report.offlineMs) || 0;
-  const thr = (typeof Game !== "undefined" && Game.OFFLINE_CONFIG && Game.OFFLINE_CONFIG.thresholdMs) || (5 * 60 * 1000);
-  if (ms < thr) return; // dưới threshold: không popup
+  const thr = (typeof Game !== 'undefined' && Game.OFFLINE_CONFIG && Game.OFFLINE_CONFIG.thresholdMs) || (5 * 60 * 1000);
+  if (ms < thr) return;
 
   const modal = document.getElementById('modal-offline-return');
   const durEl = document.getElementById('offline-return-duration');
   const statsEl = document.getElementById('offline-return-stats');
+  const sumEl = document.getElementById('offline-return-summary');
   if (!modal || !statsEl) {
-    // fallback toast
     const text = (typeof Game !== 'undefined' && Game.formatOfflineDuration)
-      ? Game.formatOfflineDuration(ms) : Math.round(ms / 60000) + ' phút';
-    if (typeof showToast === 'function') showToast('⚡ Bạn đã offline ' + text, 'info');
+      ? Game.formatOfflineDuration(ms) : (Math.round(ms / 60000) + ' phút');
+    if (typeof showToast === 'function') showToast('Bạn đã offline ' + text, 'info');
     return;
   }
 
-  const dur = (report.offlineText) ||
-    (typeof Game !== 'undefined' && Game.formatOfflineDuration ? Game.formatOfflineDuration(ms) : '');
-  if (durEl) durEl.innerHTML = 'Bạn đã offline <strong>' + dur + '</strong>';
+  _lastOfflineReport = report;
+  _lastOfflineLogId = (logEntry && logEntry.id) || null;
+  // Fallback: lấy id log offline mới nhất
+  if (!_lastOfflineLogId && currentPlayer && Array.isArray(currentPlayer.activityLogs)) {
+    const lastOff = currentPlayer.activityLogs.find(l => l && (l.type === 'offline' || l.actor === 'offline'));
+    if (lastOff && lastOff.id) _lastOfflineLogId = lastOff.id;
+  }
+
+  // Tính lại duration từ from/to nếu có (tránh text cũ lệch)
+  let durMs = ms;
+  const fromTs = Number(report.from) || 0;
+  const toTs = Number(report.to) || 0;
+  if (fromTs > 0 && toTs > fromTs) durMs = toTs - fromTs;
+  const dur = (typeof Game !== 'undefined' && Game.formatOfflineDuration)
+    ? Game.formatOfflineDuration(durMs)
+    : (report.offlineText || (Math.round(durMs / 60000) + ' phút'));
+  let rangeHtml = '';
+  if (fromTs > 0 && toTs > fromTs && typeof Game !== 'undefined' && Game.formatLogClock) {
+    rangeHtml = ' <span class="offline-range">('
+      + Game.formatLogClock(fromTs, true) + ' → ' + Game.formatLogClock(toTs, true)
+      + ')</span>';
+  } else if (fromTs > 0 && toTs > fromTs) {
+    try {
+      rangeHtml = ' <span class="offline-range">('
+        + new Date(fromTs).toLocaleTimeString('vi-VN') + ' → '
+        + new Date(toTs).toLocaleTimeString('vi-VN') + ')</span>';
+    } catch (_) {}
+  }
+  if (durEl) {
+    durEl.innerHTML = 'Bạn đã offline <strong>' + String(dur).replace(/</g, '&lt;') + '</strong>' + rangeHtml;
+  }
+
+  // Dòng tóm tắt (giống log Offline · Tổng kết)
+  if (sumEl) {
+    const parts = [];
+    const sp = Number(report.totalYieldAmount || 0) || 0;
+    if (sp) parts.push('+' + sp.toLocaleString('vi-VN') + ' SP');
+    if (report.nycGardens) parts.push('NYC ' + report.nycGardens + ' vườn');
+    const fairyN = Number(report.fairyCycles || report.rainWatered || 0) || 0;
+    if (fairyN) parts.push('Tiên ' + fairyN.toLocaleString('vi-VN') + ' ô');
+    const rSeed = Number(report.robotSeedsBought || 0) || 0;
+    const rStar = Number(report.robotStar || 0) || 0;
+    const rMyth = Number(report.robotMyth || 0) || 0;
+    const rCook = Number(report.robotCooked || 0) || 0;
+    const rJobs = rSeed + rStar + rMyth + rCook;
+    if (rJobs) parts.push('Robot ' + rJobs.toLocaleString('vi-VN') + ' việc');
+    sumEl.textContent = parts.length ? (String(dur) + ' · ' + parts.join(' · ')) : '';
+    sumEl.style.display = parts.length ? '' : 'none';
+  }
 
   const items = [];
   const sp = Number(report.totalYieldAmount || 0) || 0;
   const plotsH = Number(report.uniquePlotsHarvested || report.totalHarvest || 0) || 0;
-  if (sp) items.push({ icon: '🌱', text: '+' + Number(sp).toLocaleString('vi-VN') + ' SP' + (plotsH ? (' · ' + plotsH + ' ô') : '') });
-  if (report.xpGained) items.push({ icon: '⭐', text: '+' + Number(report.xpGained).toLocaleString('vi-VN') + ' XP' });
-  // Robot: không cộng số hạt thành "việc" (tránh 139992 việc)
+  if (sp) items.push({ k: 'Sản phẩm', v: '+' + sp.toLocaleString('vi-VN') + ' SP' + (plotsH ? (' · ' + plotsH.toLocaleString('vi-VN') + ' ô') : '') });
+  if (report.xpGained) items.push({ k: 'XP', v: '+' + Number(report.xpGained).toLocaleString('vi-VN') });
+  if (report.nycGardens) {
+    const nycP = Number(report.nycPlots || report.totalPlant || 0) || 0;
+    items.push({ k: 'NYC', v: report.nycGardens + ' vườn' + (nycP ? (' · ' + nycP.toLocaleString('vi-VN') + ' lần trồng/thu') : '') });
+  }
+  const fairyCycles = Number(report.fairyCycles || 0) || 0;
+  const rainWatered = Number(report.rainWatered || 0) || 0;
+  if (fairyCycles) items.push({ k: 'Tiên', v: 'Chăm ' + fairyCycles.toLocaleString('vi-VN') + ' chu kỳ' });
+  else if (rainWatered) items.push({ k: 'Tiên', v: 'Tưới ' + rainWatered.toLocaleString('vi-VN') + ' ô' });
+  if (report.fairyRainSeeds) items.push({ k: 'Hạt mưa', v: Number(report.fairyRainSeeds).toLocaleString('vi-VN') });
+  if (report.rainHits) items.push({ k: 'Mưa', v: report.rainHits + ' trận' });
+
   const rSeed = Number(report.robotSeedsBought || 0) || 0;
   const rStar = Number(report.robotStar || 0) || 0;
   const rMyth = Number(report.robotMyth || 0) || 0;
@@ -5712,41 +5770,79 @@ function showOfflineReturnModal(report, logEntry) {
   if (rStar) rParts.push('ghép sao ×' + rStar.toLocaleString('vi-VN'));
   if (rMyth) rParts.push('huyền thoại ×' + rMyth.toLocaleString('vi-VN'));
   if (rCook) rParts.push('nấu ' + rCook.toLocaleString('vi-VN'));
-  if (rParts.length) items.push({ icon: '🤖', text: rParts.join(' · ') });
-  if (report.nycGardens) {
-    const nycP = Number(report.nycPlots || report.totalPlant || 0) || 0;
-    items.push({ icon: '❤️', text: report.nycGardens + ' vườn NYC' + (nycP ? (' · ' + nycP.toLocaleString('vi-VN') + ' lần') : '') });
-  }
-  // Tiên: chu kỳ chăm / ô tưới — tách rõ
-  const fairyCycles = Number(report.fairyCycles || 0) || 0;
-  const rainWatered = Number(report.rainWatered || 0) || 0;
-  if (fairyCycles) items.push({ icon: '🧚', text: 'Chăm ' + fairyCycles.toLocaleString('vi-VN') + ' chu kỳ' });
-  else if (rainWatered) items.push({ icon: '🧚', text: 'Tưới ' + rainWatered.toLocaleString('vi-VN') + ' ô' });
-  if (report.fairyRainSeeds) items.push({ icon: '🌱', text: 'Nhặt ' + Number(report.fairyRainSeeds).toLocaleString('vi-VN') + ' hạt mưa' });
-  if (report.rainHits) items.push({ icon: '🌧️', text: report.rainHits + ' trận mưa' });
-  if (report.helperBuys) items.push({ icon: '🧹', text: 'Giúp việc mua ' + Number(report.helperBuys).toLocaleString('vi-VN') + ' món' });
+  if (rParts.length) items.push({ k: 'Robot', v: rParts.join(' · ') });
+  if (report.helperBuys) items.push({ k: 'Giúp việc', v: 'Mua ' + Number(report.helperBuys).toLocaleString('vi-VN') + ' món' });
 
   statsEl.innerHTML = items.length
-    ? items.map(it => '<li>' + it.text + '</li>').join('')
-    : '<li style="opacity:.7">Không có hoạt động offline đáng kể</li>';
+    ? items.map(it => '<li><span class="off-k">' + it.k + '</span><span class="off-v">' + it.v + '</span></li>').join('')
+    : '<li class="off-empty">Không có hoạt động offline đáng kể</li>';
 
-  _lastOfflineLogId = (logEntry && logEntry.id) || null;
   modal.classList.add('show');
 }
 
-document.getElementById('btn-offline-return-close')?.addEventListener('click', () => {
+function closeOfflineReturnModal() {
   document.getElementById('modal-offline-return')?.classList.remove('show');
-});
-document.getElementById('modal-offline-return')?.addEventListener('click', (e) => {
-  if (e.target.id === 'modal-offline-return') e.currentTarget.classList.remove('show');
-});
-document.getElementById('btn-offline-view-detail')?.addEventListener('click', () => {
-  document.getElementById('modal-offline-return')?.classList.remove('show');
+}
+
+function openOfflineDetailFromModal() {
+  closeOfflineReturnModal();
   if (typeof goToPage === 'function') goToPage('activity');
-  if (_lastOfflineLogId && typeof openActivityDetail === 'function') {
-    setTimeout(() => openActivityDetail(_lastOfflineLogId), 200);
-  }
+  // Ưu tiên mở log offline theo id; fallback dựng log tạm từ report
+  setTimeout(() => {
+    if (_lastOfflineLogId && typeof openActivityDetail === 'function') {
+      openActivityDetail(_lastOfflineLogId);
+      return;
+    }
+    // Fallback: tìm trong map / lines
+    let log = null;
+    if (window._activityLogMap) {
+      const vals = Object.values(window._activityLogMap);
+      log = vals.find(x => x && (x.type === 'offline' || x.actor === 'offline' || (x.filter === 'offline'))) || null;
+    }
+    if (!log && Array.isArray(window._lastActivityLines)) {
+      log = window._lastActivityLines.find(x => x && (x.type === 'offline' || x.actor === 'offline' || x.filter === 'offline')) || null;
+    }
+    if (!log && _lastOfflineReport && typeof openActivityDetail === 'function') {
+      const r = _lastOfflineReport;
+      const dur = r.offlineText || '';
+      log = {
+        id: 'offline-temp',
+        type: 'offline',
+        actor: 'offline',
+        title: 'Offline · Tổng kết',
+        text: dur + (r.totalYieldAmount ? (' · +' + Number(r.totalYieldAmount).toLocaleString('vi-VN') + ' SP') : ''),
+        lines: Array.isArray(r.lines) ? r.lines : [],
+        detail: {
+          garden: {
+            harvested: r.uniquePlotsHarvested || r.totalHarvest || 0,
+            product: r.totalYieldAmount || 0,
+            replanted: r.totalPlant || 0
+          },
+          nyc: { gardens: r.nycGardens || 0, cells: r.nycPlots || r.totalPlant || 0 },
+          fairy: { watered: r.rainWatered || r.fairyCycles || 0 },
+          robot: {
+            seedsBought: r.robotSeedsBought || 0,
+            cooked: r.robotCooked || 0,
+            starMerged: r.robotStar || 0,
+            mythicMerged: r.robotMyth || 0
+          }
+        }
+      };
+      openActivityDetail('offline-temp', log);
+      return;
+    }
+    if (log && typeof openActivityDetail === 'function') openActivityDetail(log.id, log);
+    else if (typeof renderActivityPage === 'function') renderActivityPage({ force: true });
+  }, 180);
+}
+
+document.getElementById('btn-offline-return-close')?.addEventListener('click', closeOfflineReturnModal);
+document.getElementById('btn-offline-return-ok')?.addEventListener('click', closeOfflineReturnModal);
+document.getElementById('modal-offline-return')?.addEventListener('click', (e) => {
+  if (e.target.id === 'modal-offline-return') closeOfflineReturnModal();
 });
+document.getElementById('btn-offline-view-detail')?.addEventListener('click', openOfflineDetailFromModal);
+
 
 /* ========== NHẬT KÝ — Timeline chuyên nghiệp (24h, không filter) ========== */
 function renderActivityPage(opts) {
@@ -6370,8 +6466,8 @@ if (!window.__careVisibilityBound) {
       if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
         const key = 'vuon_away_' + currentUser.uid;
         const prev = Number(localStorage.getItem(key)) || 0;
-        // Giữ mốc away sớm nhất trong phiên rời (tránh heartbeat/ghi đè làm mất cửa sổ offline)
-        if (!prev || t < prev || (t - prev) > 120000) {
+        // Luôn giữ mốc away SỚM NHẤT trong phiên rời (không ghi đè bằng thời điểm muộn hơn)
+        if (!prev || t < prev) {
           localStorage.setItem(key, String(t));
         }
       }
