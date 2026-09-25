@@ -6490,21 +6490,38 @@ if (!window.__careVisibilityBound) {
       markLastSeen();
     } else if (currentPlayer) {
       (async () => {
-        
+        // Giữ mốc away local trước khi pull remote (tránh server ghi đè làm mất cửa sổ offline)
+        let savedAway = 0;
+        let savedLastSeen = Number(currentPlayer.lastSeenAt) || 0;
+        try {
+          if (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
+            savedAway = Number(localStorage.getItem('vuon_away_' + currentUser.uid)) || 0;
+          }
+        } catch (_) {}
+
         if (typeof pullRemotePlayerIfNewer === 'function') {
           try {
             const pulled = await pullRemotePlayerIfNewer();
             if (pulled) {
+              // Khôi phục mốc rời local nếu remote mới hơn / làm mất cửa sổ
+              try {
+                if (savedAway > 0 && typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
+                  const key = 'vuon_away_' + currentUser.uid;
+                  const cur = Number(localStorage.getItem(key)) || 0;
+                  if (!cur || savedAway < cur) localStorage.setItem(key, String(savedAway));
+                }
+                // lastSeenAt: giữ mốc sớm hơn (thời điểm rời) để offline tính đúng
+                if (savedLastSeen > 0) {
+                  const rem = Number(currentPlayer.lastSeenAt) || 0;
+                  if (!rem || savedLastSeen < rem) currentPlayer.lastSeenAt = savedLastSeen;
+                }
+              } catch (_) {}
               if (typeof updateCoins === 'function') updateCoins();
-              if (typeof renderGarden === 'function') {
-                const gp = document.getElementById('page-garden');
-                if (gp && gp.classList.contains('active')) renderGarden();
-              }
             }
           } catch (_) {}
         }
-        forceBackgroundCare('visible');
-        
+
+        // QUAN TRỌNG: bù offline TRƯỚC realtime care (tránh care online "ăn" mất vụ offline)
         if (typeof Game !== 'undefined' && Game.simulateOfflineCare) {
           try {
             const r = await Game.simulateOfflineCare();
@@ -6518,20 +6535,28 @@ if (!window.__careVisibilityBound) {
               if (typeof renderActivityPage === 'function') renderActivityPage();
               try {
                 const logs = (currentPlayer && currentPlayer.activityLogs) || [];
-                const lastOff = logs.find(l => l && l.type === 'offline');
+                const lastOff = logs.find(l => l && (l.type === 'offline' || l.actor === 'offline'));
                 if (typeof showOfflineReturnModal === 'function') showOfflineReturnModal(r, lastOff);
               } catch (_) {}
             } else if (!r || r.skipped) {
               const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
               currentPlayer.lastSeenAt = t;
             }
-          } catch (_) {
+          } catch (e) {
+            console.warn('simulateOfflineCare', e);
             const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
             currentPlayer.lastSeenAt = t;
           }
         } else {
           const t = (typeof nowMs === 'function') ? nowMs() : Date.now();
           currentPlayer.lastSeenAt = t;
+        }
+
+        // Realtime care sau khi đã bù offline
+        forceBackgroundCare('visible');
+        if (typeof renderGarden === 'function') {
+          const gp = document.getElementById('page-garden');
+          if (gp && gp.classList.contains('active')) renderGarden();
         }
       })();
     }

@@ -2455,6 +2455,12 @@ const Game = {
 
   async simulateOfflineCare() {
     if (!currentPlayer) return { ok: false, changed: false, notes: [] };
+    // Chống chạy song song (visibility + login cùng lúc)
+    if (this._offlineSimRunning) {
+      return { ok: true, changed: false, notes: [], offlineMs: 0, skipped: true, busy: true };
+    }
+    this._offlineSimRunning = true;
+    try {
     this.ensureGardens();
     const now = (typeof nowMs==="function"?nowMs():Date.now());
     
@@ -2515,6 +2521,7 @@ const Game = {
           localStorage.removeItem('vuon_away_' + currentUser.uid);
         }
       } catch (_) {}
+      this._offlineSimRunning = false;
       return { ok: true, changed: false, notes: [], offlineMs: offlineGap, skipped: true };
     }
 
@@ -3666,6 +3673,12 @@ let changed = false;
       nycGardens: (typeof nycGardenIndexes !== 'undefined' && nycGardenIndexes) ? nycGardenIndexes.length : 0,
       fromLog: fromLog || null
     };
+    } catch (offlineErr) {
+      console.warn('simulateOfflineCare error', offlineErr);
+      return { ok: false, changed: false, notes: [], offlineMs: 0, error: String(offlineErr && offlineErr.message || offlineErr) };
+    } finally {
+      this._offlineSimRunning = false;
+    }
   },
 
   
