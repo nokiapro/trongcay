@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#166534" />
+  <title>Vườn Xanh — Xóa cache & Unregister SW</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #132033;
+      --text: #e8eef7;
+      --muted: #94a3b8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --err: #ef4444;
+      --line: rgba(148,163,184,.18);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, #1a3a2a 0%, transparent 50%),
+                  radial-gradient(900px 500px at 100% 0%, #1e293b 0%, transparent 45%),
+                  var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 520px;
+      background: linear-gradient(165deg, #15263a, #0f1a2a);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 22px 20px 18px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.35);
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sub { margin: 0 0 16px; color: var(--muted); font-size: .92rem; line-height: 1.45; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-weight: 700;
+      font-size: .95rem;
+      cursor: pointer;
+      color: #06210f;
+      background: linear-gradient(180deg, #4ade80, #16a34a);
+      box-shadow: 0 6px 16px rgba(22,163,74,.3);
+      flex: 1 1 180px;
+    }
+    button.secondary {
+      color: var(--text);
+      background: rgba(148,163,184,.12);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+    button:disabled { opacity: .55; cursor: wait; }
+    .log {
+      margin-top: 8px;
+      max-height: 280px;
+      overflow: auto;
+      background: rgba(0,0,0,.25);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .82rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .err { color: var(--err); }
+    .hint {
+      margin-top: 12px;
+      font-size: .85rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    a { color: #86efac; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🧹 Xóa cache PWA</h1>
+    <p class="sub">
+      Dùng khi deploy bản mới nhưng app vẫn hiện version cũ (badge / SW cache).
+      Trang này sẽ <b>Unregister Service Worker</b>, xóa Cache Storage, rồi chuyển về game.
+    </p>
+    <div class="row">
+      <button id="btn-clear" type="button">Xóa cache + Unregister SW</button>
+      <button id="btn-home" class="secondary" type="button">Về trang game</button>
+    </div>
+    <div id="log" class="log">Sẵn sàng. Bấm nút xanh để chạy.</div>
+    <p class="hint">
+      Sau khi xong, nếu vẫn cũ: Chrome → F12 → Application → Storage → <b>Clear site data</b>,
+      rồi mở lại <a href="./index.html">index.html</a> (hoặc /).
+    </p>
+  </div>
+  <script>
+    const logEl = document.getElementById('log');
+    function log(msg, cls) {
+      const line = document.createElement('div');
+      if (cls) line.className = cls;
+      line.textContent = msg;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    function clearLog() { logEl.innerHTML = ''; }
+
+    async function clearAll() {
+      const btn = document.getElementById('btn-clear');
+      btn.disabled = true;
+      clearLog();
+      log('Bắt đầu dọn cache…');
+
+      // 1) Unregister all service workers
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          if (!regs.length) log('Không có Service Worker nào.', 'warn');
+          for (const reg of regs) {
+            const ok = await reg.unregister();
+            log((ok ? '✓ Unregister SW: ' : '✗ Không unregister được: ') + (reg.scope || ''), ok ? 'ok' : 'err');
+          }
+        } else {
+          log('Trình duyệt không hỗ trợ Service Worker.', 'warn');
+        }
+      } catch (e) {
+        log('Lỗi unregister SW: ' + e, 'err');
+      }
+
+      // 2) Delete all Cache Storage
+      try {
+        if (window.caches && caches.keys) {
+          const keys = await caches.keys();
+          if (!keys.length) log('Cache Storage trống.', 'warn');
+          for (const k of keys) {
+            const ok = await caches.delete(k);
+            log((ok ? '✓ Xóa cache: ' : '✗ Không xóa được: ') + k, ok ? 'ok' : 'err');
+          }
+        } else {
+          log('Không hỗ trợ Cache Storage.', 'warn');
+        }
+      } catch (e) {
+        log('Lỗi xóa Cache Storage: ' + e, 'err');
+      }
+
+      // 3) Optional: clear some local markers (không xóa login/firebase data)
+      try {
+        const drop = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k) continue;
+          if (k.indexOf('vuon_away_') === 0 || k === 'vx_dismiss_update') drop.push(k);
+        }
+        drop.forEach(k => { localStorage.removeItem(k); log('✓ Xóa localStorage: ' + k, 'ok'); });
+      } catch (e) {
+        log('Bỏ qua localStorage: ' + e, 'warn');
+      }
+
+      log('Hoàn tất. Chuyển về game sau 1.2s…', 'ok');
+      setTimeout(() => {
+        // cache-bust query
+        location.href = './index.html?clear=' + Date.now();
+      }, 1200);
+    }
+
+    document.getElementById('btn-clear').addEventListener('click', clearAll);
+    document.getElementById('btn-home').addEventListener('click', () => {
+      location.href = './index.html?t=' + Date.now();
+    });
+  </script>
+</body>
+</html>

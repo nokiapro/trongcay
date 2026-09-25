@@ -1,5 +1,5 @@
 /* Vườn Xanh PWA service worker */
-const CACHE_VERSION = 'vuon-xanh-v1.9.232-offline-run';
+const CACHE_VERSION = 'vuon-xanh-v1.9.232';
 const PRECACHE = [
   './',
   './index.html',
